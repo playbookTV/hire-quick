@@ -1,0 +1,87 @@
+/**
+ * Authoritative state-machine transition tables (TRD §6/§12/§25). The ledger
+ * and API enforce these; illegal transitions throw. Kept as data so tests can
+ * exhaustively check every (from, to) pair.
+ */
+import type { BookingStatus, OrderStatus, WithdrawalStatus } from './enums.js';
+
+export class IllegalTransition extends Error {
+  constructor(
+    public readonly entity: string,
+    public readonly from: string,
+    public readonly to: string,
+  ) {
+    super(`Illegal ${entity} transition: ${from} → ${to}`);
+    this.name = 'IllegalTransition';
+  }
+}
+
+export const BOOKING_TRANSITIONS: Record<BookingStatus, readonly BookingStatus[]> = {
+  PENDING_PAYMENT: ['CONFIRMED', 'CANCELLED'],
+  CONFIRMED: ['CHECKED_IN', 'CANCELLED', 'NO_SHOW', 'DISPUTED'],
+  CHECKED_IN: ['COMPLETED', 'DISPUTED'],
+  COMPLETED: ['PAID', 'DISPUTED'],
+  PAID: ['DISPUTED'], // post-payout dispute → clawback handled at resolution
+  DISPUTED: ['COMPLETED', 'REFUNDED', 'CANCELLED'], // admin resolution targets
+  CANCELLED: ['REFUNDED'],
+  NO_SHOW: ['REFUNDED'],
+  REFUNDED: [],
+};
+
+export const ORDER_TRANSITIONS: Record<OrderStatus, readonly OrderStatus[]> = {
+  PENDING: ['PAID'],
+  PAID: ['PARTIALLY_REFUNDED', 'REFUNDED'],
+  PARTIALLY_REFUNDED: ['PARTIALLY_REFUNDED', 'REFUNDED'],
+  REFUNDED: [],
+};
+
+export const WITHDRAWAL_TRANSITIONS: Record<WithdrawalStatus, readonly WithdrawalStatus[]> = {
+  REQUESTED: ['PROCESSING', 'FAILED'],
+  PROCESSING: ['PAID', 'FAILED'],
+  PAID: [],
+  FAILED: [], // retry creates a fresh withdrawal; FAILED is terminal
+};
+
+function canTransitionIn<T extends string>(
+  table: Record<T, readonly T[]>,
+  from: T,
+  to: T,
+): boolean {
+  return table[from].includes(to);
+}
+
+export function canTransitionBooking(from: BookingStatus, to: BookingStatus): boolean {
+  return canTransitionIn(BOOKING_TRANSITIONS, from, to);
+}
+export function canTransitionOrder(from: OrderStatus, to: OrderStatus): boolean {
+  return canTransitionIn(ORDER_TRANSITIONS, from, to);
+}
+export function canTransitionWithdrawal(from: WithdrawalStatus, to: WithdrawalStatus): boolean {
+  return canTransitionIn(WITHDRAWAL_TRANSITIONS, from, to);
+}
+
+export function assertBookingTransition(from: BookingStatus, to: BookingStatus): void {
+  if (!canTransitionBooking(from, to)) throw new IllegalTransition('booking', from, to);
+}
+export function assertOrderTransition(from: OrderStatus, to: OrderStatus): void {
+  if (!canTransitionOrder(from, to)) throw new IllegalTransition('order', from, to);
+}
+export function assertWithdrawalTransition(from: WithdrawalStatus, to: WithdrawalStatus): void {
+  if (!canTransitionWithdrawal(from, to)) throw new IllegalTransition('withdrawal', from, to);
+}
+
+/**
+ * UX label → DB enum map (UXRD §9). `In Progress` is display-only with no
+ * stored booking value; everything else maps 1:1.
+ */
+export const BOOKING_LABEL_TO_STATUS: Record<string, BookingStatus | null> = {
+  Booked: 'CONFIRMED',
+  'Checked In': 'CHECKED_IN',
+  'In Progress': null,
+  Completed: 'COMPLETED',
+  Paid: 'PAID',
+  Cancelled: 'CANCELLED',
+  'No-Show': 'NO_SHOW',
+  Disputed: 'DISPUTED',
+  Refunded: 'REFUNDED',
+};

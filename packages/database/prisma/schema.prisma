@@ -1,0 +1,565 @@
+// HireQuick schema (TRD §6, v2.1). Money is integer **kobo** (Int) — never
+// Decimal/float — so the ledger Σ==0 invariant (§25) holds exactly.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // pooled (PgBouncer) for app runtime
+  directUrl = env("DIRECT_URL") // direct for migrations + concurrency tests
+}
+
+// ---------- enums ----------
+enum UserRole {
+  CLIENT
+  USHER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  PENDING
+}
+
+enum UsherVerifyState {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AvailabilityStatus {
+  AVAILABLE
+  UNAVAILABLE
+  BUSY
+}
+
+enum EventStatus {
+  DRAFT
+  OPEN
+  PARTIALLY_STAFFED
+  FULLY_STAFFED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ApplicationStatus {
+  APPLIED
+  SHORTLISTED
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum InvitationStatus {
+  SENT
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+enum BookingStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  CHECKED_IN
+  COMPLETED
+  PAID
+  CANCELLED
+  NO_SHOW
+  DISPUTED
+  REFUNDED
+}
+
+enum AttendanceMethod {
+  OTP
+  QR
+  AUTO
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  PARTIALLY_REFUNDED
+  REFUNDED
+}
+
+enum EscrowStatus {
+  HELD
+  RELEASED
+  REFUNDED
+  FROZEN
+}
+
+enum LedgerEntryType {
+  HOLD
+  RELEASE
+  REFUND
+  FEE
+  REVERSAL
+  COMMISSION_SWEEP
+}
+
+enum WalletEntryType {
+  CREDIT
+  DEBIT
+  REVERSAL
+}
+
+enum WithdrawalStatus {
+  REQUESTED
+  PROCESSING
+  PAID
+  FAILED
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  REJECTED
+}
+
+enum MessageContentType {
+  TEXT
+  IMAGE
+  VOICE
+}
+
+enum CodePurpose {
+  AUTH
+  ATTENDANCE
+}
+
+enum DevicePlatform {
+  IOS
+  ANDROID
+}
+
+// ---------- identity ----------
+model User {
+  id           String     @id @default(uuid()) @db.Uuid
+  role         UserRole
+  email        String?    @unique
+  phone        String     @unique
+  passwordHash String?
+  status       UserStatus @default(PENDING)
+  createdAt    DateTime   @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime   @updatedAt @db.Timestamptz(6)
+
+  client            Client?
+  usher             Usher?
+  deviceTokens      DeviceToken[]
+  reviewsAuthored   Review[]            @relation("ReviewAuthor")
+  reviewsReceived   Review[]            @relation("ReviewSubject")
+  disputesRaised    Dispute[]           @relation("DisputeRaisedBy")
+  disputesResolved  Dispute[]           @relation("DisputeResolvedBy")
+  verificationsDone UsherVerification[] @relation("VerificationReviewer")
+  messagesSent      Message[]
+  auditLogs         AuditLog[]
+
+  @@map("users")
+}
+
+model Client {
+  id          String  @id @default(uuid()) @db.Uuid
+  userId      String  @unique @db.Uuid
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName String
+  ratingAvg   Float   @default(0)
+  ratingCount Int     @default(0)
+
+  events Event[]
+  orders Order[]
+
+  @@map("clients")
+}
+
+model Usher {
+  id                 String           @id @default(uuid()) @db.Uuid
+  userId             String           @unique @db.Uuid
+  user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio                String?
+  yearsExperience    Int              @default(0)
+  verificationStatus UsherVerifyState @default(PENDING)
+  reliabilityScore   Float            @default(100)
+  ratingAvg          Float            @default(0)
+  ratingCount        Int              @default(0)
+
+  verifications UsherVerification[]
+  photos        Photo[]
+  availability  Availability[]
+  applications  Application[]
+  invitations   Invitation[]
+  bookings      Booking[]
+  wallet        Wallet?
+  bankAccounts  BankAccount[]
+
+  @@map("ushers")
+}
+
+model UsherVerification {
+  id            String             @id @default(uuid()) @db.Uuid
+  usherId       String             @db.Uuid
+  usher         Usher              @relation(fields: [usherId], references: [id], onDelete: Cascade)
+  idDocumentUrl String
+  selfieUrl     String
+  status        VerificationStatus @default(PENDING)
+  reviewedById  String?            @db.Uuid
+  reviewedBy    User?              @relation("VerificationReviewer", fields: [reviewedById], references: [id])
+  reason        String?
+  createdAt     DateTime           @default(now()) @db.Timestamptz(6)
+
+  @@index([usherId])
+  @@map("usher_verifications")
+}
+
+model Photo {
+  id       String @id @default(uuid()) @db.Uuid
+  usherId  String @db.Uuid
+  usher    Usher  @relation(fields: [usherId], references: [id], onDelete: Cascade)
+  imageUrl String
+
+  @@index([usherId])
+  @@map("photos")
+}
+
+model Availability {
+  id      String             @id @default(uuid()) @db.Uuid
+  usherId String             @db.Uuid
+  usher   Usher              @relation(fields: [usherId], references: [id], onDelete: Cascade)
+  date    DateTime           @db.Date
+  status  AvailabilityStatus @default(AVAILABLE)
+
+  @@unique([usherId, date])
+  @@map("availability")
+}
+
+// ---------- marketplace ----------
+model Event {
+  id              String      @id @default(uuid()) @db.Uuid
+  clientId        String      @db.Uuid
+  client          Client      @relation(fields: [clientId], references: [id])
+  title           String
+  venue           String
+  eventDate       DateTime    @db.Date
+  startTime       String // "HH:MM"
+  endTime         String // "HH:MM" — drives auto-complete (§12)
+  category        String
+  headcount       Int
+  budgetPerHead   Int // kobo
+  dressCode       String?
+  preferences     Json?
+  status          EventStatus @default(DRAFT)
+  createdAt       DateTime    @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime    @updatedAt @db.Timestamptz(6)
+
+  applications Application[]
+  invitations  Invitation[]
+  bookings     Booking[]
+  orders       Order[]
+
+  @@index([clientId])
+  @@index([status])
+  @@map("events")
+}
+
+model Application {
+  id        String            @id @default(uuid()) @db.Uuid
+  eventId   String            @db.Uuid
+  event     Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  usherId   String            @db.Uuid
+  usher     Usher             @relation(fields: [usherId], references: [id], onDelete: Cascade)
+  status    ApplicationStatus @default(APPLIED)
+  createdAt DateTime          @default(now()) @db.Timestamptz(6)
+
+  @@unique([eventId, usherId])
+  @@index([usherId])
+  @@map("applications")
+}
+
+model Invitation {
+  id        String           @id @default(uuid()) @db.Uuid
+  eventId   String           @db.Uuid
+  event     Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  usherId   String           @db.Uuid
+  usher     Usher            @relation(fields: [usherId], references: [id], onDelete: Cascade)
+  status    InvitationStatus @default(SENT)
+  createdAt DateTime         @default(now()) @db.Timestamptz(6)
+
+  @@unique([eventId, usherId])
+  @@index([usherId])
+  @@map("invitations")
+}
+
+// ---------- orders / bookings / payments ----------
+model Order {
+  id               String      @id @default(uuid()) @db.Uuid
+  clientId         String      @db.Uuid
+  client           Client      @relation(fields: [clientId], references: [id])
+  eventId          String      @db.Uuid
+  event            Event       @relation(fields: [eventId], references: [id])
+  paystackChargeRef String?
+  grossAmount      Int // kobo — Σ per-head over this batch
+  status           OrderStatus @default(PENDING)
+  createdAt        DateTime    @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime    @updatedAt @db.Timestamptz(6)
+
+  bookings Booking[]
+
+  @@index([clientId])
+  @@index([eventId])
+  @@map("orders")
+}
+
+model Booking {
+  id                String            @id @default(uuid()) @db.Uuid
+  eventId           String            @db.Uuid
+  event             Event             @relation(fields: [eventId], references: [id])
+  usherId           String            @db.Uuid
+  usher             Usher             @relation(fields: [usherId], references: [id])
+  orderId           String?           @db.Uuid
+  order             Order?            @relation(fields: [orderId], references: [id])
+  amount            Int // kobo, = event.budgetPerHead at confirmation
+  status            BookingStatus     @default(PENDING_PAYMENT)
+  attendanceMethod  AttendanceMethod?
+  arrivalAssertedAt DateTime?         @db.Timestamptz(6)
+  checkedInAt       DateTime?         @db.Timestamptz(6)
+  completedAt       DateTime?         @db.Timestamptz(6)
+  createdAt         DateTime          @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime          @updatedAt @db.Timestamptz(6)
+
+  payment      Payment?
+  escrowLedger EscrowLedger[]
+  walletLedger WalletLedger[]
+  disputes     Dispute[]
+  conversation Conversation?
+  reviews      Review[]
+
+  @@index([eventId])
+  @@index([usherId])
+  @@index([orderId])
+  @@index([status])
+  @@map("bookings")
+}
+
+model Payment {
+  id                  String       @id @default(uuid()) @db.Uuid
+  bookingId           String       @unique @db.Uuid
+  booking             Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  grossAmount         Int // kobo
+  platformFee         Int // kobo (15%)
+  usherPayout         Int // kobo (gross − fee)
+  paystackChargeRef   String? // denormalized from order
+  paystackTransferRef String? // null in wallet model (transfer at withdrawal)
+  escrowStatus        EscrowStatus @default(HELD)
+  createdAt           DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt           DateTime     @updatedAt @db.Timestamptz(6)
+
+  @@map("payments")
+}
+
+// Append-only. Source of truth (TRD §6/§25). Never UPDATE/DELETE rows.
+model EscrowLedger {
+  id           String          @id @default(uuid()) @db.Uuid
+  bookingId    String?         @db.Uuid // null for platform-level COMMISSION_SWEEP entries
+  booking      Booking?        @relation(fields: [bookingId], references: [id])
+  entryType    LedgerEntryType
+  amount       Int // kobo, signed
+  balanceAfter Int // kobo, running escrow balance for this booking
+  paystackRef  String?
+  createdAt    DateTime        @default(now()) @db.Timestamptz(6)
+
+  @@index([bookingId])
+  @@index([entryType])
+  @@map("escrow_ledger")
+}
+
+// ---------- wallets / withdrawals (v2.1 held-wallet model) ----------
+model Wallet {
+  id               String   @id @default(uuid()) @db.Uuid
+  usherId          String   @unique @db.Uuid
+  usher            Usher    @relation(fields: [usherId], references: [id], onDelete: Cascade)
+  availableBalance Int      @default(0) // kobo, released + withdrawable
+  currency         String   @default("NGN")
+  updatedAt        DateTime @updatedAt @db.Timestamptz(6)
+
+  ledger      WalletLedger[]
+  withdrawals Withdrawal[]
+
+  @@map("wallets")
+}
+
+// Append-only.
+model WalletLedger {
+  id           String          @id @default(uuid()) @db.Uuid
+  walletId     String          @db.Uuid
+  wallet       Wallet          @relation(fields: [walletId], references: [id])
+  bookingId    String?         @db.Uuid
+  booking      Booking?        @relation(fields: [bookingId], references: [id])
+  withdrawalId String?         @db.Uuid
+  entryType    WalletEntryType
+  amount       Int // kobo, signed
+  balanceAfter Int // kobo
+  createdAt    DateTime        @default(now()) @db.Timestamptz(6)
+
+  @@index([walletId])
+  @@index([bookingId])
+  @@map("wallet_ledger")
+}
+
+model BankAccount {
+  id                    String   @id @default(uuid()) @db.Uuid
+  usherId               String   @db.Uuid
+  usher                 Usher    @relation(fields: [usherId], references: [id], onDelete: Cascade)
+  bankCode              String
+  accountNumber         String
+  accountName           String
+  paystackRecipientCode String?
+  verified              Boolean  @default(false)
+  createdAt             DateTime @default(now()) @db.Timestamptz(6)
+
+  withdrawals Withdrawal[]
+
+  @@index([usherId])
+  @@map("bank_accounts")
+}
+
+model Withdrawal {
+  id                  String           @id @default(uuid()) @db.Uuid
+  walletId            String           @db.Uuid
+  wallet              Wallet           @relation(fields: [walletId], references: [id])
+  bankAccountId       String           @db.Uuid
+  bankAccount         BankAccount      @relation(fields: [bankAccountId], references: [id])
+  amount              Int // kobo
+  status              WithdrawalStatus @default(REQUESTED)
+  paystackTransferRef String?
+  failureReason       String?
+  createdAt           DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt           DateTime         @updatedAt @db.Timestamptz(6)
+
+  @@index([walletId])
+  @@map("withdrawals")
+}
+
+// ---------- disputes / messaging / reviews ----------
+model Dispute {
+  id           String        @id @default(uuid()) @db.Uuid
+  bookingId    String        @db.Uuid
+  booking      Booking       @relation(fields: [bookingId], references: [id])
+  raisedById   String        @db.Uuid
+  raisedBy     User          @relation("DisputeRaisedBy", fields: [raisedById], references: [id])
+  reason       String
+  note         String?
+  status       DisputeStatus @default(OPEN)
+  resolution   String?
+  resolvedById String?       @db.Uuid
+  resolvedBy   User?         @relation("DisputeResolvedBy", fields: [resolvedById], references: [id])
+  createdAt    DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime      @updatedAt @db.Timestamptz(6)
+
+  @@index([bookingId])
+  @@map("disputes")
+}
+
+model Conversation {
+  id        String    @id @default(uuid()) @db.Uuid
+  bookingId String    @unique @db.Uuid
+  booking   Booking   @relation(fields: [bookingId], references: [id])
+  clientId  String    @db.Uuid
+  usherId   String    @db.Uuid
+  createdAt DateTime  @default(now()) @db.Timestamptz(6)
+
+  messages Message[]
+
+  @@map("conversations")
+}
+
+model Message {
+  id             String             @id @default(uuid()) @db.Uuid
+  conversationId String             @db.Uuid
+  conversation   Conversation       @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String             @db.Uuid
+  sender         User               @relation(fields: [senderId], references: [id])
+  contentType    MessageContentType @default(TEXT)
+  content        String
+  flagged        Boolean            @default(false)
+  createdAt      DateTime           @default(now()) @db.Timestamptz(6)
+  seenAt         DateTime?          @db.Timestamptz(6)
+
+  @@index([conversationId])
+  @@map("messages")
+}
+
+model Review {
+  id         String   @id @default(uuid()) @db.Uuid
+  bookingId  String   @db.Uuid
+  booking    Booking  @relation(fields: [bookingId], references: [id])
+  reviewerId String   @db.Uuid
+  reviewer   User     @relation("ReviewAuthor", fields: [reviewerId], references: [id])
+  revieweeId String   @db.Uuid
+  reviewee   User     @relation("ReviewSubject", fields: [revieweeId], references: [id])
+  rating     Int // 1–5
+  comment    String?
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([bookingId])
+  @@map("reviews")
+}
+
+// ---------- infra tables (v2.1) ----------
+model DeviceToken {
+  id         String         @id @default(uuid()) @db.Uuid
+  userId     String         @db.Uuid
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fcmToken   String         @unique
+  platform   DevicePlatform
+  lastSeenAt DateTime       @default(now()) @db.Timestamptz(6)
+
+  @@index([userId])
+  @@map("device_tokens")
+}
+
+model VerificationCode {
+  id         String      @id @default(uuid()) @db.Uuid
+  purpose    CodePurpose
+  subjectRef String // phone (AUTH) or bookingId (ATTENDANCE)
+  codeHash   String
+  expiresAt  DateTime    @db.Timestamptz(6)
+  consumedAt DateTime?   @db.Timestamptz(6)
+  attempts   Int         @default(0)
+  createdAt  DateTime    @default(now()) @db.Timestamptz(6)
+
+  @@index([purpose, subjectRef])
+  @@map("verification_codes")
+}
+
+model IdempotencyKey {
+  key          String   @id
+  scope        String
+  responseHash String?
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+
+  @@map("idempotency_keys")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  actorId   String?  @db.Uuid
+  actor     User?    @relation(fields: [actorId], references: [id])
+  action    String
+  target    String
+  metadata  Json?
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([actorId])
+  @@index([action])
+  @@map("audit_logs")
+}

@@ -1,0 +1,133 @@
+/**
+ * Phase 2 payment services: orchestrate Paystack (test mode) with the ledger.
+ * Order + booking *creation* from applications is Phase 4; these compose on top
+ * of an existing PENDING order.
+ */
+import { type PrismaClient } from '@hq/database';
+import { runIdempotent } from './ledger/idempotency.js';
+import { requestWithdrawal, failWithdrawal, commissionSweep } from './ledger/ledger.js';
+import type { PaystackPort } from './port/paystack-port.js';
+
+export interface Deps {
+  prisma: PrismaClient;
+  paystack: PaystackPort;
+}
+
+/** Initialize the Paystack charge for a PENDING order; HOLD happens on webhook. */
+export async function initChargeForOrder(
+  deps: Deps,
+  params: { orderId: string; email: string },
+): Promise<{ authorizationUrl: string; reference: string }> {
+  const order = await deps.prisma.order.findUniqueOrThrow({ where: { id: params.orderId } });
+  if (order.status !== 'PENDING') throw new Error(`order ${order.id} is not PENDING`);
+  const reference = `hq_${order.id}`;
+  const init = await deps.paystack.initializeCharge({
+    email: params.email,
+    amountKobo: order.grossAmount,
+    reference,
+  });
+  await deps.prisma.order.update({ where: { id: order.id }, data: { paystackChargeRef: reference } });
+  return init;
+}
+
+/** Register an usher bank account as a Paystack transfer recipient. */
+export async function createBankAccountForUsher(
+  deps: Deps,
+  params: { usherId: string; bankCode: string; accountNumber: string; accountName: string },
+): Promise<{ id: string; recipientCode: string }> {
+  const { recipientCode } = await deps.paystack.createTransferRecipient({
+    bankCode: params.bankCode,
+    accountNumber: params.accountNumber,
+    accountName: params.accountName,
+  });
+  const ba = await deps.prisma.bankAccount.create({
+    data: {
+      usherId: params.usherId,
+      bankCode: params.bankCode,
+      accountNumber: params.accountNumber,
+      accountName: params.accountName,
+      paystackRecipientCode: recipientCode,
+      verified: true,
+    },
+  });
+  return { id: ba.id, recipientCode };
+}
+
+/**
+ * Withdraw available wallet balance to a bank account. Debits the wallet inside
+ * an idempotent transaction, then fires the Paystack transfer; transfer.success
+ * / transfer.failed webhooks finalize the status.
+ */
+export async function initWithdrawal(
+  deps: Deps,
+  params: { idempotencyKey: string; walletId: string; bankAccountId: string; amountKobo: number },
+): Promise<{ withdrawalId: string; duplicate: boolean }> {
+  const bank = await deps.prisma.bankAccount.findUniqueOrThrow({
+    where: { id: params.bankAccountId },
+  });
+  if (!bank.paystackRecipientCode) throw new Error('bank account has no transfer recipient');
+
+  const { duplicate, result } = await runIdempotent(
+    deps.prisma,
+    params.idempotencyKey,
+    'withdrawal',
+    (tx) => requestWithdrawal(tx, params.walletId, params.bankAccountId, params.amountKobo),
+  );
+  if (duplicate || !result) return { withdrawalId: '', duplicate: true };
+
+  const withdrawalId = result;
+  const reference = `wd_${withdrawalId}`;
+  const transfer = await deps.paystack.transfer({
+    amountKobo: params.amountKobo,
+    recipientCode: bank.paystackRecipientCode,
+    reason: 'HireQuick payout',
+    reference,
+  });
+  await deps.prisma.withdrawal.update({
+    where: { id: withdrawalId },
+    data: { paystackTransferRef: reference },
+  });
+  if (transfer.status === 'failed') {
+    // synchronous failure → reverse immediately (funds stay in wallet, §10)
+    await deps.prisma.$transaction((tx) => failWithdrawal(tx, withdrawalId));
+  }
+  return { withdrawalId, duplicate: false };
+}
+
+/** Accumulated platform fees still sitting in the Balance (FEE minus prior sweeps). */
+export async function commissionSweepAmount(prisma: PrismaClient): Promise<number> {
+  const [fees, swept] = await Promise.all([
+    prisma.escrowLedger.aggregate({ where: { entryType: 'FEE' }, _sum: { amount: true } }),
+    prisma.escrowLedger.aggregate({ where: { entryType: 'COMMISSION_SWEEP' }, _sum: { amount: true } }),
+  ]);
+  // FEE and COMMISSION_SWEEP are stored as negative amounts.
+  const totalFees = -(fees._sum.amount ?? 0);
+  const totalSwept = -(swept._sum.amount ?? 0);
+  return totalFees - totalSwept;
+}
+
+/**
+ * Sweep accumulated commission to HireQuick's operating bank (D3, §10). Transfer
+ * first, then record the COMMISSION_SWEEP entry only on success, so a failed
+ * transfer never leaves a phantom sweep in the ledger.
+ */
+export async function runCommissionSweep(
+  deps: Deps,
+  params: { operatingRecipientCode: string; minKobo?: number },
+): Promise<{ swept: number }> {
+  const amount = await commissionSweepAmount(deps.prisma);
+  const min = params.minKobo ?? 10_000; // ₦100 floor
+  if (amount < min) return { swept: 0 };
+
+  const ref = `sweep_${Date.now()}`;
+  const transfer = await deps.paystack.transfer({
+    amountKobo: amount,
+    recipientCode: params.operatingRecipientCode,
+    reason: 'HireQuick commission sweep',
+    reference: ref,
+  });
+  if (transfer.status === 'failed') return { swept: 0 };
+
+  await deps.prisma.$transaction((tx) => commissionSweep(tx, amount));
+  return { swept: amount };
+}

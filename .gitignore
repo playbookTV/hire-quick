@@ -1,0 +1,24 @@
+# deps
+node_modules/
+.pnpm-store/
+
+# env / secrets — NEVER commit
+.env
+.env.*
+!.env.example
+.mcp.json
+
+
+# build output
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+coverage/
+
+# prisma generated client
+packages/database/generated/
+
+# misc
+.DS_Store
+*.log

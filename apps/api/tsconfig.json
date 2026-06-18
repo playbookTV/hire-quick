@@ -1,0 +1,11 @@
+{
+  "extends": "@hq/config/tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "outDir": "dist",
+    "rootDir": "src"
+  },
+  "include": ["src/**/*"],
+  "exclude": ["dist", "node_modules", "src/**/*.test.ts"],
+  "references": [{ "path": "../../packages/shared" }, { "path": "../../packages/database" }]
+}
