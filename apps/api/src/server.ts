@@ -14,6 +14,6 @@ const server = createServer(app);
 attachRealtime(server); // Socket.IO booking chat
 
 server.listen(env.PORT, () => {
-  // eslint-disable-next-line no-console
+   
   console.log(`hirequick-api listening on :${env.PORT} (${env.NODE_ENV})`);
 });

@@ -10,7 +10,7 @@ import { runCommissionSweep, type Deps } from '../payments/service.js';
 import { env } from '../../env.js';
 
 function log(message: string): void {
-  // eslint-disable-next-line no-console
+   
   console.log(`[job] ${message}`);
 }
 

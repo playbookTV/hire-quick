@@ -11,21 +11,21 @@ async function main(): Promise<void> {
 
   const worker = createWorker();
   worker.on('failed', (job, err) => {
-    // eslint-disable-next-line no-console
+     
     console.error(`[worker] ${job?.name ?? 'job'} failed: ${err.message}`);
   });
   worker.on('completed', (job) => {
-    // eslint-disable-next-line no-console
+     
     console.log(`[worker] ${job.name} completed`);
   });
 
   const safeUrl = env.REDIS_URL.replace(/:[^:@]+@/, ':****@');
-  // eslint-disable-next-line no-console
+   
   console.log(`hirequick worker started (redis ${safeUrl})`);
 }
 
 main().catch((e: unknown) => {
-  // eslint-disable-next-line no-console
+   
   console.error(e);
   process.exit(1);
 });

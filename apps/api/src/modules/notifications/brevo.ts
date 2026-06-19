@@ -20,7 +20,7 @@ export function clearSentNotifications(): void {
 }
 
 function log(message: string): void {
-  // eslint-disable-next-line no-console
+   
   console.log(`[brevo] ${message}`);
 }
 

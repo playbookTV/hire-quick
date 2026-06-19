@@ -92,7 +92,7 @@ export async function createRefund(
         kind: 'REFUND',
         amountKobo,
         makerId: adminId,
-        payload: { bookingId, amountKobo, reason } as Prisma.InputJsonValue,
+        payload: { bookingId, amountKobo, reason },
       },
     });
     await writeAudit({ actorId: adminId, action: 'refund.proposed', target: bookingId, metadata: { amountKobo } });
@@ -124,7 +124,7 @@ export async function decideApproval(
       bookingId: String(payload.bookingId),
       outcome: payload.outcome as DisputeOutcome,
       disputeId: String(payload.disputeId),
-      resolution: String(payload.resolution ?? ''),
+      resolution: typeof payload.resolution === 'string' ? payload.resolution : '',
       adminId: a.makerId,
     });
   } else {

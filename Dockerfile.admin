@@ -1,0 +1,16 @@
+# HireQuick admin SPA — build the Vite app, serve the static dist with SPA fallback.
+FROM node:22-slim AS build
+RUN corepack enable && corepack prepare pnpm@10.27.0 --activate
+WORKDIR /app
+COPY . .
+# Baked at build time; defaults to the live API. Railway passes service vars as build args.
+ARG VITE_API_URL=https://prolific-love-production-2775.up.railway.app
+ENV VITE_API_URL=$VITE_API_URL
+RUN pnpm install --frozen-lockfile && pnpm --filter @hq/admin build
+
+FROM node:22-slim AS runtime
+WORKDIR /app
+RUN npm i -g serve@14
+COPY --from=build /app/apps/admin/dist ./dist
+# Railway injects PORT; -s gives SPA (client-router) fallback to index.html.
+CMD ["sh", "-c", "serve -s dist -l ${PORT:-3000}"]
