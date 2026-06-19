@@ -157,6 +157,36 @@ export async function releaseBooking(
   await tx.booking.update({ where: { id: bookingId }, data: { status: 'PAID' } });
 }
 
+/**
+ * Admin dispute resolution in the usher's favour: unfreeze and release the
+ * payout to the wallet (TRD §11/§15). REFUND-in-client's-favour reuses
+ * refundBooking (DISPUTED → REFUNDED is already legal).
+ */
+export async function resolveDisputeRelease(tx: Tx, bookingId: string): Promise<void> {
+  await lockBooking(tx, bookingId);
+  const booking = await tx.booking.findUniqueOrThrow({
+    where: { id: bookingId },
+    include: { payment: true, usher: { include: { wallet: true } } },
+  });
+  if (booking.status !== 'DISPUTED') throw new LedgerError('NOT_DISPUTED', 'booking is not disputed');
+  const payment = booking.payment;
+  if (!payment) throw new LedgerError('NO_PAYMENT', 'booking has no payment');
+  const wallet = booking.usher.wallet;
+  if (!wallet) throw new LedgerError('NO_WALLET', 'usher has no wallet');
+
+  assertBookingTransition('DISPUTED', 'COMPLETED');
+  await appendEscrow(tx, bookingId, 'RELEASE', -payment.usherPayout);
+  await appendEscrow(tx, bookingId, 'FEE', -payment.platformFee);
+  await tx.payment.update({ where: { bookingId }, data: { escrowStatus: 'RELEASED' } });
+  await appendWallet(tx, wallet.id, 'CREDIT', payment.usherPayout, { bookingId });
+  await tx.booking.update({
+    where: { id: bookingId },
+    data: { status: 'COMPLETED', completedAt: new Date(), attendanceMethod: 'AUTO' },
+  });
+  assertBookingTransition('COMPLETED', 'PAID');
+  await tx.booking.update({ where: { id: bookingId }, data: { status: 'PAID' } });
+}
+
 /** Move a confirmed booking to CANCELLED (precursor to a refund). */
 export async function cancelBooking(tx: Tx, bookingId: string): Promise<void> {
   await lockBooking(tx, bookingId);

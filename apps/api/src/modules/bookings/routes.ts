@@ -11,6 +11,7 @@ import {
   completeBooking,
   openDispute,
 } from './service.js';
+import { listMessages, sendMessage } from '../../realtime/messages.js';
 
 type Handler = (req: AuthedRequest, res: Response) => Promise<void>;
 const wrap =
@@ -103,6 +104,32 @@ export function bookingsRouter(): Router {
         .parse(req.body);
       const out = await openDispute(String(req.params.id), req.auth.userId, reason, note);
       res.status(201).json(out);
+    }),
+  );
+
+  // booking chat (REST; realtime is Socket.IO) — party-only, unlocks once CONFIRMED
+  r.get(
+    '/bookings/:id/messages',
+    wrap(async (req, res) => {
+      res.json(await listMessages(String(req.params.id), req.auth.userId));
+    }),
+  );
+  r.post(
+    '/bookings/:id/messages',
+    wrap(async (req, res) => {
+      const { content, contentType } = z
+        .object({
+          content: z.string().min(1).max(4000),
+          contentType: z.enum(['TEXT', 'IMAGE', 'VOICE']).optional(),
+        })
+        .parse(req.body);
+      const msg = await sendMessage({
+        bookingId: String(req.params.id),
+        senderId: req.auth.userId,
+        content,
+        ...(contentType ? { contentType } : {}),
+      });
+      res.status(201).json(msg);
     }),
   );
 

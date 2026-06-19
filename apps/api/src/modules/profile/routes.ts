@@ -97,5 +97,21 @@ export function profileRouter(): Router {
     }),
   );
 
+  // register an FCM device token for push notifications
+  r.post(
+    '/devices',
+    wrap(async (req, res) => {
+      const { fcmToken, platform } = z
+        .object({ fcmToken: z.string().min(8), platform: z.enum(['IOS', 'ANDROID']) })
+        .parse(req.body);
+      await prisma.deviceToken.upsert({
+        where: { fcmToken },
+        update: { userId: req.auth.userId, platform, lastSeenAt: new Date() },
+        create: { userId: req.auth.userId, fcmToken, platform },
+      });
+      res.status(201).json({ registered: true });
+    }),
+  );
+
   return r;
 }

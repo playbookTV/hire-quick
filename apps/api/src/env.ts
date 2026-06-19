@@ -4,7 +4,7 @@ import { z } from 'zod';
 // Secrets come only from the environment (application-security). Fail fast if
 // a required var is missing or malformed.
 const EnvSchema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  NODE_ENV: z.enum(['development', 'test', 'staging', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(4000),
   LOG_LEVEL: z.string().default('info'),
   DATABASE_URL: z.string().min(1),
@@ -18,6 +18,9 @@ const EnvSchema = z.object({
   // Paystack transfer recipient for HireQuick's own operating bank (commission sweep, D3).
   PAYSTACK_OPERATING_RECIPIENT: z.string().default(''),
   REDIS_URL: z.string().default('redis://127.0.0.1:6379'),
+  // Brevo — transactional SMS (OTP delivery) + email (notifications). Empty = dev stub.
+  BREVO_API_KEY: z.string().default(''),
+  BREVO_SMS_SENDER: z.string().default('HireQuick'),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

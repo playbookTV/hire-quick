@@ -34,7 +34,9 @@ export function createApp(config: AppConfig = {}): Express {
 
   app.disable('x-powered-by');
   app.use(helmet());
-  app.use(cors({ origin: false })); // tighten per surface in later phases
+  // Reflect the request origin so the admin SPA can call the API. Tighten to an
+  // allowlist at the production cutover (Phase 9).
+  app.use(cors({ origin: true }));
 
   app.use((req: Request, res: Response, next: NextFunction) => {
     const id = req.header('x-request-id') ?? randomUUID();

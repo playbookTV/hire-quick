@@ -8,6 +8,7 @@ import { ApiError } from '../../app.js';
 import { env } from '../../env.js';
 import { generateOtp, hashOtp } from './hash.js';
 import { signAccessToken, signRefreshToken } from './tokens.js';
+import { sendSms } from '../notifications/brevo.js';
 
 const OTP_TTL_MS = 10 * 60_000;
 const MAX_REQUESTS_PER_HOUR = 5;
@@ -30,9 +31,12 @@ export async function requestOtp(phone: string): Promise<{ devCode?: string }> {
       expiresAt: new Date(Date.now() + OTP_TTL_MS),
     },
   });
-   
-  console.log(`[dev OTP] ${phone} → ${code}`);
-  return env.NODE_ENV === 'production' ? {} : { devCode: code };
+
+  await sendSms(phone, `Your HireQuick code is ${code}. It expires in 10 minutes.`);
+  // Echo the code only when real SMS isn't configured and we're not in production
+  // (staging convenience so the deployed instance stays testable without a provider).
+  const echo = !env.BREVO_API_KEY && env.NODE_ENV !== 'production';
+  return echo ? { devCode: code } : {};
 }
 
 export interface AuthResult {

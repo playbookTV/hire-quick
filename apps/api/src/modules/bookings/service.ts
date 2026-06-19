@@ -5,8 +5,9 @@
  * Auto-complete / no-show implement the D1 windows.
  */
 import { prisma, type AttendanceMethod } from '@hq/database';
-import { DEFAULT_GRACE_MINUTES } from '@hq/shared';
+import { DEFAULT_GRACE_MINUTES, kobo } from '@hq/shared';
 import { ApiError } from '../../app.js';
+import { notifyPayoutReleased, notifyDisputeOpened } from '../notifications/service.js';
 import { generateOtp, hashOtp } from '../auth/hash.js';
 import {
   releaseBooking,
@@ -123,12 +124,13 @@ export async function assertArrival(bookingId: string, usherUserId: string): Pro
 export async function completeBooking(bookingId: string, clientUserId: string): Promise<void> {
   const booking = await prisma.booking.findUniqueOrThrow({
     where: { id: bookingId },
-    include: { event: { include: { client: true } } },
+    include: { event: { include: { client: true } }, usher: true, payment: true },
   });
   if (booking.event.client.userId !== clientUserId) throw new ApiError(403, 'FORBIDDEN', 'not your booking');
   if (booking.status !== 'CHECKED_IN') throw new ApiError(400, 'NOT_CHECKED_IN', 'booking must be checked in');
   const method: AttendanceMethod = booking.attendanceMethod ?? 'OTP';
   await prisma.$transaction((tx) => releaseBooking(tx, bookingId, method), TX);
+  if (booking.payment) notifyPayoutReleased(booking.usher.userId, kobo(booking.payment.usherPayout));
 }
 
 /** D1 auto-complete: arrival/check-in present, event ended + grace, no open dispute. */
@@ -141,7 +143,7 @@ export async function autoComplete(
       disputes: { none: { status: { in: ['OPEN', 'UNDER_REVIEW'] } } },
       OR: [{ status: 'CHECKED_IN' }, { status: 'CONFIRMED', arrivalAssertedAt: { not: null } }],
     },
-    include: { event: true },
+    include: { event: true, usher: true, payment: true },
   });
   const completed: string[] = [];
   for (const b of candidates) {
@@ -152,6 +154,7 @@ export async function autoComplete(
       await releaseBooking(tx, b.id, 'AUTO');
     }, TX);
     completed.push(b.id);
+    if (b.payment) notifyPayoutReleased(b.usher.userId, kobo(b.payment.usherPayout));
   }
   return { completed };
 }
@@ -193,8 +196,11 @@ export async function openDispute(
     where: { id: bookingId },
     include: { event: { include: { client: true } }, usher: true },
   });
-  const isParty = booking.event.client.userId === userId || booking.usher.userId === userId;
-  if (!isParty) throw new ApiError(403, 'FORBIDDEN', 'not a party to this booking');
+  const clientUserId = booking.event.client.userId;
+  const usherUserId = booking.usher.userId;
+  if (userId !== clientUserId && userId !== usherUserId) {
+    throw new ApiError(403, 'FORBIDDEN', 'not a party to this booking');
+  }
 
   const dispute = await prisma.$transaction(async (tx) => {
     await freezeBooking(tx, bookingId);
@@ -202,5 +208,6 @@ export async function openDispute(
       data: { bookingId, raisedById: userId, reason, note: note ?? null, status: 'OPEN' },
     });
   }, TX);
+  notifyDisputeOpened(userId === clientUserId ? usherUserId : clientUserId);
   return { id: dispute.id };
 }

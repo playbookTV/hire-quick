@@ -143,6 +143,18 @@ enum DevicePlatform {
   ANDROID
 }
 
+enum ApprovalKind {
+  DISPUTE_RESOLVE
+  REFUND
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXECUTED
+}
+
 // ---------- identity ----------
 model User {
   id           String     @id @default(uuid()) @db.Uuid
@@ -164,6 +176,8 @@ model User {
   verificationsDone UsherVerification[] @relation("VerificationReviewer")
   messagesSent      Message[]
   auditLogs         AuditLog[]
+  approvalsMade     Approval[]          @relation("ApprovalMaker")
+  approvalsChecked  Approval[]          @relation("ApprovalChecker")
 
   @@map("users")
 }
@@ -562,4 +576,23 @@ model AuditLog {
   @@index([actorId])
   @@index([action])
   @@map("audit_logs")
+}
+
+// Maker-checker for money moves above a threshold (TRD §15). A maker creates a
+// PENDING approval; a different admin (checker) approves to execute.
+model Approval {
+  id         String         @id @default(uuid()) @db.Uuid
+  kind       ApprovalKind
+  payload    Json // { bookingId, outcome?, amountKobo, resolution?/reason? }
+  amountKobo Int
+  makerId    String         @db.Uuid
+  maker      User           @relation("ApprovalMaker", fields: [makerId], references: [id])
+  checkerId  String?        @db.Uuid
+  checker    User?          @relation("ApprovalChecker", fields: [checkerId], references: [id])
+  status     ApprovalStatus @default(PENDING)
+  createdAt  DateTime       @default(now()) @db.Timestamptz(6)
+  updatedAt  DateTime       @updatedAt @db.Timestamptz(6)
+
+  @@index([status])
+  @@map("approvals")
 }

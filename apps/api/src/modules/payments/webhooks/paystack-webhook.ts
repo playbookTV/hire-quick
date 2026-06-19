@@ -10,6 +10,7 @@ import { Router, type Request, type Response } from 'express';
 import { type PrismaClient } from '@hq/database';
 import { runIdempotent } from '../ledger/idempotency.js';
 import { holdOrder, completeWithdrawal, failWithdrawal } from '../ledger/ledger.js';
+import { notifyBookingConfirmed } from '../../notifications/service.js';
 
 export function verifyPaystackSignature(rawBody: Buffer, signature: string, secret: string): boolean {
   const expected = createHmac('sha512', secret).update(rawBody).digest('hex');
@@ -32,7 +33,14 @@ export async function dispatchPaystackEvent(prisma: PrismaClient, evt: PaystackE
     case 'charge.success': {
       const order = await prisma.order.findFirst({ where: { paystackChargeRef: ref } });
       if (!order) return; // not one of ours — ack and ignore
-      await runIdempotent(prisma, key, 'paystack_event_id', (tx) => holdOrder(tx, order.id, ref));
+      const result = await runIdempotent(prisma, key, 'paystack_event_id', (tx) => holdOrder(tx, order.id, ref));
+      if (!result.duplicate) {
+        const bookings = await prisma.booking.findMany({
+          where: { orderId: order.id },
+          include: { usher: true },
+        });
+        for (const b of bookings) notifyBookingConfirmed(b.usher.userId);
+      }
       return;
     }
     case 'transfer.success': {
