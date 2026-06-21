@@ -4,6 +4,8 @@ import {
   canTransitionBooking,
   assertBookingTransition,
   assertWithdrawalTransition,
+  assertMilestoneTransition,
+  canTransitionMilestone,
   IllegalTransition,
 } from './state-machines.js';
 import { BOOKING_STATUSES } from './enums.js';
@@ -39,5 +41,12 @@ describe('booking state machine (TRD §12/§25)', () => {
   it('withdrawal cannot skip PROCESSING-less double pay', () => {
     expect(() => assertWithdrawalTransition('PAID', 'PAID')).toThrow(IllegalTransition);
     expect(() => assertWithdrawalTransition('REQUESTED', 'PROCESSING')).not.toThrow();
+  });
+
+  it('milestone unlock → fulfilled is the only legal move; FULFILLED is terminal', () => {
+    expect(canTransitionMilestone('UNLOCKED', 'FULFILLED')).toBe(true);
+    expect(() => assertMilestoneTransition('UNLOCKED', 'FULFILLED')).not.toThrow();
+    expect(canTransitionMilestone('FULFILLED', 'UNLOCKED')).toBe(false);
+    expect(() => assertMilestoneTransition('FULFILLED', 'FULFILLED')).toThrow(IllegalTransition);
   });
 });

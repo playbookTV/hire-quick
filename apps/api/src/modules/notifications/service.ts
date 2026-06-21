@@ -32,6 +32,10 @@ export function notifyDisputeOpened(userId: string): void {
   safe(deliver(userId, 'A dispute was opened', 'A booking you are part of is under review. Escrow is frozen until it resolves.'));
 }
 
+export function notifyMilestoneUnlocked(usherUserId: string, rewardName: string): void {
+  safe(deliver(usherUserId, 'Reward unlocked! 🎉', `You've earned the "${rewardName}" reward for the jobs you've completed.`));
+}
+
 export function notifyNewMessage(recipientUserId: string): void {
   // Push-only (per-message email would be spam).
   safe(

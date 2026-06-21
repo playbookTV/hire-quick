@@ -4,13 +4,14 @@
  * function runs inside a caller-provided Prisma transaction and takes row locks
  * (SELECT … FOR UPDATE) so escrow and wallet stay atomic and concurrency-safe.
  */
-import type { Prisma } from '@hq/database';
+import type { MilestoneTier, Prisma } from '@hq/database';
 import { splitFee, PLATFORM_FEE_BPS, type AttendanceMethod } from '@hq/shared';
 import {
   assertBookingTransition,
   assertOrderTransition,
   assertWithdrawalTransition,
 } from '@hq/shared';
+import { evaluateMilestones } from '../../rewards/service.js';
 
 export class LedgerError extends Error {
   constructor(
@@ -126,7 +127,7 @@ export async function releaseBooking(
   tx: Tx,
   bookingId: string,
   method: AttendanceMethod,
-): Promise<void> {
+): Promise<MilestoneTier[]> {
   await lockBooking(tx, bookingId);
   const booking = await tx.booking.findUniqueOrThrow({
     where: { id: bookingId },
@@ -153,8 +154,10 @@ export async function releaseBooking(
     where: { id: bookingId },
     data: { status: 'COMPLETED', completedAt: new Date(), attendanceMethod: method },
   });
+  const unlocked = await evaluateMilestones(tx, booking.usherId);
   assertBookingTransition('COMPLETED', 'PAID');
   await tx.booking.update({ where: { id: bookingId }, data: { status: 'PAID' } });
+  return unlocked;
 }
 
 /**
@@ -162,7 +165,7 @@ export async function releaseBooking(
  * payout to the wallet (TRD §11/§15). REFUND-in-client's-favour reuses
  * refundBooking (DISPUTED → REFUNDED is already legal).
  */
-export async function resolveDisputeRelease(tx: Tx, bookingId: string): Promise<void> {
+export async function resolveDisputeRelease(tx: Tx, bookingId: string): Promise<MilestoneTier[]> {
   await lockBooking(tx, bookingId);
   const booking = await tx.booking.findUniqueOrThrow({
     where: { id: bookingId },
@@ -183,8 +186,10 @@ export async function resolveDisputeRelease(tx: Tx, bookingId: string): Promise<
     where: { id: bookingId },
     data: { status: 'COMPLETED', completedAt: new Date(), attendanceMethod: 'AUTO' },
   });
+  const unlocked = await evaluateMilestones(tx, booking.usherId);
   assertBookingTransition('COMPLETED', 'PAID');
   await tx.booking.update({ where: { id: bookingId }, data: { status: 'PAID' } });
+  return unlocked;
 }
 
 /** Move a confirmed booking to CANCELLED (precursor to a refund). */

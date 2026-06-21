@@ -52,6 +52,17 @@ async function main(): Promise<void> {
     include: { usher: true },
   });
 
+  // Reward milestone tiers (client request): badge → dress → iPhone.
+  // Idempotent via upsert on the unique threshold.
+  const TIERS = [
+    { threshold: 20, name: 'Premium Badge', rewardType: 'BADGE' as const, description: 'Premium profile badge.' },
+    { threshold: 50, name: 'Black Dress', rewardType: 'PHYSICAL' as const, description: 'Branded black dress.' },
+    { threshold: 150, name: 'iPhone', rewardType: 'PHYSICAL' as const, description: 'iPhone reward.' },
+  ];
+  for (const t of TIERS) {
+    await prisma.milestoneTier.upsert({ where: { threshold: t.threshold }, update: {}, create: t });
+  }
+
   const client = clientUser.client!;
   await prisma.event.create({
     data: {
@@ -61,6 +72,7 @@ async function main(): Promise<void> {
       eventDate: new Date('2026-08-15'),
       startTime: '14:00',
       endTime: '22:00',
+      accommodation: 'PROVIDED', // ends at 22:00 → late-night disclosure
       category: 'Wedding',
       headcount: 6,
       budgetPerHead: naira(20_000), // ₦20,000/head

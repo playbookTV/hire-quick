@@ -9,6 +9,7 @@ import { ApiError } from '../../app.js';
 import { requireAuth, requireRole, type AuthedRequest } from '../auth/middleware.js';
 import { writeAudit } from '../audit.js';
 import { resolveDispute, createRefund, decideApproval, APPROVAL_THRESHOLD_KOBO } from './service.js';
+import { createMilestoneTierSchema, updateMilestoneTierSchema } from '@hq/shared';
 
 type Handler = (req: AuthedRequest, res: Response) => Promise<void>;
 const wrap =
@@ -198,6 +199,100 @@ export function adminRouter(): Router {
       }),
     );
   }
+
+  // --- reward milestone tiers (admin config) ---
+  r.get(
+    '/milestone-tiers',
+    wrap(async (_req, res) => {
+      res.json(await prisma.milestoneTier.findMany({ orderBy: { threshold: 'asc' } }));
+    }),
+  );
+
+  r.post(
+    '/milestone-tiers',
+    wrap(async (req, res) => {
+      const body = createMilestoneTierSchema.parse(req.body);
+      const tier = await prisma.milestoneTier.create({
+        data: {
+          threshold: body.threshold,
+          name: body.name,
+          rewardType: body.rewardType,
+          description: body.description ?? null,
+          ...(body.active === undefined ? {} : { active: body.active }),
+        },
+      });
+      await writeAudit({ actorId: req.auth.userId, action: 'milestoneTier.create', target: tier.id, metadata: body });
+      res.status(201).json(tier);
+    }),
+  );
+
+  r.patch(
+    '/milestone-tiers/:id',
+    wrap(async (req, res) => {
+      const id = String(req.params.id);
+      const body = updateMilestoneTierSchema.parse(req.body);
+      const data: {
+        threshold?: number;
+        name?: string;
+        rewardType?: 'BADGE' | 'PHYSICAL';
+        description?: string | null;
+        active?: boolean;
+      } = {};
+      if (body.threshold !== undefined) data.threshold = body.threshold;
+      if (body.name !== undefined) data.name = body.name;
+      if (body.rewardType !== undefined) data.rewardType = body.rewardType;
+      if (body.description !== undefined) data.description = body.description;
+      if (body.active !== undefined) data.active = body.active;
+      const tier = await prisma.milestoneTier.update({ where: { id }, data });
+      await writeAudit({ actorId: req.auth.userId, action: 'milestoneTier.update', target: id, metadata: body });
+      res.json(tier);
+    }),
+  );
+
+  // Soft-delete: deactivate so existing unlocks and history are preserved.
+  r.delete(
+    '/milestone-tiers/:id',
+    wrap(async (req, res) => {
+      const id = String(req.params.id);
+      const tier = await prisma.milestoneTier.update({ where: { id }, data: { active: false } });
+      await writeAudit({ actorId: req.auth.userId, action: 'milestoneTier.deactivate', target: id });
+      res.json({ id: tier.id, active: tier.active });
+    }),
+  );
+
+  // --- milestone fulfilment queue (physical rewards await admin action) ---
+  r.get(
+    '/milestones',
+    wrap(async (req, res) => {
+      const status = req.query.status === 'FULFILLED' ? 'FULFILLED' : 'UNLOCKED';
+      res.json(
+        await prisma.usherMilestone.findMany({
+          where: { status, tier: { rewardType: 'PHYSICAL' } },
+          orderBy: { unlockedAt: 'asc' },
+          include: {
+            tier: true,
+            usher: { include: { user: { select: { phone: true, email: true } } } },
+          },
+        }),
+      );
+    }),
+  );
+
+  r.post(
+    '/milestones/:id/fulfill',
+    wrap(async (req, res) => {
+      const id = String(req.params.id);
+      const m = await prisma.usherMilestone.findUnique({ where: { id } });
+      if (!m) throw new ApiError(404, 'NOT_FOUND', 'milestone not found');
+      if (m.status !== 'UNLOCKED') throw new ApiError(409, 'ALREADY_FULFILLED', 'milestone already fulfilled');
+      const updated = await prisma.usherMilestone.update({
+        where: { id },
+        data: { status: 'FULFILLED', fulfilledAt: new Date(), fulfilledById: req.auth.userId },
+      });
+      await writeAudit({ actorId: req.auth.userId, action: 'milestone.fulfill', target: id });
+      res.json({ id: updated.id, status: updated.status });
+    }),
+  );
 
   return r;
 }

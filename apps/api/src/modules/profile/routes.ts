@@ -36,7 +36,15 @@ export function profileRouter(): Router {
     wrap(async (req, res) => {
       const user = await prisma.user.findUniqueOrThrow({
         where: { id: req.auth.userId },
-        include: { client: true, usher: { include: { wallet: true } } },
+        include: {
+          client: true,
+          usher: {
+            include: {
+              wallet: true,
+              milestones: { include: { tier: true }, orderBy: { unlockedAt: 'desc' } },
+            },
+          },
+        },
       });
       res.json({
         id: user.id,

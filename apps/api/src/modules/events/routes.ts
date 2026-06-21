@@ -54,6 +54,7 @@ export function eventsRouter(deps: Deps): Router {
           headcount: b.headcount,
           budgetPerHead: b.budgetPerHeadKobo,
           dressCode: b.dressCode ?? null,
+          accommodation: b.accommodation ?? null,
           ...(b.requirements ? { preferences: { requirements: b.requirements } } : {}),
           status: 'OPEN',
         },
@@ -116,6 +117,11 @@ export function eventsRouter(deps: Deps): Router {
       res.json(
         await prisma.application.findMany({
           where: { eventId },
+          // Surface more-accomplished (badged) ushers first, then higher-rated.
+          orderBy: [
+            { usher: { completedJobsCount: 'desc' } },
+            { usher: { ratingAvg: 'desc' } },
+          ],
           include: { usher: { include: { user: { select: { phone: true } } } } },
         }),
       );

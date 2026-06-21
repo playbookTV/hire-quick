@@ -12,6 +12,8 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "dev": "pnpm --filter @hq/api dev",
+    "mobile": "turbo run dev --filter=@hq/mobile",
+    "mobile:start": "pnpm --filter @hq/mobile start",
     "format": "prettier --write .",
     "db:generate": "pnpm --filter @hq/database generate",
     "db:push": "pnpm --filter @hq/database push",

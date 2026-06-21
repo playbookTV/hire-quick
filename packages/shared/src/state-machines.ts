@@ -3,7 +3,7 @@
  * and API enforce these; illegal transitions throw. Kept as data so tests can
  * exhaustively check every (from, to) pair.
  */
-import type { BookingStatus, OrderStatus, WithdrawalStatus } from './enums.js';
+import type { BookingStatus, MilestoneStatus, OrderStatus, WithdrawalStatus } from './enums.js';
 
 export class IllegalTransition extends Error {
   constructor(
@@ -42,6 +42,11 @@ export const WITHDRAWAL_TRANSITIONS: Record<WithdrawalStatus, readonly Withdrawa
   FAILED: [], // retry creates a fresh withdrawal; FAILED is terminal
 };
 
+export const MILESTONE_TRANSITIONS: Record<MilestoneStatus, readonly MilestoneStatus[]> = {
+  UNLOCKED: ['FULFILLED'],
+  FULFILLED: [], // terminal — reward delivered
+};
+
 function canTransitionIn<T extends string>(
   table: Record<T, readonly T[]>,
   from: T,
@@ -59,6 +64,9 @@ export function canTransitionOrder(from: OrderStatus, to: OrderStatus): boolean 
 export function canTransitionWithdrawal(from: WithdrawalStatus, to: WithdrawalStatus): boolean {
   return canTransitionIn(WITHDRAWAL_TRANSITIONS, from, to);
 }
+export function canTransitionMilestone(from: MilestoneStatus, to: MilestoneStatus): boolean {
+  return canTransitionIn(MILESTONE_TRANSITIONS, from, to);
+}
 
 export function assertBookingTransition(from: BookingStatus, to: BookingStatus): void {
   if (!canTransitionBooking(from, to)) throw new IllegalTransition('booking', from, to);
@@ -68,6 +76,9 @@ export function assertOrderTransition(from: OrderStatus, to: OrderStatus): void 
 }
 export function assertWithdrawalTransition(from: WithdrawalStatus, to: WithdrawalStatus): void {
   if (!canTransitionWithdrawal(from, to)) throw new IllegalTransition('withdrawal', from, to);
+}
+export function assertMilestoneTransition(from: MilestoneStatus, to: MilestoneStatus): void {
+  if (!canTransitionMilestone(from, to)) throw new IllegalTransition('milestone', from, to);
 }
 
 /**

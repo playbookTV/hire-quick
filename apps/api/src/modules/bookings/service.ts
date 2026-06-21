@@ -7,7 +7,11 @@
 import { prisma, type AttendanceMethod } from '@hq/database';
 import { DEFAULT_GRACE_MINUTES, kobo } from '@hq/shared';
 import { ApiError } from '../../app.js';
-import { notifyPayoutReleased, notifyDisputeOpened } from '../notifications/service.js';
+import {
+  notifyPayoutReleased,
+  notifyDisputeOpened,
+  notifyMilestoneUnlocked,
+} from '../notifications/service.js';
 import { generateOtp, hashOtp } from '../auth/hash.js';
 import {
   releaseBooking,
@@ -129,8 +133,9 @@ export async function completeBooking(bookingId: string, clientUserId: string): 
   if (booking.event.client.userId !== clientUserId) throw new ApiError(403, 'FORBIDDEN', 'not your booking');
   if (booking.status !== 'CHECKED_IN') throw new ApiError(400, 'NOT_CHECKED_IN', 'booking must be checked in');
   const method: AttendanceMethod = booking.attendanceMethod ?? 'OTP';
-  await prisma.$transaction((tx) => releaseBooking(tx, bookingId, method), TX);
+  const unlocked = await prisma.$transaction((tx) => releaseBooking(tx, bookingId, method), TX);
   if (booking.payment) notifyPayoutReleased(booking.usher.userId, kobo(booking.payment.usherPayout));
+  for (const tier of unlocked) notifyMilestoneUnlocked(booking.usher.userId, tier.name);
 }
 
 /** D1 auto-complete: arrival/check-in present, event ended + grace, no open dispute. */
@@ -149,12 +154,13 @@ export async function autoComplete(
   for (const b of candidates) {
     const end = combine(b.event.eventDate, b.event.endTime);
     if (now.getTime() < end.getTime() + graceMin * 60_000) continue;
-    await prisma.$transaction(async (tx) => {
+    const unlocked = await prisma.$transaction(async (tx) => {
       if (b.status === 'CONFIRMED') await markCheckedIn(tx, b.id, 'AUTO');
-      await releaseBooking(tx, b.id, 'AUTO');
+      return releaseBooking(tx, b.id, 'AUTO');
     }, TX);
     completed.push(b.id);
     if (b.payment) notifyPayoutReleased(b.usher.userId, kobo(b.payment.usherPayout));
+    for (const tier of unlocked) notifyMilestoneUnlocked(b.usher.userId, tier.name);
   }
   return { completed };
 }

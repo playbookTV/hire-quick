@@ -78,3 +78,15 @@ export type CodePurpose = (typeof CODE_PURPOSES)[number];
 
 export const DEVICE_PLATFORMS = ['IOS', 'ANDROID'] as const;
 export type DevicePlatform = (typeof DEVICE_PLATFORMS)[number];
+
+/** Late-night accommodation disclosure on a job posting (required when endTime >= 22:00). */
+export const ACCOMMODATION_STATUSES = ['PROVIDED', 'NOT_PROVIDED'] as const;
+export type AccommodationStatus = (typeof ACCOMMODATION_STATUSES)[number];
+
+/** Reward fulfilment mode. BADGE auto-fulfils on unlock; PHYSICAL awaits admin. */
+export const REWARD_TYPES = ['BADGE', 'PHYSICAL'] as const;
+export type RewardType = (typeof REWARD_TYPES)[number];
+
+/** Lifecycle of an usher's unlocked milestone reward. */
+export const MILESTONE_STATUSES = ['UNLOCKED', 'FULFILLED'] as const;
+export type MilestoneStatus = (typeof MILESTONE_STATUSES)[number];

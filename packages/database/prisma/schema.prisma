@@ -155,6 +155,23 @@ enum ApprovalStatus {
   EXECUTED
 }
 
+// Late-night safety disclosure on a job posting (visible to staff pre-accept).
+enum Accommodation {
+  PROVIDED
+  NOT_PROVIDED
+}
+
+// Reward fulfilment mode for a milestone tier.
+enum RewardType {
+  BADGE // digital — auto-fulfilled on unlock
+  PHYSICAL // dress, iPhone, etc — admin fulfils manually
+}
+
+enum MilestoneStatus {
+  UNLOCKED
+  FULFILLED
+}
+
 // ---------- identity ----------
 model User {
   id           String     @id @default(uuid()) @db.Uuid
@@ -206,6 +223,7 @@ model Usher {
   reliabilityScore   Float            @default(100)
   ratingAvg          Float            @default(0)
   ratingCount        Int              @default(0)
+  completedJobsCount Int              @default(0) // denormalized rank key; bumped on each completion
 
   verifications UsherVerification[]
   photos        Photo[]
@@ -215,6 +233,7 @@ model Usher {
   bookings      Booking[]
   wallet        Wallet?
   bankAccounts  BankAccount[]
+  milestones    UsherMilestone[]
 
   @@map("ushers")
 }
@@ -270,6 +289,7 @@ model Event {
   headcount       Int
   budgetPerHead   Int // kobo
   dressCode       String?
+  accommodation   Accommodation? // required by API when endTime >= 22:00 (late-night safety, visible to staff)
   preferences     Json?
   status          EventStatus @default(DRAFT)
   createdAt       DateTime    @default(now()) @db.Timestamptz(6)
@@ -595,4 +615,42 @@ model Approval {
 
   @@index([status])
   @@map("approvals")
+}
+
+// ---------- rewards / milestones (usher loyalty) ----------
+// Admin-configurable reward tiers. An usher unlocks a tier once their lifetime
+// completed-job count reaches `threshold`. BADGE rewards auto-fulfil on unlock;
+// PHYSICAL rewards (dress, iPhone) wait on an admin fulfilment action.
+model MilestoneTier {
+  id          String     @id @default(uuid()) @db.Uuid
+  threshold   Int        @unique // completed jobs required to unlock
+  name        String
+  rewardType  RewardType
+  description String?
+  active      Boolean    @default(true)
+  createdAt   DateTime   @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime   @updatedAt @db.Timestamptz(6)
+
+  milestones UsherMilestone[]
+
+  @@map("milestone_tiers")
+}
+
+// One row per (usher, tier) the usher has reached. Unique pair makes the
+// unlock idempotent under the concurrent completion paths.
+model UsherMilestone {
+  id            String          @id @default(uuid()) @db.Uuid
+  usherId       String          @db.Uuid
+  usher         Usher           @relation(fields: [usherId], references: [id], onDelete: Cascade)
+  tierId        String          @db.Uuid
+  tier          MilestoneTier   @relation(fields: [tierId], references: [id])
+  status        MilestoneStatus @default(UNLOCKED)
+  unlockedAt    DateTime        @default(now()) @db.Timestamptz(6)
+  fulfilledAt   DateTime?       @db.Timestamptz(6)
+  fulfilledById String?         @db.Uuid // admin who fulfilled (PHYSICAL)
+  createdAt     DateTime        @default(now()) @db.Timestamptz(6)
+
+  @@unique([usherId, tierId])
+  @@index([status])
+  @@map("usher_milestones")
 }

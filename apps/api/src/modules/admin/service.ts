@@ -7,7 +7,7 @@
 import { prisma } from '@hq/database';
 import { ApiError } from '../../app.js';
 import { resolveDisputeRelease, refundBooking, cancelBooking } from '../payments/ledger/ledger.js';
-import { notifyPayoutReleased } from '../notifications/service.js';
+import { notifyPayoutReleased, notifyMilestoneUnlocked } from '../notifications/service.js';
 import { kobo } from '@hq/shared';
 import { writeAudit } from '../audit.js';
 
@@ -24,12 +24,13 @@ async function executeDisputeResolution(p: {
   adminId: string;
 }): Promise<void> {
   if (p.outcome === 'RELEASE') {
-    await prisma.$transaction((tx) => resolveDisputeRelease(tx, p.bookingId), TX);
+    const unlocked = await prisma.$transaction((tx) => resolveDisputeRelease(tx, p.bookingId), TX);
     const b = await prisma.booking.findUnique({
       where: { id: p.bookingId },
       include: { usher: true, payment: true },
     });
     if (b?.payment) notifyPayoutReleased(b.usher.userId, kobo(b.payment.usherPayout));
+    if (b) for (const tier of unlocked) notifyMilestoneUnlocked(b.usher.userId, tier.name);
   } else {
     const payment = await prisma.payment.findUnique({ where: { bookingId: p.bookingId } });
     await prisma.$transaction((tx) => refundBooking(tx, p.bookingId, payment?.grossAmount ?? 0), TX);
