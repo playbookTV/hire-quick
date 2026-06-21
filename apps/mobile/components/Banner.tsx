@@ -1,17 +1,20 @@
 /**
- * Banner — inline notice (Figma Banner: Tone Info/Warning/Success/Brand).
+ * Banner — matches Figma `Banner` (119:92): tinted surface + 1px tinted border,
+ * 18px icon, Body/S text in the tone colour, 16px padding / 12px gap / radius md.
+ * Tones: Info / Warning / Success / Brand. `title` is an optional emphasis line.
  */
 import { useTheme, Box, Text } from '../theme/restyle.js';
 import { Icon, type IconName } from './Icon.js';
+import { primitives as p } from '../theme/primitives.js';
 import type { Theme } from '../theme/theme.js';
 
 export type BannerTone = 'info' | 'warning' | 'success' | 'brand';
 
-const TONE: Record<BannerTone, { fg: keyof Theme['colors']; bg: keyof Theme['colors']; icon: IconName }> = {
-  info: { fg: 'statusInfo', bg: 'infoBg', icon: 'info' },
-  warning: { fg: 'statusWarning', bg: 'warningBg', icon: 'alert-triangle' },
-  success: { fg: 'statusSuccess', bg: 'successBg', icon: 'check-circle' },
-  brand: { fg: 'brandEmerald', bg: 'brandBg', icon: 'shield' },
+const TONE: Record<BannerTone, { fg: keyof Theme['colors']; bg: keyof Theme['colors']; border: string; icon: IconName }> = {
+  info: { fg: 'statusInfo', bg: 'statusInfoTint', border: p.blue[200], icon: 'info' },
+  warning: { fg: 'statusWarning', bg: 'statusWarningTint', border: p.neutral[300], icon: 'alert-triangle' },
+  success: { fg: 'statusSuccess', bg: 'statusSuccessTint', border: p.emerald[200], icon: 'check' },
+  brand: { fg: 'brandEmerald', bg: 'brandEmeraldTintWeak', border: p.emerald[200], icon: 'shield' },
 };
 
 interface BannerProps {
@@ -26,19 +29,24 @@ export function Banner({ tone = 'info', title, message }: BannerProps): React.JS
   return (
     <Box
       flexDirection="row"
-      gap="300"
-      padding="400"
-      borderRadius="md"
-      style={{ backgroundColor: theme.colors[t.bg] }}
+      alignItems="center"
+      style={{
+        gap: 12,
+        padding: 16,
+        borderRadius: theme.borderRadii.md,
+        backgroundColor: theme.colors[t.bg],
+        borderWidth: 1,
+        borderColor: t.border,
+      }}
     >
-      <Icon name={t.icon} size={20} color={t.fg} />
+      <Icon name={t.icon} size={18} color={t.fg} />
       <Box flex={1}>
         {title ? (
-          <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 14, color: theme.colors[t.fg] }}>
+          <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 13, lineHeight: 18, color: theme.colors[t.fg] }}>
             {title}
           </Text>
         ) : null}
-        <Text variant="bodySm" color="inkBody" marginTop={title ? '100' : 'none'}>
+        <Text style={{ fontFamily: 'PlusJakartaSans_400Regular', fontSize: 13, lineHeight: 18, color: theme.colors[t.fg] }}>
           {message}
         </Text>
       </Box>

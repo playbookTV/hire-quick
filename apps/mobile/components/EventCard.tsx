@@ -38,8 +38,8 @@ export function EventCard({ event, onPress }: EventCardProps): React.JSX.Element
         borderTopWidth={1}
         borderTopColor="borderDefault"
       >
-        <Box flexDirection="row" alignItems="center" gap="150">
-          <Text variant="label" color="inkBody">
+        <Box flexDirection="row" alignItems="center" gap="200">
+          <Text variant="label" color="inkDefault">
             {event.headcount}
           </Text>
           <Text variant="bodySm" color="inkMuted">

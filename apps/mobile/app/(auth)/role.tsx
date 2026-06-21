@@ -1,7 +1,6 @@
 /**
- * Choose Role — folds into the signup flow. The role is passed to OTP verify and
- * only takes effect when a new account is created (backend ignores it for
- * existing users).
+ * Choose Role — matches Figma `Client / 04 Choose Role` (20:151): AppBar +
+ * Heading/L title + two icon OptionCards + Continue (follows the cards).
  */
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
@@ -20,32 +19,30 @@ export default function ChooseRole(): React.JSX.Element {
     <Box flex={1} backgroundColor="bgCanvas">
       <AppBar showBack />
       <Screen scroll>
-        <Text variant="h1" marginBottom="200">
-          How will you use HireQuick?
-        </Text>
-        <Text variant="body" color="inkMuted" marginBottom="600">
-          You can’t change this later, so pick the one that fits.
-        </Text>
+        <Box style={{ gap: 8 }} marginBottom="600">
+          <Text variant="h1">How will you use HireQuick?</Text>
+          <Text variant="body" color="inkMuted">
+            Pick a role. Changing it later needs support.
+          </Text>
+        </Box>
 
-        <Box gap="300">
+        <Box style={{ gap: 20 }} marginBottom="600">
           <OptionCard
-            title="I’m hiring staff"
-            subtitle="Post events and book verified ushers"
-            icon="briefcase"
+            title="I'm hiring staff"
+            subtitle="Post events and book ushers"
+            icon="calendar"
             selected={role === 'CLIENT'}
             onPress={() => setRole('CLIENT')}
           />
           <OptionCard
-            title="I want to work"
-            subtitle="Find gigs and get paid on attendance"
+            title="I'm an usher"
+            subtitle="Find work and get paid"
             icon="user"
-            iconTone="gold"
             selected={role === 'USHER'}
             onPress={() => setRole('USHER')}
           />
         </Box>
 
-        <Box flex={1} />
         <Button
           label="Continue"
           disabled={!role}

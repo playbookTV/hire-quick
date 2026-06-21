@@ -9,6 +9,7 @@ import {
   Fraunces_500Medium,
   Fraunces_600SemiBold,
   Fraunces_700Bold,
+  Fraunces_900Black,
 } from '@expo-google-fonts/fraunces';
 import {
   PlusJakartaSans_400Regular,
@@ -22,6 +23,7 @@ export const fonts = {
   displayMedium: 'Fraunces_500Medium',
   displaySemibold: 'Fraunces_600SemiBold',
   displayBold: 'Fraunces_700Bold',
+  displayBlack: 'Fraunces_900Black',
   sansRegular: 'PlusJakartaSans_400Regular',
   sansMedium: 'PlusJakartaSans_500Medium',
   sansSemibold: 'PlusJakartaSans_600SemiBold',
@@ -35,6 +37,7 @@ export function useAppFonts(): [boolean, Error | null] {
     Fraunces_500Medium,
     Fraunces_600SemiBold,
     Fraunces_700Bold,
+    Fraunces_900Black,
     PlusJakartaSans_400Regular,
     PlusJakartaSans_500Medium,
     PlusJakartaSans_600SemiBold,

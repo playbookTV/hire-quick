@@ -11,7 +11,7 @@ interface MetaRowProps {
 
 export function MetaRow({ icon, text }: MetaRowProps): React.JSX.Element {
   return (
-    <Box flexDirection="row" alignItems="center" gap="200" marginBottom="150">
+    <Box flexDirection="row" alignItems="center" gap="200" marginBottom="200">
       <Icon name={icon} size={15} color="inkMuted" />
       <Text variant="bodySm" color="inkMuted" style={{ flex: 1 }}>
         {text}

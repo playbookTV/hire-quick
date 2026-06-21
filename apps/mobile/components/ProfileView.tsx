@@ -18,7 +18,7 @@ function Row({ icon, label }: { icon: IconName; label: string }): React.JSX.Elem
   return (
     <Box flexDirection="row" alignItems="center" gap="300" paddingVertical="300">
       <Icon name={icon} size={18} color="inkMuted" />
-      <Text variant="body" color="inkBody" style={{ flex: 1 }}>
+      <Text variant="body" color="inkDefault" style={{ flex: 1 }}>
         {label}
       </Text>
       <Icon name="chevron-right" size={18} color="borderStrong" />

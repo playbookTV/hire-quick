@@ -14,7 +14,7 @@ interface IconProps {
   color?: keyof Theme['colors'];
 }
 
-export function Icon({ name, size = 20, color = 'inkBody' }: IconProps): React.JSX.Element {
+export function Icon({ name, size = 20, color = 'inkDefault' }: IconProps): React.JSX.Element {
   const theme = useTheme();
   return <Feather name={name} size={size} color={theme.colors[color]} />;
 }

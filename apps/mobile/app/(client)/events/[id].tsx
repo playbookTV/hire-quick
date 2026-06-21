@@ -1,9 +1,12 @@
 /**
- * Event detail — GET /api/events/:id. Shows the brief, staffing economics
- * (headcount × budget = escrow total), and applicant/booking counts. Reviewing
- * applicants and confirm-&-pay land in a later phase.
+ * Event detail — matches Figma `Client / 13 Event Management` (30:291):
+ * title + StatusPill + meta, a confirmed/slots progress card with dots, the
+ * staffing economics, quick action chips, and a "Review applications" CTA. Live
+ * from GET /api/events/:id (roster detail lands with the bookings API).
  */
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Pressable } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { kobo, formatNaira } from '@hq/shared';
 import { Screen } from '../../../components/Screen.js';
 import { AppBar } from '../../../components/AppBar.js';
@@ -13,23 +16,47 @@ import { MetaRow } from '../../../components/MetaRow.js';
 import { KeyValueRow } from '../../../components/KeyValueRow.js';
 import { SectionHeader } from '../../../components/SectionHeader.js';
 import { Button } from '../../../components/Button.js';
-import { Banner } from '../../../components/Banner.js';
+import { Dot } from '../../../components/Dot.js';
 import { EmptyState } from '../../../components/EmptyState.js';
 import { Loading } from '../../../components/Loading.js';
-import { Box, Text } from '../../../theme/restyle.js';
+import { useTheme, Box, Text } from '../../../theme/restyle.js';
 import { useEvent } from '../../../lib/hooks.js';
 import { formatEventDate, formatTimeRange } from '../../../lib/format.js';
 import { ApiError } from '../../../lib/api-error.js';
 
+function ActionChip({ label, danger, onPress }: { label: string; danger?: boolean; onPress?: () => void }) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      style={{
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: theme.borderRadii.pill,
+        borderWidth: 1.5,
+        borderColor: danger ? theme.colors.statusDanger : theme.colors.borderStrong,
+      }}
+    >
+      <Text
+        style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 13, lineHeight: 16, letterSpacing: 0.2 }}
+        color={danger ? 'statusDanger' : 'inkDefault'}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
 export default function EventDetail(): React.JSX.Element {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: event, isLoading, error, refetch } = useEvent(id ?? '');
 
   if (isLoading) {
     return (
       <Box flex={1} backgroundColor="bgCanvas">
-        <AppBar showBack inset />
+        <AppBar showBack inset title="Event" />
         <Loading />
       </Box>
     );
@@ -39,7 +66,7 @@ export default function EventDetail(): React.JSX.Element {
     const notFound = error instanceof ApiError && error.status === 404;
     return (
       <Box flex={1} backgroundColor="bgCanvas">
-        <AppBar showBack inset />
+        <AppBar showBack inset title="Event" />
         <Box flex={1} justifyContent="center">
           <EmptyState
             icon="alert-circle"
@@ -56,74 +83,81 @@ export default function EventDetail(): React.JSX.Element {
 
   const total = kobo(event.headcount * event.budgetPerHead);
   const applicants = event._count?.applications ?? 0;
+  const confirmed = Math.min(event._count?.bookings ?? 0, event.headcount);
+  const open = Math.max(0, event.headcount - confirmed);
   const requirements = event.preferences?.requirements;
+  const dots = Math.min(event.headcount, 12);
 
   return (
     <Box flex={1} backgroundColor="bgCanvas">
       <AppBar showBack inset title="Event" />
       <Screen scroll>
-        <Box flexDirection="row" alignItems="flex-start" justifyContent="space-between" gap="300" marginBottom="300">
-          <Text variant="h1" style={{ flex: 1 }}>
+        {/* header */}
+        <Box flexDirection="row" alignItems="center" justifyContent="space-between" style={{ gap: 12 }} marginBottom="200">
+          <Text variant="h1" style={{ flex: 1 }} numberOfLines={2}>
             {event.title}
           </Text>
           <StatusPill status={event.status} />
         </Box>
+        <MetaRow icon="calendar" text={`${formatEventDate(event.eventDate)} · ${formatTimeRange(event.startTime, event.endTime)}`} />
+        <MetaRow icon="map-pin" text={event.venue} />
 
+        {/* progress */}
+        <Box height={20} />
         <Card>
-          <MetaRow icon="map-pin" text={event.venue} />
-          <MetaRow icon="calendar" text={formatEventDate(event.eventDate)} />
-          <MetaRow icon="clock" text={formatTimeRange(event.startTime, event.endTime)} />
-          <MetaRow icon="tag" text={event.category} />
-          {event.dressCode ? <MetaRow icon="user-check" text={`Dress: ${event.dressCode}`} /> : null}
-          {event.accommodation ? (
-            <MetaRow
-              icon="home"
-              text={event.accommodation === 'PROVIDED' ? 'Accommodation provided' : 'No accommodation'}
-            />
-          ) : null}
+          <Box flexDirection="row" alignItems="center" justifyContent="space-between" marginBottom="300">
+            <Text variant="titleM">
+              {confirmed} of {event.headcount} confirmed
+            </Text>
+            <Text variant="bodySm" color="inkMuted">
+              {open} slot{open === 1 ? '' : 's'} open
+            </Text>
+          </Box>
+          <Box flexDirection="row" style={{ gap: 4 }}>
+            {Array.from({ length: dots }).map((_, i) => (
+              <Dot key={i} filled={i < confirmed} />
+            ))}
+          </Box>
         </Card>
 
-        <Box height={16} />
+        {/* staffing */}
+        <Box height={20} />
         <SectionHeader title="Staffing" />
         <Card>
           <KeyValueRow label="Staff needed" value={String(event.headcount)} />
           <KeyValueRow label="Budget / head" value={formatNaira(kobo(event.budgetPerHead))} />
+          {event.dressCode ? <KeyValueRow label="Dress code" value={event.dressCode} /> : null}
           <Box height={1} backgroundColor="borderDefault" marginVertical="200" />
           <KeyValueRow label="Total to escrow" value={formatNaira(total)} tone="brand" emphasize />
         </Card>
 
         {requirements ? (
           <>
-            <Box height={16} />
+            <Box height={20} />
             <SectionHeader title="Requirements" />
             <Card>
-              <Text variant="body" color="inkBody">
+              <Text variant="body" color="inkDefault">
                 {requirements}
               </Text>
             </Card>
           </>
         ) : null}
 
+        {/* quick actions */}
         <Box height={16} />
-        <Banner
-          tone="info"
-          title={applicants > 0 ? `${applicants} applicant${applicants === 1 ? '' : 's'}` : 'No applicants yet'}
-          message={
-            applicants > 0
-              ? 'Review applicants and confirm your staff. Funds are held in escrow until verified attendance.'
-              : 'Share your event — ushers can apply, then you confirm and pay into escrow.'
-          }
-        />
-
-        <Box marginTop="500">
-          <Button
-            label="Review applicants"
-            disabled={applicants === 0}
-            onPress={() => {
-              /* Applicant review + confirm-&-pay land in a later phase. */
-            }}
-          />
+        <Box flexDirection="row" flexWrap="wrap" style={{ gap: 8 }}>
+          <ActionChip label="Add slots" />
+          <ActionChip label="Message all" onPress={() => router.push('/(client)/messages')} />
+          <ActionChip label="Cancel event" danger onPress={() => router.push('/(modals)/cancellation')} />
         </Box>
+
+        <Box height={20} />
+        <Button
+          label={`Review applications${applicants ? ` (${applicants})` : ''}`}
+          disabled={applicants === 0}
+          onPress={() => router.push('/(modals)/applications')}
+        />
+        <Box style={{ height: insets.bottom }} />
       </Screen>
     </Box>
   );

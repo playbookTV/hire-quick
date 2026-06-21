@@ -42,18 +42,18 @@ export function Select<T extends string>({
         style={{
           flexDirection: 'row',
           alignItems: 'center',
-          height: 50,
-          paddingHorizontal: 14,
+          height: 52,
+          paddingHorizontal: 16,
           borderRadius: theme.borderRadii.md,
-          borderWidth: 1,
+          borderWidth: 1.5,
           borderColor: error ? theme.colors.statusDanger : theme.colors.borderDefault,
           backgroundColor: theme.colors.bgSurface,
         }}
       >
-        <Text variant="body" color={selected ? 'inkStrong' : 'inkMuted'} style={{ flex: 1 }}>
+        <Text variant="body" color={selected ? 'inkStrong' : 'inkFaint'} style={{ flex: 1 }}>
           {selected?.label ?? placeholder}
         </Text>
-        <Icon name="chevron-down" size={18} color="inkMuted" />
+        <Icon name="chevron-down" size={20} color="inkMuted" />
       </Pressable>
 
       <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
@@ -91,7 +91,7 @@ export function Select<T extends string>({
                           paddingVertical: 14,
                         }}
                       >
-                        <Text variant="bodyLg" color={active ? 'brandEmerald' : 'inkBody'}>
+                        <Text variant="bodyLg" color={active ? 'brandEmerald' : 'inkDefault'}>
                           {item.label}
                         </Text>
                         {active ? <Icon name="check" size={18} color="brandEmerald" /> : null}

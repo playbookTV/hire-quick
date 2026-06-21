@@ -1,8 +1,7 @@
 /**
- * The Restyle theme — colours (light), spacing/radii (the Figma "Scale"
- * collection), and text variants (the 14-style Figma type ramp). `darkTheme`
- * swaps only the colour map. Components consume these via the typed `Box`/`Text`
- * in restyle.ts.
+ * The Restyle theme — colours (light), spacing/radii (EXACT Figma "Scale"
+ * collection), and text variants (Fraunces + Plus Jakarta ramp). `darkTheme`
+ * swaps only the colour map. Components consume these via the typed Box/Text.
  */
 import { createTheme } from '@shopify/restyle';
 import { lightColors, darkColors, type SemanticColors } from './semantic.js';
@@ -14,21 +13,23 @@ const palette: SemanticColors = {
 
 const theme = createTheme({
   colors: palette,
+  // Figma Scale → space/* (px)
   spacing: {
     none: 0,
-    xs: 2,
+    '50': 2,
     '100': 4,
-    '150': 6,
     '200': 8,
     '300': 12,
     '400': 16,
     '500': 20,
     '600': 24,
+    '700': 28,
     '800': 32,
     '1000': 40,
     '1200': 48,
     '1600': 64,
   },
+  // Figma Scale → radius/*
   borderRadii: {
     none: 0,
     xs: 6,
@@ -36,6 +37,7 @@ const theme = createTheme({
     md: 12,
     lg: 16,
     xl: 20,
+    '2xl': 28,
     pill: 999,
   },
   textVariants: {
@@ -43,7 +45,7 @@ const theme = createTheme({
       fontFamily: fonts.sansRegular,
       fontSize: 15,
       lineHeight: 22,
-      color: 'inkBody',
+      color: 'inkDefault',
     },
     display: {
       fontFamily: fonts.displaySemibold,
@@ -63,6 +65,13 @@ const theme = createTheme({
       lineHeight: 28,
       color: 'inkStrong',
     },
+    // Heading/S — Fraunces 18/24, used by SectionHeader.
+    headingS: {
+      fontFamily: fonts.displaySemibold,
+      fontSize: 18,
+      lineHeight: 24,
+      color: 'inkStrong',
+    },
     title: {
       fontFamily: fonts.sansSemibold,
       fontSize: 18,
@@ -73,13 +82,13 @@ const theme = createTheme({
       fontFamily: fonts.sansRegular,
       fontSize: 16,
       lineHeight: 24,
-      color: 'inkBody',
+      color: 'inkDefault',
     },
     body: {
       fontFamily: fonts.sansRegular,
       fontSize: 15,
       lineHeight: 22,
-      color: 'inkBody',
+      color: 'inkDefault',
     },
     bodySm: {
       fontFamily: fonts.sansRegular,
@@ -91,7 +100,7 @@ const theme = createTheme({
       fontFamily: fonts.sansSemibold,
       fontSize: 14,
       lineHeight: 18,
-      color: 'inkBody',
+      color: 'inkDefault',
     },
     labelSm: {
       fontFamily: fonts.sansSemibold,
@@ -116,6 +125,22 @@ const theme = createTheme({
       fontFamily: fonts.displaySemibold,
       fontSize: 20,
       lineHeight: 26,
+      color: 'inkStrong',
+    },
+    // Card-level title/price — Plus Jakarta Bold 17 (Figma Title/M, Amount/M),
+    // distinct from the Fraunces display/heading variants.
+    titleM: {
+      fontFamily: fonts.sansBold,
+      fontSize: 17,
+      lineHeight: 24,
+      letterSpacing: -0.2,
+      color: 'inkStrong',
+    },
+    amountM: {
+      fontFamily: fonts.sansBold,
+      fontSize: 17,
+      lineHeight: 22,
+      letterSpacing: -0.2,
       color: 'inkStrong',
     },
   },

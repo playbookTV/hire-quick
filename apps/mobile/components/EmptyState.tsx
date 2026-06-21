@@ -1,6 +1,7 @@
 /**
- * EmptyState — icon + title + subtitle + optional actions (Figma EmptyState:
- * Tone Brand/Danger, Show secondary).
+ * EmptyState — matches Figma `EmptyState` (95:44): 96px tinted icon circle,
+ * Heading/M title (Fraunces 22/28), Body/M body (ink/muted, centred), an optional
+ * reason box, a primary action, and an optional secondary (ghost) action.
  */
 import { Box, Text } from '../theme/restyle.js';
 import { IconCircle, type CircleTone } from './IconCircle.js';
@@ -12,6 +13,7 @@ interface EmptyStateProps {
   title: string;
   subtitle?: string;
   tone?: CircleTone;
+  reason?: string;
   actionLabel?: string;
   onAction?: () => void;
   secondaryLabel?: string;
@@ -23,24 +25,37 @@ export function EmptyState({
   title,
   subtitle,
   tone = 'brand',
+  reason,
   actionLabel,
   onAction,
   secondaryLabel,
   onSecondary,
 }: EmptyStateProps): React.JSX.Element {
   return (
-    <Box alignItems="center" paddingVertical="1200" paddingHorizontal="600" gap="300">
-      <IconCircle icon={icon} tone={tone} size={64} />
+    <Box alignItems="center" paddingHorizontal="600" style={{ gap: 16, maxWidth: 360, alignSelf: 'center' }}>
+      <IconCircle icon={icon} tone={tone} size={96} />
       <Text variant="h2" style={{ textAlign: 'center' }}>
         {title}
       </Text>
       {subtitle ? (
-        <Text variant="body" color="inkMuted" style={{ textAlign: 'center' }}>
+        <Text variant="bodyLg" color="inkMuted" style={{ textAlign: 'center' }}>
           {subtitle}
         </Text>
       ) : null}
+      {reason ? (
+        <Box
+          alignSelf="stretch"
+          backgroundColor="bgSubtle"
+          borderRadius="md"
+          padding="300"
+        >
+          <Text variant="bodySm" color="inkDefault" style={{ textAlign: 'center' }}>
+            {reason}
+          </Text>
+        </Box>
+      ) : null}
       {actionLabel && onAction ? (
-        <Box marginTop="300" alignSelf="stretch" gap="200">
+        <Box alignSelf="stretch" style={{ gap: 8 }}>
           <Button label={actionLabel} onPress={onAction} />
           {secondaryLabel && onSecondary ? (
             <Button label={secondaryLabel} variant="ghost" onPress={onSecondary} />

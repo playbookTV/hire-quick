@@ -1,8 +1,9 @@
 /**
- * Create Event — a 3-step wizard (Basics → Staffing → Review) that submits to
- * POST /api/events. Validation is the SAME `createEventSchema` the server runs
- * (via zodResolver), so the client can't construct a request the server rejects.
- * Money is collected in naira and stored as kobo.
+ * Create Event — matches Figma `Create Event – Basic/Staffing/Review`
+ * (22:140 / 23:160 / 24:181): AppBar "Create event" + a gold step label with
+ * segments, then the per-step form, with the primary "Next/Create" button below.
+ * Validation is the shared `createEventSchema` (client == server). Money is naira
+ * in, kobo out. The Staffing step shows the live "Estimated total" card.
  */
 import { useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
@@ -33,16 +34,8 @@ import { useCreateEvent } from '../../lib/hooks.js';
 import { ApiError } from '../../lib/api-error.js';
 import { formatEventDate, formatTimeRange } from '../../lib/format.js';
 
-const CATEGORIES = [
-  'Wedding',
-  'Corporate event',
-  'Concert',
-  'Conference',
-  'Party',
-  'Product launch',
-  'Religious event',
-  'Other',
-];
+const CATEGORIES = ['Wedding', 'Corporate event', 'Concert', 'Conference', 'Party', 'Product launch', 'Religious event', 'Other'];
+const STEP_LABELS = ['STEP 1 OF 3 · DETAILS', 'STEP 2 OF 3 · STAFFING', 'STEP 3 OF 3 · REVIEW'];
 
 function pad(n: number): string {
   return String(n).padStart(2, '0');
@@ -83,12 +76,7 @@ export default function CreateEvent(): React.JSX.Element {
 
   const timeOptions = useMemo<SelectOption<string>[]>(() => {
     const out: SelectOption<string>[] = [];
-    for (let h = 6; h <= 23; h++) {
-      for (const m of [0, 30]) {
-        const v = `${pad(h)}:${pad(m)}`;
-        out.push({ value: v, label: v });
-      }
-    }
+    for (let h = 6; h <= 23; h++) for (const m of [0, 30]) out.push({ value: `${pad(h)}:${pad(m)}`, label: `${pad(h)}:${pad(m)}` });
     return out;
   }, []);
 
@@ -109,7 +97,7 @@ export default function CreateEvent(): React.JSX.Element {
       eventDate: tomorrow,
       startTime: '10:00',
       endTime: '14:00',
-      headcount: 1,
+      headcount: 6,
       budgetPerHeadKobo: 0,
       dressCode: '',
       accommodation: undefined,
@@ -123,15 +111,14 @@ export default function CreateEvent(): React.JSX.Element {
 
   const next = async () => {
     setFormError(null);
-    const ok = await trigger(STEP_FIELDS[step]);
-    if (ok) setStep((s) => Math.min(2, s + 1));
+    if (await trigger(STEP_FIELDS[step])) setStep((s) => Math.min(2, s + 1));
   };
 
   const onSubmit = async (data: CreateEventInput) => {
     setFormError(null);
     try {
-      await createEvent.mutateAsync(data);
-      router.back(); // modal closes; events list refetches via invalidation
+      const created = await createEvent.mutateAsync(data);
+      router.replace({ pathname: '/(modals)/event-success', params: { id: created.id } });
     } catch (e) {
       if (e instanceof ApiError && e.isValidation && e.issues) {
         for (const issue of e.issues) {
@@ -148,22 +135,12 @@ export default function CreateEvent(): React.JSX.Element {
 
   return (
     <Box flex={1} backgroundColor="bgCanvas">
-      <AppBar
-        title="Create event"
-        showBack
-        onBack={onBack}
-        inset
-        right={
-          <Text variant="labelSm" color="inkMuted">
-            {step + 1}/3
-          </Text>
-        }
-      />
-      <Box paddingHorizontal="500" paddingBottom="300">
-        <StepIndicator total={3} current={step} />
-      </Box>
-
+      <AppBar title="Create event" showBack onBack={onBack} inset />
       <Screen scroll>
+        <Box marginBottom="500">
+          <StepIndicator total={3} current={step} label={STEP_LABELS[step]} />
+        </Box>
+
         {formError ? (
           <Box marginBottom="400">
             <Banner tone="warning" message={formError} />
@@ -177,14 +154,7 @@ export default function CreateEvent(): React.JSX.Element {
               name="title"
               render={({ field }) => (
                 <Field label="Event title" error={errors.title?.message} required>
-                  <Input
-                    placeholder="e.g. Adaeze & Tomi Wedding"
-                    value={field.value}
-                    onChangeText={field.onChange}
-                    onBlur={field.onBlur}
-                    error={!!errors.title}
-                    maxLength={120}
-                  />
+                  <Input placeholder="e.g. Adaeze & Tomi Wedding" value={field.value} onChangeText={field.onChange} onBlur={field.onBlur} error={!!errors.title} maxLength={120} />
                 </Field>
               )}
             />
@@ -193,57 +163,18 @@ export default function CreateEvent(): React.JSX.Element {
               name="venue"
               render={({ field }) => (
                 <Field label="Venue" error={errors.venue?.message} required>
-                  <Input
-                    leftIcon="map-pin"
-                    placeholder="e.g. Eko Hotel, Victoria Island"
-                    value={field.value}
-                    onChangeText={field.onChange}
-                    onBlur={field.onBlur}
-                    error={!!errors.venue}
-                    maxLength={200}
-                  />
+                  <Input leftIcon="map-pin" placeholder="e.g. Eko Hotel, Victoria Island" value={field.value} onChangeText={field.onChange} onBlur={field.onBlur} error={!!errors.venue} maxLength={200} />
                 </Field>
               )}
             />
-            <Controller
-              control={control}
-              name="category"
-              render={({ field }) => (
-                <Field label="Category" error={errors.category?.message} required>
-                  <Select
-                    title="Event category"
-                    placeholder="Choose a category"
-                    value={field.value || null}
-                    options={CATEGORIES.map((c) => ({ value: c, label: c }))}
-                    onSelect={field.onChange}
-                    error={!!errors.category}
-                  />
-                </Field>
-              )}
-            />
-            <Controller
-              control={control}
-              name="eventDate"
-              render={({ field }) => (
-                <Field label="Date" error={errors.eventDate?.message} required>
-                  <Select
-                    title="Event date"
-                    value={field.value ? dateKey(new Date(field.value)) : null}
-                    options={dateOptions}
-                    onSelect={(v) => field.onChange(new Date(`${v}T00:00:00`))}
-                    error={!!errors.eventDate}
-                  />
-                </Field>
-              )}
-            />
-            <Box flexDirection="row" gap="300">
+            <Box flexDirection="row" style={{ gap: 16 }}>
               <Box flex={1}>
                 <Controller
                   control={control}
-                  name="startTime"
+                  name="eventDate"
                   render={({ field }) => (
-                    <Field label="Start" error={errors.startTime?.message} required>
-                      <Select value={field.value} options={timeOptions} onSelect={field.onChange} title="Start time" />
+                    <Field label="Date" error={errors.eventDate?.message} required>
+                      <Select title="Event date" value={field.value ? dateKey(new Date(field.value)) : null} options={dateOptions} onSelect={(v) => field.onChange(new Date(`${v}T00:00:00`))} error={!!errors.eventDate} />
                     </Field>
                   )}
                 />
@@ -251,10 +182,34 @@ export default function CreateEvent(): React.JSX.Element {
               <Box flex={1}>
                 <Controller
                   control={control}
+                  name="startTime"
+                  render={({ field }) => (
+                    <Field label="Start" error={errors.startTime?.message} required>
+                      <Select title="Start time" value={field.value} options={timeOptions} onSelect={field.onChange} />
+                    </Field>
+                  )}
+                />
+              </Box>
+            </Box>
+            <Box flexDirection="row" style={{ gap: 16 }}>
+              <Box flex={1}>
+                <Controller
+                  control={control}
                   name="endTime"
                   render={({ field }) => (
                     <Field label="End" error={errors.endTime?.message} required>
-                      <Select value={field.value} options={timeOptions} onSelect={field.onChange} title="End time" />
+                      <Select title="End time" value={field.value} options={timeOptions} onSelect={field.onChange} />
+                    </Field>
+                  )}
+                />
+              </Box>
+              <Box flex={1}>
+                <Controller
+                  control={control}
+                  name="category"
+                  render={({ field }) => (
+                    <Field label="Category" error={errors.category?.message} required>
+                      <Select title="Event category" placeholder="Choose" value={field.value || null} options={CATEGORIES.map((c) => ({ value: c, label: c }))} onSelect={field.onChange} error={!!errors.category} />
                     </Field>
                   )}
                 />
@@ -269,8 +224,17 @@ export default function CreateEvent(): React.JSX.Element {
               control={control}
               name="headcount"
               render={({ field }) => (
-                <Field label="How many staff?" error={errors.headcount?.message} required>
+                <Field label="Staff needed" error={errors.headcount?.message} required>
                   <Stepper value={field.value} onChange={field.onChange} min={1} max={100} />
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              name="dressCode"
+              render={({ field }) => (
+                <Field label="Dress code" helper="Optional" error={errors.dressCode?.message}>
+                  <Input placeholder="e.g. Black tie, all-white" value={field.value ?? ''} onChangeText={field.onChange} maxLength={200} />
                 </Field>
               )}
             />
@@ -278,12 +242,7 @@ export default function CreateEvent(): React.JSX.Element {
               control={control}
               name="budgetPerHeadKobo"
               render={({ field }) => (
-                <Field
-                  label="Budget per head (₦)"
-                  helper="What each staff member earns for this event."
-                  error={errors.budgetPerHeadKobo?.message}
-                  required
-                >
+                <Field label="Budget per head" error={errors.budgetPerHeadKobo?.message} required>
                   <Input
                     leftIcon="dollar-sign"
                     placeholder="e.g. 15000"
@@ -299,41 +258,39 @@ export default function CreateEvent(): React.JSX.Element {
                 </Field>
               )}
             />
-            <Controller
-              control={control}
-              name="dressCode"
-              render={({ field }) => (
-                <Field label="Dress code" helper="Optional" error={errors.dressCode?.message}>
-                  <Input
-                    placeholder="e.g. Black tie, all-white"
-                    value={field.value ?? ''}
-                    onChangeText={field.onChange}
-                    maxLength={200}
-                  />
-                </Field>
-              )}
-            />
+
+            {/* Estimated total card */}
+            <Box
+              backgroundColor="brandEmeraldTintWeak"
+              borderRadius="lg"
+              borderWidth={1}
+              borderColor="brandEmeraldTint"
+              padding="400"
+              marginBottom="400"
+              style={{ gap: 8 }}
+            >
+              <Box flexDirection="row" alignItems="center" justifyContent="space-between">
+                <Text variant="label" style={{ fontSize: 15 }} color="inkDefault">
+                  Estimated total
+                </Text>
+                <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 22, lineHeight: 28, letterSpacing: -0.3 }} color="brandEmerald">
+                  {formatNaira(total)}
+                </Text>
+              </Box>
+              <Text variant="bodySm" color="inkMuted">
+                {values.headcount} staff × {formatNaira(kobo(values.budgetPerHeadKobo || 0))}
+              </Text>
+              <Text variant="bodySm" color="inkMuted">
+                15% platform fee is deducted from each staff payout — you pay exactly this amount.
+              </Text>
+            </Box>
+
             <Controller
               control={control}
               name="accommodation"
               render={({ field }) => (
-                <Field
-                  label="Accommodation"
-                  helper={lateNight ? 'Required for events ending at or after 10:00 PM' : 'Optional'}
-                  error={errors.accommodation?.message}
-                  required={lateNight}
-                >
-                  <Select
-                    title="Accommodation"
-                    placeholder="Select"
-                    value={field.value ?? null}
-                    options={ACCOMMODATION_STATUSES.map((s) => ({
-                      value: s,
-                      label: s === 'PROVIDED' ? 'Provided' : 'Not provided',
-                    }))}
-                    onSelect={field.onChange}
-                    error={!!errors.accommodation}
-                  />
+                <Field label="Accommodation" helper={lateNight ? 'Required for events ending at or after 10:00 PM' : 'Optional'} error={errors.accommodation?.message} required={lateNight}>
+                  <Select title="Accommodation" placeholder="Select" value={field.value ?? null} options={ACCOMMODATION_STATUSES.map((s) => ({ value: s, label: s === 'PROVIDED' ? 'Provided' : 'Not provided' }))} onSelect={field.onChange} error={!!errors.accommodation} />
                 </Field>
               )}
             />
@@ -342,12 +299,7 @@ export default function CreateEvent(): React.JSX.Element {
               name="requirements"
               render={({ field }) => (
                 <Field label="Extra requirements" helper="Optional" error={errors.requirements?.message}>
-                  <TextArea
-                    placeholder="Anything staff should know — duties, arrival time, contact…"
-                    value={field.value ?? ''}
-                    onChangeText={field.onChange}
-                    maxLength={2000}
-                  />
+                  <TextArea placeholder="Duties, arrival time, contact…" value={field.value ?? ''} onChangeText={field.onChange} maxLength={2000} />
                 </Field>
               )}
             />
@@ -356,17 +308,11 @@ export default function CreateEvent(): React.JSX.Element {
 
         {step === 2 ? (
           <>
-            <Text variant="h2" marginBottom="300">
-              Review
-            </Text>
             <Card>
               <KeyValueRow label="Title" value={values.title || '—'} />
               <KeyValueRow label="Venue" value={values.venue || '—'} />
               <KeyValueRow label="Category" value={values.category || '—'} />
-              <KeyValueRow
-                label="Date"
-                value={values.eventDate ? formatEventDate(new Date(values.eventDate).toISOString()) : '—'}
-              />
+              <KeyValueRow label="Date" value={values.eventDate ? formatEventDate(new Date(values.eventDate).toISOString()) : '—'} />
               <KeyValueRow label="Time" value={formatTimeRange(values.startTime, values.endTime)} />
             </Card>
             <Box height={12} />
@@ -374,26 +320,18 @@ export default function CreateEvent(): React.JSX.Element {
               <KeyValueRow label="Staff needed" value={String(values.headcount)} />
               <KeyValueRow label="Budget / head" value={formatNaira(kobo(values.budgetPerHeadKobo || 0))} />
               {values.dressCode ? <KeyValueRow label="Dress code" value={values.dressCode} /> : null}
-              {values.accommodation ? (
-                <KeyValueRow
-                  label="Accommodation"
-                  value={values.accommodation === 'PROVIDED' ? 'Provided' : 'Not provided'}
-                />
-              ) : null}
+              {values.accommodation ? <KeyValueRow label="Accommodation" value={values.accommodation === 'PROVIDED' ? 'Provided' : 'Not provided'} /> : null}
               <Box height={1} backgroundColor="borderDefault" marginVertical="200" />
               <KeyValueRow label="Total to escrow" value={formatNaira(total)} tone="brand" emphasize />
             </Card>
             <Box height={16} />
-            <Banner
-              tone="brand"
-              message="Your event will be posted as Open. You’ll confirm staff and pay into escrow once ushers apply."
-            />
+            <Banner tone="brand" message="Your event will be posted as Open. You’ll confirm staff and pay into escrow once ushers apply." />
           </>
         ) : null}
 
-        <Box flex={1} minHeight={24} />
+        <Box height={8} />
         {step < 2 ? (
-          <Button label="Continue" onPress={next} />
+          <Button label={step === 0 ? 'Next: Staffing' : 'Next: Review'} onPress={next} />
         ) : (
           <Button label="Create event" loading={createEvent.isPending} onPress={handleSubmit(onSubmit)} />
         )}

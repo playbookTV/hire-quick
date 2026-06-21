@@ -1,10 +1,11 @@
 /**
- * Card — the standard surface (white/dark panel, hairline border, rounded). Most
- * Figma cards are this plus content.
+ * Card — the standard surface used across the file: white/dark panel, 1px
+ * border/default, radius lg, 16px padding, Shadow/sm.
  */
 import type { ReactNode } from 'react';
 import { Pressable } from 'react-native';
 import { Box } from '../theme/restyle.js';
+import { shadowSm } from '../theme/shadows.js';
 
 interface CardProps {
   children: ReactNode;
@@ -19,7 +20,8 @@ export function Card({ children, onPress, padded = true }: CardProps): React.JSX
       borderRadius="lg"
       borderWidth={1}
       borderColor="borderDefault"
-      padding={padded ? '500' : 'none'}
+      padding={padded ? '400' : 'none'}
+      style={shadowSm}
     >
       {children}
     </Box>

@@ -85,13 +85,14 @@ export default function Otp(): React.JSX.Element {
           />
         </Field>
 
-        <Pressable onPress={resend} hitSlop={8} disabled={requestOtp.isPending}>
-          <Text variant="label" color="brandEmerald">
-            {requestOtp.isPending ? 'Sending…' : 'Resend code'}
-          </Text>
-        </Pressable>
+        <Box marginTop="400" marginBottom="600" alignItems="flex-start">
+          <Pressable onPress={resend} hitSlop={8} disabled={requestOtp.isPending}>
+            <Text variant="label" color="brandEmerald">
+              {requestOtp.isPending ? 'Sending…' : 'Resend code'}
+            </Text>
+          </Pressable>
+        </Box>
 
-        <Box flex={1} />
         <Button
           label="Verify"
           disabled={code.length !== 6}

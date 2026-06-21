@@ -1,6 +1,7 @@
 /**
- * TextArea — multi-line input (Figma TextArea). Same surface as Input, taller,
- * top-aligned text.
+ * TextArea — matches Figma `TextArea` (120:72): white surface, 1.5px
+ * border/default, radius md, 16px padding, min height 88, Body/M text with an
+ * ink/faint placeholder, top-aligned. Focus/error borders are added states.
  */
 import { useState } from 'react';
 import { TextInput, type TextInputProps } from 'react-native';
@@ -13,7 +14,7 @@ export interface TextAreaProps extends Omit<TextInputProps, 'style' | 'multiline
 
 export function TextArea({
   error = false,
-  minHeight = 110,
+  minHeight = 88,
   onFocus,
   onBlur,
   ...props
@@ -31,7 +32,7 @@ export function TextArea({
     <TextInput
       multiline
       textAlignVertical="top"
-      placeholderTextColor={theme.colors.inkMuted}
+      placeholderTextColor={theme.colors.inkFaint}
       onFocus={(e) => {
         setFocused(true);
         onFocus?.(e);
@@ -42,9 +43,9 @@ export function TextArea({
       }}
       style={{
         minHeight,
-        padding: 14,
+        padding: 16,
         borderRadius: theme.borderRadii.md,
-        borderWidth: 1,
+        borderWidth: 1.5,
         borderColor,
         backgroundColor: theme.colors.bgSurface,
         fontFamily: 'PlusJakartaSans_400Regular',

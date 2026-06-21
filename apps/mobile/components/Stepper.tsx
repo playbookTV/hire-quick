@@ -1,5 +1,7 @@
 /**
- * Stepper — Figma number stepper (− value +). Clamps to [min, max].
+ * Stepper — matches Figma `Stepper` (152:92): − value + . Round 48px buttons with
+ * a 1.5px border/strong ring and emerald icons; value is Heading/M (Fraunces
+ * 22/28), centred and flexible. Clamps to [min, max].
  */
 import { Pressable } from 'react-native';
 import { useTheme, Box, Text } from '../theme/restyle.js';
@@ -23,23 +25,25 @@ export function Stepper({ value, onChange, min = 0, max = 999, step = 1 }: Stepp
       onPress={onPress}
       disabled={disabled}
       style={{
-        width: 44,
-        height: 44,
-        borderRadius: theme.borderRadii.sm,
+        width: 48,
+        height: 48,
+        borderRadius: 24,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: theme.colors.bgMuted,
+        backgroundColor: theme.colors.bgSurface,
+        borderWidth: 1.5,
+        borderColor: theme.colors.borderStrong,
         opacity: disabled ? 0.4 : 1,
       }}
     >
-      <Icon name={name} size={18} color="inkStrong" />
+      <Icon name={name} size={22} color="brandEmerald" />
     </Pressable>
   );
 
   return (
-    <Box flexDirection="row" alignItems="center" gap="400">
+    <Box flexDirection="row" alignItems="center" style={{ gap: 16 }}>
       {btn(dec, 'minus', value <= min)}
-      <Text variant="amount" style={{ minWidth: 40, textAlign: 'center' }}>
+      <Text variant="h2" style={{ flex: 1, textAlign: 'center' }}>
         {value}
       </Text>
       {btn(inc, 'plus', value >= max)}

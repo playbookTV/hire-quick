@@ -43,7 +43,7 @@ export default function EventsList(): React.JSX.Element {
             <EmptyState
               icon="calendar"
               title="No events yet"
-              subtitle="Create an event to start booking staff."
+              subtitle="Create your first event and start booking vetted ushers in minutes."
               actionLabel="Create event"
               onAction={() => router.push('/(modals)/create-event')}
             />

@@ -22,7 +22,11 @@
     "db:studio": "pnpm --filter @hq/database studio"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["@prisma/client", "@prisma/engines", "prisma", "esbuild"]
+    "onlyBuiltDependencies": ["@prisma/client", "@prisma/engines", "prisma", "esbuild"],
+    "comment-overrides": "Dedupe @types/react to ONE copy so react-native + restyle + the mobile app share identical ReactNode types. Mixed copies intersect to a ReactNode missing bigint → children type errors. admin (React 18 runtime) compiles fine against these types.",
+    "overrides": {
+      "@types/react": "19.1.10"
+    }
   },
   "devDependencies": {
     "@hq/config": "workspace:*",

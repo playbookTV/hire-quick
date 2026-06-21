@@ -1,7 +1,8 @@
 /**
- * Complete Profile — collects the minimum each role needs after first login.
- * Clients set a display name; ushers add a short bio + experience. If the
- * profile is already filled, we skip straight to the role home.
+ * Complete Profile — matches Figma `Client / 05 Complete Profile` (20:199):
+ * AddPhoto + Full name (+ Business name) for clients; ushers get a bio +
+ * experience. Only fields the API accepts (`displayName`/`bio`/`yearsExperience`)
+ * are submitted. If the profile is already filled, skip to the role home.
  */
 import { useState } from 'react';
 import { Redirect, useRouter } from 'expo-router';
@@ -11,6 +12,7 @@ import { Field } from '../../components/Field.js';
 import { Input } from '../../components/Input.js';
 import { TextArea } from '../../components/TextArea.js';
 import { Stepper } from '../../components/Stepper.js';
+import { AddPhoto } from '../../components/AddPhoto.js';
 import { Button } from '../../components/Button.js';
 import { Banner } from '../../components/Banner.js';
 import { Box, Text } from '../../theme/restyle.js';
@@ -25,6 +27,7 @@ export default function CompleteProfile(): React.JSX.Element {
   const update = useUpdateProfile();
 
   const [name, setName] = useState('');
+  const [business, setBusiness] = useState('');
   const [bio, setBio] = useState('');
   const [years, setYears] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -56,60 +59,52 @@ export default function CompleteProfile(): React.JSX.Element {
 
   return (
     <Box flex={1} backgroundColor="bgCanvas">
-      <AppBar title="Set up your profile" />
+      <AppBar showBack />
       <Screen scroll>
-        <Text variant="h1" marginBottom="200">
-          {isUsher ? 'Tell clients about you' : 'What should we call you?'}
-        </Text>
-        <Text variant="body" color="inkMuted" marginBottom="600">
-          {isUsher
-            ? 'A short intro helps you stand out when clients are choosing staff.'
-            : 'This is the name ushers and the team will see.'}
-        </Text>
-
-        {error ? (
-          <Box marginBottom="400">
-            <Banner tone="warning" message={error} />
+        <Box style={{ gap: 20 }} marginBottom="600">
+          <Box style={{ gap: 8 }}>
+            <Text variant="h1">{isUsher ? 'Tell clients about you' : 'Set up your profile'}</Text>
+            <Text variant="body" color="inkMuted">
+              {isUsher ? 'A short intro helps you stand out.' : 'This is what staff see when you hire.'}
+            </Text>
           </Box>
-        ) : null}
 
-        {isUsher ? (
-          <>
-            <Field label="Short bio" helper="Experience, the kinds of events you work, your strengths.">
-              <TextArea
-                placeholder="e.g. 3 years ushering weddings and corporate launches across Lagos…"
-                value={bio}
-                onChangeText={setBio}
-                maxLength={2000}
-              />
-            </Field>
-            <Field label="Years of experience">
-              <Stepper value={years} onChange={setYears} min={0} max={60} />
-            </Field>
-            <Box marginTop="200" marginBottom="400">
+          {error ? <Banner tone="warning" message={error} /> : null}
+
+          <AddPhoto variant="avatar" />
+
+          {isUsher ? (
+            <>
+              <Field label="Short bio" helper="Experience, the events you work, your strengths.">
+                <TextArea
+                  placeholder="e.g. 3 years ushering weddings and corporate launches…"
+                  value={bio}
+                  onChangeText={setBio}
+                  maxLength={2000}
+                />
+              </Field>
+              <Field label="Years of experience">
+                <Stepper value={years} onChange={setYears} min={0} max={60} />
+              </Field>
               <Banner
                 tone="brand"
                 title="Verification comes next"
-                message="You’ll need to verify your ID before you can apply to jobs."
+                message="You’ll verify your ID before you can apply to jobs."
               />
-            </Box>
-          </>
-        ) : (
-          <Field label="Full name">
-            <Input
-              leftIcon="user"
-              placeholder="e.g. Adaeze Okafor"
-              value={name}
-              onChangeText={setName}
-              autoFocus
-              autoCapitalize="words"
-              maxLength={120}
-            />
-          </Field>
-        )}
+            </>
+          ) : (
+            <>
+              <Field label="Full name">
+                <Input placeholder="e.g. Sarah Johnson" value={name} onChangeText={setName} autoCapitalize="words" maxLength={120} />
+              </Field>
+              <Field label="Business name (optional)">
+                <Input placeholder="e.g. Lagos Events Co." value={business} onChangeText={setBusiness} maxLength={120} />
+              </Field>
+            </>
+          )}
+        </Box>
 
-        <Box flex={1} />
-        <Button label="Finish" disabled={!valid} loading={update.isPending} onPress={submit} />
+        <Button label="Continue" disabled={!valid} loading={update.isPending} onPress={submit} />
       </Screen>
     </Box>
   );

@@ -1,5 +1,7 @@
 /**
- * Chip — selectable filter pill (Figma Chip: Selected variant + Label).
+ * Chip — matches Figma `Chip` (85:14): pill, 16/8 padding. Selected = solid
+ * emerald with inverse-ink label; unselected = white surface with a 1.5px
+ * border/strong and ink/default label (Label/M).
  */
 import { Pressable } from 'react-native';
 import { useTheme, Text } from '../theme/restyle.js';
@@ -16,11 +18,12 @@ export function Chip({ label, selected = false, onPress }: ChipProps): React.JSX
     <Pressable
       onPress={onPress}
       style={{
-        paddingHorizontal: 14,
+        alignSelf: 'flex-start',
+        paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: theme.borderRadii.pill,
-        borderWidth: 1,
-        borderColor: selected ? theme.colors.brandEmerald : theme.colors.borderDefault,
+        borderWidth: selected ? 0 : 1.5,
+        borderColor: theme.colors.borderStrong,
         backgroundColor: selected ? theme.colors.brandEmerald : theme.colors.bgSurface,
       }}
     >
@@ -28,7 +31,9 @@ export function Chip({ label, selected = false, onPress }: ChipProps): React.JSX
         style={{
           fontFamily: 'PlusJakartaSans_600SemiBold',
           fontSize: 13,
-          color: selected ? theme.colors.inverseInk : theme.colors.inkBody,
+          lineHeight: 16,
+          letterSpacing: 0.2,
+          color: selected ? theme.colors.inverseInk : theme.colors.inkDefault,
         }}
       >
         {label}
