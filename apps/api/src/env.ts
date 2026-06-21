@@ -18,9 +18,17 @@ const EnvSchema = z.object({
   // Paystack transfer recipient for HireQuick's own operating bank (commission sweep, D3).
   PAYSTACK_OPERATING_RECIPIENT: z.string().default(''),
   REDIS_URL: z.string().default('redis://127.0.0.1:6379'),
-  // Brevo — transactional SMS (OTP delivery) + email (notifications). Empty = dev stub.
+  // Brevo — transactional SMS + email (notifications). Empty = dev stub.
   BREVO_API_KEY: z.string().default(''),
   BREVO_SMS_SENDER: z.string().default('HireQuick'),
+  // Brevo WhatsApp — preferred OTP channel. Requires a connected WhatsApp
+  // Business Account + an approved authentication template. When sender +
+  // template are set, OTP goes over WhatsApp instead of SMS; otherwise it falls
+  // back to SMS / dev stub. BREVO_WHATSAPP_OTP_PARAM is the template's variable
+  // name the code is injected into (must match the approved template).
+  BREVO_WHATSAPP_SENDER: z.string().default(''),
+  BREVO_WHATSAPP_OTP_TEMPLATE_ID: z.coerce.number().int().nonnegative().default(0),
+  BREVO_WHATSAPP_OTP_PARAM: z.string().default('code'),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

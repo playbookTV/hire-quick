@@ -6,7 +6,7 @@
 import { env } from '../../env.js';
 
 export interface SentRecord {
-  kind: 'sms' | 'email' | 'push';
+  kind: 'sms' | 'email' | 'push' | 'whatsapp';
   to: string;
   summary: string;
 }
@@ -61,6 +61,40 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
     }),
   });
   if (!res.ok) log(`email to ${to} failed: ${String(res.status)}`);
+}
+
+/**
+ * WhatsApp OTP via Brevo — the preferred OTP channel (TRD §4). Requires a
+ * connected WhatsApp Business Account + an approved authentication template
+ * (Meta rule: the first/transactional message must be a template). The code is
+ * injected into the template variable named by BREVO_WHATSAPP_OTP_PARAM. Until
+ * the WABA + template are configured it logs a dev stub.
+ *
+ * NOTE: Brevo does not publicly document the WhatsApp `params` shape; this sends
+ * `params: { <BREVO_WHATSAPP_OTP_PARAM>: code }`. Confirm against the approved
+ * template once it exists and adjust the param mapping if Brevo expects a
+ * different key (e.g. a positional "1").
+ */
+export async function sendWhatsAppOtp(to: string, code: string): Promise<void> {
+  sent.push({ kind: 'whatsapp', to, summary: `OTP ${code}` });
+  const configured =
+    !!env.BREVO_API_KEY && !!env.BREVO_WHATSAPP_SENDER && env.BREVO_WHATSAPP_OTP_TEMPLATE_ID > 0;
+  if (!configured) {
+    log(`(stub) whatsapp → ${to}: OTP ${code}`);
+    return;
+  }
+  const recipient = to.replace(/\D/g, ''); // Brevo wants digits only, incl. country code
+  const res = await fetch('https://api.brevo.com/v3/whatsapp/sendMessage', {
+    method: 'POST',
+    headers: { 'api-key': env.BREVO_API_KEY, 'content-type': 'application/json', accept: 'application/json' },
+    body: JSON.stringify({
+      senderNumber: env.BREVO_WHATSAPP_SENDER,
+      contactNumbers: [recipient],
+      templateId: env.BREVO_WHATSAPP_OTP_TEMPLATE_ID,
+      params: { [env.BREVO_WHATSAPP_OTP_PARAM]: code },
+    }),
+  });
+  if (!res.ok) log(`whatsapp OTP to ${to} failed: ${String(res.status)}`);
 }
 
 /** FCM push is stubbed until creds; record intent so the lifecycle wiring is testable. */

@@ -8,7 +8,7 @@ import { ApiError } from '../../app.js';
 import { env } from '../../env.js';
 import { generateOtp, hashOtp } from './hash.js';
 import { signAccessToken, signRefreshToken } from './tokens.js';
-import { sendSms } from '../notifications/brevo.js';
+import { sendSms, sendWhatsAppOtp } from '../notifications/brevo.js';
 
 const OTP_TTL_MS = 10 * 60_000;
 const MAX_REQUESTS_PER_HOUR = 5;
@@ -32,10 +32,16 @@ export async function requestOtp(phone: string): Promise<{ devCode?: string }> {
     },
   });
 
-  await sendSms(phone, `Your HireQuick code is ${code}. It expires in 10 minutes.`);
-  // Echo the code only when real SMS isn't configured and we're not in production
-  // (staging convenience so the deployed instance stays testable without a provider).
-  const echo = !env.BREVO_API_KEY && env.NODE_ENV !== 'production';
+  // Prefer WhatsApp when a sender + approved template are configured (better fit
+  // for the Lagos market and avoids SMS sender-ID/credit friction); otherwise
+  // fall back to SMS / dev stub.
+  const whatsappReady = !!env.BREVO_WHATSAPP_SENDER && env.BREVO_WHATSAPP_OTP_TEMPLATE_ID > 0;
+  if (whatsappReady) await sendWhatsAppOtp(phone, code);
+  else await sendSms(phone, `Your HireQuick code is ${code}. It expires in 10 minutes.`);
+  // Echo the code on any non-production env (dev/test/staging) so the deployed
+  // staging instance stays testable while the WhatsApp channel is set up.
+  // Production never echoes — delivery is the message itself.
+  const echo = env.NODE_ENV !== 'production';
   return echo ? { devCode: code } : {};
 }
 
