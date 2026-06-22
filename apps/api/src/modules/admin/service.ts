@@ -10,19 +10,25 @@ import { resolveDisputeRelease, refundBooking, cancelBooking } from '../payments
 import { notifyPayoutReleased, notifyMilestoneUnlocked } from '../notifications/service.js';
 import { kobo } from '@hq/shared';
 import { writeAudit } from '../audit.js';
+import { noopGateway, type RealtimeGateway } from '../../realtime/gateway.js';
+import { RT, bookingEvent } from '../../realtime/events.js';
+import { loadBookingParties } from '../../realtime/messages.js';
 
 const TX = { timeout: 30_000, maxWait: 30_000 };
 export const APPROVAL_THRESHOLD_KOBO = 5_000_000; // ₦50,000
 
 export type DisputeOutcome = 'RELEASE' | 'REFUND';
 
-async function executeDisputeResolution(p: {
-  bookingId: string;
-  outcome: DisputeOutcome;
-  disputeId: string;
-  resolution: string;
-  adminId: string;
-}): Promise<void> {
+async function executeDisputeResolution(
+  p: {
+    bookingId: string;
+    outcome: DisputeOutcome;
+    disputeId: string;
+    resolution: string;
+    adminId: string;
+  },
+  realtime: RealtimeGateway,
+): Promise<void> {
   if (p.outcome === 'RELEASE') {
     const unlocked = await prisma.$transaction((tx) => resolveDisputeRelease(tx, p.bookingId), TX);
     const b = await prisma.booking.findUnique({
@@ -39,6 +45,11 @@ async function executeDisputeResolution(p: {
     where: { id: p.disputeId },
     data: { status: 'RESOLVED', resolution: p.resolution, resolvedById: p.adminId },
   });
+  const parties = await loadBookingParties(p.bookingId);
+  const payload = bookingEvent(p.bookingId, p.outcome === 'RELEASE' ? 'COMPLETED' : 'REFUNDED');
+  realtime.emitToUser(parties.clientUserId, RT.BOOKING_DISPUTE_RESOLVED, payload);
+  realtime.emitToUser(parties.usherUserId, RT.BOOKING_DISPUTE_RESOLVED, payload);
+  realtime.emitToAdmins(RT.BOOKING_DISPUTE_RESOLVED, payload);
 }
 
 async function executeRefund(p: { bookingId: string; amountKobo: number }): Promise<void> {
@@ -54,6 +65,7 @@ export async function resolveDispute(
   disputeId: string,
   outcome: DisputeOutcome,
   resolution: string,
+  realtime: RealtimeGateway = noopGateway,
 ): Promise<{ executed: boolean; approvalId?: string }> {
   const dispute = await prisma.dispute.findUniqueOrThrow({
     where: { id: disputeId },
@@ -76,7 +88,7 @@ export async function resolveDispute(
     return { executed: false, approvalId: approval.id };
   }
 
-  await executeDisputeResolution({ bookingId: dispute.bookingId, outcome, disputeId, resolution, adminId });
+  await executeDisputeResolution({ bookingId: dispute.bookingId, outcome, disputeId, resolution, adminId }, realtime);
   await writeAudit({ actorId: adminId, action: 'dispute.resolve', target: disputeId, metadata: { outcome } });
   return { executed: true };
 }
@@ -108,6 +120,7 @@ export async function decideApproval(
   checkerId: string,
   approvalId: string,
   decision: 'approve' | 'reject',
+  realtime: RealtimeGateway = noopGateway,
 ): Promise<void> {
   const a = await prisma.approval.findUniqueOrThrow({ where: { id: approvalId } });
   if (a.status !== 'PENDING') throw new ApiError(409, 'NOT_PENDING', 'approval already decided');
@@ -127,7 +140,7 @@ export async function decideApproval(
       disputeId: String(payload.disputeId),
       resolution: typeof payload.resolution === 'string' ? payload.resolution : '',
       adminId: a.makerId,
-    });
+    }, realtime);
   } else {
     await executeRefund({ bookingId: String(payload.bookingId), amountKobo: Number(payload.amountKobo) });
   }

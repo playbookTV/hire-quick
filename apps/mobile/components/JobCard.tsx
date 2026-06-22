@@ -9,6 +9,8 @@ import { Button } from './Button.js';
 import { Icon } from './Icon.js';
 import { shadowSm } from '../theme/shadows.js';
 
+type BadgeTone = 'gold' | 'emerald' | 'danger' | 'muted';
+
 interface JobCardProps {
   title: string;
   pay: string;
@@ -16,10 +18,21 @@ interface JobCardProps {
   distance: string;
   dress?: string;
   rating?: string;
+  badge?: string;
+  badgeTone?: BadgeTone;
+  saved?: boolean;
+  onToggleSave?: () => void;
   actionLabel?: string;
   onAction?: () => void;
   onPress?: () => void;
 }
+
+const BADGE_COLORS: Record<BadgeTone, { bg: keyof ReturnType<typeof useTheme>['colors']; fg: keyof ReturnType<typeof useTheme>['colors'] }> = {
+  gold: { bg: 'accentGoldTint', fg: 'accentGoldStrong' },
+  emerald: { bg: 'brandEmeraldTintWeak', fg: 'brandEmerald' },
+  danger: { bg: 'bgSubtle', fg: 'statusDanger' },
+  muted: { bg: 'bgSubtle', fg: 'inkMuted' },
+};
 
 export function JobCard({
   title,
@@ -28,11 +41,16 @@ export function JobCard({
   distance,
   dress,
   rating,
+  badge,
+  badgeTone = 'gold',
+  saved,
+  onToggleSave,
   actionLabel = 'Apply',
   onAction,
   onPress,
 }: JobCardProps): React.JSX.Element {
   const theme = useTheme();
+  const badgeColor = BADGE_COLORS[badgeTone];
   return (
     <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed && onPress ? 0.9 : 1 })}>
       <Box
@@ -47,10 +65,23 @@ export function JobCard({
           <Text variant="titleM" style={{ flex: 1 }} numberOfLines={1}>
             {title}
           </Text>
+          {onToggleSave ? (
+            <Pressable onPress={onToggleSave} hitSlop={8}>
+              <Icon name="bookmark" size={18} color={saved ? 'brandEmerald' : 'inkFaint'} />
+            </Pressable>
+          ) : null}
           <Text variant="amountM" color="brandEmerald">
             {pay}
           </Text>
         </Box>
+
+        {badge ? (
+          <Box style={{ alignSelf: 'flex-start', backgroundColor: theme.colors[badgeColor.bg], paddingHorizontal: 10, paddingVertical: 3, borderRadius: theme.borderRadii.pill }}>
+            <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 11, lineHeight: 14, letterSpacing: 1 }} color={badgeColor.fg}>
+              {badge}
+            </Text>
+          </Box>
+        ) : null}
 
         <Box flexDirection="row" alignItems="center" style={{ gap: 8 }}>
           <Icon name="calendar" size={15} color="inkMuted" />
@@ -96,7 +127,9 @@ export function JobCard({
               </Box>
             ) : null}
           </Box>
-          <Button label={actionLabel} variant="primary" size="md" fullWidth={false} onPress={onAction} />
+          {onAction ? (
+            <Button label={actionLabel} variant="primary" size="md" fullWidth={false} onPress={onAction} />
+          ) : null}
         </Box>
       </Box>
     </Pressable>

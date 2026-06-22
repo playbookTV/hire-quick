@@ -11,7 +11,9 @@
       "backgroundColor": "#FBF7F0",
       "resizeMode": "contain"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.hirequick.mobile"
@@ -25,7 +27,15 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "expo-font"
+      "expo-font",
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "HireQuick needs photo access so you can upload your ID for verification.",
+          "cameraPermission": "HireQuick needs camera access so you can take a verification selfie."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": false

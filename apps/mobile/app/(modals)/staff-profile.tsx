@@ -1,11 +1,12 @@
 /**
- * View Profile — matches Figma `Client / 12 View Profile` (28:269): identity
- * header (avatar, name + Verified, rating line), Work tiles, About, Languages /
- * Experience chips, Reviews, and a Message / Invite action bar. Static preview.
+ * View Profile — matches Figma `Client / 12 View Profile` (28:269). Live: usher
+ * profile from `useUsher` and received reviews from `useUsherReviews`. Inviting
+ * happens from an event (the API needs an event context), so the action bar
+ * points the client back to their events.
  */
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Alert, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ScrollView } from 'react-native';
 import { useTheme, Box, Text } from '../../theme/restyle.js';
 import { AppBar } from '../../components/AppBar.js';
 import { Badge } from '../../components/Badge.js';
@@ -13,6 +14,9 @@ import { Button } from '../../components/Button.js';
 import { Icon } from '../../components/Icon.js';
 import { ReviewCard } from '../../components/ReviewCard.js';
 import { SectionHeader } from '../../components/SectionHeader.js';
+import { Loading } from '../../components/Loading.js';
+import { useUsher, useUsherReviews } from '../../lib/hooks.js';
+import { shortDate } from '../../lib/format.js';
 
 function Pill({ label }: { label: string }) {
   const theme = useTheme();
@@ -25,10 +29,34 @@ function Pill({ label }: { label: string }) {
   );
 }
 
+function initials(name: string): string {
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('') || 'U';
+}
+
 export default function StaffProfile(): React.JSX.Element {
   const router = useRouter();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const usher = useUsher(id ?? '');
+  const reviews = useUsherReviews(id ?? '');
+
+  const invite = (): void => {
+    Alert.alert('Invite to an event', 'Open one of your events to invite this usher.');
+    router.back();
+  };
+
+  if (usher.isLoading || !usher.data) {
+    return (
+      <Box flex={1} backgroundColor="bgCanvas">
+        <AppBar showBack inset />
+        <Loading />
+      </Box>
+    );
+  }
+
+  const u = usher.data;
+  const name = u.displayName ?? 'Usher';
 
   return (
     <Box flex={1} backgroundColor="bgCanvas">
@@ -37,72 +65,52 @@ export default function StaffProfile(): React.JSX.Element {
         {/* identity */}
         <Box alignItems="center" style={{ gap: 12 }}>
           <Box style={{ width: 96, height: 96, borderRadius: 48, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandEmeraldTint }}>
-            <Text style={{ fontFamily: 'Fraunces_600SemiBold', fontSize: 22, lineHeight: 28, color: theme.colors.brandEmerald }}>AM</Text>
+            <Text style={{ fontFamily: 'Fraunces_600SemiBold', fontSize: 22, lineHeight: 28, color: theme.colors.brandEmerald }}>{initials(name)}</Text>
           </Box>
           <Box flexDirection="row" alignItems="center" style={{ gap: 8 }}>
-            <Text variant="h1">Ada Martins</Text>
-            <Badge />
+            <Text variant="h1">{name}</Text>
+            {u.verificationStatus === 'VERIFIED' ? <Badge /> : null}
           </Box>
-          <Text variant="bodyLg" color="inkMuted">
-            Usher · Ikoyi, Lagos
-          </Text>
           <Box flexDirection="row" alignItems="center" style={{ gap: 6 }}>
             <Icon name="star" size={16} color="accentGold" />
             <Text variant="label" style={{ fontSize: 15 }} color="inkStrong">
-              4.9
+              {u.ratingAvg.toFixed(1)}
             </Text>
             <Text variant="bodyLg" color="inkFaint">·</Text>
-            <Text variant="bodyLg" color="inkMuted">120 jobs</Text>
+            <Text variant="bodyLg" color="inkMuted">{u.completedJobsCount} jobs</Text>
             <Text variant="bodyLg" color="inkFaint">·</Text>
             <Text variant="label" style={{ fontSize: 13 }} color="statusSuccess">
-              98% reliable
+              {Math.round(u.reliabilityScore)}% reliable
             </Text>
-          </Box>
-        </Box>
-
-        {/* work */}
-        <Box style={{ gap: 12 }}>
-          <Text variant="headingS">Work</Text>
-          <Box flexDirection="row" style={{ gap: 12 }}>
-            {[0, 1, 2].map((i) => (
-              <Box key={i} flex={1} style={{ height: 96, borderRadius: theme.borderRadii.md, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandEmeraldTint }}>
-                <Icon name="image" size={26} color="brandEmerald" />
-              </Box>
-            ))}
           </Box>
         </Box>
 
         {/* about */}
-        <Box style={{ gap: 8 }}>
-          <Text variant="headingS">About</Text>
-          <Text variant="body" color="inkDefault">
-            Professional usher with 5 years across weddings, corporate galas and brand activations. Calm under pressure, impeccable presentation, fluent host.
-          </Text>
-        </Box>
-
-        {/* languages / experience */}
-        <Box style={{ gap: 12 }}>
+        {u.bio ? (
           <Box style={{ gap: 8 }}>
-            <Text variant="labelSm" color="inkMuted">Languages</Text>
-            <Box flexDirection="row" style={{ gap: 8 }}>
-              {['English', 'Yoruba', 'Pidgin'].map((l) => (
-                <Pill key={l} label={l} />
-              ))}
-            </Box>
+            <Text variant="headingS">About</Text>
+            <Text variant="body" color="inkDefault">{u.bio}</Text>
           </Box>
-          <Box style={{ gap: 8 }}>
-            <Text variant="labelSm" color="inkMuted">Experience</Text>
-            <Box flexDirection="row">
-              <Pill label="5 years" />
-            </Box>
+        ) : null}
+
+        {/* experience */}
+        <Box style={{ gap: 8 }}>
+          <Text variant="labelSm" color="inkMuted">Experience</Text>
+          <Box flexDirection="row">
+            <Pill label={`${u.yearsExperience} year${u.yearsExperience === 1 ? '' : 's'}`} />
           </Box>
         </Box>
 
         {/* reviews */}
         <Box style={{ gap: 12 }}>
           <SectionHeader title="Reviews" />
-          <ReviewCard name="Sarah Johnson" date="2 weeks ago" comment="Ada was punctual, polished and ran the welcome desk flawlessly. Guests loved her." />
-          <ReviewCard name="Tunde A." date="1 month ago" comment="Reliable and professional. Will book again for our next gala." />
+          {(reviews.data ?? []).length === 0 ? (
+            <Text variant="bodySm" color="inkMuted">No reviews yet.</Text>
+          ) : (
+            (reviews.data ?? []).map((rv) => (
+              <ReviewCard key={rv.id} name={rv.reviewerName} date={shortDate(rv.createdAt)} comment={rv.comment ?? ''} rating={rv.rating} />
+            ))
+          )}
         </Box>
       </ScrollView>
 
@@ -112,7 +120,7 @@ export default function StaffProfile(): React.JSX.Element {
           <Button label="Message" variant="secondary" onPress={() => router.back()} />
         </Box>
         <Box flex={1}>
-          <Button label="Invite" onPress={() => router.back()} />
+          <Button label="Invite" onPress={invite} />
         </Box>
       </Box>
     </Box>

@@ -18,6 +18,8 @@ import { Chip } from '../../components/Chip.js';
 import { AddPhoto } from '../../components/AddPhoto.js';
 import { StepIndicator } from '../../components/StepIndicator.js';
 import { Icon } from '../../components/Icon.js';
+import { useUpdateProfile } from '../../lib/hooks.js';
+import { useAuth } from '../../lib/auth-context.js';
 
 const LANGUAGES = ['English', 'Yoruba', 'Pidgin', 'French'];
 
@@ -33,10 +35,24 @@ function PhotoTile() {
 export default function ProfileSetup(): React.JSX.Element {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [name, setName] = useState('Ada Martins');
-  const [years, setYears] = useState('5');
-  const [bio, setBio] = useState('');
+  const { user } = useAuth();
+  const update = useUpdateProfile();
+  const [name, setName] = useState(user?.usher?.displayName ?? '');
+  const [years, setYears] = useState(String(user?.usher?.yearsExperience ?? ''));
+  const [bio, setBio] = useState(user?.usher?.bio ?? '');
   const [langs, setLangs] = useState<Record<string, boolean>>({ English: true, Yoruba: true });
+  const [error, setError] = useState<string | null>(null);
+
+  const onContinue = (): void => {
+    setError(null);
+    update.mutate(
+      { displayName: name.trim() || undefined, bio: bio.trim() || undefined, yearsExperience: Number(years) || 0 },
+      {
+        onSuccess: () => router.replace('/(verification)/id-verification'),
+        onError: (e: unknown) => setError(e instanceof Error ? e.message : 'Couldn’t save your profile. Please try again.'),
+      },
+    );
+  };
 
   return (
     <Box flex={1} backgroundColor="bgCanvas">
@@ -75,8 +91,14 @@ export default function ProfileSetup(): React.JSX.Element {
         </Box>
       </Screen>
 
-      <Box backgroundColor="bgSurface" style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: insets.bottom + 16 }}>
-        <Button label="Continue" onPress={() => router.replace('/(modals)/id-verification')} />
+      <Box backgroundColor="bgSurface" style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: insets.bottom + 16, gap: 10 }}>
+        {error ? (
+          <Box flexDirection="row" alignItems="center" backgroundColor="statusDangerTint" borderRadius="md" padding="300" style={{ gap: 8 }}>
+            <Icon name="alert-circle" size={16} color="statusDanger" />
+            <Text variant="bodySm" color="statusDanger" style={{ flex: 1 }}>{error}</Text>
+          </Box>
+        ) : null}
+        <Button label={update.isPending ? 'Saving…' : 'Continue'} onPress={onContinue} disabled={update.isPending} />
       </Box>
     </Box>
   );

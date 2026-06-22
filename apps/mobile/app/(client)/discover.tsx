@@ -1,7 +1,8 @@
 /**
  * Discover — matches Figma `Client / 10 Discover` (27:214): title + subtitle, a
  * search field with a filter affordance, filter chips, and a list of StaffCards.
- * Staff data is stubbed until the Discover API lands.
+ * Live: verified ushers from `useUshers`, filtered by the search text. Tapping a
+ * card opens that usher's profile.
  */
 import { useState } from 'react';
 import { Pressable, ScrollView, TextInput } from 'react-native';
@@ -11,13 +12,10 @@ import { useTheme, Box, Text } from '../../theme/restyle.js';
 import { Chip } from '../../components/Chip.js';
 import { StaffCard } from '../../components/StaffCard.js';
 import { Icon } from '../../components/Icon.js';
+import { Loading } from '../../components/Loading.js';
+import { useUshers } from '../../lib/hooks.js';
 
-const FILTERS = ['Available today', 'Ikoyi', '₦10–20k', '4★+'];
-const STAFF = [
-  { name: 'Ada Martins', meta: '4.9 · 120 jobs · Ikoyi', price: '₦15,000' },
-  { name: 'Bisi Okoro', meta: '4.8 · 86 jobs · Lekki', price: '₦14,000' },
-  { name: 'Chioma Eze', meta: '5.0 · 54 jobs · VI', price: '₦16,000' },
-];
+const FILTERS = ['Available today', 'Ikoyi', '4★+'];
 
 export default function Discover(): React.JSX.Element {
   const router = useRouter();
@@ -25,6 +23,8 @@ export default function Discover(): React.JSX.Element {
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
   const [active, setActive] = useState<Record<string, boolean>>({ 'Available today': true });
+  const ushers = useUshers({ query: query.trim() || undefined, minRating: active['4★+'] ? 4 : undefined });
+  const data = ushers.data ?? [];
 
   return (
     <Box flex={1} backgroundColor="bgCanvas" style={{ paddingTop: insets.top }}>
@@ -77,18 +77,24 @@ export default function Discover(): React.JSX.Element {
         </ScrollView>
 
         {/* staff list */}
-        <Box style={{ gap: 12 }}>
-          {STAFF.map((s) => (
-            <StaffCard
-              key={s.name}
-              name={s.name}
-              meta={s.meta}
-              price={s.price}
-              verified
-              onPress={() => router.push('/(modals)/staff-profile')}
-            />
-          ))}
-        </Box>
+        {ushers.isLoading ? (
+          <Loading />
+        ) : data.length === 0 ? (
+          <Text variant="bodySm" color="inkMuted">No ushers match your search yet.</Text>
+        ) : (
+          <Box style={{ gap: 12 }}>
+            {data.map((u) => (
+              <StaffCard
+                key={u.id}
+                name={u.displayName ?? 'Usher'}
+                meta={`${u.ratingAvg.toFixed(1)} · ${u.completedJobsCount} jobs · ${u.yearsExperience}y exp`}
+                price={u.verificationStatus === 'VERIFIED' ? 'Verified' : ''}
+                verified={u.verificationStatus === 'VERIFIED'}
+                onPress={() => router.push({ pathname: '/(modals)/staff-profile', params: { id: u.id } })}
+              />
+            ))}
+          </Box>
+        )}
       </ScrollView>
     </Box>
   );

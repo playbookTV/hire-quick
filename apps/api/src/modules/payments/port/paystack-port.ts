@@ -16,6 +16,11 @@ export interface TransferResult {
   failureReason?: string;
 }
 
+export interface Bank {
+  name: string;
+  code: string;
+}
+
 export interface PaystackPort {
   /** Start a checkout; returns a hosted authorization URL + the charge reference. */
   initializeCharge(params: {
@@ -25,6 +30,13 @@ export interface PaystackPort {
   }): Promise<{ authorizationUrl: string; reference: string }>;
   /** Verify a charge reference (webhook-confirmed in real life). */
   verifyChargeKobo(reference: string): Promise<{ status: 'success' | 'failed'; amountKobo: number }>;
+  /** Nigerian banks for the withdraw picker (Paystack `GET /bank`). */
+  listBanks(): Promise<Bank[]>;
+  /**
+   * Resolve a NUBAN account number to its registered account name (Paystack
+   * `GET /bank/resolve`). Throws if the account can't be resolved.
+   */
+  resolveAccount(params: { bankCode: string; accountNumber: string }): Promise<{ accountName: string }>;
   createTransferRecipient(params: {
     bankCode: string;
     accountNumber: string;
@@ -70,6 +82,25 @@ export class InMemoryPaystack implements PaystackPort {
 
   verifyChargeKobo(_reference: string): Promise<{ status: 'success' | 'failed'; amountKobo: number }> {
     return Promise.resolve({ status: 'success', amountKobo: 0 });
+  }
+
+  listBanks(): Promise<Bank[]> {
+    return Promise.resolve([
+      { name: 'Access Bank', code: '044' },
+      { name: 'Guaranty Trust Bank', code: '058' },
+      { name: 'Zenith Bank', code: '057' },
+      { name: 'United Bank for Africa', code: '033' },
+      { name: 'Kuda Bank', code: '50211' },
+      { name: 'Opay', code: '999992' },
+    ]);
+  }
+
+  resolveAccount(params: {
+    bankCode: string;
+    accountNumber: string;
+  }): Promise<{ accountName: string }> {
+    // Deterministic fake so ledger/withdraw tests stay network-free.
+    return Promise.resolve({ accountName: `TEST ACCOUNT ${params.accountNumber.slice(-4)}` });
   }
 
   createTransferRecipient(): Promise<{ recipientCode: string }> {

@@ -5,12 +5,18 @@
  */
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { z } from 'zod';
-import { prisma } from '@hq/database';
-import { createEventSchema } from '@hq/shared';
+import { prisma, type Prisma } from '@hq/database';
+import {
+  createEventSchema,
+  updateEventSchema,
+  type UpdateEventInput,
+  ACCOMMODATION_REQUIRED_FROM,
+} from '@hq/shared';
 import { ApiError } from '../../app.js';
 import { requireAuth, type AuthedRequest } from '../auth/middleware.js';
 import { requireIdempotencyKey } from '../payments/http/middleware.js';
 import { confirmBatch } from '../bookings/service.js';
+import { writeAudit } from '../audit.js';
 import type { Deps } from '../payments/service.js';
 
 type Handler = (req: AuthedRequest, res: Response) => Promise<void>;
@@ -30,6 +36,29 @@ async function verifiedUsherFor(userId: string): Promise<string> {
   if (!u) throw new ApiError(403, 'NOT_AN_USHER', 'only ushers do this');
   if (u.verificationStatus !== 'VERIFIED') throw new ApiError(403, 'NOT_VERIFIED', 'verification required');
   return u.id;
+}
+/** Resolve the usher id without the verification gate (for read/save flows). */
+async function usherFor(userId: string): Promise<string> {
+  const u = await prisma.usher.findFirst({ where: { userId } });
+  if (!u) throw new ApiError(403, 'NOT_AN_USHER', 'only ushers do this');
+  return u.id;
+}
+
+/** Map a validated partial-event payload to a Prisma update (only provided keys). */
+function eventUpdateData(b: UpdateEventInput): Prisma.EventUpdateInput {
+  const data: Prisma.EventUpdateInput = {};
+  if (b.title !== undefined) data.title = b.title;
+  if (b.venue !== undefined) data.venue = b.venue;
+  if (b.category !== undefined) data.category = b.category;
+  if (b.eventDate !== undefined) data.eventDate = b.eventDate;
+  if (b.startTime !== undefined) data.startTime = b.startTime;
+  if (b.endTime !== undefined) data.endTime = b.endTime;
+  if (b.headcount !== undefined) data.headcount = b.headcount;
+  if (b.budgetPerHeadKobo !== undefined) data.budgetPerHead = b.budgetPerHeadKobo;
+  if (b.dressCode !== undefined) data.dressCode = b.dressCode ?? null;
+  if (b.accommodation !== undefined) data.accommodation = b.accommodation ?? null;
+  if (b.requirements !== undefined) data.preferences = { requirements: b.requirements };
+  return data;
 }
 
 export function eventsRouter(deps: Deps): Router {
@@ -91,6 +120,44 @@ export function eventsRouter(deps: Deps): Router {
     }),
   );
 
+  // client edits own event — only while OPEN/PARTIALLY_STAFFED with no bookings yet
+  r.patch(
+    '/events/:id',
+    wrap(async (req, res) => {
+      const clientId = await clientFor(req.auth.userId);
+      const eventId = String(req.params.id);
+      const existing = await prisma.event.findUniqueOrThrow({
+        where: { id: eventId },
+        include: { _count: { select: { bookings: true } } },
+      });
+      if (existing.clientId !== clientId) throw new ApiError(403, 'FORBIDDEN', 'not your event');
+      const locked =
+        (existing.status !== 'OPEN' && existing.status !== 'PARTIALLY_STAFFED') ||
+        existing._count.bookings > 0;
+      if (locked) throw new ApiError(409, 'EVENT_LOCKED', 'this event can no longer be edited');
+
+      const b = updateEventSchema.parse(req.body);
+
+      // Accommodation invariant, checked on the merged record (PRD late-night rule).
+      const mergedEnd = b.endTime ?? existing.endTime;
+      const mergedAccommodation =
+        b.accommodation !== undefined ? b.accommodation : existing.accommodation;
+      if (mergedEnd >= ACCOMMODATION_REQUIRED_FROM && mergedAccommodation == null) {
+        throw new ApiError(400, 'VALIDATION', 'accommodation is required for events ending at or after 22:00');
+      }
+
+      const data = eventUpdateData(b);
+      const updated = await prisma.event.update({ where: { id: eventId }, data });
+      await writeAudit({
+        actorId: req.auth.userId,
+        action: 'EVENT_UPDATED',
+        target: eventId,
+        metadata: { fields: Object.keys(data) },
+      });
+      res.json(updated);
+    }),
+  );
+
   // usher applies
   r.post(
     '/events/:id/apply',
@@ -103,6 +170,57 @@ export function eventsRouter(deps: Deps): Router {
         create: { eventId, usherId, status: 'APPLIED' },
       });
       res.status(201).json(app);
+    }),
+  );
+
+  // usher's own applications (the "Applied" tab)
+  r.get(
+    '/me/applications',
+    wrap(async (req, res) => {
+      const usherId = await usherFor(req.auth.userId);
+      res.json(
+        await prisma.application.findMany({
+          where: { usherId },
+          orderBy: { createdAt: 'desc' },
+          include: { event: true },
+        }),
+      );
+    }),
+  );
+
+  // usher saves / unsaves a job (the "Saved" tab)
+  r.post(
+    '/events/:id/save',
+    wrap(async (req, res) => {
+      const usherId = await usherFor(req.auth.userId);
+      const eventId = String(req.params.id);
+      const saved = await prisma.savedJob.upsert({
+        where: { usherId_eventId: { usherId, eventId } },
+        update: {},
+        create: { usherId, eventId },
+      });
+      res.status(201).json({ id: saved.id, saved: true });
+    }),
+  );
+  r.delete(
+    '/events/:id/save',
+    wrap(async (req, res) => {
+      const usherId = await usherFor(req.auth.userId);
+      const eventId = String(req.params.id);
+      await prisma.savedJob.deleteMany({ where: { usherId, eventId } });
+      res.json({ saved: false });
+    }),
+  );
+  r.get(
+    '/me/saved-jobs',
+    wrap(async (req, res) => {
+      const usherId = await usherFor(req.auth.userId);
+      const rows = await prisma.savedJob.findMany({
+        where: { usherId },
+        orderBy: { createdAt: 'desc' },
+        include: { event: true },
+      });
+      res.json(rows.map((s) => s.event));
     }),
   );
 

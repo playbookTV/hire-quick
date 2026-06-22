@@ -1,20 +1,41 @@
 /**
  * Usher Profile tab — matches Figma `Usher / 07 Reliability` (51:210), the
- * Profile destination in the usher tab bar: identity row, a three-stat summary,
- * a reliability-score breakdown, a "protect your standing" note, and recent
- * reviews. Stub data until the usher reputation API is wired.
+ * Profile destination in the usher tab bar. Live: identity + stats from
+ * `useAuth().user.usher`, the reliability score from `reliabilityScore`, and
+ * received reviews from `useUsherReviews`.
  */
-import { ScrollView } from 'react-native';
+import { Pressable, ScrollView, RefreshControl } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Box, Text } from '../../theme/restyle.js';
+import { useTheme, Box, Text } from '../../theme/restyle.js';
 import { Avatar } from '../../components/Avatar.js';
+import { Icon } from '../../components/Icon.js';
 import { SectionHeader } from '../../components/SectionHeader.js';
 import { ProgressBar } from '../../components/ProgressBar.js';
 import { ReviewCard } from '../../components/ReviewCard.js';
 import { Button } from '../../components/Button.js';
 import { shadowSm } from '../../theme/shadows.js';
 import { useAuth } from '../../lib/auth-context.js';
+import { useUsherReviews } from '../../lib/hooks.js';
+import { shortDate } from '../../lib/format.js';
 import type { Theme } from '../../theme/theme.js';
+
+function NavRow({ icon, label, sub, onPress }: Readonly<{ icon: React.ComponentProps<typeof Icon>['name']; label: string; sub?: string; onPress: () => void }>) {
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={sub ? `${label}. ${sub}` : label}>
+      <Box flexDirection="row" alignItems="center" backgroundColor="bgSurface" borderWidth={1} borderColor="borderDefault" borderRadius="lg" padding="400" style={[{ gap: 12 }, shadowSm]}>
+        <Icon name={icon} size={20} color="inkMuted" />
+        <Box flex={1} style={{ gap: 2 }}>
+          <Text variant="titleM">{label}</Text>
+          {sub ? <Text variant="bodySm" color="inkMuted">{sub}</Text> : null}
+        </Box>
+        <Icon name="chevron-right" size={20} color="inkMuted" />
+      </Box>
+    </Pressable>
+  );
+}
+
+const STATUS_LABEL: Record<string, string> = { VERIFIED: 'Verified', PENDING: 'Pending verification', REJECTED: 'Verification rejected' };
 
 function Stat({ value, label, color }: { value: string; label: string; color: keyof Theme['colors'] }) {
   return (
@@ -29,54 +50,94 @@ function Stat({ value, label, color }: { value: string; label: string; color: ke
   );
 }
 
-function ScoreRow({ label, value, color = 'inkStrong' }: { label: string; value: string; color?: keyof Theme['colors'] }) {
-  return (
-    <Box flexDirection="row" alignItems="center" justifyContent="space-between">
-      <Text variant="body" color="inkMuted">
-        {label}
-      </Text>
-      <Text variant="label" style={{ fontSize: 15 }} color={color}>
-        {value}
-      </Text>
-    </Box>
-  );
-}
-
 export default function UsherProfile(): React.JSX.Element {
   const insets = useSafeAreaInsets();
-  const { logout } = useAuth();
+  const router = useRouter();
+  const theme = useTheme();
+  const { user, logout } = useAuth();
+  const usher = user?.usher;
+  const reviews = useUsherReviews(usher?.id ?? '');
+
+  const name = usher?.displayName ?? 'Your profile';
+  const reliability = Math.round(usher?.reliabilityScore ?? 0);
+  const years = usher?.yearsExperience ?? 0;
 
   return (
     <Box flex={1} backgroundColor="bgCanvas" style={{ paddingTop: insets.top }}>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24, gap: 16 }} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24, gap: 16 }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={reviews.isFetching} onRefresh={() => { void reviews.refetch(); }} />}
+      >
         {/* identity */}
         <Box flexDirection="row" alignItems="center" style={{ gap: 12 }}>
-          <Avatar name="Ada Martins" size={52} />
+          <Avatar name={name} size={52} />
           <Box flex={1} style={{ gap: 2 }}>
-            <Text variant="headingS">Ada Martins</Text>
-            <Text variant="bodySm" color="statusSuccess">
-              Usher · Verified
+            <Text variant="headingS">{name}</Text>
+            <Text variant="bodySm" color={usher?.verificationStatus === 'VERIFIED' ? 'statusSuccess' : 'inkMuted'}>
+              Usher · {STATUS_LABEL[usher?.verificationStatus ?? 'PENDING'] ?? 'Pending'}
+              {years > 0 ? ` · ${years}y exp` : ''}
             </Text>
           </Box>
+          <Pressable
+            onPress={() => router.push('/(modals)/edit-profile')}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Edit profile"
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+              borderRadius: theme.borderRadii.pill,
+              borderWidth: 1,
+              borderColor: theme.colors.borderDefault,
+              backgroundColor: theme.colors.bgSurface,
+            }}
+          >
+            <Icon name="edit-2" size={14} color="brandEmerald" />
+            <Text variant="label" style={{ fontSize: 13 }} color="brandEmerald">Edit</Text>
+          </Pressable>
         </Box>
+
+        {/* bio */}
+        {usher?.bio ? (
+          <Text variant="body" color="inkDefault">{usher.bio}</Text>
+        ) : (
+          <Pressable onPress={() => router.push('/(modals)/edit-profile')} accessibilityRole="button" accessibilityLabel="Add a bio — edit profile">
+            <Text variant="bodySm" color="inkMuted">
+              Add a short bio so clients know who they’re booking. <Text variant="bodySm" color="brandEmerald">Edit profile →</Text>
+            </Text>
+          </Pressable>
+        )}
 
         {/* summary stats */}
         <Box flexDirection="row" backgroundColor="bgSurface" borderWidth={1} borderColor="borderDefault" borderRadius="lg" padding="400" style={shadowSm}>
-          <Stat value="4.9" label="Rating" color="accentGoldStrong" />
-          <Stat value="120" label="Jobs done" color="inkStrong" />
-          <Stat value="98%" label="Reliability" color="statusSuccess" />
+          <Stat value={(usher?.ratingAvg ?? 0).toFixed(1)} label="Rating" color="accentGoldStrong" />
+          <Stat value={String(usher?.completedJobsCount ?? 0)} label="Jobs done" color="inkStrong" />
+          <Stat value={`${reliability}%`} label="Reliability" color="statusSuccess" />
+        </Box>
+
+        {/* quick links */}
+        <Box style={{ gap: 10 }}>
+          <NavRow icon="calendar" label="Availability" sub="Set the days you can work" onPress={() => router.push('/(usher)/calendar')} />
+          <NavRow icon="credit-card" label="Wallet & withdrawals" sub="Balance, activity and bank payouts" onPress={() => router.push('/(usher)/wallet')} />
+          {usher?.verificationStatus !== 'VERIFIED' ? (
+            <NavRow icon="shield" label="Verify your identity" sub="Required before you can apply" onPress={() => router.push('/(verification)/id-verification')} />
+          ) : null}
         </Box>
 
         {/* reliability score */}
         <Box backgroundColor="bgSurface" borderWidth={1} borderColor="borderDefault" borderRadius="lg" padding="400" style={{ gap: 12 }}>
           <Box flexDirection="row" alignItems="center" justifyContent="space-between">
             <Text variant="titleM">Reliability score</Text>
-            <Text variant="amountM" color="statusSuccess">98%</Text>
+            <Text variant="amountM" color="statusSuccess">{reliability}%</Text>
           </Box>
-          <ProgressBar progress={0.98} color="statusSuccess" />
-          <ScoreRow label="On-time arrivals" value="118" />
-          <ScoreRow label="Late cancellations" value="2" color="accentGoldStrong" />
-          <ScoreRow label="No-shows" value="0" color="statusSuccess" />
+          <ProgressBar progress={reliability / 100} color="statusSuccess" />
+          <Text variant="bodySm" color="inkMuted">
+            Based on on-time arrivals, cancellations and no-shows across your jobs.
+          </Text>
         </Box>
 
         {/* protect standing */}
@@ -90,9 +151,17 @@ export default function UsherProfile(): React.JSX.Element {
         </Box>
 
         <SectionHeader title="Recent reviews" />
-        <ReviewCard name="Sarah Johnson" date="2 weeks ago" comment="Punctual, polished and ran the welcome desk flawlessly." rating={5} />
+        {reviews.isError ? (
+          <Text variant="bodySm" color="statusDanger">Couldn’t load your reviews. Pull down to retry.</Text>
+        ) : (reviews.data ?? []).length === 0 ? (
+          <Text variant="bodySm" color="inkMuted">No reviews yet — they’ll appear after your first completed job.</Text>
+        ) : (
+          (reviews.data ?? []).map((rv) => (
+            <ReviewCard key={rv.id} name={rv.reviewerName} date={shortDate(rv.createdAt)} comment={rv.comment ?? ''} rating={rv.rating} />
+          ))
+        )}
 
-        <Button label="Sign out" variant="ghost" onPress={() => logout()} />
+        <Button label="Sign out" variant="ghost" onPress={() => { void logout(); }} />
       </ScrollView>
     </Box>
   );

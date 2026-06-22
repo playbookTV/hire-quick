@@ -7,20 +7,24 @@ import { prisma } from '@hq/database';
 import { autoComplete, noShowSweep } from '../bookings/service.js';
 import { reconcile } from '../payments/ledger/reconciliation.js';
 import { runCommissionSweep, type Deps } from '../payments/service.js';
+import { noopGateway, type RealtimeGateway } from '../../realtime/gateway.js';
+import { writeAudit, verifyAuditChain } from '../audit.js';
 import { env } from '../../env.js';
+
+const DAY_MS = 86_400_000;
 
 function log(message: string): void {
    
   console.log(`[job] ${message}`);
 }
 
-export async function jobAutoComplete(): Promise<void> {
-  const r = await autoComplete();
+export async function jobAutoComplete(realtime: RealtimeGateway = noopGateway): Promise<void> {
+  const r = await autoComplete(undefined, undefined, realtime);
   if (r.completed.length) log(`auto-completed ${String(r.completed.length)} booking(s)`);
 }
 
-export async function jobNoShow(): Promise<void> {
-  const r = await noShowSweep();
+export async function jobNoShow(realtime: RealtimeGateway = noopGateway): Promise<void> {
+  const r = await noShowSweep(undefined, undefined, realtime);
   if (r.noShows.length) log(`flagged ${String(r.noShows.length)} no-show(s)`);
 }
 
@@ -50,4 +54,43 @@ export async function jobTransferRetry(): Promise<void> {
     select: { id: true },
   });
   if (stuck.length) log(`⚠ ${String(stuck.length)} withdrawal(s) stuck in PROCESSING >30m`);
+}
+
+/**
+ * NDPR retention purge (TRD §14). Removes transient PII past its window —
+ * consumed/expired OTP codes and stale device tokens. Never touches financial
+ * or ledger rows (those keep the 7-year obligation).
+ */
+export async function jobRetentionPurge(): Promise<void> {
+  const now = Date.now();
+  const otpCutoff = new Date(now - env.RETENTION_OTP_DAYS * DAY_MS);
+  const deviceCutoff = new Date(now - env.RETENTION_DEVICE_TOKEN_DAYS * DAY_MS);
+
+  const otp = await prisma.verificationCode.deleteMany({
+    where: {
+      createdAt: { lt: otpCutoff },
+      OR: [{ consumedAt: { not: null } }, { expiresAt: { lt: new Date(now) } }],
+    },
+  });
+  const devices = await prisma.deviceToken.deleteMany({ where: { lastSeenAt: { lt: deviceCutoff } } });
+
+  if (otp.count || devices.count) {
+    log(`retention purge: ${String(otp.count)} otp code(s), ${String(devices.count)} device token(s)`);
+  }
+  await writeAudit({
+    actorId: null,
+    action: 'retention.purge',
+    target: 'system',
+    metadata: { verificationCodes: otp.count, deviceTokens: devices.count },
+  });
+}
+
+/** Recompute the audit hash chain and alarm loudly on any break (TRD §14). */
+export async function jobAuditVerify(): Promise<void> {
+  const r = await verifyAuditChain();
+  if (r.ok) {
+    log(`audit chain ok: ${String(r.checked)} chained, ${String(r.legacy)} legacy`);
+    return;
+  }
+  log(`⚠ AUDIT CHAIN BROKEN at seq=${r.brokenAt?.seq ?? '?'} (${r.brokenAt?.reason ?? 'unknown'})`);
 }

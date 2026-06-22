@@ -3,10 +3,25 @@
  * verify screen feeds the result into `useAuth().login`.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { CreateEventInput, UserRole } from '@hq/shared';
-import { api } from './client.js';
+import type { CreateEventInput, UpdateEventInput, UserRole } from '@hq/shared';
+import { api, request, newIdempotencyKey } from './client.js';
 import { queryKeys } from './query.js';
-import type { EventResource, AuthResult } from './types.js';
+import type {
+  EventResource,
+  AuthResult,
+  Booking,
+  Message,
+  Application,
+  MyApplication,
+  UsherListItem,
+  Review,
+  WalletSummary,
+  WalletActivity,
+  BankAccount,
+  Bank,
+  Availability,
+  ConfirmResult,
+} from './types.js';
 
 export function useRequestOtp() {
   return useMutation({
@@ -51,5 +66,304 @@ export function useCreateEvent() {
   return useMutation({
     mutationFn: (input: CreateEventInput) => api.post<EventResource>('/api/events', input),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.events }),
+  });
+}
+
+export function useUpdateEvent(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateEventInput) => api.patch<EventResource>(`/api/events/${id}`, input),
+    onSuccess: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: queryKeys.events }),
+        qc.invalidateQueries({ queryKey: queryKeys.event(id) }),
+      ]),
+  });
+}
+
+// ---------------------------------------------------------------- bookings
+export function useBookings() {
+  return useQuery({ queryKey: queryKeys.bookings, queryFn: () => api.get<Booking[]>('/api/bookings') });
+}
+
+export function useBooking(id: string) {
+  return useQuery({
+    queryKey: queryKeys.booking(id),
+    queryFn: () => api.get<Booking>(`/api/bookings/${id}`),
+    enabled: !!id,
+  });
+}
+
+export function useBookingMessages(id: string) {
+  return useQuery({
+    queryKey: queryKeys.bookingMessages(id),
+    queryFn: () => api.get<Message[]>(`/api/bookings/${id}/messages`),
+    enabled: !!id,
+    refetchInterval: 5000, // light polling until Socket.IO is wired
+  });
+}
+
+export function useSendMessage(bookingId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (content: string) => api.post<Message>(`/api/bookings/${bookingId}/messages`, { content }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.bookingMessages(bookingId) }),
+  });
+}
+
+export function useGenerateCheckin(bookingId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<{ generated: boolean; devCode?: string }>(`/api/bookings/${bookingId}/checkin/generate`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.booking(bookingId) }),
+  });
+}
+
+export function useVerifyCheckin(bookingId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (code: string) => api.post<{ status: string }>(`/api/bookings/${bookingId}/checkin/verify`, { code }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.booking(bookingId) }),
+  });
+}
+
+export function useCompleteBooking(bookingId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<{ status: string }>(`/api/bookings/${bookingId}/complete`),
+    onSuccess: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: queryKeys.booking(bookingId) }),
+        qc.invalidateQueries({ queryKey: queryKeys.bookings }),
+      ]),
+  });
+}
+
+export function useCreateDispute(bookingId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { reason: string; note?: string }) => api.post<{ id: string }>(`/api/bookings/${bookingId}/disputes`, vars),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.booking(bookingId) }),
+  });
+}
+
+export function useCreateReview(bookingId: string) {
+  return useMutation({
+    mutationFn: (vars: { rating: number; comment?: string }) => api.post<{ id: string }>(`/api/bookings/${bookingId}/reviews`, vars),
+  });
+}
+
+export function useCancelBooking(bookingId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (reason?: string) =>
+      api.post<{ status: string }>(`/api/bookings/${bookingId}/cancel`, { reason }, { idempotencyKey: newIdempotencyKey() }),
+    onSuccess: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: queryKeys.booking(bookingId) }),
+        qc.invalidateQueries({ queryKey: queryKeys.bookings }),
+      ]),
+  });
+}
+
+// --------------------------------------------------------- events / applications
+export function useApplyToEvent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (eventId: string) => api.post<{ id: string; status: string }>(`/api/events/${eventId}/apply`),
+    onSuccess: (_d, eventId) =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: queryKeys.event(eventId) }),
+        qc.invalidateQueries({ queryKey: queryKeys.myApplications }),
+      ]),
+  });
+}
+
+export function useApplications(eventId: string) {
+  return useQuery({
+    queryKey: queryKeys.applications(eventId),
+    queryFn: () => api.get<Application[]>(`/api/events/${eventId}/applications`),
+    enabled: !!eventId,
+    refetchInterval: 10_000, // surface new applicants while the client reviews
+  });
+}
+
+/** The usher's own applications — the "Applied" tab. */
+export function useMyApplications() {
+  return useQuery({
+    queryKey: queryKeys.myApplications,
+    queryFn: () => api.get<MyApplication[]>('/api/me/applications'),
+  });
+}
+
+/** Saved (bookmarked) jobs — the "Saved" tab. */
+export function useSavedJobs() {
+  return useQuery({
+    queryKey: queryKeys.savedJobs,
+    queryFn: () => api.get<EventResource[]>('/api/me/saved-jobs'),
+  });
+}
+
+export function useSaveJob() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (eventId: string) => api.post<{ id: string; saved: boolean }>(`/api/events/${eventId}/save`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.savedJobs }),
+  });
+}
+
+export function useUnsaveJob() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (eventId: string) =>
+      request<{ saved: boolean }>(`/api/events/${eventId}/save`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.savedJobs }),
+  });
+}
+
+export function usePatchApplication(eventId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; status: 'SHORTLISTED' | 'ACCEPTED' | 'REJECTED' }) =>
+      api.patch<{ id: string; status: string }>(`/api/applications/${vars.id}`, { status: vars.status }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.applications(eventId) }),
+  });
+}
+
+export function useConfirmEvent(eventId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { applicationIds: string[]; email: string }) =>
+      api.post<ConfirmResult>(`/api/events/${eventId}/confirm`, vars, { idempotencyKey: newIdempotencyKey() }),
+    onSuccess: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: queryKeys.event(eventId) }),
+        qc.invalidateQueries({ queryKey: queryKeys.bookings }),
+      ]),
+  });
+}
+
+// ------------------------------------------------------------ ushers / discovery
+function qs(filters?: Record<string, unknown>): string {
+  if (!filters) return '';
+  const p = new URLSearchParams();
+  for (const [k, v] of Object.entries(filters)) {
+    if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') p.set(k, String(v));
+  }
+  const s = p.toString();
+  return s ? `?${s}` : '';
+}
+
+export function useUshers(filters?: Record<string, unknown>) {
+  return useQuery({
+    queryKey: queryKeys.ushers(filters),
+    queryFn: () => api.get<UsherListItem[]>(`/api/ushers${qs(filters)}`),
+  });
+}
+
+export function useUsher(id: string) {
+  return useQuery({
+    queryKey: queryKeys.usher(id),
+    queryFn: () => api.get<UsherListItem>(`/api/ushers/${id}`),
+    enabled: !!id,
+  });
+}
+
+export function useUsherReviews(id: string) {
+  return useQuery({
+    queryKey: queryKeys.usherReviews(id),
+    queryFn: () => api.get<Review[]>(`/api/ushers/${id}/reviews`),
+    enabled: !!id,
+  });
+}
+
+// -------------------------------------------------------------------- wallet
+export function useWallet() {
+  return useQuery({ queryKey: queryKeys.wallet, queryFn: () => api.get<WalletSummary>('/api/payments/wallet') });
+}
+
+export function useWalletActivity() {
+  return useQuery({ queryKey: queryKeys.walletActivity, queryFn: () => api.get<WalletActivity[]>('/api/payments/wallet/activity') });
+}
+
+export function useBankAccounts() {
+  return useQuery({ queryKey: queryKeys.bankAccounts, queryFn: () => api.get<BankAccount[]>('/api/payments/bank-accounts') });
+}
+
+/** Nigerian banks for the withdraw picker (static — cache hard). */
+export function useBanks() {
+  return useQuery({
+    queryKey: queryKeys.banks,
+    queryFn: () => api.get<Bank[]>('/api/payments/banks'),
+    staleTime: 24 * 60 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+  });
+}
+
+/** Lazily resolve a NUBAN → account name (the bank-app confirm step). */
+export function useResolveAccount() {
+  return useMutation({
+    mutationFn: (vars: { bankCode: string; accountNumber: string }) =>
+      api.get<{ accountName: string }>(
+        `/api/payments/resolve-account?bankCode=${encodeURIComponent(vars.bankCode)}&accountNumber=${encodeURIComponent(vars.accountNumber)}`,
+      ),
+  });
+}
+
+export function useAddBankAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    // accountName is resolved server-side, so the client only sends bank + number.
+    mutationFn: (vars: { bankCode: string; accountNumber: string }) =>
+      api.post<BankAccount>('/api/payments/bank-accounts', vars),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.bankAccounts }),
+  });
+}
+
+export function useWithdraw() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { bankAccountId: string; amountKobo: number }) =>
+      api.post<{ id: string; status: string }>('/api/payments/withdrawals', vars, { idempotencyKey: newIdempotencyKey() }),
+    onSuccess: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: queryKeys.wallet }),
+        qc.invalidateQueries({ queryKey: queryKeys.walletActivity }),
+        qc.invalidateQueries({ queryKey: queryKeys.me }),
+      ]),
+  });
+}
+
+// --------------------------------------------------------- verification / availability
+export function useSubmitVerification() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { idDocumentUrl: string; selfieUrl: string }) =>
+      api.post<{ id: string; status: string }>('/api/me/verification', vars),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.me }),
+  });
+}
+
+export function useMyVerifications() {
+  return useQuery({
+    queryKey: ['verification'] as const,
+    queryFn: () => api.get<{ id: string; status: string; reason: string | null; createdAt: string }[]>('/api/me/verification'),
+  });
+}
+
+export function useAvailability(from?: string, to?: string) {
+  const range = `${from ?? ''}_${to ?? ''}`;
+  return useQuery({
+    queryKey: queryKeys.availability(range),
+    queryFn: () => api.get<Availability[]>(`/api/me/availability${qs({ from, to })}`),
+  });
+}
+
+export function useSetAvailability() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { date: string; status: 'AVAILABLE' | 'UNAVAILABLE' }) =>
+      request<Availability>('/api/me/availability', { method: 'PUT', body: vars }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['availability'] }),
   });
 }

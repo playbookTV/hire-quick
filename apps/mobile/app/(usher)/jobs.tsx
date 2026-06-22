@@ -1,71 +1,131 @@
 /**
- * Browse Jobs — matches Figma `Usher / 02 Browse Jobs` (45:86): title + count,
- * filter chips, and a JobCard list. Stub jobs until the usher jobs feed is wired;
- * tapping a card opens the job details.
+ * My Jobs — matches Figma `Usher / 02 Browse Jobs` (45:86), extended with three
+ * segments. Available = the OPEN/PARTIALLY_STAFFED feed (`useEvents`), with a
+ * bookmark toggle and an "Applied" badge. Applied = the usher's own applications
+ * (`useMyApplications`) with status. Saved = bookmarked jobs (`useSavedJobs`).
  */
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { ScrollView } from 'react-native';
+import { ScrollView, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Box, Text } from '../../theme/restyle.js';
-import { Chip } from '../../components/Chip.js';
+import { Segmented } from '../../components/Segmented.js';
 import { JobCard } from '../../components/JobCard.js';
 import { EmptyState } from '../../components/EmptyState.js';
+import { Loading } from '../../components/Loading.js';
+import { useEvents, useMyApplications, useSavedJobs, useSaveJob, useUnsaveJob } from '../../lib/hooks.js';
+import { money, shortDate } from '../../lib/format.js';
+import type { ApplicationStatus, EventResource } from '../../lib/types.js';
 
-const FILTERS = ['This week', '< 10 km', '₦12k+'];
-const JOBS = [
-  { title: 'Adeola’s Wedding', pay: '₦15,000', date: 'Sat 12 Jul', distance: 'Ikoyi · 4km', dress: 'Black tie', rating: '4.8' },
-  { title: 'Corporate Gala', pay: '₦16,000', date: 'Fri 18 Jul', distance: 'VI · 7km', dress: 'Formal', rating: '4.9' },
-  { title: 'Brand Launch', pay: '₦13,500', date: 'Sun 20 Jul', distance: 'Lekki · 9km', dress: 'Smart casual', rating: '4.6' },
+type Tab = 'available' | 'applied' | 'saved';
+const TABS = [
+  { value: 'available' as const, label: 'Available' },
+  { value: 'applied' as const, label: 'Applied' },
+  { value: 'saved' as const, label: 'Saved' },
 ];
+
+const STATUS_BADGE: Record<ApplicationStatus, { label: string; tone: 'gold' | 'emerald' | 'danger' | 'muted' }> = {
+  APPLIED: { label: 'Applied', tone: 'muted' },
+  SHORTLISTED: { label: 'Shortlisted', tone: 'gold' },
+  ACCEPTED: { label: 'Booked', tone: 'emerald' },
+  REJECTED: { label: 'Not selected', tone: 'danger' },
+};
 
 export default function Jobs(): React.JSX.Element {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [active, setActive] = useState<Record<string, boolean>>({ 'This week': true });
+  const [tab, setTab] = useState<Tab>('available');
+
+  const events = useEvents();
+  const applied = useMyApplications();
+  const saved = useSavedJobs();
+  const saveJob = useSaveJob();
+  const unsaveJob = useUnsaveJob();
+
+  const open = (id: string): void => router.push({ pathname: '/(modals)/event-details', params: { id } });
+
+  const appliedIds = useMemo(() => new Set((applied.data ?? []).map((a) => a.event.id)), [applied.data]);
+  const savedIds = useMemo(() => new Set((saved.data ?? []).map((e) => e.id)), [saved.data]);
+
+  const active = tab === 'available' ? events : tab === 'applied' ? applied : saved;
+  const onRefresh = (): void => {
+    void Promise.all([events.refetch(), applied.refetch(), saved.refetch()]);
+  };
+
+  const renderEventCard = (e: EventResource, opts?: { badge?: string; badgeTone?: 'gold' | 'emerald' | 'danger' | 'muted' }): React.JSX.Element => {
+    const isSaved = savedIds.has(e.id);
+    return (
+      <JobCard
+        key={e.id}
+        title={e.title}
+        pay={money(e.budgetPerHead)}
+        date={shortDate(e.eventDate)}
+        distance={e.venue}
+        dress={e.dressCode ?? e.category}
+        badge={opts?.badge}
+        badgeTone={opts?.badgeTone}
+        saved={isSaved}
+        onToggleSave={() => (isSaved ? unsaveJob.mutate(e.id) : saveJob.mutate(e.id))}
+        actionLabel="View"
+        onAction={() => open(e.id)}
+        onPress={() => open(e.id)}
+      />
+    );
+  };
 
   return (
     <Box flex={1} backgroundColor="bgCanvas" style={{ paddingTop: insets.top }}>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24, gap: 16 }} showsVerticalScrollIndicator={false}>
-        <Box style={{ gap: 4 }}>
-          <Text variant="h2">Find work</Text>
-          <Text variant="bodySm" color="inkMuted">
-            12 jobs near you in Lagos
-          </Text>
-        </Box>
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24, gap: 16 }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={active.isFetching} onRefresh={onRefresh} />}
+      >
+        <Text variant="h2">My jobs</Text>
+        <Segmented options={TABS} value={tab} onChange={setTab} />
 
-        <Box flexDirection="row" style={{ gap: 8 }}>
-          {FILTERS.map((f) => (
-            <Chip key={f} label={f} selected={!!active[f]} onPress={() => setActive((s) => ({ ...s, [f]: !s[f] }))} />
-          ))}
-        </Box>
-
-        {JOBS.length === 0 ? (
-          <Box style={{ paddingTop: 48 }}>
+        {active.isLoading ? (
+          <Loading />
+        ) : active.isError ? (
+          <Box style={{ paddingTop: 40 }}>
             <EmptyState
-              icon="search"
-              title="No jobs match your filters"
-              subtitle="Try widening your distance or dates — new jobs are posted across Lagos every day."
-              actionLabel="Adjust filters"
-              onAction={() => setActive({})}
+              icon="wifi-off"
+              title="Couldn’t load jobs"
+              subtitle="Check your connection and try again."
+              actionLabel="Try again"
+              onAction={onRefresh}
             />
           </Box>
-        ) : (
-          <Box style={{ gap: 12 }}>
-            {JOBS.map((j) => (
-              <JobCard
-                key={j.title}
-                title={j.title}
-                pay={j.pay}
-                date={j.date}
-                distance={j.distance}
-                dress={j.dress}
-                rating={j.rating}
-                onAction={() => router.push('/(modals)/event-details')}
-                onPress={() => router.push('/(modals)/event-details')}
-              />
-            ))}
+        ) : tab === 'available' ? (
+          (events.data ?? []).length === 0 ? (
+            <Box style={{ paddingTop: 40 }}>
+              <EmptyState icon="search" title="No open jobs right now" subtitle="New jobs are posted across Lagos every day — check back soon." actionLabel="Refresh" onAction={() => { void events.refetch(); }} />
+            </Box>
+          ) : (
+            <Box style={{ gap: 12 }}>
+              {(events.data ?? []).map((e) =>
+                renderEventCard(e, appliedIds.has(e.id) ? { badge: 'Applied', badgeTone: 'emerald' } : undefined),
+              )}
+            </Box>
+          )
+        ) : tab === 'applied' ? (
+          (applied.data ?? []).length === 0 ? (
+            <Box style={{ paddingTop: 40 }}>
+              <EmptyState icon="send" title="No applications yet" subtitle="Apply to jobs in the Available tab and track their status here." actionLabel="Browse jobs" onAction={() => setTab('available')} />
+            </Box>
+          ) : (
+            <Box style={{ gap: 12 }}>
+              {(applied.data ?? []).map((a) => {
+                const b = STATUS_BADGE[a.status];
+                return renderEventCard(a.event, { badge: b.label, badgeTone: b.tone });
+              })}
+            </Box>
+          )
+        ) : (saved.data ?? []).length === 0 ? (
+          <Box style={{ paddingTop: 40 }}>
+            <EmptyState icon="bookmark" title="No saved jobs" subtitle="Tap the bookmark on any job to save it for later." actionLabel="Browse jobs" onAction={() => setTab('available')} />
           </Box>
+        ) : (
+          <Box style={{ gap: 12 }}>{(saved.data ?? []).map((e) => renderEventCard(e))}</Box>
         )}
       </ScrollView>
     </Box>

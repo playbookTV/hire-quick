@@ -4,7 +4,8 @@
  * then "Submit dispute" / "Cancel". Static preview until the disputes API wires.
  */
 import { useState } from 'react';
-import { useRouter } from 'expo-router';
+import { Alert } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Box, Text } from '../../theme/restyle.js';
 import { Screen } from '../../components/Screen.js';
@@ -14,14 +15,34 @@ import { OptionCard } from '../../components/OptionCard.js';
 import { TextArea } from '../../components/TextArea.js';
 import { Button } from '../../components/Button.js';
 import { Icon } from '../../components/Icon.js';
+import { useCreateDispute } from '../../lib/hooks.js';
 
 const REASONS = ['Usher didn’t show up', 'Arrived late', 'Conduct or presentation', 'Something else'];
 
 export default function Dispute(): React.JSX.Element {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { booking } = useLocalSearchParams<{ booking: string }>();
+  const dispute = useCreateDispute(booking ?? '');
   const [reason, setReason] = useState(REASONS[0]);
   const [details, setDetails] = useState('');
+
+  const submit = (): void => {
+    if (!booking) {
+      router.back();
+      return;
+    }
+    dispute.mutate(
+      { reason: reason ?? 'Something else', note: details.trim() || undefined },
+      {
+        onSuccess: () => {
+          Alert.alert('Dispute opened', 'Funds are frozen while our team reviews.');
+          router.back();
+        },
+        onError: (e: unknown) => Alert.alert('Couldn’t open dispute', e instanceof Error ? e.message : 'Please try again.'),
+      },
+    );
+  };
 
   return (
     <Box flex={1} backgroundColor="bgCanvas">
@@ -50,7 +71,7 @@ export default function Dispute(): React.JSX.Element {
 
         <Box style={{ flex: 1, minHeight: 20 }} />
         <Box style={{ gap: 12, paddingBottom: insets.bottom }}>
-          <Button label="Submit dispute" onPress={() => router.back()} />
+          <Button label={dispute.isPending ? 'Submitting…' : 'Submit dispute'} onPress={submit} disabled={dispute.isPending} />
           <Button label="Cancel" variant="ghost" onPress={() => router.back()} />
         </Box>
       </Screen>

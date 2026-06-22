@@ -3,7 +3,7 @@
  * in dev/CI). Implements PaystackPort over the Paystack REST API. Money is in
  * kobo end-to-end, matching the ledger.
  */
-import type { PaystackPort, TransferParams, TransferResult } from './paystack-port.js';
+import type { Bank, PaystackPort, TransferParams, TransferResult } from './paystack-port.js';
 
 const BASE = 'https://api.paystack.co';
 
@@ -71,6 +71,23 @@ export class HttpPaystack implements PaystackPort {
       `/transaction/verify/${encodeURIComponent(reference)}`,
     );
     return { status: data.status === 'success' ? 'success' : 'failed', amountKobo: data.amount };
+  }
+
+  async listBanks(): Promise<Bank[]> {
+    const data = await this.call<Array<{ name: string; code: string }>>(
+      '/bank?currency=NGN&country=nigeria',
+    );
+    return data.map((b) => ({ name: b.name, code: b.code }));
+  }
+
+  async resolveAccount(params: {
+    bankCode: string;
+    accountNumber: string;
+  }): Promise<{ accountName: string }> {
+    const data = await this.call<{ account_name: string }>(
+      `/bank/resolve?account_number=${encodeURIComponent(params.accountNumber)}&bank_code=${encodeURIComponent(params.bankCode)}`,
+    );
+    return { accountName: data.account_name };
   }
 
   async createTransferRecipient(params: {

@@ -13,9 +13,10 @@ import { Box, Text } from '../theme/restyle.js';
 import { Icon, type IconName } from './Icon.js';
 import { Pressable } from 'react-native';
 import { useAuth } from '../lib/auth-context.js';
+import { openSupport } from '../lib/support.js';
 
-function Row({ icon, label }: { icon: IconName; label: string }): React.JSX.Element {
-  return (
+function Row({ icon, label, onPress }: Readonly<{ icon: IconName; label: string; onPress?: () => void }>): React.JSX.Element {
+  const inner = (
     <Box flexDirection="row" alignItems="center" gap="300" paddingVertical="300">
       <Icon name={icon} size={18} color="inkMuted" />
       <Text variant="body" color="inkDefault" style={{ flex: 1 }}>
@@ -23,6 +24,12 @@ function Row({ icon, label }: { icon: IconName; label: string }): React.JSX.Elem
       </Text>
       <Icon name="chevron-right" size={18} color="borderStrong" />
     </Box>
+  );
+  if (!onPress) return inner;
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label}>
+      {inner}
+    </Pressable>
   );
 }
 
@@ -59,7 +66,7 @@ export function ProfileView(): React.JSX.Element {
           <Box height={1} backgroundColor="borderDefault" />
           <Row icon="bell" label="Notifications" />
           <Box height={1} backgroundColor="borderDefault" />
-          <Row icon="help-circle" label="Help & support" />
+          <Row icon="help-circle" label="Help & support" onPress={() => void openSupport()} />
         </Card>
 
         <Box flex={1} />

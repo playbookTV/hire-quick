@@ -21,6 +21,7 @@ enum UserStatus {
   ACTIVE
   SUSPENDED
   PENDING
+  ANONYMIZED // NDPR erasure: PII scrubbed, financial records retained (TRD §14)
 }
 
 enum UsherVerifyState {
@@ -182,6 +183,7 @@ model User {
   status       UserStatus @default(PENDING)
   createdAt    DateTime   @default(now()) @db.Timestamptz(6)
   updatedAt    DateTime   @updatedAt @db.Timestamptz(6)
+  anonymizedAt DateTime?  @db.Timestamptz(6) // set when an NDPR erasure scrubs this user's PII
 
   client            Client?
   usher             Usher?
@@ -217,6 +219,7 @@ model Usher {
   id                 String           @id @default(uuid()) @db.Uuid
   userId             String           @unique @db.Uuid
   user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName        String?
   bio                String?
   yearsExperience    Int              @default(0)
   verificationStatus UsherVerifyState @default(PENDING)
@@ -224,6 +227,7 @@ model Usher {
   ratingAvg          Float            @default(0)
   ratingCount        Int              @default(0)
   completedJobsCount Int              @default(0) // denormalized rank key; bumped on each completion
+  avatarKey          String? // server-owned storage key for the profile photo; null = initials fallback
 
   verifications UsherVerification[]
   photos        Photo[]
@@ -234,6 +238,7 @@ model Usher {
   wallet        Wallet?
   bankAccounts  BankAccount[]
   milestones    UsherMilestone[]
+  savedJobs     SavedJob[]
 
   @@map("ushers")
 }
@@ -254,11 +259,14 @@ model UsherVerification {
   @@map("usher_verifications")
 }
 
+// Portfolio work samples shown to clients (max 5, enforced in the API).
+// imageUrl holds the server-owned storage key (like UsherVerification), not a URL.
 model Photo {
-  id       String @id @default(uuid()) @db.Uuid
-  usherId  String @db.Uuid
-  usher    Usher  @relation(fields: [usherId], references: [id], onDelete: Cascade)
-  imageUrl String
+  id        String   @id @default(uuid()) @db.Uuid
+  usherId   String   @db.Uuid
+  usher     Usher    @relation(fields: [usherId], references: [id], onDelete: Cascade)
+  imageUrl  String
+  createdAt DateTime @default(now()) @db.Timestamptz(6) // stable upload-order sort
 
   @@index([usherId])
   @@map("photos")
@@ -299,6 +307,7 @@ model Event {
   invitations  Invitation[]
   bookings     Booking[]
   orders       Order[]
+  savedBy      SavedJob[]
 
   @@index([clientId])
   @@index([status])
@@ -331,6 +340,19 @@ model Invitation {
   @@unique([eventId, usherId])
   @@index([usherId])
   @@map("invitations")
+}
+
+model SavedJob {
+  id        String   @id @default(uuid()) @db.Uuid
+  usherId   String   @db.Uuid
+  usher     Usher    @relation(fields: [usherId], references: [id], onDelete: Cascade)
+  eventId   String   @db.Uuid
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([usherId, eventId])
+  @@index([usherId])
+  @@map("saved_jobs")
 }
 
 // ---------- orders / bookings / payments ----------
@@ -592,10 +614,25 @@ model AuditLog {
   target    String
   metadata  Json?
   createdAt DateTime @default(now()) @db.Timestamptz(6)
+  // Tamper-evident hash chain (TRD §14). seq gives a strict order; entryHash =
+  // sha256(canonical(entry) + prevHash). Nullable so rows written before the
+  // chain existed are tolerated as legacy (pre-genesis) entries.
+  seq       BigInt   @default(autoincrement()) @unique
+  prevHash  String?
+  entryHash String?  @unique
 
   @@index([actorId])
   @@index([action])
   @@map("audit_logs")
+}
+
+/// Singleton pointer to the head of the audit hash chain. Writers SELECT … FOR
+/// UPDATE this row to serialize chaining (mirrors the ledger's row-lock idiom).
+model AuditChainHead {
+  id       Int     @id @default(1)
+  lastHash String?
+
+  @@map("audit_chain_head")
 }
 
 // Maker-checker for money moves above a threshold (TRD §15). A maker creates a

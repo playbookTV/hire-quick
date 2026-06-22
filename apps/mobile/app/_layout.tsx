@@ -43,6 +43,8 @@ export default function RootLayout(): React.JSX.Element | null {
                 <Stack.Screen name="(auth)" />
                 <Stack.Screen name="(client)" />
                 <Stack.Screen name="(usher)" />
+                {/* Verification is a first-class card flow (gestures off in its layout), not a modal. */}
+                <Stack.Screen name="(verification)" />
                 <Stack.Screen name="(modals)" options={{ presentation: 'modal' }} />
               </Stack>
             </AuthProvider>

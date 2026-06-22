@@ -28,27 +28,36 @@ export const withdrawSchema = z.object({
 });
 export type WithdrawInput = z.infer<typeof withdrawSchema>;
 
+/** GET /payments/resolve-account — resolve a NUBAN to its account name. */
+export const resolveAccountSchema = z.object({
+  bankCode: z.string().min(3),
+  accountNumber: z.string().regex(/^\d{10}$/, 'ten-digit account number'),
+});
+export type ResolveAccountInput = z.infer<typeof resolveAccountSchema>;
+
 /** POST /bookings/:id/checkin/verify — usher submits the client-generated code. */
 export const checkinVerifySchema = z.object({
   code: z.string().regex(/^\d{6}$/, 'six digit code'),
 });
 export type CheckinVerifyInput = z.infer<typeof checkinVerifySchema>;
 
+/** Shared event field shape; `createEventSchema`/`updateEventSchema` derive from it. */
+export const eventFields = z.object({
+  title: z.string().min(3).max(120),
+  venue: z.string().min(2).max(200),
+  category: z.string().min(2).max(60),
+  eventDate: z.coerce.date(),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/),
+  endTime: z.string().regex(/^\d{2}:\d{2}$/),
+  headcount: z.number().int().min(1).max(100),
+  budgetPerHeadKobo: z.number().int().positive(),
+  dressCode: z.string().max(200).optional(),
+  accommodation: z.enum(ACCOMMODATION_STATUSES).optional(),
+  requirements: z.string().max(2000).optional(),
+});
+
 /** POST /events — create a multi-staff event (PRD §7). */
-export const createEventSchema = z
-  .object({
-    title: z.string().min(3).max(120),
-    venue: z.string().min(2).max(200),
-    category: z.string().min(2).max(60),
-    eventDate: z.coerce.date(),
-    startTime: z.string().regex(/^\d{2}:\d{2}$/),
-    endTime: z.string().regex(/^\d{2}:\d{2}$/),
-    headcount: z.number().int().min(1).max(100),
-    budgetPerHeadKobo: z.number().int().positive(),
-    dressCode: z.string().max(200).optional(),
-    accommodation: z.enum(ACCOMMODATION_STATUSES).optional(),
-    requirements: z.string().max(2000).optional(),
-  })
+export const createEventSchema = eventFields
   .refine((e) => e.endTime > e.startTime, {
     message: 'endTime must be after startTime',
     path: ['endTime'],
@@ -58,6 +67,18 @@ export const createEventSchema = z
     path: ['accommodation'],
   });
 export type CreateEventInput = z.infer<typeof createEventSchema>;
+
+/**
+ * PATCH /events/:id — partial edit of an unstarted event. Only the time-ordering
+ * rule can be checked statelessly here; the accommodation invariant is enforced
+ * in the route against the merged record (the event may already carry it).
+ */
+export const updateEventSchema = eventFields.partial().superRefine((e, ctx) => {
+  if (e.startTime != null && e.endTime != null && e.endTime <= e.startTime) {
+    ctx.addIssue({ code: 'custom', message: 'endTime must be after startTime', path: ['endTime'] });
+  }
+});
+export type UpdateEventInput = z.infer<typeof updateEventSchema>;
 
 /** Admin: create a reward milestone tier (TRD §15 admin config). */
 export const createMilestoneTierSchema = z.object({
@@ -72,3 +93,23 @@ export type CreateMilestoneTierInput = z.infer<typeof createMilestoneTierSchema>
 /** Admin: update a reward milestone tier (all fields optional). */
 export const updateMilestoneTierSchema = createMilestoneTierSchema.partial();
 export type UpdateMilestoneTierInput = z.infer<typeof updateMilestoneTierSchema>;
+
+/** POST /bookings/:id/reviews — a party rates the counterparty after completion. */
+export const createReviewSchema = z.object({
+  rating: z.number().int().min(1).max(5),
+  comment: z.string().max(2000).optional(),
+});
+export type CreateReviewInput = z.infer<typeof createReviewSchema>;
+
+/** PUT /me/availability — usher marks a single day available/unavailable. */
+export const setAvailabilitySchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD'),
+  status: z.enum(['AVAILABLE', 'UNAVAILABLE']),
+});
+export type SetAvailabilityInput = z.infer<typeof setAvailabilitySchema>;
+
+/** POST /bookings/:id/cancel — client cancels a confirmed booking (policy applies). */
+export const cancelBookingSchema = z.object({
+  reason: z.string().max(500).optional(),
+});
+export type CancelBookingInput = z.infer<typeof cancelBookingSchema>;

@@ -7,10 +7,12 @@ import { type PrismaClient } from '@hq/database';
 import { runIdempotent } from './ledger/idempotency.js';
 import { requestWithdrawal, failWithdrawal, commissionSweep } from './ledger/ledger.js';
 import type { PaystackPort } from './port/paystack-port.js';
+import type { RealtimeGateway } from '../../realtime/gateway.js';
 
 export interface Deps {
   prisma: PrismaClient;
   paystack: PaystackPort;
+  realtime?: RealtimeGateway;
 }
 
 /** Initialize the Paystack charge for a PENDING order; HOLD happens on webhook. */
@@ -30,27 +32,35 @@ export async function initChargeForOrder(
   return init;
 }
 
-/** Register an usher bank account as a Paystack transfer recipient. */
+/**
+ * Register an usher bank account as a Paystack transfer recipient. The account
+ * name is always re-resolved server-side so a registered recipient can never
+ * carry a name the client spoofed.
+ */
 export async function createBankAccountForUsher(
   deps: Deps,
-  params: { usherId: string; bankCode: string; accountNumber: string; accountName: string },
-): Promise<{ id: string; recipientCode: string }> {
+  params: { usherId: string; bankCode: string; accountNumber: string },
+): Promise<{ id: string; accountName: string; recipientCode: string }> {
+  const { accountName } = await deps.paystack.resolveAccount({
+    bankCode: params.bankCode,
+    accountNumber: params.accountNumber,
+  });
   const { recipientCode } = await deps.paystack.createTransferRecipient({
     bankCode: params.bankCode,
     accountNumber: params.accountNumber,
-    accountName: params.accountName,
+    accountName,
   });
   const ba = await deps.prisma.bankAccount.create({
     data: {
       usherId: params.usherId,
       bankCode: params.bankCode,
       accountNumber: params.accountNumber,
-      accountName: params.accountName,
+      accountName,
       paystackRecipientCode: recipientCode,
       verified: true,
     },
   });
-  return { id: ba.id, recipientCode };
+  return { id: ba.id, accountName, recipientCode };
 }
 
 /**

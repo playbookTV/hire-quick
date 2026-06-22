@@ -1,6 +1,8 @@
 /**
  * Usher tab shell + guard. Unauthed → welcome; clients → their own home. Uses the
- * Figma-matched BottomNav. Tabs: Home / Jobs / Calendar / Wallet / Profile.
+ * Figma-matched BottomNav. Tabs: Home / Jobs / Messages / Wallet / Profile.
+ * Calendar stays routable (reached from Home + Profile) but is off the tab bar so
+ * the five-slot bar can carry Messages.
  */
 import { Redirect, Tabs } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -24,9 +26,11 @@ export default function UsherLayout(): React.JSX.Element {
     <Tabs tabBar={(props) => <BottomNav {...props} />} screenOptions={{ headerShown: false }}>
       <Tabs.Screen name="home" options={{ title: 'Home', tabBarIcon: icon('home') }} />
       <Tabs.Screen name="jobs" options={{ title: 'Jobs', tabBarIcon: icon('briefcase') }} />
-      <Tabs.Screen name="calendar" options={{ title: 'Calendar', tabBarIcon: icon('calendar') }} />
+      <Tabs.Screen name="messages" options={{ title: 'Messages', tabBarIcon: icon('message-circle') }} />
       <Tabs.Screen name="wallet" options={{ title: 'Wallet', tabBarIcon: icon('credit-card') }} />
       <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: icon('user') }} />
+      {/* Calendar stays routable but off the bar (reached from Home + Profile). */}
+      <Tabs.Screen name="calendar" options={{ href: null }} />
     </Tabs>
   );
 }

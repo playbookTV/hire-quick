@@ -15,13 +15,7 @@ import { Avatar } from '../../components/Avatar.js';
 import { Box, Text, useTheme } from '../../theme/restyle.js';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../lib/auth-context.js';
-import { useEvents } from '../../lib/hooks.js';
-
-// Suggested-staff teaser (Discover API lands in a later phase).
-const SUGGESTED = [
-  { name: 'Ada Martins', rating: '4.9 · 120 jobs', price: '₦15,000' },
-  { name: 'Bisi Okoro', rating: '4.8 · 86 jobs', price: '₦14,000' },
-];
+import { useEvents, useUshers } from '../../lib/hooks.js';
 
 export default function ClientHome(): React.JSX.Element {
   const router = useRouter();
@@ -29,6 +23,7 @@ export default function ClientHome(): React.JSX.Element {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const events = useEvents();
+  const suggested = useUshers({ limit: 4 });
 
   const fullName = user?.client?.displayName && user.client.displayName !== user.phone ? user.client.displayName : null;
   const firstName = fullName ? fullName.split(' ')[0] : 'there';
@@ -95,21 +90,23 @@ export default function ClientHome(): React.JSX.Element {
           </Box>
 
           {/* suggested staff */}
-          <Box>
-            <SectionHeader title="Suggested staff" actionLabel="See all" onAction={() => router.push('/(client)/discover')} />
-            <Box flexDirection="row" style={{ gap: 16 }}>
-              {SUGGESTED.map((s) => (
-                <StaffCardCompact
-                  key={s.name}
-                  name={s.name}
-                  rating={s.rating}
-                  price={s.price}
-                  verified
-                  onPress={() => router.push('/(client)/discover')}
-                />
-              ))}
+          {(suggested.data ?? []).length > 0 ? (
+            <Box>
+              <SectionHeader title="Suggested staff" actionLabel="See all" onAction={() => router.push('/(client)/discover')} />
+              <Box flexDirection="row" flexWrap="wrap" style={{ gap: 16 }}>
+                {(suggested.data ?? []).slice(0, 2).map((u) => (
+                  <StaffCardCompact
+                    key={u.id}
+                    name={u.displayName ?? 'Usher'}
+                    rating={`${u.ratingAvg.toFixed(1)} · ${u.completedJobsCount} jobs`}
+                    price={u.verificationStatus === 'VERIFIED' ? 'Verified' : ''}
+                    verified={u.verificationStatus === 'VERIFIED'}
+                    onPress={() => router.push({ pathname: '/(modals)/staff-profile', params: { id: u.id } })}
+                  />
+                ))}
+              </Box>
             </Box>
-          </Box>
+          ) : null}
         </Box>
       </Screen>
     </Box>

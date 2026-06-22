@@ -9,6 +9,7 @@ import { env } from '../../env.js';
 import { generateOtp, hashOtp } from './hash.js';
 import { signAccessToken, signRefreshToken } from './tokens.js';
 import { sendSms, sendWhatsAppOtp } from '../notifications/brevo.js';
+import { writeAudit } from '../audit.js';
 
 const OTP_TTL_MS = 10 * 60_000;
 const MAX_REQUESTS_PER_HOUR = 5;
@@ -59,12 +60,21 @@ export async function verifyOtp(phone: string, code: string, role?: UserRole): P
   if (!rec) throw new ApiError(400, 'OTP_INVALID', 'no valid code; request a new one');
   if (rec.attempts >= MAX_ATTEMPTS) throw new ApiError(429, 'OTP_LOCKED', 'too many attempts');
   if (rec.codeHash !== hashOtp(code)) {
-    await prisma.verificationCode.update({ where: { id: rec.id }, data: { attempts: { increment: 1 } } });
+    const updated = await prisma.verificationCode.update({
+      where: { id: rec.id },
+      data: { attempts: { increment: 1 } },
+    });
+    // Audit only the transition into the locked state — not every subsequent
+    // locked attempt — so a hammering attacker can't amplify audit writes.
+    if (updated.attempts >= MAX_ATTEMPTS) {
+      await writeAudit({ actorId: null, action: 'auth.otp.locked', target: phone });
+    }
     throw new ApiError(400, 'OTP_INVALID', 'incorrect code');
   }
   await prisma.verificationCode.update({ where: { id: rec.id }, data: { consumedAt: new Date() } });
 
   let user = await prisma.user.findUnique({ where: { phone } });
+  const isNewUser = !user;
   if (!user) {
     const chosen: UserRole = role ?? 'CLIENT';
     user = await prisma.user.create({
@@ -84,5 +94,11 @@ export async function verifyOtp(phone: string, code: string, role?: UserRole): P
     signAccessToken(user.id, user.role),
     signRefreshToken(user.id),
   ]);
+  await writeAudit({
+    actorId: user.id,
+    action: 'auth.login',
+    target: user.id,
+    metadata: { newUser: isNewUser, role: user.role },
+  });
   return { accessToken, refreshToken, user: { id: user.id, role: user.role, phone: user.phone } };
 }

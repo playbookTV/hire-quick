@@ -4,6 +4,7 @@ import { prisma } from '@hq/database';
 import { ApiError } from '../../app.js';
 import { requestOtp, verifyOtp } from './otp.js';
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from './tokens.js';
+import { writeAudit } from '../audit.js';
 
 type Handler = (req: Request, res: Response) => Promise<void>;
 const wrap =
@@ -61,6 +62,7 @@ export function authRouter(): Router {
         signAccessToken(user.id, user.role),
         signRefreshToken(user.id),
       ]);
+      await writeAudit({ actorId: user.id, action: 'auth.refresh', target: user.id });
       res.status(200).json({ accessToken, refreshToken: newRefresh });
     }),
   );

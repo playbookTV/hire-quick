@@ -4,24 +4,48 @@
  * "Submit & continue" / "Skip". Static preview until the reviews API is wired.
  */
 import { useState } from 'react';
-import { Pressable } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Pressable, Alert } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTheme, Box, Text } from '../../theme/restyle.js';
 import { Screen } from '../../components/Screen.js';
 import { AppBar } from '../../components/AppBar.js';
 import { TextArea } from '../../components/TextArea.js';
 import { Button } from '../../components/Button.js';
 import { Icon } from '../../components/Icon.js';
+import { useCreateReview } from '../../lib/hooks.js';
 
 const LABELS = ['', 'Poor', 'Fair', 'Good', 'Great', 'Excellent'];
 const TAGS = ['Punctual', 'Professional', 'Great presentation', 'Friendly'];
 
+function initials(name: string): string {
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('') || 'U';
+}
+
 export default function RateStaff(): React.JSX.Element {
   const router = useRouter();
   const theme = useTheme();
+  const { booking, name: rawName } = useLocalSearchParams<{ booking: string; name: string }>();
+  const name = rawName ?? 'your usher';
+  const review = useCreateReview(booking ?? '');
   const [rating, setRating] = useState(5);
   const [tags, setTags] = useState<Record<string, boolean>>({ Punctual: true, Professional: true });
   const [comment, setComment] = useState('');
+
+  const submit = (): void => {
+    if (!booking) {
+      router.back();
+      return;
+    }
+    const tagText = TAGS.filter((t) => tags[t]).join(' · ');
+    const full = [tagText, comment.trim()].filter(Boolean).join(' — ') || undefined;
+    review.mutate(
+      { rating, comment: full },
+      {
+        onSuccess: () => router.back(),
+        onError: (e: unknown) => Alert.alert('Couldn’t submit', e instanceof Error ? e.message : 'Please try again.'),
+      },
+    );
+  };
 
   return (
     <Box flex={1} backgroundColor="bgCanvas">
@@ -35,11 +59,11 @@ export default function RateStaff(): React.JSX.Element {
           <Box
             style={{ width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandEmeraldTint }}
           >
-            <Text style={{ fontFamily: 'Fraunces_600SemiBold', fontSize: 22, lineHeight: 28, color: theme.colors.brandEmerald }}>AM</Text>
+            <Text style={{ fontFamily: 'Fraunces_600SemiBold', fontSize: 22, lineHeight: 28, color: theme.colors.brandEmerald }}>{initials(name)}</Text>
           </Box>
 
           <Text variant="h2" style={{ textAlign: 'center' }}>
-            How was Ada Martins?
+            How was {name}?
           </Text>
 
           <Box flexDirection="row" style={{ gap: 8 }}>
@@ -88,7 +112,7 @@ export default function RateStaff(): React.JSX.Element {
 
         <Box style={{ flex: 1, minHeight: 20 }} />
         <Box style={{ gap: 12 }}>
-          <Button label="Submit & continue" onPress={() => router.back()} />
+          <Button label={review.isPending ? 'Submitting…' : 'Submit & continue'} onPress={submit} disabled={review.isPending} />
           <Button label="Skip" variant="ghost" onPress={() => router.back()} />
         </Box>
       </Screen>

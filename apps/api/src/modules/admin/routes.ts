@@ -10,6 +10,8 @@ import { requireAuth, requireRole, type AuthedRequest } from '../auth/middleware
 import { writeAudit } from '../audit.js';
 import { resolveDispute, createRefund, decideApproval, APPROVAL_THRESHOLD_KOBO } from './service.js';
 import { createMilestoneTierSchema, updateMilestoneTierSchema } from '@hq/shared';
+import type { RealtimeGateway } from '../../realtime/gateway.js';
+import { type StoragePort, presignDoc } from '../storage/storage.js';
 
 type Handler = (req: AuthedRequest, res: Response) => Promise<void>;
 const wrap =
@@ -20,7 +22,7 @@ const wrap =
 
 const rejectSchema = z.object({ reason: z.string().min(3).max(500) });
 
-export function adminRouter(): Router {
+export function adminRouter(deps: { realtime: RealtimeGateway; storage?: StoragePort | undefined }): Router {
   const r = Router();
   r.use(requireAuth, requireRole('ADMIN'));
 
@@ -51,13 +53,27 @@ export function adminRouter(): Router {
     '/verifications',
     wrap(async (req, res) => {
       const status = z.enum(['PENDING', 'APPROVED', 'REJECTED']).catch('PENDING').parse(req.query.status);
-      res.json(
-        await prisma.usherVerification.findMany({
-          where: { status },
-          orderBy: { createdAt: 'asc' },
-          include: { usher: { include: { user: { select: { phone: true, email: true } } } } },
-        }),
+      const list = await prisma.usherVerification.findMany({
+        where: { status },
+        orderBy: { createdAt: 'asc' },
+        include: { usher: { include: { user: { select: { phone: true, email: true } } } } },
+      });
+      // Sensitive class (TRD §14): log who saw which ID documents. One aggregate
+      // row per list view, not one per record, to stay proportionate.
+      await writeAudit({
+        actorId: req.auth.userId,
+        action: 'verification.read',
+        target: status,
+        metadata: { byAdmin: true, count: list.length, ids: list.map((v) => v.id) },
+      });
+      const resolved = await Promise.all(
+        list.map(async (v) => ({
+          ...v,
+          idDocumentUrl: await presignDoc(deps.storage, v.idDocumentUrl),
+          selfieUrl: await presignDoc(deps.storage, v.selfieUrl),
+        })),
       );
+      res.json(resolved);
     }),
   );
 
@@ -113,7 +129,7 @@ export function adminRouter(): Router {
       const { outcome, resolution } = z
         .object({ outcome: z.enum(['RELEASE', 'REFUND']), resolution: z.string().min(3).max(1000) })
         .parse(req.body);
-      const out = await resolveDispute(req.auth.userId, String(req.params.id), outcome, resolution);
+      const out = await resolveDispute(req.auth.userId, String(req.params.id), outcome, resolution, deps.realtime);
       res.json(out);
     }),
   );
@@ -149,7 +165,7 @@ export function adminRouter(): Router {
     '/approvals/:id',
     wrap(async (req, res) => {
       const { decision } = z.object({ decision: z.enum(['approve', 'reject']) }).parse(req.body);
-      await decideApproval(req.auth.userId, String(req.params.id), decision);
+      await decideApproval(req.auth.userId, String(req.params.id), decision, deps.realtime);
       res.json({ ok: true });
     }),
   );
