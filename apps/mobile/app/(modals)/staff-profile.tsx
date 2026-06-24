@@ -6,9 +6,11 @@
  */
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Alert, ScrollView } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, Box, Text } from '../../theme/restyle.js';
 import { AppBar } from '../../components/AppBar.js';
+import { Avatar } from '../../components/Avatar.js';
 import { Badge } from '../../components/Badge.js';
 import { Button } from '../../components/Button.js';
 import { Icon } from '../../components/Icon.js';
@@ -27,10 +29,6 @@ function Pill({ label }: { label: string }) {
       </Text>
     </Box>
   );
-}
-
-function initials(name: string): string {
-  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('') || 'U';
 }
 
 export default function StaffProfile(): React.JSX.Element {
@@ -64,9 +62,7 @@ export default function StaffProfile(): React.JSX.Element {
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 24, gap: 24 }} showsVerticalScrollIndicator={false}>
         {/* identity */}
         <Box alignItems="center" style={{ gap: 12 }}>
-          <Box style={{ width: 96, height: 96, borderRadius: 48, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandEmeraldTint }}>
-            <Text style={{ fontFamily: 'Fraunces_600SemiBold', fontSize: 22, lineHeight: 28, color: theme.colors.brandEmerald }}>{initials(name)}</Text>
-          </Box>
+          <Avatar name={name} size={96} imageUrl={u.avatarUrl} />
           <Box flexDirection="row" alignItems="center" style={{ gap: 8 }}>
             <Text variant="h1">{name}</Text>
             {u.verificationStatus === 'VERIFIED' ? <Badge /> : null}
@@ -90,6 +86,26 @@ export default function StaffProfile(): React.JSX.Element {
           <Box style={{ gap: 8 }}>
             <Text variant="headingS">About</Text>
             <Text variant="body" color="inkDefault">{u.bio}</Text>
+          </Box>
+        ) : null}
+
+        {/* portfolio — work photos the usher uploaded */}
+        {(u.portfolio ?? []).length > 0 ? (
+          <Box style={{ gap: 8 }}>
+            <Text variant="headingS">Work photos</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+              {(u.portfolio ?? []).map((p) => (
+                <Image
+                  key={p.id}
+                  source={{ uri: p.imageUrl }}
+                  style={{ width: 160, height: 200, borderRadius: theme.borderRadii.lg, backgroundColor: theme.colors.bgSubtle }}
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
+                  transition={150}
+                  recyclingKey={p.id}
+                />
+              ))}
+            </ScrollView>
           </Box>
         ) : null}
 

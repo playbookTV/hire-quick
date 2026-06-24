@@ -8,7 +8,8 @@ import { Pressable, ScrollView, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, Box, Text } from '../../theme/restyle.js';
-import { Avatar } from '../../components/Avatar.js';
+import { AvatarPicker } from '../../components/AvatarPicker.js';
+import { PortfolioEditor } from '../../components/PortfolioEditor.js';
 import { Icon } from '../../components/Icon.js';
 import { SectionHeader } from '../../components/SectionHeader.js';
 import { ProgressBar } from '../../components/ProgressBar.js';
@@ -71,7 +72,7 @@ export default function UsherProfile(): React.JSX.Element {
       >
         {/* identity */}
         <Box flexDirection="row" alignItems="center" style={{ gap: 12 }}>
-          <Avatar name={name} size={52} />
+          <AvatarPicker size={52} />
           <Box flex={1} style={{ gap: 2 }}>
             <Text variant="headingS">{name}</Text>
             <Text variant="bodySm" color={usher?.verificationStatus === 'VERIFIED' ? 'statusSuccess' : 'inkMuted'}>
@@ -138,6 +139,13 @@ export default function UsherProfile(): React.JSX.Element {
           <Text variant="bodySm" color="inkMuted">
             Based on on-time arrivals, cancellations and no-shows across your jobs.
           </Text>
+        </Box>
+
+        {/* portfolio — work photos clients see when deciding to hire */}
+        <Box style={{ gap: 8 }}>
+          <SectionHeader title="Work photos" />
+          <Text variant="bodySm" color="inkMuted">Show clients your work. Add up to 5 photos.</Text>
+          <PortfolioEditor />
         </Box>
 
         {/* protect standing */}

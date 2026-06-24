@@ -50,7 +50,7 @@ export function createWorker(): Worker {
       case 'autocomplete':
         return jobAutoComplete(realtime);
       case 'noshow':
-        return jobNoShow(realtime);
+        return jobNoShow(deps, realtime);
       case 'reconcile':
         return jobReconcile(deps);
       case 'commission':

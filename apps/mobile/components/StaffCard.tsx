@@ -3,6 +3,7 @@
  * optional Verified badge, a star + meta line (Body/S), a price (Amount/M) with
  * "/event", and a trailing secondary "Invite" button.
  */
+import { memo } from 'react';
 import { Pressable } from 'react-native';
 import { Box, Text } from '../theme/restyle.js';
 import { Avatar } from './Avatar.js';
@@ -17,16 +18,18 @@ interface StaffCardProps {
   price: string;
   verified?: boolean;
   actionLabel?: string;
+  avatarUrl?: string | null;
   onAction?: () => void;
   onPress?: () => void;
 }
 
-export function StaffCard({
+export const StaffCard = memo(function StaffCard({
   name,
   meta,
   price,
   verified = false,
   actionLabel = 'Invite',
+  avatarUrl,
   onAction,
   onPress,
 }: StaffCardProps): React.JSX.Element {
@@ -42,7 +45,7 @@ export function StaffCard({
         padding="400"
         style={[{ gap: 16 }, shadowSm]}
       >
-        <Avatar name={name} size={48} />
+        <Avatar name={name} size={48} imageUrl={avatarUrl} />
         <Box flex={1} style={{ gap: 4 }}>
           <Box flexDirection="row" alignItems="center" style={{ gap: 8 }}>
             <Text variant="titleM" numberOfLines={1}>
@@ -67,4 +70,4 @@ export function StaffCard({
       </Box>
     </Pressable>
   );
-}
+});

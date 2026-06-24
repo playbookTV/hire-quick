@@ -8,7 +8,8 @@ import { verifyPaystackSignature } from '../webhooks/paystack-webhook.js';
 import { createScenario, teardown, type Scenario } from './fixtures.js';
 
 const SECRET = 'test_webhook_secret';
-const app = createApp({ paystack: new InMemoryPaystack(), paystackSecret: SECRET });
+const paystack = new InMemoryPaystack();
+const app = createApp({ paystack, paystackSecret: SECRET });
 
 function sign(body: string): string {
   return createHmac('sha512', SECRET).update(body).digest('hex');
@@ -31,6 +32,10 @@ describe('paystack webhook pipeline (TRD §10)', () => {
     scenario = await createScenario({ headcount: 2, amountKobo: 2_000_000 });
     const ref = `hq_${scenario.orderId}`;
     await prisma.order.update({ where: { id: scenario.orderId }, data: { paystackChargeRef: ref } });
+    // The webhook now re-verifies the charge server-side; seed the fake's record
+    // for this reference (the real flow records it at charge initialization).
+    const seeded = await prisma.order.findUniqueOrThrow({ where: { id: scenario.orderId } });
+    paystack.recordCharge(ref, seeded.grossAmount);
 
     const payload = JSON.stringify({ event: 'charge.success', data: { id: 99, reference: ref, status: 'success' } });
 

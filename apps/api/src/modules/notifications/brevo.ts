@@ -11,7 +11,14 @@ export interface SentRecord {
   summary: string;
 }
 
+// Test-only intent log. NEVER record in production: this is a module-level array
+// that would otherwise retain every phone/email/push token/OTP forever (PII +
+// unbounded memory growth).
+const RECORDING = env.NODE_ENV !== 'production';
 const sent: SentRecord[] = [];
+function record(r: SentRecord): void {
+  if (RECORDING) sent.push(r);
+}
 export function sentNotifications(): readonly SentRecord[] {
   return sent;
 }
@@ -25,7 +32,7 @@ function log(message: string): void {
 }
 
 export async function sendSms(to: string, text: string): Promise<void> {
-  sent.push({ kind: 'sms', to, summary: text });
+  record({ kind: 'sms', to, summary: text });
   if (!env.BREVO_API_KEY) {
     log(`(stub) SMS → ${to}: ${text}`);
     return;
@@ -45,7 +52,7 @@ export async function sendSms(to: string, text: string): Promise<void> {
 }
 
 export async function sendEmail(to: string, subject: string, html: string): Promise<void> {
-  sent.push({ kind: 'email', to, summary: subject });
+  record({ kind: 'email', to, summary: subject });
   if (!env.BREVO_API_KEY) {
     log(`(stub) email → ${to}: ${subject}`);
     return;
@@ -76,7 +83,7 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
  * different key (e.g. a positional "1").
  */
 export async function sendWhatsAppOtp(to: string, code: string): Promise<void> {
-  sent.push({ kind: 'whatsapp', to, summary: `OTP ${code}` });
+  record({ kind: 'whatsapp', to, summary: `OTP ${code}` });
   const configured =
     !!env.BREVO_API_KEY && !!env.BREVO_WHATSAPP_SENDER && env.BREVO_WHATSAPP_OTP_TEMPLATE_ID > 0;
   if (!configured) {
@@ -99,6 +106,6 @@ export async function sendWhatsAppOtp(to: string, code: string): Promise<void> {
 
 /** FCM push is stubbed until creds; record intent so the lifecycle wiring is testable. */
 export function recordPush(to: string, summary: string): void {
-  sent.push({ kind: 'push', to, summary });
+  record({ kind: 'push', to, summary });
   log(`(stub) push → ${to}: ${summary}`);
 }

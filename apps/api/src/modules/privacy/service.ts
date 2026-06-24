@@ -86,9 +86,16 @@ export async function eraseUser(tx: Prisma.TransactionClient, userId: string): P
     await tx.client.update({ where: { id: client.id }, data: { displayName: 'Deleted user' } });
   }
   if (usher) {
-    await tx.usher.update({ where: { id: usher.id }, data: { bio: null } });
-    // ID-document objects in storage are removed by the erasure storage hook
-    // (Phase 2.4); here we drop the references so nothing resolves to them.
+    // Pseudonymize the public identity (name shown on cards/applications) and
+    // drop the profile photo + portfolio so nothing resolves to the subject.
+    await tx.usher.update({
+      where: { id: usher.id },
+      data: { displayName: 'Deleted user', bio: null, avatarKey: null },
+    });
+    await tx.photo.deleteMany({ where: { usherId: usher.id } });
+    // ID-document / avatar / portfolio objects in storage are removed by the
+    // erasure storage hook (Phase 2.4); here we drop the references so nothing
+    // resolves to them.
     await tx.usherVerification.updateMany({
       where: { usherId: usher.id },
       data: { idDocumentUrl: '', selfieUrl: '' },

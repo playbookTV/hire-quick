@@ -53,10 +53,19 @@ export class InMemoryPaystack implements PaystackPort {
   private balanceKobo = 0;
   private nextTransferFails = false;
   private seq = 0;
+  // Charged amount per reference, so verifyChargeKobo can mirror a real
+  // server-side transaction verification (set at initializeCharge, or seeded
+  // directly in tests that don't go through the charge-init flow).
+  private readonly charges = new Map<string, number>();
 
   /** Simulate funds landing in the Balance when a client charge settles. */
   creditBalance(amountKobo: number): void {
     this.balanceKobo += amountKobo;
+  }
+
+  /** Test hook: record the kobo amount a reference was charged for. */
+  recordCharge(reference: string, amountKobo: number): void {
+    this.charges.set(reference, amountKobo);
   }
 
   /** Force the next transfer() to report failure (e.g. invalid bank details). */
@@ -74,14 +83,15 @@ export class InMemoryPaystack implements PaystackPort {
     amountKobo: number;
     reference: string;
   }): Promise<{ authorizationUrl: string; reference: string }> {
+    this.charges.set(params.reference, params.amountKobo);
     return Promise.resolve({
       authorizationUrl: `https://checkout.test/${params.reference}`,
       reference: params.reference,
     });
   }
 
-  verifyChargeKobo(_reference: string): Promise<{ status: 'success' | 'failed'; amountKobo: number }> {
-    return Promise.resolve({ status: 'success', amountKobo: 0 });
+  verifyChargeKobo(reference: string): Promise<{ status: 'success' | 'failed'; amountKobo: number }> {
+    return Promise.resolve({ status: 'success', amountKobo: this.charges.get(reference) ?? 0 });
   }
 
   listBanks(): Promise<Bank[]> {

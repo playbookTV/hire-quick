@@ -2,6 +2,7 @@
  * EventCard — an event summary used on the client home and the events list.
  * Composes Card + StatusPill + MetaRow and formats money via @hq/shared.
  */
+import { memo } from 'react';
 import { kobo, formatNaira } from '@hq/shared';
 import { Box, Text } from '../theme/restyle.js';
 import { Card } from './Card.js';
@@ -15,7 +16,7 @@ interface EventCardProps {
   onPress?: () => void;
 }
 
-export function EventCard({ event, onPress }: EventCardProps): React.JSX.Element {
+export const EventCard = memo(function EventCard({ event, onPress }: EventCardProps): React.JSX.Element {
   return (
     <Card onPress={onPress}>
       <Box flexDirection="row" alignItems="flex-start" justifyContent="space-between" gap="300" marginBottom="300">
@@ -52,4 +53,4 @@ export function EventCard({ event, onPress }: EventCardProps): React.JSX.Element
       </Box>
     </Card>
   );
-}
+});

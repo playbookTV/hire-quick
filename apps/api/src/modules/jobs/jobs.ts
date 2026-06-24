@@ -23,8 +23,8 @@ export async function jobAutoComplete(realtime: RealtimeGateway = noopGateway): 
   if (r.completed.length) log(`auto-completed ${String(r.completed.length)} booking(s)`);
 }
 
-export async function jobNoShow(realtime: RealtimeGateway = noopGateway): Promise<void> {
-  const r = await noShowSweep(undefined, undefined, realtime);
+export async function jobNoShow(deps: Deps, realtime: RealtimeGateway = noopGateway): Promise<void> {
+  const r = await noShowSweep(deps, undefined, undefined, realtime);
   if (r.noShows.length) log(`flagged ${String(r.noShows.length)} no-show(s)`);
 }
 

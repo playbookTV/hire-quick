@@ -46,6 +46,42 @@ export function useUpdateProfile() {
   });
 }
 
+/**
+ * Photo edits change the usher's own profile. Components surface the new photo
+ * via auth-context `refreshMe()`; we only nudge the `me` query here. We do NOT
+ * invalidate the whole `['ushers']` family — those public lists live on clients'
+ * devices (an usher doesn't see themselves in discover) and refresh on their own
+ * staleness, so invalidating here just refetches every cached list for no gain.
+ */
+function invalidatePhotos(qc: ReturnType<typeof useQueryClient>): Promise<void> {
+  return qc.invalidateQueries({ queryKey: queryKeys.me });
+}
+
+export function useSetAvatar() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (key: string) => api.put<{ avatarUrl: string }>('/api/me/photos/avatar', { key }),
+    onSuccess: () => invalidatePhotos(qc),
+  });
+}
+
+export function useAddPortfolioPhoto() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (key: string) =>
+      api.post<{ id: string; imageUrl: string }>('/api/me/photos/portfolio', { key }),
+    onSuccess: () => invalidatePhotos(qc),
+  });
+}
+
+export function useDeletePortfolioPhoto() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete<{ deleted: boolean }>(`/api/me/photos/portfolio/${id}`),
+    onSuccess: () => invalidatePhotos(qc),
+  });
+}
+
 export function useEvents() {
   return useQuery({
     queryKey: queryKeys.events,

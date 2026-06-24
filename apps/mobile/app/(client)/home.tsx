@@ -98,6 +98,7 @@ export default function ClientHome(): React.JSX.Element {
                   <StaffCardCompact
                     key={u.id}
                     name={u.displayName ?? 'Usher'}
+                    avatarUrl={u.avatarUrl}
                     rating={`${u.ratingAvg.toFixed(1)} · ${u.completedJobsCount} jobs`}
                     price={u.verificationStatus === 'VERIFIED' ? 'Verified' : ''}
                     verified={u.verificationStatus === 'VERIFIED'}

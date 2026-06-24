@@ -20,8 +20,12 @@ export const BOOKING_TRANSITIONS: Record<BookingStatus, readonly BookingStatus[]
   PENDING_PAYMENT: ['CONFIRMED', 'CANCELLED'],
   CONFIRMED: ['CHECKED_IN', 'CANCELLED', 'NO_SHOW', 'DISPUTED'],
   CHECKED_IN: ['COMPLETED', 'DISPUTED'],
-  COMPLETED: ['PAID', 'DISPUTED'],
-  PAID: ['DISPUTED'], // post-payout dispute → clawback handled at resolution
+  // Disputes are only permitted while funds are still escrowed. Post-payout
+  // dispute (PAID/COMPLETED → DISPUTED) is temporarily forbidden until wallet
+  // clawback/debt is modelled — otherwise resolution double-pays or funds an
+  // unrecorded refund. (Reinstate with a clawback path.)
+  COMPLETED: ['PAID'],
+  PAID: [],
   DISPUTED: ['COMPLETED', 'REFUNDED', 'CANCELLED'], // admin resolution targets
   CANCELLED: ['REFUNDED'],
   NO_SHOW: ['REFUNDED'],

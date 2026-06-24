@@ -237,6 +237,20 @@ export async function refundBooking(tx: Tx, bookingId: string, amountKobo: numbe
   if (booking.orderId) await lockOrder(tx, booking.orderId);
   if (amountKobo < 0) throw new LedgerError('BAD_AMOUNT', 'refund amount must be >= 0');
 
+  // Only HELD (cancel/no-show) or FROZEN (dispute) escrow is refundable — never
+  // money already RELEASED to the usher or a prior REFUND (TRD §25 invariant:
+  // "refund of an already-refunded allocation" is rejected).
+  if (booking.payment && booking.payment.escrowStatus !== 'HELD' && booking.payment.escrowStatus !== 'FROZEN') {
+    throw new LedgerError('NOT_REFUNDABLE', `escrow not refundable (is ${booking.payment.escrowStatus})`);
+  }
+  // The refund can never exceed what's still held for this booking, or escrow
+  // would go negative / strand funds (TRD §25: HELD + released + refunded must
+  // reconcile to the charged amount). While HELD this equals the allocation.
+  const held = await escrowBalance(tx, bookingId);
+  if (amountKobo > held) {
+    throw new LedgerError('REFUND_EXCEEDS_HELD', `refund ${amountKobo} exceeds held balance ${held}`);
+  }
+
   assertBookingTransition(booking.status, 'REFUNDED');
   if (amountKobo > 0) await appendEscrow(tx, bookingId, 'REFUND', -amountKobo);
   if (booking.payment) {
@@ -257,12 +271,20 @@ export async function refundBooking(tx: Tx, bookingId: string, amountKobo: numbe
 /** Freeze a booking's escrow when a dispute opens (blocks release/refund). */
 export async function freezeBooking(tx: Tx, bookingId: string): Promise<void> {
   await lockBooking(tx, bookingId);
-  const booking = await tx.booking.findUniqueOrThrow({ where: { id: bookingId } });
+  const booking = await tx.booking.findUniqueOrThrow({
+    where: { id: bookingId },
+    include: { payment: true },
+  });
+  // Money-safety gate: a dispute may only be opened while the booking's funds are
+  // still escrowed (HELD). Disputing after payout (RELEASED) would let resolution
+  // re-credit the usher or fire an unrecorded Paystack refund. This is stricter
+  // than the state table and is the authoritative guard.
+  if (booking.payment?.escrowStatus !== 'HELD') {
+    throw new LedgerError('NOT_DISPUTABLE', 'a dispute can only be opened while funds are in escrow');
+  }
   assertBookingTransition(booking.status, 'DISPUTED');
   await tx.booking.update({ where: { id: bookingId }, data: { status: 'DISPUTED' } });
-  await tx.payment.update({ where: { bookingId }, data: { escrowStatus: 'FROZEN' } }).catch(() => {
-    /* booking may not have a payment yet */
-  });
+  await tx.payment.update({ where: { bookingId }, data: { escrowStatus: 'FROZEN' } });
 }
 
 /** Usher requests a withdrawal: debit the wallet now; the bank transfer fires next (Phase 2). */

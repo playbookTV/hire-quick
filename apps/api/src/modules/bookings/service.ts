@@ -4,7 +4,7 @@
  * holds them into escrow. Attendance → completion releases payout to the wallet.
  * Auto-complete / no-show implement the D1 windows.
  */
-import { prisma, type AttendanceMethod } from '@hq/database';
+import { prisma, Prisma, type AttendanceMethod } from '@hq/database';
 import {
   DEFAULT_GRACE_MINUTES,
   kobo,
@@ -21,13 +21,11 @@ import {
 import { generateOtp, hashOtp } from '../auth/hash.js';
 import {
   releaseBooking,
-  refundBooking,
-  cancelBooking,
   freezeBooking,
-  markNoShow,
   markCheckedIn,
 } from '../payments/ledger/ledger.js';
-import { initChargeForOrder, type Deps } from '../payments/service.js';
+import { initChargeForOrder, refundBookingToClient, type Deps } from '../payments/service.js';
+import { runIdempotent } from '../payments/ledger/idempotency.js';
 import { noopGateway, type RealtimeGateway } from '../../realtime/gateway.js';
 import { RT, bookingEvent } from '../../realtime/events.js';
 
@@ -58,8 +56,14 @@ function combine(date: Date, hhmm: string): Date {
 
 export async function confirmBatch(
   deps: Deps,
-  params: { clientUserId: string; eventId: string; applicationIds: string[]; email: string },
-): Promise<{ orderId: string; authorizationUrl: string; reference: string; bookingIds: string[] }> {
+  params: {
+    idempotencyKey: string;
+    clientUserId: string;
+    eventId: string;
+    applicationIds: string[];
+    email: string;
+  },
+): Promise<{ orderId: string; authorizationUrl: string; reference: string; bookingIds: string[]; duplicate: boolean }> {
   const event = await prisma.event.findUniqueOrThrow({
     where: { id: params.eventId },
     include: { client: true },
@@ -72,7 +76,18 @@ export async function confirmBatch(
   if (apps.length === 0) throw new ApiError(400, 'NO_ACCEPTED', 'no accepted applications to confirm');
 
   const gross = event.budgetPerHead * apps.length;
-  const { orderId, bookingIds } = await prisma.$transaction(async (tx) => {
+  // Idempotent on order_id scope (TRD §10): a retry with the same Idempotency-Key
+  // produces exactly one order + booking set. The existing-booking guard inside
+  // the tx stops a *different* key from re-confirming the same applicants.
+  const { duplicate, result } = await runIdempotent(deps.prisma, params.idempotencyKey, 'order', async (tx) => {
+    const already = await tx.booking.findFirst({
+      where: {
+        eventId: event.id,
+        usherId: { in: apps.map((a) => a.usherId) },
+        status: { notIn: ['CANCELLED', 'REFUNDED', 'NO_SHOW'] },
+      },
+    });
+    if (already) throw new ApiError(409, 'ALREADY_CONFIRMED', 'one or more applicants are already booked for this event');
     const order = await tx.order.create({
       data: { clientId: event.clientId, eventId: event.id, grossAmount: gross, status: 'PENDING' },
     });
@@ -90,10 +105,23 @@ export async function confirmBatch(
       ids.push(b.id);
     }
     return { orderId: order.id, bookingIds: ids };
-  }, TX);
+  });
+  if (duplicate || !result) {
+    return { orderId: '', authorizationUrl: '', reference: '', bookingIds: [], duplicate: true };
+  }
 
-  const init = await initChargeForOrder(deps, { orderId, email: params.email });
-  return { orderId, authorizationUrl: init.authorizationUrl, reference: init.reference, bookingIds };
+  const init = await initChargeForOrder(deps, {
+    orderId: result.orderId,
+    email: params.email,
+    clientUserId: params.clientUserId,
+  });
+  return {
+    orderId: result.orderId,
+    authorizationUrl: init.authorizationUrl,
+    reference: init.reference,
+    bookingIds: result.bookingIds,
+    duplicate: false,
+  };
 }
 
 export async function generateCheckin(
@@ -216,6 +244,7 @@ export async function autoComplete(
 
 /** No-show: confirmed, neither verified nor self-asserted by start + grace (§12). */
 export async function noShowSweep(
+  deps: Deps,
   now: Date = new Date(),
   graceMin = DEFAULT_GRACE_MINUTES,
   realtime: RealtimeGateway = noopGateway,
@@ -229,10 +258,9 @@ export async function noShowSweep(
     const start = combine(b.event.eventDate, b.event.startTime);
     if (now.getTime() < start.getTime() + graceMin * 60_000) continue;
     const refundAmount = b.payment?.grossAmount ?? b.amount;
-    await prisma.$transaction(async (tx) => {
-      await markNoShow(tx, b.id);
-      await refundBooking(tx, b.id, refundAmount);
-    }, TX);
+    // Refund the client 100% (§12) — issues the real Paystack refund, then the
+    // ledger NO_SHOW + REFUND in one tx.
+    await refundBookingToClient(deps, { bookingId: b.id, amountKobo: refundAmount, precursor: 'NO_SHOW' });
     await prisma.usher.update({
       where: { id: b.usherId },
       data: { reliabilityScore: { decrement: 10 } },
@@ -302,24 +330,34 @@ export async function createReview(
     throw new ApiError(400, 'NOT_COMPLETE', 'can only review a completed (paid) booking');
   }
   const revieweeId = reviewerUserId === clientUserId ? usherUserId : clientUserId;
+  // Fast path for the friendly error; the @@unique([bookingId, reviewerId])
+  // constraint (caught below) is what actually makes concurrent submits safe —
+  // two requests can both pass this check before either inserts.
   const existing = await prisma.review.findFirst({ where: { bookingId, reviewerId: reviewerUserId } });
   if (existing) throw new ApiError(409, 'ALREADY_REVIEWED', 'you already reviewed this booking');
 
-  const review = await prisma.$transaction(async (tx) => {
-    const created = await tx.review.create({
-      data: { bookingId, reviewerId: reviewerUserId, revieweeId, rating, comment: comment ?? null },
-    });
-    const agg = await tx.review.aggregate({ where: { revieweeId }, _avg: { rating: true }, _count: true });
-    const ratingAvg = agg._avg.rating ?? 0;
-    const ratingCount = agg._count;
-    if (revieweeId === usherUserId) {
-      await tx.usher.update({ where: { id: booking.usherId }, data: { ratingAvg, ratingCount } });
-    } else {
-      await tx.client.update({ where: { id: booking.event.clientId }, data: { ratingAvg, ratingCount } });
+  try {
+    const review = await prisma.$transaction(async (tx) => {
+      const created = await tx.review.create({
+        data: { bookingId, reviewerId: reviewerUserId, revieweeId, rating, comment: comment ?? null },
+      });
+      const agg = await tx.review.aggregate({ where: { revieweeId }, _avg: { rating: true }, _count: true });
+      const ratingAvg = agg._avg.rating ?? 0;
+      const ratingCount = agg._count;
+      if (revieweeId === usherUserId) {
+        await tx.usher.update({ where: { id: booking.usherId }, data: { ratingAvg, ratingCount } });
+      } else {
+        await tx.client.update({ where: { id: booking.event.clientId }, data: { ratingAvg, ratingCount } });
+      }
+      return created;
+    }, TX);
+    return { id: review.id };
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+      throw new ApiError(409, 'ALREADY_REVIEWED', 'you already reviewed this booking');
     }
-    return created;
-  }, TX);
-  return { id: review.id };
+    throw e;
+  }
 }
 
 /**
@@ -330,6 +368,7 @@ export async function createReview(
  * outcome for support to settle (avoids shipping partial-release money math).
  */
 export async function cancelBookingByClient(
+  deps: Deps,
   bookingId: string,
   clientUserId: string,
   realtime: RealtimeGateway = noopGateway,
@@ -347,10 +386,9 @@ export async function cancelBookingByClient(
     throw new ApiError(409, 'PARTIAL_CANCEL_UNSUPPORTED', 'late cancellation requires support to settle the usher payout');
   }
   const gross = booking.payment?.grossAmount ?? booking.amount;
-  await prisma.$transaction(async (tx) => {
-    await cancelBooking(tx, bookingId);
-    await refundBooking(tx, bookingId, gross);
-  }, TX);
+  // Full client refund: issues the real Paystack refund, then the ledger
+  // CANCELLED + REFUND in one tx.
+  await refundBookingToClient(deps, { bookingId, amountKobo: gross, precursor: 'CANCEL' });
   emitBooking(
     realtime,
     { clientUserId: booking.event.client.userId, usherUserId: booking.usher.userId },

@@ -4,10 +4,20 @@
  * of an existing PENDING order.
  */
 import { type PrismaClient } from '@hq/database';
+import { ApiError } from '../../app.js';
 import { runIdempotent } from './ledger/idempotency.js';
-import { requestWithdrawal, failWithdrawal, commissionSweep } from './ledger/ledger.js';
+import {
+  requestWithdrawal,
+  failWithdrawal,
+  commissionSweep,
+  refundBooking,
+  cancelBooking,
+  markNoShow,
+} from './ledger/ledger.js';
 import type { PaystackPort } from './port/paystack-port.js';
 import type { RealtimeGateway } from '../../realtime/gateway.js';
+
+const TX = { timeout: 30_000, maxWait: 30_000 };
 
 export interface Deps {
   prisma: PrismaClient;
@@ -15,12 +25,58 @@ export interface Deps {
   realtime?: RealtimeGateway;
 }
 
+/**
+ * Refund a booking's allocation to the client — the ONLY refund entrypoint that
+ * both moves money and records the ledger. The real Paystack refund (a partial
+ * refund against the order's charge, TRD §10) fires FIRST, then the ledger
+ * REFUND is recorded in one transaction — mirroring runCommissionSweep's
+ * "external call first, ledger entry only on success" so a failed refund never
+ * leaves a phantom REFUND in the ledger. A crash between a successful Paystack
+ * refund and the ledger write degrades to reconciliation drift (caught by §17),
+ * the same accepted tradeoff the sweep makes.
+ *
+ * `precursor` performs the booking's status step (CONFIRMED → CANCELLED/NO_SHOW)
+ * inside the same ledger tx before the refund; omit it when the booking is
+ * already in a refundable terminal-ish state (DISPUTED, or pre-cancelled).
+ * Idempotent: a booking already REFUNDED is a no-op (never re-refunds Paystack).
+ */
+export async function refundBookingToClient(
+  deps: Deps,
+  params: { bookingId: string; amountKobo: number; precursor?: 'CANCEL' | 'NO_SHOW' | undefined },
+): Promise<{ refunded: boolean }> {
+  const booking = await deps.prisma.booking.findUniqueOrThrow({
+    where: { id: params.bookingId },
+    include: { order: true },
+  });
+  if (booking.status === 'REFUNDED') return { refunded: false }; // idempotent retry guard
+
+  if (params.amountKobo > 0) {
+    const chargeRef = booking.order?.paystackChargeRef;
+    if (!chargeRef) throw new Error(`booking ${params.bookingId}: order has no charge reference to refund`);
+    await deps.paystack.refund({ chargeReference: chargeRef, amountKobo: params.amountKobo });
+  }
+
+  await deps.prisma.$transaction(async (tx) => {
+    if (params.precursor === 'CANCEL') await cancelBooking(tx, params.bookingId);
+    else if (params.precursor === 'NO_SHOW') await markNoShow(tx, params.bookingId);
+    await refundBooking(tx, params.bookingId, params.amountKobo);
+  }, TX);
+  return { refunded: true };
+}
+
 /** Initialize the Paystack charge for a PENDING order; HOLD happens on webhook. */
 export async function initChargeForOrder(
   deps: Deps,
-  params: { orderId: string; email: string },
+  params: { orderId: string; email: string; clientUserId: string },
 ): Promise<{ authorizationUrl: string; reference: string }> {
-  const order = await deps.prisma.order.findUniqueOrThrow({ where: { id: params.orderId } });
+  const order = await deps.prisma.order.findUniqueOrThrow({
+    where: { id: params.orderId },
+    include: { client: { select: { userId: true } } },
+  });
+  // Only the client who owns the order may initialize its charge.
+  if (order.client.userId !== params.clientUserId) {
+    throw new ApiError(403, 'FORBIDDEN', 'not your order');
+  }
   if (order.status !== 'PENDING') throw new Error(`order ${order.id} is not PENDING`);
   const reference = `hq_${order.id}`;
   const init = await deps.paystack.initializeCharge({
@@ -70,11 +126,16 @@ export async function createBankAccountForUsher(
  */
 export async function initWithdrawal(
   deps: Deps,
-  params: { idempotencyKey: string; walletId: string; bankAccountId: string; amountKobo: number },
+  params: { idempotencyKey: string; usherId: string; walletId: string; bankAccountId: string; amountKobo: number },
 ): Promise<{ withdrawalId: string; duplicate: boolean }> {
   const bank = await deps.prisma.bankAccount.findUniqueOrThrow({
     where: { id: params.bankAccountId },
   });
+  // The destination must belong to the withdrawing usher — otherwise a caller
+  // could route their own payout to anyone else's registered bank account.
+  if (bank.usherId !== params.usherId) {
+    throw new ApiError(403, 'FORBIDDEN', 'bank account does not belong to you');
+  }
   if (!bank.paystackRecipientCode) throw new Error('bank account has no transfer recipient');
 
   const { duplicate, result } = await runIdempotent(

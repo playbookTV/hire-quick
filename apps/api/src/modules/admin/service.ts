@@ -6,7 +6,9 @@
  */
 import { prisma } from '@hq/database';
 import { ApiError } from '../../app.js';
-import { resolveDisputeRelease, refundBooking, cancelBooking } from '../payments/ledger/ledger.js';
+import { resolveDisputeRelease } from '../payments/ledger/ledger.js';
+import { refundBookingToClient } from '../payments/service.js';
+import type { PaystackPort } from '../payments/port/paystack-port.js';
 import { notifyPayoutReleased, notifyMilestoneUnlocked } from '../notifications/service.js';
 import { kobo } from '@hq/shared';
 import { writeAudit } from '../audit.js';
@@ -27,6 +29,7 @@ async function executeDisputeResolution(
     resolution: string;
     adminId: string;
   },
+  paystack: PaystackPort,
   realtime: RealtimeGateway,
 ): Promise<void> {
   if (p.outcome === 'RELEASE') {
@@ -38,8 +41,10 @@ async function executeDisputeResolution(
     if (b?.payment) notifyPayoutReleased(b.usher.userId, kobo(b.payment.usherPayout));
     if (b) for (const tier of unlocked) notifyMilestoneUnlocked(b.usher.userId, tier.name);
   } else {
+    // Refund the client — the booking is DISPUTED (frozen), already a legal
+    // precursor to REFUNDED, so no status step is needed.
     const payment = await prisma.payment.findUnique({ where: { bookingId: p.bookingId } });
-    await prisma.$transaction((tx) => refundBooking(tx, p.bookingId, payment?.grossAmount ?? 0), TX);
+    await refundBookingToClient({ prisma, paystack }, { bookingId: p.bookingId, amountKobo: payment?.grossAmount ?? 0 });
   }
   await prisma.dispute.update({
     where: { id: p.disputeId },
@@ -52,12 +57,12 @@ async function executeDisputeResolution(
   realtime.emitToAdmins(RT.BOOKING_DISPUTE_RESOLVED, payload);
 }
 
-async function executeRefund(p: { bookingId: string; amountKobo: number }): Promise<void> {
+async function executeRefund(p: { bookingId: string; amountKobo: number }, paystack: PaystackPort): Promise<void> {
   const booking = await prisma.booking.findUniqueOrThrow({ where: { id: p.bookingId } });
-  await prisma.$transaction(async (tx) => {
-    if (booking.status === 'CONFIRMED') await cancelBooking(tx, p.bookingId);
-    await refundBooking(tx, p.bookingId, p.amountKobo);
-  }, TX);
+  // A still-CONFIRMED booking is cancelled first; one already CANCELLED/NO_SHOW/
+  // DISPUTED goes straight to refund. The orchestrator issues the Paystack refund.
+  const precursor = booking.status === 'CONFIRMED' ? ('CANCEL' as const) : undefined;
+  await refundBookingToClient({ prisma, paystack }, { bookingId: p.bookingId, amountKobo: p.amountKobo, precursor });
 }
 
 export async function resolveDispute(
@@ -65,6 +70,7 @@ export async function resolveDispute(
   disputeId: string,
   outcome: DisputeOutcome,
   resolution: string,
+  paystack: PaystackPort,
   realtime: RealtimeGateway = noopGateway,
 ): Promise<{ executed: boolean; approvalId?: string }> {
   const dispute = await prisma.dispute.findUniqueOrThrow({
@@ -88,7 +94,7 @@ export async function resolveDispute(
     return { executed: false, approvalId: approval.id };
   }
 
-  await executeDisputeResolution({ bookingId: dispute.bookingId, outcome, disputeId, resolution, adminId }, realtime);
+  await executeDisputeResolution({ bookingId: dispute.bookingId, outcome, disputeId, resolution, adminId }, paystack, realtime);
   await writeAudit({ actorId: adminId, action: 'dispute.resolve', target: disputeId, metadata: { outcome } });
   return { executed: true };
 }
@@ -98,6 +104,7 @@ export async function createRefund(
   bookingId: string,
   amountKobo: number,
   reason: string,
+  paystack: PaystackPort,
 ): Promise<{ executed: boolean; approvalId?: string }> {
   if (amountKobo > APPROVAL_THRESHOLD_KOBO) {
     const approval = await prisma.approval.create({
@@ -111,7 +118,7 @@ export async function createRefund(
     await writeAudit({ actorId: adminId, action: 'refund.proposed', target: bookingId, metadata: { amountKobo } });
     return { executed: false, approvalId: approval.id };
   }
-  await executeRefund({ bookingId, amountKobo });
+  await executeRefund({ bookingId, amountKobo }, paystack);
   await writeAudit({ actorId: adminId, action: 'refund', target: bookingId, metadata: { amountKobo, reason } });
   return { executed: true };
 }
@@ -120,6 +127,7 @@ export async function decideApproval(
   checkerId: string,
   approvalId: string,
   decision: 'approve' | 'reject',
+  paystack: PaystackPort,
   realtime: RealtimeGateway = noopGateway,
 ): Promise<void> {
   const a = await prisma.approval.findUniqueOrThrow({ where: { id: approvalId } });
@@ -140,9 +148,9 @@ export async function decideApproval(
       disputeId: String(payload.disputeId),
       resolution: typeof payload.resolution === 'string' ? payload.resolution : '',
       adminId: a.makerId,
-    }, realtime);
+    }, paystack, realtime);
   } else {
-    await executeRefund({ bookingId: String(payload.bookingId), amountKobo: Number(payload.amountKobo) });
+    await executeRefund({ bookingId: String(payload.bookingId), amountKobo: Number(payload.amountKobo) }, paystack);
   }
   await prisma.approval.update({ where: { id: approvalId }, data: { status: 'EXECUTED', checkerId } });
   await writeAudit({ actorId: checkerId, action: 'approval.execute', target: approvalId });

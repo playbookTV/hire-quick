@@ -9,3 +9,8 @@ node_modules
 *.log
 .DS_Store
 documentation
+# Local/dev config & secrets that must never be baked into image layers
+.mcp.json
+.codex
+.claude
+AGENTS.md

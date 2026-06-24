@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
+import { prisma } from '@hq/database';
 import type { UserRole } from '@hq/shared';
 import { ApiError } from '../../app.js';
 import { verifyAccessToken } from './tokens.js';
@@ -19,13 +20,19 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction): v
     next(new ApiError(401, 'UNAUTHENTICATED', 'missing bearer token'));
     return;
   }
-  verifyAccessToken(header.slice(7)).then(
-    (auth) => {
+  verifyAccessToken(header.slice(7))
+    .then(async (auth) => {
+      // A valid signature isn't enough — a token minted before suspension/erasure
+      // must stop working. Re-check live account status on every request.
+      const user = await prisma.user.findUnique({ where: { id: auth.userId }, select: { status: true } });
+      if (!user || user.status !== 'ACTIVE') {
+        next(new ApiError(403, 'ACCOUNT_INACTIVE', 'account is not active'));
+        return;
+      }
       (req as AuthedRequest).auth = auth;
       next();
-    },
-    () => next(new ApiError(401, 'UNAUTHENTICATED', 'invalid or expired token')),
-  );
+    })
+    .catch(() => next(new ApiError(401, 'UNAUTHENTICATED', 'invalid or expired token')));
 }
 
 /** Enforce the §15 RBAC matrix — caller must hold one of the given roles. */

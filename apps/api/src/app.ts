@@ -58,6 +58,17 @@ function corsOriginFor(allowlist: string[] | undefined): CorsOptions['origin'] {
 }
 
 export function createApp(config: AppConfig = {}): Express {
+  // Fail closed in production: the dev/test-friendly defaults (reflect-all CORS,
+  // pass-through rate limiters) must never silently ship. Refuse to boot.
+  if (process.env.NODE_ENV === 'production') {
+    if (!config.corsOrigins || config.corsOrigins.length === 0) {
+      throw new Error('corsOrigins must be configured in production (refusing to reflect all origins)');
+    }
+    if (!config.rateLimitRedis) {
+      throw new Error('rateLimitRedis must be provided in production (refusing to run without rate limiting)');
+    }
+  }
+
   const app = express();
   // Trust N proxy hops so req.ip is the real client IP (rate-limit keying).
   // 0 leaves trust proxy disabled (express treats 0 as "trust none").
@@ -82,7 +93,7 @@ export function createApp(config: AppConfig = {}): Express {
     app.use(
       '/webhooks/paystack',
       express.raw({ type: '*/*' }),
-      paystackWebhookRouter({ prisma, secret: config.paystackSecret, realtime }),
+      paystackWebhookRouter({ prisma, secret: config.paystackSecret, realtime, paystack: config.paystack }),
     );
   }
 
@@ -95,13 +106,16 @@ export function createApp(config: AppConfig = {}): Express {
   app.use('/auth', limiters.auth, authRouter());
   app.use('/api/me', profileRouter(config.storage));
   app.use('/api/me', privacyRouter());
-  app.use('/api/admin', adminRouter({ realtime, storage: config.storage }));
-  app.use('/api', bookingsRouter({ realtime }));
+  app.use('/api/admin', adminRouter({ realtime, storage: config.storage, paystack: config.paystack }));
+  app.use('/api', bookingsRouter({ realtime, paystack: config.paystack }));
   app.use('/api', ushersRouter(config.storage));
 
+  // Events (incl. read-only applications/saved-jobs) are independent of payments;
+  // confirm-batch guards on the port itself (503 when absent), so this mounts
+  // unconditionally and the whole feature stays available without a payment port.
+  app.use('/api', eventsRouter({ prisma, paystack: config.paystack }, config.storage));
   if (config.paystack) {
     app.use('/api/payments', limiters.money, paymentsRouter({ prisma, paystack: config.paystack, realtime }));
-    app.use('/api', eventsRouter({ prisma, paystack: config.paystack }));
   }
 
   app.use((_req, res) => {

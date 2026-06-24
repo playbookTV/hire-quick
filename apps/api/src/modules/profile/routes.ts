@@ -8,7 +8,7 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '@hq/database';
-import { setAvailabilitySchema } from '@hq/shared';
+import { setAvailabilitySchema, MAX_PORTFOLIO_PHOTOS } from '@hq/shared';
 import { ApiError } from '../../app.js';
 import { requireAuth, type AuthedRequest } from '../auth/middleware.js';
 import { writeAudit } from '../audit.js';
@@ -20,8 +20,6 @@ import {
   ownsPhotoKey,
   presignDoc,
 } from '../storage/storage.js';
-
-const MAX_PORTFOLIO_PHOTOS = 5;
 
 type Handler = (req: AuthedRequest, res: Response) => Promise<void>;
 const wrap =
@@ -43,17 +41,33 @@ const verificationSchema = z.object({
   selfieUrl: z.string().min(1),
 });
 
+// Allowlist upload content types and derive the file extension server-side.
+// Accepting an arbitrary contentType/ext lets a caller mint a presigned PUT for
+// text/html or image/svg+xml; that object is later served from the bucket to
+// admins (KYC) and clients (avatars) and would execute as stored XSS. Raster
+// images + PDF (KYC only) don't run script.
+// Raster image formats the mobile picker can emit (incl. iOS HEIC) — none of
+// these execute script. SVG and any text/* or application/* (except PDF for KYC)
+// are deliberately excluded.
+const PHOTO_CONTENT_TYPES = {
+  'image/jpeg': 'jpg',
+  'image/jpg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/heic': 'heic',
+  'image/heif': 'heif',
+} as const;
+const KYC_CONTENT_TYPES = { ...PHOTO_CONTENT_TYPES, 'application/pdf': 'pdf' } as const;
+
 const uploadUrlSchema = z.object({
   kind: z.enum(['id', 'selfie']),
-  contentType: z.string().min(3).max(100),
-  ext: z.string().regex(/^[a-z0-9]{1,5}$/i),
+  contentType: z.enum(['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'application/pdf']),
 });
 
 // Profile photo + portfolio (UXRD §7). Same presigned-key flow as verification.
 const photoUploadUrlSchema = z.object({
   kind: z.enum(['avatar', 'portfolio']),
-  contentType: z.string().min(3).max(100),
-  ext: z.string().regex(/^[a-z0-9]{1,5}$/i),
+  contentType: z.enum(['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif']),
 });
 
 const photoKeySchema = z.object({ key: z.string().min(1) });
@@ -135,8 +149,8 @@ export function profileRouter(storage?: StoragePort): Router {
       if (!storage) throw new ApiError(503, 'STORAGE_UNAVAILABLE', 'document storage not configured');
       const usher = await prisma.usher.findFirst({ where: { userId: req.auth.userId } });
       if (!usher) throw new ApiError(403, 'NOT_AN_USHER', 'only ushers submit verification');
-      const { kind, contentType, ext } = uploadUrlSchema.parse(req.body);
-      const key = verificationKey(usher.id, kind, ext);
+      const { kind, contentType } = uploadUrlSchema.parse(req.body);
+      const key = verificationKey(usher.id, kind, KYC_CONTENT_TYPES[contentType]);
       const url = await storage.presignUpload(key, contentType);
       res.status(201).json({ url, key });
     }),
@@ -194,8 +208,8 @@ export function profileRouter(storage?: StoragePort): Router {
       if (!storage) throw new ApiError(503, 'STORAGE_UNAVAILABLE', 'photo storage not configured');
       const usher = await prisma.usher.findFirst({ where: { userId: req.auth.userId } });
       if (!usher) throw new ApiError(403, 'NOT_AN_USHER', 'only ushers upload photos');
-      const { kind, contentType, ext } = photoUploadUrlSchema.parse(req.body);
-      const key = photoKey(usher.id, kind, ext);
+      const { kind, contentType } = photoUploadUrlSchema.parse(req.body);
+      const key = photoKey(usher.id, kind, PHOTO_CONTENT_TYPES[contentType]);
       const url = await storage.presignUpload(key, contentType);
       res.status(201).json({ url, key });
     }),

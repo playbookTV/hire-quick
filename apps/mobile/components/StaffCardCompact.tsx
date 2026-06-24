@@ -3,6 +3,7 @@
  * tile for grids/carousels. Avatar, name (Title/M), optional Verified badge,
  * star + rating (Body/S), price (Amount/M) + "/event".
  */
+import { memo } from 'react';
 import { Pressable } from 'react-native';
 import { Box, Text } from '../theme/restyle.js';
 import { Avatar } from './Avatar.js';
@@ -15,14 +16,16 @@ interface StaffCardCompactProps {
   rating: string;
   price: string;
   verified?: boolean;
+  avatarUrl?: string | null;
   onPress?: () => void;
 }
 
-export function StaffCardCompact({
+export const StaffCardCompact = memo(function StaffCardCompact({
   name,
   rating,
   price,
   verified = false,
+  avatarUrl,
   onPress,
 }: StaffCardCompactProps): React.JSX.Element {
   return (
@@ -35,7 +38,7 @@ export function StaffCardCompact({
         padding="400"
         style={[{ gap: 8 }, shadowSm]}
       >
-        <Avatar name={name} size={48} />
+        <Avatar name={name} size={48} imageUrl={avatarUrl} />
         <Text variant="titleM" numberOfLines={1}>
           {name}
         </Text>
@@ -55,4 +58,4 @@ export function StaffCardCompact({
       </Box>
     </Pressable>
   );
-}
+});

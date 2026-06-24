@@ -11,6 +11,7 @@ import { writeAudit } from '../audit.js';
 import { resolveDispute, createRefund, decideApproval, APPROVAL_THRESHOLD_KOBO } from './service.js';
 import { createMilestoneTierSchema, updateMilestoneTierSchema } from '@hq/shared';
 import type { RealtimeGateway } from '../../realtime/gateway.js';
+import type { PaystackPort } from '../payments/port/paystack-port.js';
 import { type StoragePort, presignDoc } from '../storage/storage.js';
 
 type Handler = (req: AuthedRequest, res: Response) => Promise<void>;
@@ -22,9 +23,20 @@ const wrap =
 
 const rejectSchema = z.object({ reason: z.string().min(3).max(500) });
 
-export function adminRouter(deps: { realtime: RealtimeGateway; storage?: StoragePort | undefined }): Router {
+export function adminRouter(deps: {
+  realtime: RealtimeGateway;
+  storage?: StoragePort | undefined;
+  paystack?: PaystackPort | undefined;
+}): Router {
   const r = Router();
   r.use(requireAuth, requireRole('ADMIN'));
+
+  // Refund/dispute execution issues a real Paystack refund, so those routes
+  // can't run without a configured port.
+  const requirePaystack = (): PaystackPort => {
+    if (!deps.paystack) throw new ApiError(503, 'PAYMENTS_UNAVAILABLE', 'payments are not configured');
+    return deps.paystack;
+  };
 
   // dashboard counters
   r.get(
@@ -129,7 +141,7 @@ export function adminRouter(deps: { realtime: RealtimeGateway; storage?: Storage
       const { outcome, resolution } = z
         .object({ outcome: z.enum(['RELEASE', 'REFUND']), resolution: z.string().min(3).max(1000) })
         .parse(req.body);
-      const out = await resolveDispute(req.auth.userId, String(req.params.id), outcome, resolution, deps.realtime);
+      const out = await resolveDispute(req.auth.userId, String(req.params.id), outcome, resolution, requirePaystack(), deps.realtime);
       res.json(out);
     }),
   );
@@ -141,7 +153,7 @@ export function adminRouter(deps: { realtime: RealtimeGateway; storage?: Storage
       const { bookingId, amountKobo, reason } = z
         .object({ bookingId: z.string().uuid(), amountKobo: z.number().int().positive(), reason: z.string().min(3).max(500) })
         .parse(req.body);
-      const out = await createRefund(req.auth.userId, bookingId, amountKobo, reason);
+      const out = await createRefund(req.auth.userId, bookingId, amountKobo, reason, requirePaystack());
       res.json(out);
     }),
   );
@@ -165,7 +177,7 @@ export function adminRouter(deps: { realtime: RealtimeGateway; storage?: Storage
     '/approvals/:id',
     wrap(async (req, res) => {
       const { decision } = z.object({ decision: z.enum(['approve', 'reject']) }).parse(req.body);
-      await decideApproval(req.auth.userId, String(req.params.id), decision, deps.realtime);
+      await decideApproval(req.auth.userId, String(req.params.id), decision, requirePaystack(), deps.realtime);
       res.json({ ok: true });
     }),
   );

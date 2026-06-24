@@ -54,7 +54,8 @@ export function authRouter(): Router {
         throw new ApiError(401, 'INVALID_REFRESH', 'invalid or expired refresh token');
       }
       const user = await prisma.user.findUnique({ where: { id: userId } });
-      if (!user || user.status === 'SUSPENDED') {
+      // Any non-ACTIVE state (SUSPENDED, ANONYMIZED, PENDING) must not mint tokens.
+      if (!user || user.status !== 'ACTIVE') {
         throw new ApiError(401, 'INVALID_REFRESH', 'user not active');
       }
       // Rotation: issue a fresh pair on every refresh.

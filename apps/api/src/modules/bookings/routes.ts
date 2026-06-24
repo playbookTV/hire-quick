@@ -16,6 +16,7 @@ import {
 } from './service.js';
 import { listMessages, sendMessage, unreadCount, markSeen } from '../../realtime/messages.js';
 import type { RealtimeGateway } from '../../realtime/gateway.js';
+import type { PaystackPort } from '../payments/port/paystack-port.js';
 import { RT } from '../../realtime/events.js';
 
 type Handler = (req: AuthedRequest, res: Response) => Promise<void>;
@@ -25,7 +26,7 @@ const wrap =
     h(req as AuthedRequest, res).catch(next);
   };
 
-export function bookingsRouter(deps: { realtime: RealtimeGateway }): Router {
+export function bookingsRouter(deps: { realtime: RealtimeGateway; paystack?: PaystackPort | undefined }): Router {
   const r = Router();
   r.use(requireAuth);
 
@@ -137,7 +138,13 @@ export function bookingsRouter(deps: { realtime: RealtimeGateway }): Router {
     requireIdempotencyKey,
     wrap(async (req, res) => {
       cancelBookingSchema.parse(req.body ?? {});
-      const out = await cancelBookingByClient(String(req.params.id), req.auth.userId, deps.realtime);
+      if (!deps.paystack) throw new ApiError(503, 'PAYMENTS_UNAVAILABLE', 'payments are not configured');
+      const out = await cancelBookingByClient(
+        { prisma, paystack: deps.paystack, realtime: deps.realtime },
+        String(req.params.id),
+        req.auth.userId,
+        deps.realtime,
+      );
       res.json(out);
     }),
   );

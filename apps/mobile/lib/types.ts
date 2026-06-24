@@ -21,6 +21,12 @@ export interface Wallet {
   currency: string;
 }
 
+/** A portfolio work sample. `imageUrl` is a short-lived presigned GET URL. */
+export interface PortfolioPhoto {
+  id: string;
+  imageUrl: string;
+}
+
 export interface UsherProfile {
   id: string;
   userId: string;
@@ -33,6 +39,9 @@ export interface UsherProfile {
   ratingCount: number;
   completedJobsCount: number;
   wallet?: Wallet | null;
+  /** Presigned profile-photo URL; null = render initials. */
+  avatarUrl: string | null;
+  portfolio: PortfolioPhoto[];
 }
 
 /** GET /api/me */
@@ -84,6 +93,10 @@ export interface UsherListItem {
   completedJobsCount: number;
   reliabilityScore: number;
   verificationStatus: UsherVerifyState;
+  /** Presigned profile-photo URL; null = render initials. */
+  avatarUrl: string | null;
+  /** Only present on the single-usher detail (`GET /api/ushers/:id`). */
+  portfolio?: PortfolioPhoto[];
 }
 
 /** GET /api/ushers/:id/reviews */
@@ -135,6 +148,7 @@ export interface Application {
     yearsExperience: number;
     verificationStatus: UsherVerifyState;
     bio: string | null;
+    avatarUrl: string | null;
     user: { phone: string };
   };
 }

@@ -13,6 +13,7 @@ import { holdOrder, completeWithdrawal, failWithdrawal } from '../ledger/ledger.
 import { notifyBookingConfirmed } from '../../notifications/service.js';
 import { writeAudit } from '../../audit.js';
 import { noopGateway, type RealtimeGateway } from '../../../realtime/gateway.js';
+import type { PaystackPort } from '../port/paystack-port.js';
 import { RT, bookingEvent, withdrawalEvent } from '../../../realtime/events.js';
 
 /**
@@ -45,9 +46,24 @@ async function handleChargeSuccess(
   key: string,
   ref: string,
   realtime: RealtimeGateway,
+  paystack?: PaystackPort,
 ): Promise<void> {
   const order = await prisma.order.findFirst({ where: { paystackChargeRef: ref } });
   if (!order) return; // not one of ours — ack and ignore
+  // Don't trust the webhook body — re-verify the charge server-side (status +
+  // exact amount) before moving money (payment-integration: always verify).
+  if (paystack) {
+    const verified = await paystack.verifyChargeKobo(ref);
+    if (verified.status !== 'success' || verified.amountKobo !== order.grossAmount) {
+      await safeAudit({
+        actorId: null,
+        action: 'payment.charge.mismatch',
+        target: order.id,
+        metadata: { ref, expected: order.grossAmount, got: verified.amountKobo, status: verified.status },
+      });
+      return; // ack 200 so Paystack stops retrying a tampered/under-paid event; no HOLD
+    }
+  }
   const result = await runIdempotent(prisma, key, 'paystack_event_id', (tx) => holdOrder(tx, order.id, ref));
   if (result.duplicate) return;
   await safeAudit({
@@ -113,13 +129,14 @@ export async function dispatchPaystackEvent(
   prisma: PrismaClient,
   evt: PaystackEvent,
   realtime: RealtimeGateway = noopGateway,
+  paystack?: PaystackPort,
 ): Promise<void> {
   const ref = evt.data.reference ?? String(evt.data.id ?? '');
   const key = `${evt.event}:${ref}`;
 
   switch (evt.event) {
     case 'charge.success':
-      return handleChargeSuccess(prisma, key, ref, realtime);
+      return handleChargeSuccess(prisma, key, ref, realtime, paystack);
     case 'transfer.success':
       return handleTransferSuccess(prisma, key, ref, realtime);
     case 'transfer.failed':
@@ -136,6 +153,7 @@ export function paystackWebhookRouter(deps: {
   prisma: PrismaClient;
   secret: string;
   realtime?: RealtimeGateway;
+  paystack?: PaystackPort;
 }): Router {
   const router = Router();
 
@@ -154,12 +172,13 @@ export function paystackWebhookRouter(deps: {
       res.status(400).json({ error: { code: 'BAD_PAYLOAD', message: 'invalid json' } });
       return;
     }
-    dispatchPaystackEvent(deps.prisma, evt, deps.realtime ?? noopGateway).then(
+    dispatchPaystackEvent(deps.prisma, evt, deps.realtime ?? noopGateway, deps.paystack).then(
       () => res.status(200).json({ received: true }),
       (err: unknown) => {
-        // 500 → Paystack retries with backoff (nothing dropped silently).
-        const message = err instanceof Error ? err.message : 'handler error';
-        res.status(500).json({ error: { code: 'HANDLER_ERROR', message } });
+        // 500 → Paystack retries with backoff (nothing dropped silently). The
+        // detail is logged, not leaked in the response body.
+        console.error('[webhook] handler error', err);
+        res.status(500).json({ error: { code: 'HANDLER_ERROR', message: 'handler error' } });
       },
     );
   });

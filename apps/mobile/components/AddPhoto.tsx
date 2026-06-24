@@ -4,6 +4,7 @@
  * camera chip, title + subtitle) for ID/selfie capture.
  */
 import { Pressable } from 'react-native';
+import { Image } from 'expo-image';
 import { useTheme, Box, Text } from '../theme/restyle.js';
 import { Icon, type IconName } from './Icon.js';
 
@@ -15,6 +16,10 @@ interface AddPhotoProps {
   subtitle?: string;
   icon?: IconName;
   onPress?: () => void;
+  /** When set, a `tile` renders this image instead of the empty add state. */
+  imageUrl?: string | null;
+  /** Tapping the remove badge on a filled tile. */
+  onRemove?: () => void;
 }
 
 export function AddPhoto({
@@ -23,10 +28,46 @@ export function AddPhoto({
   subtitle = 'Optional · builds trust',
   icon = 'camera',
   onPress,
+  imageUrl,
+  onRemove,
 }: AddPhotoProps): React.JSX.Element {
   const theme = useTheme();
 
   if (variant === 'tile') {
+    // Filled tile: show the uploaded photo with a remove badge.
+    if (imageUrl) {
+      return (
+        <Box style={{ width: 80, height: 80 }}>
+          <Image
+            source={{ uri: imageUrl }}
+            style={{ width: 80, height: 80, borderRadius: theme.borderRadii.md, backgroundColor: theme.colors.bgSubtle }}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={150}
+            recyclingKey={imageUrl}
+          />
+          <Pressable
+            onPress={onRemove}
+            hitSlop={8}
+            style={{
+              position: 'absolute',
+              top: -6,
+              right: -6,
+              width: 24,
+              height: 24,
+              borderRadius: 12,
+              backgroundColor: theme.colors.bgSurface,
+              borderWidth: 1,
+              borderColor: theme.colors.borderStrong,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Icon name="x" size={14} color="inkDefault" />
+          </Pressable>
+        </Box>
+      );
+    }
     return (
       <Pressable onPress={onPress}>
         <Box

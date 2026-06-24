@@ -62,7 +62,7 @@ export function paymentsRouter(deps: Deps): Router {
     wrap(async (req, res) => {
       const { email } = z.object({ email: z.string().email() }).parse(req.body);
       const orderId = String(req.params.orderId);
-      const out = await initChargeForOrder(deps, { orderId, email });
+      const out = await initChargeForOrder(deps, { orderId, email, clientUserId: (req as AuthedRequest).auth.userId });
       await writeAudit({ actorId: (req as AuthedRequest).auth.userId, action: 'payment.charge.init', target: orderId });
       res.status(201).json(out);
     }),
@@ -207,10 +207,11 @@ export function paymentsRouter(deps: Deps): Router {
     '/withdrawals',
     requireIdempotencyKey,
     wrap(async (req, res) => {
-      const { walletId } = await usherWalletFor((req as AuthedRequest).auth.userId);
+      const { usherId, walletId } = await usherWalletFor((req as AuthedRequest).auth.userId);
       const body = withdrawSchema.parse(req.body);
       const out = await initWithdrawal(deps, {
         idempotencyKey: (req as AuthedRequest).idempotencyKey ?? '',
+        usherId,
         walletId,
         bankAccountId: body.bankAccountId,
         amountKobo: body.amountKobo,

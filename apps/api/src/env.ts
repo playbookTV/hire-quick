@@ -56,6 +56,22 @@ const EnvSchema = z.object({
   BREVO_WHATSAPP_SENDER: z.string().default(''),
   BREVO_WHATSAPP_OTP_TEMPLATE_ID: z.coerce.number().int().nonnegative().default(0),
   BREVO_WHATSAPP_OTP_PARAM: z.string().default('code'),
+}).superRefine((cfg, ctx) => {
+  // Fail fast: the JWT secrets carry dev-friendly defaults so tests/dev boot with
+  // zero config, but in production a forgotten env var would mean signing tokens
+  // with a publicly-known secret — anyone could forge an ADMIN token. Require
+  // both to be explicitly set to a strong value before a production process runs.
+  if (cfg.NODE_ENV !== 'production') return;
+  const weak = (s: string): boolean => s.length < 32 || s.startsWith('dev-');
+  for (const name of ['JWT_ACCESS_SECRET', 'JWT_REFRESH_SECRET'] as const) {
+    if (weak(cfg[name])) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [name],
+        message: `${name} must be set to a strong (>= 32 char, non-default) value in production`,
+      });
+    }
+  }
 });
 
 export type Env = z.infer<typeof EnvSchema>;

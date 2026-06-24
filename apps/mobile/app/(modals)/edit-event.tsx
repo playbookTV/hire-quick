@@ -9,7 +9,7 @@ import { useMemo, useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { updateEventSchema, type UpdateEventInput, kobo, formatNaira, ACCOMMODATION_STATUSES } from '@hq/shared';
+import { updateEventSchema, type UpdateEventInput, kobo, formatNaira, ACCOMMODATION_STATUSES, isLateNight } from '@hq/shared';
 
 import { Screen } from '../../components/Screen.js';
 import { AppBar } from '../../components/AppBar.js';
@@ -89,7 +89,7 @@ function EditEventForm({ event }: { event: EventResource }): React.JSX.Element {
 
   const values = watch();
   const total = kobo((values.headcount || 0) * (values.budgetPerHeadKobo || 0));
-  const lateNight = (values.endTime ?? '') >= '22:00';
+  const lateNight = isLateNight(values.endTime ?? '');
 
   const onSubmit = async (data: UpdateEventInput): Promise<void> => {
     setFormError(null);

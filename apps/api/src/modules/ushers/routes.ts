@@ -79,7 +79,7 @@ export function ushersRouter(storage?: StoragePort): Router {
   r.get(
     '/ushers/:id',
     wrap(async (req, res) => {
-      const { avatarKey, ...u } = await prisma.usher.findUniqueOrThrow({
+      const { avatarKey, photos, ...u } = await prisma.usher.findUniqueOrThrow({
         where: { id: String(req.params.id) },
         select: { ...usherCard, photos: { select: { id: true, imageUrl: true }, orderBy: { createdAt: 'asc' } } },
       });
@@ -87,7 +87,7 @@ export function ushersRouter(storage?: StoragePort): Router {
         ...u,
         avatarUrl: avatarKey ? await presignDoc(storage, avatarKey) : null,
         portfolio: await Promise.all(
-          u.photos.map(async (p) => ({ id: p.id, imageUrl: await presignDoc(storage, p.imageUrl) })),
+          photos.map(async (p) => ({ id: p.id, imageUrl: await presignDoc(storage, p.imageUrl) })),
         ),
       });
     }),
@@ -106,7 +106,9 @@ export function ushersRouter(storage?: StoragePort): Router {
         orderBy: { createdAt: 'desc' },
         take: 50,
         include: {
-          reviewer: { select: { phone: true, client: { select: { displayName: true } }, usher: { select: { displayName: true } } } },
+          // Never select reviewer.phone — it would leak as the public reviewer
+          // name below. Only the chosen display names are safe to surface.
+          reviewer: { select: { client: { select: { displayName: true } }, usher: { select: { displayName: true } } } },
         },
       });
       res.json(
@@ -115,7 +117,7 @@ export function ushersRouter(storage?: StoragePort): Router {
           rating: rv.rating,
           comment: rv.comment,
           createdAt: rv.createdAt,
-          reviewerName: rv.reviewer.client?.displayName ?? rv.reviewer.usher?.displayName ?? rv.reviewer.phone,
+          reviewerName: rv.reviewer.client?.displayName ?? rv.reviewer.usher?.displayName ?? 'HireQuick user',
         })),
       );
     }),

@@ -89,7 +89,7 @@ export default function Applications(): React.JSX.Element {
       >
         <Box flexDirection="row" alignItems="center" style={{ gap: 12 }}>
           <Pressable onPress={() => openProfile(a.usher.id)} hitSlop={6}>
-            <Avatar name={name} size={48} />
+            <Avatar name={name} size={48} imageUrl={a.usher.avatarUrl} />
           </Pressable>
           <Pressable style={{ flex: 1 }} onPress={() => openProfile(a.usher.id)}>
             <Box style={{ gap: 4 }}>

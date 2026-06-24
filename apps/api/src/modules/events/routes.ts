@@ -10,7 +10,7 @@ import {
   createEventSchema,
   updateEventSchema,
   type UpdateEventInput,
-  ACCOMMODATION_REQUIRED_FROM,
+  accommodationDisclosed,
 } from '@hq/shared';
 import { ApiError } from '../../app.js';
 import { requireAuth, type AuthedRequest } from '../auth/middleware.js';
@@ -18,6 +18,16 @@ import { requireIdempotencyKey } from '../payments/http/middleware.js';
 import { confirmBatch } from '../bookings/service.js';
 import { writeAudit } from '../audit.js';
 import type { Deps } from '../payments/service.js';
+import type { PaystackPort } from '../payments/port/paystack-port.js';
+import { type StoragePort, presignDoc } from '../storage/storage.js';
+
+/**
+ * Most of this router (events, applications, saved jobs) is independent of
+ * payments; only confirm-batch charges. So the Paystack port is optional and
+ * the confirm handler guards on it (503), letting the router mount without a
+ * payment port configured.
+ */
+type EventsDeps = Omit<Deps, 'paystack'> & { paystack?: PaystackPort | undefined };
 
 type Handler = (req: AuthedRequest, res: Response) => Promise<void>;
 const wrap =
@@ -61,7 +71,7 @@ function eventUpdateData(b: UpdateEventInput): Prisma.EventUpdateInput {
   return data;
 }
 
-export function eventsRouter(deps: Deps): Router {
+export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
   const r = Router();
   r.use(requireAuth);
 
@@ -142,7 +152,7 @@ export function eventsRouter(deps: Deps): Router {
       const mergedEnd = b.endTime ?? existing.endTime;
       const mergedAccommodation =
         b.accommodation !== undefined ? b.accommodation : existing.accommodation;
-      if (mergedEnd >= ACCOMMODATION_REQUIRED_FROM && mergedAccommodation == null) {
+      if (!accommodationDisclosed(mergedEnd, mergedAccommodation)) {
         throw new ApiError(400, 'VALIDATION', 'accommodation is required for events ending at or after 22:00');
       }
 
@@ -232,16 +242,27 @@ export function eventsRouter(deps: Deps): Router {
       const eventId = String(req.params.id);
       const event = await prisma.event.findUniqueOrThrow({ where: { id: eventId } });
       if (event.clientId !== clientId) throw new ApiError(403, 'FORBIDDEN', 'not your event');
+      const apps = await prisma.application.findMany({
+        where: { eventId },
+        // Surface more-accomplished (badged) ushers first, then higher-rated.
+        orderBy: [
+          { usher: { completedJobsCount: 'desc' } },
+          { usher: { ratingAvg: 'desc' } },
+        ],
+        // Do NOT include user.phone — contact details stay off-platform until a
+        // booking exists (on-platform messaging/safety model). displayName lives
+        // on the Usher record and is enough to choose whom to hire.
+        include: { usher: true },
+      });
+      // Presign the applicant's avatar so the client sees a real photo when
+      // deciding whom to hire; never leak the raw storage key.
       res.json(
-        await prisma.application.findMany({
-          where: { eventId },
-          // Surface more-accomplished (badged) ushers first, then higher-rated.
-          orderBy: [
-            { usher: { completedJobsCount: 'desc' } },
-            { usher: { ratingAvg: 'desc' } },
-          ],
-          include: { usher: { include: { user: { select: { phone: true } } } } },
-        }),
+        await Promise.all(
+          apps.map(async ({ usher: { avatarKey, ...usher }, ...app }) => ({
+            ...app,
+            usher: { ...usher, avatarUrl: avatarKey ? await presignDoc(storage, avatarKey) : null },
+          })),
+        ),
       );
     }),
   );
@@ -310,13 +331,19 @@ export function eventsRouter(deps: Deps): Router {
       const { applicationIds, email } = z
         .object({ applicationIds: z.array(z.string().uuid()).min(1).max(50), email: z.string().email() })
         .parse(req.body);
-      const out = await confirmBatch(deps, {
-        clientUserId: req.auth.userId,
-        eventId: String(req.params.id),
-        applicationIds,
-        email,
-      });
-      res.status(201).json(out);
+      const { paystack } = deps;
+      if (!paystack) throw new ApiError(503, 'PAYMENTS_UNAVAILABLE', 'payments are not configured');
+      const out = await confirmBatch(
+        { ...deps, paystack },
+        {
+          idempotencyKey: req.idempotencyKey ?? '',
+          clientUserId: req.auth.userId,
+          eventId: String(req.params.id),
+          applicationIds,
+          email,
+        },
+      );
+      res.status(out.duplicate ? 200 : 201).json(out);
     }),
   );
 

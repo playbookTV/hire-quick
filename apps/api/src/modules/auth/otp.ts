@@ -74,6 +74,11 @@ export async function verifyOtp(phone: string, code: string, role?: UserRole): P
   await prisma.verificationCode.update({ where: { id: rec.id }, data: { consumedAt: new Date() } });
 
   let user = await prisma.user.findUnique({ where: { phone } });
+  // A suspended or erased account must not be able to re-authenticate, even with
+  // a valid OTP (covers suspended admins too).
+  if (user && (user.status === 'SUSPENDED' || user.status === 'ANONYMIZED')) {
+    throw new ApiError(403, 'ACCOUNT_INACTIVE', 'this account cannot sign in');
+  }
   const isNewUser = !user;
   if (!user) {
     const chosen: UserRole = role ?? 'CLIENT';

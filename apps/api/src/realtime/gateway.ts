@@ -19,7 +19,7 @@ import { Server, type Socket } from 'socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
 import { Emitter } from '@socket.io/redis-emitter';
 import { Redis } from 'ioredis';
-import type { MessageContentType } from '@hq/database';
+import { prisma, type MessageContentType } from '@hq/database';
 import { verifyAccessToken } from '../modules/auth/tokens.js';
 import { assertParty, sendMessage, markSeen } from './messages.js';
 import { RT, type ConversationUnreadPayload } from './events.js';
@@ -175,14 +175,19 @@ export function createSocketGateway(opts: { redisUrl?: string } = {}): SocketGat
         next(new Error('unauthenticated'));
         return;
       }
-      verifyAccessToken(token).then(
-        (a) => {
+      verifyAccessToken(token)
+        .then(async (a) => {
+          // Reject sockets for suspended/erased accounts, even with a valid token.
+          const user = await prisma.user.findUnique({ where: { id: a.userId }, select: { status: true } });
+          if (!user || user.status !== 'ACTIVE') {
+            next(new Error('unauthenticated'));
+            return;
+          }
           (socket.data as { userId: string; role: string }).userId = a.userId;
           (socket.data as { userId: string; role: string }).role = a.role;
           next();
-        },
-        () => next(new Error('unauthenticated')),
-      );
+        })
+        .catch(() => next(new Error('unauthenticated')));
     });
 
     server_io.on('connection', (socket) => onConnection(server_io, socket));

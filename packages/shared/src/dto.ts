@@ -11,6 +11,29 @@ export const uuid = z.string().uuid();
 /** Events ending at or after this time (HH:MM) must declare accommodation. */
 export const ACCOMMODATION_REQUIRED_FROM = '22:00';
 
+/** Max work-photos an usher may list in their portfolio (server-enforced + UI gate). */
+export const MAX_PORTFOLIO_PHOTOS = 5;
+
+/** Whether an event ending at `endTime` (HH:MM) triggers the accommodation-disclosure rule. */
+export function isLateNight(endTime: string): boolean {
+  return endTime >= ACCOMMODATION_REQUIRED_FROM;
+}
+
+/**
+ * The late-night safety rule (PRD §7): an event ending at/after 22:00 must
+ * declare accommodation. Satisfied when the event isn't late-night, or when
+ * accommodation has been disclosed (PROVIDED *or* NOT_PROVIDED — staff just
+ * need to know). Single source of truth for create/PATCH/mobile so all
+ * surfaces compute the same outcome.
+ */
+export function accommodationDisclosed(
+  endTime: string | null | undefined,
+  accommodation: string | null | undefined,
+): boolean {
+  if (!endTime) return true;
+  return !isLateNight(endTime) || accommodation != null;
+}
+
 /** ★ POST /orders — confirm a batch of accepted ushers into escrow (PRD §7). */
 export const confirmOrderSchema = z.object({
   eventId: uuid,
@@ -62,7 +85,7 @@ export const createEventSchema = eventFields
     message: 'endTime must be after startTime',
     path: ['endTime'],
   })
-  .refine((e) => e.endTime < ACCOMMODATION_REQUIRED_FROM || e.accommodation != null, {
+  .refine((e) => accommodationDisclosed(e.endTime, e.accommodation), {
     message: 'accommodation is required for events ending at or after 22:00',
     path: ['accommodation'],
   });
