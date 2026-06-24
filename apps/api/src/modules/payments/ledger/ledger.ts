@@ -243,12 +243,15 @@ export async function refundBooking(tx: Tx, bookingId: string, amountKobo: numbe
   if (booking.payment && booking.payment.escrowStatus !== 'HELD' && booking.payment.escrowStatus !== 'FROZEN') {
     throw new LedgerError('NOT_REFUNDABLE', `escrow not refundable (is ${booking.payment.escrowStatus})`);
   }
-  // The refund can never exceed what's still held for this booking, or escrow
-  // would go negative / strand funds (TRD §25: HELD + released + refunded must
-  // reconcile to the charged amount). While HELD this equals the allocation.
+  // A per-booking refund is all-or-nothing: it must equal exactly what's still
+  // held for this booking. Partial amounts would strand the remainder while the
+  // booking/order is marked terminally REFUNDED (TRD §25: HELD + released +
+  // refunded must reconcile to the charged amount). While HELD this equals the
+  // booking allocation. Partial-of-batch is modelled as full refunds of the
+  // individual bookings, not a partial refund of one.
   const held = await escrowBalance(tx, bookingId);
-  if (amountKobo > held) {
-    throw new LedgerError('REFUND_EXCEEDS_HELD', `refund ${amountKobo} exceeds held balance ${held}`);
+  if (amountKobo !== held) {
+    throw new LedgerError('REFUND_MUST_BE_FULL', `refund ${amountKobo} must equal the held balance ${held}`);
   }
 
   assertBookingTransition(booking.status, 'REFUNDED');

@@ -7,6 +7,7 @@ import { Pressable } from 'react-native';
 import { useTheme, Box, Text } from '../theme/restyle.js';
 import { Button } from './Button.js';
 import { Icon } from './Icon.js';
+import { AnimatedPressable } from './Pressable.js';
 import { shadowSm } from '../theme/shadows.js';
 
 type BadgeTone = 'gold' | 'emerald' | 'danger' | 'muted';
@@ -51,16 +52,15 @@ export function JobCard({
 }: JobCardProps): React.JSX.Element {
   const theme = useTheme();
   const badgeColor = BADGE_COLORS[badgeTone];
-  return (
-    <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed && onPress ? 0.9 : 1 })}>
-      <Box
-        backgroundColor="bgSurface"
-        borderWidth={1}
-        borderColor="borderDefault"
-        borderRadius="lg"
-        padding="400"
-        style={[{ gap: 12 }, shadowSm]}
-      >
+  const card = (
+    <Box
+      backgroundColor="bgSurface"
+      borderWidth={1}
+      borderColor="borderDefault"
+      borderRadius="lg"
+      padding="400"
+      style={[{ gap: 12 }, shadowSm]}
+    >
         <Box flexDirection="row" alignItems="center" justifyContent="space-between" style={{ gap: 8 }}>
           <Text variant="titleM" style={{ flex: 1 }} numberOfLines={1}>
             {title}
@@ -132,6 +132,8 @@ export function JobCard({
           ) : null}
         </Box>
       </Box>
-    </Pressable>
   );
+
+  if (!onPress) return card;
+  return <AnimatedPressable onPress={onPress}>{card}</AnimatedPressable>;
 }

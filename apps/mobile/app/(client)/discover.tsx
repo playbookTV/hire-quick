@@ -17,7 +17,7 @@ import { useTheme, Box, Text } from '../../theme/restyle.js';
 import { Chip } from '../../components/Chip.js';
 import { StaffCard } from '../../components/StaffCard.js';
 import { Icon } from '../../components/Icon.js';
-import { Loading } from '../../components/Loading.js';
+import { SkeletonRow } from '../../components/Skeleton.js';
 import { useUshers } from '../../lib/hooks.js';
 import { useDebouncedValue } from '../../lib/use-debounced-value.js';
 import type { UsherListItem } from '../../lib/types.js';
@@ -130,7 +130,11 @@ export default function Discover(): React.JSX.Element {
         ItemSeparatorComponent={Separator}
         ListEmptyComponent={
           ushers.isLoading ? (
-            <Loading />
+            <Box style={{ gap: 12 }}>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <SkeletonRow key={i} />
+              ))}
+            </Box>
           ) : (
             <Text variant="bodySm" color="inkMuted">
               No ushers match your search yet.

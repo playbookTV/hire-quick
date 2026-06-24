@@ -31,11 +31,12 @@ function log(message: string): void {
   console.log(`[brevo] ${message}`);
 }
 
-export async function sendSms(to: string, text: string): Promise<void> {
+/** Returns whether the message was accepted by the provider (true on dev stub). */
+export async function sendSms(to: string, text: string): Promise<boolean> {
   record({ kind: 'sms', to, summary: text });
   if (!env.BREVO_API_KEY) {
     log(`(stub) SMS → ${to}: ${text}`);
-    return;
+    return true;
   }
   const res = await fetch('https://api.brevo.com/v3/transactionalSMS/send', {
     method: 'POST',
@@ -48,7 +49,11 @@ export async function sendSms(to: string, text: string): Promise<void> {
       content: text,
     }),
   });
-  if (!res.ok) log(`SMS to ${to} failed: ${String(res.status)}`);
+  if (!res.ok) {
+    log(`SMS to ${to} failed: ${String(res.status)}`);
+    return false;
+  }
+  return true;
 }
 
 export async function sendEmail(to: string, subject: string, html: string): Promise<void> {
@@ -82,13 +87,13 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
  * template once it exists and adjust the param mapping if Brevo expects a
  * different key (e.g. a positional "1").
  */
-export async function sendWhatsAppOtp(to: string, code: string): Promise<void> {
+export async function sendWhatsAppOtp(to: string, code: string): Promise<boolean> {
   record({ kind: 'whatsapp', to, summary: `OTP ${code}` });
   const configured =
     !!env.BREVO_API_KEY && !!env.BREVO_WHATSAPP_SENDER && env.BREVO_WHATSAPP_OTP_TEMPLATE_ID > 0;
   if (!configured) {
     log(`(stub) whatsapp → ${to}: OTP ${code}`);
-    return;
+    return true;
   }
   const recipient = to.replace(/\D/g, ''); // Brevo wants digits only, incl. country code
   const res = await fetch('https://api.brevo.com/v3/whatsapp/sendMessage', {
@@ -101,7 +106,11 @@ export async function sendWhatsAppOtp(to: string, code: string): Promise<void> {
       params: { [env.BREVO_WHATSAPP_OTP_PARAM]: code },
     }),
   });
-  if (!res.ok) log(`whatsapp OTP to ${to} failed: ${String(res.status)}`);
+  if (!res.ok) {
+    log(`whatsapp OTP to ${to} failed: ${String(res.status)}`);
+    return false;
+  }
+  return true;
 }
 
 /** FCM push is stubbed until creds; record intent so the lifecycle wiring is testable. */

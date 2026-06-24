@@ -47,10 +47,14 @@ function emitBooking(
 }
 
 /** Combine an event's date (UTC midnight) with an "HH:MM" time into a Date. */
+// Event wall-clock times are Lagos local (WAT = UTC+1, no DST). Convert to the
+// real UTC instant so no-show / auto-complete / cancellation windows fire at the
+// right moment — otherwise 18:00 Lagos was being treated as 18:00Z (an hour late).
+const LAGOS_UTC_OFFSET_HOURS = 1;
 function combine(date: Date, hhmm: string): Date {
   const [h, m] = hhmm.split(':').map(Number);
   const d = new Date(date);
-  d.setUTCHours(h ?? 0, m ?? 0, 0, 0);
+  d.setUTCHours((h ?? 0) - LAGOS_UTC_OFFSET_HOURS, m ?? 0, 0, 0);
   return d;
 }
 
@@ -80,6 +84,11 @@ export async function confirmBatch(
   // produces exactly one order + booking set. The existing-booking guard inside
   // the tx stops a *different* key from re-confirming the same applicants.
   const { duplicate, result } = await runIdempotent(deps.prisma, params.idempotencyKey, 'order', async (tx) => {
+    // Serialize confirmations for this event so two concurrent batches can't both
+    // pass the headcount check and overbook (mirrors the ledger's FOR UPDATE row
+    // locks). Prisma has no native row-lock API, hence raw SQL.
+    await tx.$queryRaw`SELECT id FROM events WHERE id = ${event.id}::uuid FOR UPDATE`;
+
     const already = await tx.booking.findFirst({
       where: {
         eventId: event.id,
@@ -88,6 +97,16 @@ export async function confirmBatch(
       },
     });
     if (already) throw new ApiError(409, 'ALREADY_CONFIRMED', 'one or more applicants are already booked for this event');
+
+    // Enforce the event's headcount — never confirm more staff than requested.
+    const liveCount = await tx.booking.count({
+      where: { eventId: event.id, status: { notIn: ['CANCELLED', 'REFUNDED', 'NO_SHOW'] } },
+    });
+    if (liveCount + apps.length > event.headcount) {
+      const remaining = Math.max(0, event.headcount - liveCount);
+      throw new ApiError(409, 'OVERBOOKED', `event needs ${remaining} more staff; you selected ${apps.length}`);
+    }
+
     const order = await tx.order.create({
       data: { clientId: event.clientId, eventId: event.id, grossAmount: gross, status: 'PENDING' },
     });
@@ -104,6 +123,12 @@ export async function confirmBatch(
       });
       ids.push(b.id);
     }
+    // Advance the staffing state so the event stops/keeps showing in discovery.
+    const total = liveCount + apps.length;
+    await tx.event.update({
+      where: { id: event.id },
+      data: { status: total >= event.headcount ? 'FULLY_STAFFED' : 'PARTIALLY_STAFFED' },
+    });
     return { orderId: order.id, bookingIds: ids };
   });
   if (duplicate || !result) {

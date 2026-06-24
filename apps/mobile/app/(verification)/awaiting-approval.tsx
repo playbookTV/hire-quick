@@ -10,6 +10,7 @@ import { useTheme, Box, Text } from '../../theme/restyle.js';
 import { Button } from '../../components/Button.js';
 import { IconCircle } from '../../components/IconCircle.js';
 import { Icon } from '../../components/Icon.js';
+import { StepIndicator } from '../../components/StepIndicator.js';
 import { useMyVerifications } from '../../lib/hooks.js';
 
 type StepState = 'done' | 'active' | 'todo';
@@ -58,6 +59,9 @@ export default function AwaitingApproval(): React.JSX.Element {
 
   return (
     <Box flex={1} backgroundColor="bgCanvas" style={{ paddingTop: insets.top }}>
+      <Box style={{ paddingHorizontal: 24, paddingTop: 8 }}>
+        <StepIndicator total={5} current={4} label={approved ? 'STEP 5 OF 5 · APPROVED' : 'STEP 5 OF 5 · REVIEW'} />
+      </Box>
       <Box flex={1} alignItems="center" justifyContent="center" style={{ paddingHorizontal: 24, gap: 20 }}>
         <IconCircle icon={approved ? 'check' : 'clock'} tone={approved ? 'success' : 'gold'} size={96} iconColor={approved ? 'statusSuccess' : 'accentGoldStrong'} />
         <Text variant="h1" style={{ textAlign: 'center' }}>{approved ? 'You’re verified' : 'Verification in review'}</Text>

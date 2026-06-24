@@ -4,6 +4,7 @@
  * happens from an event (the API needs an event context), so the action bar
  * points the client back to their events.
  */
+import { useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Alert, ScrollView } from 'react-native';
 import { Image } from 'expo-image';
@@ -27,6 +28,91 @@ function Pill({ label }: { label: string }) {
       <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 13, lineHeight: 16, letterSpacing: 0.2 }} color="inkDefault">
         {label}
       </Text>
+    </Box>
+  );
+}
+
+/** Average + per-star distribution bars (Urban Company pattern), computed from the loaded reviews. */
+function RatingBreakdown({ ratings, avg }: { ratings: number[]; avg: number }) {
+  const theme = useTheme();
+  const total = ratings.length;
+  const rows = [5, 4, 3, 2, 1].map((star) => ({ star, n: ratings.filter((r) => Math.round(r) === star).length }));
+  return (
+    <Box
+      flexDirection="row"
+      backgroundColor="bgSurface"
+      borderWidth={1}
+      borderColor="borderDefault"
+      borderRadius="lg"
+      padding="400"
+      style={{ gap: 16 }}
+    >
+      <Box alignItems="center" justifyContent="center" style={{ gap: 4, minWidth: 64 }}>
+        <Text variant="display" color="inkStrong">{avg.toFixed(1)}</Text>
+        <Box flexDirection="row" style={{ gap: 2 }}>
+          {[1, 2, 3, 4, 5].map((i) => (
+            <Icon key={i} name="star" size={12} color={i <= Math.round(avg) ? 'accentGold' : 'borderStrong'} />
+          ))}
+        </Box>
+        <Text variant="bodySm" color="inkMuted">{total} review{total === 1 ? '' : 's'}</Text>
+      </Box>
+      <Box flex={1} justifyContent="center" style={{ gap: 6 }}>
+        {rows.map(({ star, n }) => (
+          <Box key={star} flexDirection="row" alignItems="center" style={{ gap: 8 }}>
+            <Text variant="labelSm" color="inkMuted" style={{ width: 8 }}>{star}</Text>
+            <Box flex={1} style={{ height: 6, borderRadius: 999, backgroundColor: theme.colors.bgInset, overflow: 'hidden' }}>
+              <Box style={{ height: 6, borderRadius: 999, width: `${total ? (n / total) * 100 : 0}%`, backgroundColor: theme.colors.accentGold }} />
+            </Box>
+            <Text variant="labelSm" color="inkMuted" style={{ width: 18, textAlign: 'right' }}>{n}</Text>
+          </Box>
+        ))}
+      </Box>
+    </Box>
+  );
+}
+
+/** Paged, snap-scrolling work-photo carousel with index dots (replaces the free-scroll gallery). */
+function PortfolioCarousel({ photos }: { photos: { id: string; imageUrl: string }[] }) {
+  const theme = useTheme();
+  const [width, setWidth] = useState(0);
+  const [index, setIndex] = useState(0);
+  return (
+    <Box style={{ gap: 10 }} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+      <ScrollView
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={(e) => {
+          if (width > 0) setIndex(Math.round(e.nativeEvent.contentOffset.x / width));
+        }}
+      >
+        {photos.map((p) => (
+          <Image
+            key={p.id}
+            source={{ uri: p.imageUrl }}
+            style={{ width, height: 240, borderRadius: theme.borderRadii.lg, backgroundColor: theme.colors.bgSubtle }}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={150}
+            recyclingKey={p.id}
+          />
+        ))}
+      </ScrollView>
+      {photos.length > 1 ? (
+        <Box flexDirection="row" justifyContent="center" style={{ gap: 6 }}>
+          {photos.map((p, i) => (
+            <Box
+              key={p.id}
+              style={{
+                width: i === index ? 18 : 6,
+                height: 6,
+                borderRadius: 999,
+                backgroundColor: i === index ? theme.colors.brandEmerald : theme.colors.bgInset,
+              }}
+            />
+          ))}
+        </Box>
+      ) : null}
     </Box>
   );
 }
@@ -89,23 +175,11 @@ export default function StaffProfile(): React.JSX.Element {
           </Box>
         ) : null}
 
-        {/* portfolio — work photos the usher uploaded */}
+        {/* portfolio — work photos the usher uploaded (paged carousel + dots) */}
         {(u.portfolio ?? []).length > 0 ? (
           <Box style={{ gap: 8 }}>
             <Text variant="headingS">Work photos</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
-              {(u.portfolio ?? []).map((p) => (
-                <Image
-                  key={p.id}
-                  source={{ uri: p.imageUrl }}
-                  style={{ width: 160, height: 200, borderRadius: theme.borderRadii.lg, backgroundColor: theme.colors.bgSubtle }}
-                  contentFit="cover"
-                  cachePolicy="memory-disk"
-                  transition={150}
-                  recyclingKey={p.id}
-                />
-              ))}
-            </ScrollView>
+            <PortfolioCarousel photos={u.portfolio ?? []} />
           </Box>
         ) : null}
 
@@ -123,9 +197,12 @@ export default function StaffProfile(): React.JSX.Element {
           {(reviews.data ?? []).length === 0 ? (
             <Text variant="bodySm" color="inkMuted">No reviews yet.</Text>
           ) : (
-            (reviews.data ?? []).map((rv) => (
-              <ReviewCard key={rv.id} name={rv.reviewerName} date={shortDate(rv.createdAt)} comment={rv.comment ?? ''} rating={rv.rating} />
-            ))
+            <>
+              <RatingBreakdown ratings={(reviews.data ?? []).map((r) => r.rating)} avg={u.ratingAvg} />
+              {(reviews.data ?? []).map((rv) => (
+                <ReviewCard key={rv.id} name={rv.reviewerName} date={shortDate(rv.createdAt)} comment={rv.comment ?? ''} rating={rv.rating} />
+              ))}
+            </>
           )}
         </Box>
       </ScrollView>

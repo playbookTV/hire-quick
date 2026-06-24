@@ -72,6 +72,20 @@ const EnvSchema = z.object({
       });
     }
   }
+  // Production cannot run on dev stubs: payments, OTP delivery, and KYC document
+  // storage must all be wired, or the app silently degrades (e.g. verification
+  // accepting arbitrary URLs, OTPs only logged). Fail fast at boot instead.
+  const require = (name: keyof typeof cfg, label: string): void => {
+    if (!cfg[name]) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: [name], message: `${label} is required in production` });
+    }
+  };
+  require('PAYSTACK_SECRET_KEY', 'Paystack secret key');
+  require('PAYSTACK_WEBHOOK_SECRET', 'Paystack webhook secret');
+  require('BREVO_API_KEY', 'Brevo API key (OTP/notification delivery)');
+  require('STORAGE_BUCKET', 'KYC document storage bucket');
+  require('STORAGE_ACCESS_KEY', 'KYC document storage access key');
+  require('STORAGE_SECRET_KEY', 'KYC document storage secret key');
 });
 
 export type Env = z.infer<typeof EnvSchema>;

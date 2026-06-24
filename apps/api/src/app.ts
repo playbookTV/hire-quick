@@ -4,6 +4,7 @@ import cors, { type CorsOptions } from 'cors';
 import type { Redis } from 'ioredis';
 import { randomUUID } from 'node:crypto';
 import { createRateLimiters } from './middleware/rate-limit.js';
+import { logger } from './logger.js';
 import type { StoragePort } from './modules/storage/storage.js';
 import { ZodError } from 'zod';
 import { prisma } from '@hq/database';
@@ -105,7 +106,7 @@ export function createApp(config: AppConfig = {}): Express {
 
   app.use('/auth', limiters.auth, authRouter());
   app.use('/api/me', profileRouter(config.storage));
-  app.use('/api/me', privacyRouter());
+  app.use('/api/me', privacyRouter(config.storage));
   app.use('/api/admin', adminRouter({ realtime, storage: config.storage, paystack: config.paystack }));
   app.use('/api', bookingsRouter({ realtime, paystack: config.paystack }));
   app.use('/api', ushersRouter(config.storage));
@@ -122,15 +123,22 @@ export function createApp(config: AppConfig = {}): Express {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Resource not found' } });
   });
 
-  app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
     if (err instanceof ZodError) {
       res.status(400).json({ error: { code: 'VALIDATION', message: 'Invalid request', issues: err.issues } });
       return;
     }
     if (err instanceof ApiError) {
+      // Server-side faults (5xx) modelled as ApiError are still worth logging.
+      if (err.statusCode >= 500) {
+        logger.error({ err, reqId: (req as Request & { id?: string }).id, code: err.code }, 'api error');
+      }
       res.status(err.statusCode).json({ error: { code: err.code, message: err.message } });
       return;
     }
+    // Unexpected errors must never be swallowed — log with the request id so the
+    // generic client response can be traced back to a stack trace.
+    logger.error({ err, reqId: (req as Request & { id?: string }).id }, 'unhandled error');
     res.status(500).json({ error: { code: 'INTERNAL', message: 'Something went wrong' } });
   });
 

@@ -21,6 +21,7 @@ import { IconCircle } from '../../components/IconCircle.js';
 import { Loading } from '../../components/Loading.js';
 import { shadowMd } from '../../theme/shadows.js';
 import { useBooking, useVerifyCheckin } from '../../lib/hooks.js';
+import { hapticSuccess } from '../../lib/haptics.js';
 import { money, formatEventDate, formatTimeRange } from '../../lib/format.js';
 import type { Booking } from '../../lib/types.js';
 
@@ -57,6 +58,7 @@ function CheckInBody({ booking }: Readonly<{ booking: Booking }>): React.JSX.Ele
     if (code.length !== 6) return;
     setError(null);
     verify.mutate(code, {
+      onSuccess: () => hapticSuccess(),
       onError: (e: unknown) =>
         setError(e instanceof Error ? e.message : 'That code didn’t match. Ask the host to read it again.'),
     });

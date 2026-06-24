@@ -3,9 +3,9 @@
  * border/default, radius lg, 16px padding, Shadow/sm.
  */
 import type { ReactNode } from 'react';
-import { Pressable } from 'react-native';
 import { Box } from '../theme/restyle.js';
 import { shadowSm } from '../theme/shadows.js';
+import { AnimatedPressable } from './Pressable.js';
 
 interface CardProps {
   children: ReactNode;
@@ -27,9 +27,5 @@ export function Card({ children, onPress, padded = true }: CardProps): React.JSX
     </Box>
   );
   if (!onPress) return inner;
-  return (
-    <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}>
-      {inner}
-    </Pressable>
-  );
+  return <AnimatedPressable onPress={onPress}>{inner}</AnimatedPressable>;
 }

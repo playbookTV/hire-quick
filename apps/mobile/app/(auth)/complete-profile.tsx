@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { Redirect, useRouter } from 'expo-router';
 import { Screen } from '../../components/Screen.js';
 import { AppBar } from '../../components/AppBar.js';
+import { StepIndicator } from '../../components/StepIndicator.js';
 import { Field } from '../../components/Field.js';
 import { Input } from '../../components/Input.js';
 import { TextArea } from '../../components/TextArea.js';
@@ -61,6 +62,9 @@ export default function CompleteProfile(): React.JSX.Element {
     <Box flex={1} backgroundColor="bgCanvas">
       <AppBar showBack />
       <Screen scroll>
+        <Box marginBottom="500">
+          <StepIndicator total={3} current={2} label="ACCOUNT SETUP" />
+        </Box>
         <Box style={{ gap: 20 }} marginBottom="600">
           <Box style={{ gap: 8 }}>
             <Text variant="h1">{isUsher ? 'Tell clients about you' : 'Set up your profile'}</Text>

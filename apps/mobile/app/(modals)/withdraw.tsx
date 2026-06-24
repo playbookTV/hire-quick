@@ -28,6 +28,7 @@ import { Loading } from '../../components/Loading.js';
 import { BankSelectModal } from '../../components/BankSelectModal.js';
 import { shadowMd } from '../../theme/shadows.js';
 import { useWallet, useBankAccounts, useAddBankAccount, useWithdraw, useResolveAccount } from '../../lib/hooks.js';
+import { hapticSuccess } from '../../lib/haptics.js';
 import { money } from '../../lib/format.js';
 import type { Bank, BankAccount } from '../../lib/types.js';
 
@@ -113,6 +114,7 @@ export default function Withdraw(): React.JSX.Element {
       { bankAccountId: activeAccount.id, amountKobo },
       {
         onSuccess: () => {
+          hapticSuccess();
           setSent({ amountKobo, account: activeAccount });
           setStep('done');
         },

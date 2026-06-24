@@ -15,7 +15,7 @@ const OTP_TTL_MS = 10 * 60_000;
 const MAX_REQUESTS_PER_HOUR = 5;
 const MAX_ATTEMPTS = 5;
 
-export async function requestOtp(phone: string): Promise<{ devCode?: string }> {
+export async function requestOtp(phone: string): Promise<{ sent: boolean; devCode?: string }> {
   const since = new Date(Date.now() - 3_600_000);
   const recent = await prisma.verificationCode.count({
     where: { purpose: 'AUTH', subjectRef: phone, createdAt: { gte: since } },
@@ -37,13 +37,14 @@ export async function requestOtp(phone: string): Promise<{ devCode?: string }> {
   // for the Lagos market and avoids SMS sender-ID/credit friction); otherwise
   // fall back to SMS / dev stub.
   const whatsappReady = !!env.BREVO_WHATSAPP_SENDER && env.BREVO_WHATSAPP_OTP_TEMPLATE_ID > 0;
-  if (whatsappReady) await sendWhatsAppOtp(phone, code);
-  else await sendSms(phone, `Your HireQuick code is ${code}. It expires in 10 minutes.`);
+  const sent = whatsappReady
+    ? await sendWhatsAppOtp(phone, code)
+    : await sendSms(phone, `Your HireQuick code is ${code}. It expires in 10 minutes.`);
   // Echo the code on any non-production env (dev/test/staging) so the deployed
   // staging instance stays testable while the WhatsApp channel is set up.
   // Production never echoes — delivery is the message itself.
   const echo = env.NODE_ENV !== 'production';
-  return echo ? { devCode: code } : {};
+  return echo ? { sent, devCode: code } : { sent };
 }
 
 export interface AuthResult {

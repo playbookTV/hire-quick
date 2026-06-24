@@ -4,12 +4,15 @@
  * so until the booking flips to CONFIRMED we show a "payment opened, awaiting
  * confirmation" state rather than faking success.
  */
+import { useEffect } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { ZoomIn } from 'react-native-reanimated';
 import { useTheme, Box, Text } from '../../theme/restyle.js';
 import { Button } from '../../components/Button.js';
 import { Icon } from '../../components/Icon.js';
 import { useBooking } from '../../lib/hooks.js';
+import { hapticSuccess } from '../../lib/haptics.js';
 import { money } from '../../lib/format.js';
 
 export default function FundsHeld(): React.JSX.Element {
@@ -26,10 +29,17 @@ export default function FundsHeld(): React.JSX.Element {
     ? `${money(amount)} is held in escrow. We’ll release it to the usher only after they check in on the day — never before.`
     : 'Finish the payment in the Paystack window. Once your bank confirms it, your funds move into escrow and the booking is confirmed.';
 
+  // Celebrate the moment the booking flips to held (after the bank confirms).
+  useEffect(() => {
+    if (held) hapticSuccess();
+  }, [held]);
+
   return (
     <Box flex={1} backgroundColor="bgCanvas" style={{ paddingTop: insets.top }}>
       <Box flex={1} alignItems="center" justifyContent="center" paddingHorizontal="700" style={{ gap: 20 }}>
-        <Box
+        <Animated.View
+          key={held ? 'held' : 'pending'}
+          entering={ZoomIn.springify().damping(14).stiffness(160)}
           style={{
             width: 104,
             height: 104,
@@ -40,7 +50,7 @@ export default function FundsHeld(): React.JSX.Element {
           }}
         >
           <Icon name={held ? 'shield' : 'clock'} size={52} color="inverseInk" />
-        </Box>
+        </Animated.View>
         <Text variant="h1" style={{ textAlign: 'center' }}>
           {title}
         </Text>

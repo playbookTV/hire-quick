@@ -30,7 +30,8 @@ export function authRouter(): Router {
     wrap(async (req, res) => {
       const { phone: p } = otpRequestSchema.parse(req.body);
       const out = await requestOtp(p);
-      res.status(200).json({ sent: true, ...out });
+      // Surface real delivery status (out.sent) instead of always-true.
+      res.status(out.sent ? 200 : 502).json(out);
     }),
   );
 

@@ -8,6 +8,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import type { UserRole } from '@hq/shared';
 import { Screen } from '../../components/Screen.js';
 import { AppBar } from '../../components/AppBar.js';
+import { StepIndicator } from '../../components/StepIndicator.js';
 import { Field } from '../../components/Field.js';
 import { Input } from '../../components/Input.js';
 import { Button } from '../../components/Button.js';
@@ -15,6 +16,7 @@ import { Banner } from '../../components/Banner.js';
 import { Box, Text } from '../../theme/restyle.js';
 import { Pressable } from 'react-native';
 import { useRequestOtp, useVerifyOtp } from '../../lib/hooks.js';
+import { hapticSuccess, hapticError } from '../../lib/haptics.js';
 import { useAuth } from '../../lib/auth-context.js';
 import { ApiError } from '../../lib/api-error.js';
 import { env } from '../../lib/env.js';
@@ -40,9 +42,11 @@ export default function Otp(): React.JSX.Element {
     setError(null);
     try {
       const result = await verify.mutateAsync({ phone, code, role });
+      hapticSuccess();
       await login(result);
       router.replace('/(auth)/complete-profile');
     } catch (e) {
+      hapticError();
       setError(e instanceof ApiError ? e.message : 'Verification failed. Try again.');
     }
   };
@@ -60,6 +64,9 @@ export default function Otp(): React.JSX.Element {
     <Box flex={1} backgroundColor="bgCanvas">
       <AppBar showBack />
       <Screen scroll>
+        <Box marginBottom="500">
+          <StepIndicator total={3} current={1} label="ACCOUNT SETUP" />
+        </Box>
         <Text variant="h1" marginBottom="200">
           Enter the code
         </Text>

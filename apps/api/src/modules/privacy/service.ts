@@ -57,12 +57,21 @@ export async function buildExport(userId: string): Promise<Record<string, unknow
   };
 }
 
-/** Scrub every PII field for this subject inside the caller's transaction. */
-export async function eraseUser(tx: Prisma.TransactionClient, userId: string): Promise<void> {
+/**
+ * Scrub every PII field for this subject inside the caller's transaction, and
+ * return the storage object keys (KYC docs, avatar, portfolio) that the caller
+ * must delete from object storage AFTER the transaction commits — S3 deletes
+ * don't belong inside a DB transaction and are best-effort.
+ */
+export async function eraseUser(
+  tx: Prisma.TransactionClient,
+  userId: string,
+): Promise<{ storageKeys: string[] }> {
   const [client, usher] = await Promise.all([
     tx.client.findUnique({ where: { userId } }),
     tx.usher.findUnique({ where: { userId } }),
   ]);
+  const storageKeys: string[] = [];
 
   // Identity. phone is required + unique, so tombstone it deterministically.
   await tx.user.update({
@@ -86,6 +95,19 @@ export async function eraseUser(tx: Prisma.TransactionClient, userId: string): P
     await tx.client.update({ where: { id: client.id }, data: { displayName: 'Deleted user' } });
   }
   if (usher) {
+    // Collect the storage object keys BEFORE clearing the references, so the
+    // caller can delete the actual KYC docs / photos from object storage.
+    const [photos, verifications] = await Promise.all([
+      tx.photo.findMany({ where: { usherId: usher.id }, select: { imageUrl: true } }),
+      tx.usherVerification.findMany({ where: { usherId: usher.id }, select: { idDocumentUrl: true, selfieUrl: true } }),
+    ]);
+    if (usher.avatarKey) storageKeys.push(usher.avatarKey);
+    for (const p of photos) if (p.imageUrl) storageKeys.push(p.imageUrl);
+    for (const v of verifications) {
+      if (v.idDocumentUrl) storageKeys.push(v.idDocumentUrl);
+      if (v.selfieUrl) storageKeys.push(v.selfieUrl);
+    }
+
     // Pseudonymize the public identity (name shown on cards/applications) and
     // drop the profile photo + portfolio so nothing resolves to the subject.
     await tx.usher.update({
@@ -93,9 +115,8 @@ export async function eraseUser(tx: Prisma.TransactionClient, userId: string): P
       data: { displayName: 'Deleted user', bio: null, avatarKey: null },
     });
     await tx.photo.deleteMany({ where: { usherId: usher.id } });
-    // ID-document / avatar / portfolio objects in storage are removed by the
-    // erasure storage hook (Phase 2.4); here we drop the references so nothing
-    // resolves to them.
+    // Drop the document references; the actual objects are deleted from storage
+    // by the caller after this transaction commits.
     await tx.usherVerification.updateMany({
       where: { usherId: usher.id },
       data: { idDocumentUrl: '', selfieUrl: '' },
@@ -105,4 +126,5 @@ export async function eraseUser(tx: Prisma.TransactionClient, userId: string): P
       data: { accountNumber: 'REDACTED', accountName: 'REDACTED', paystackRecipientCode: null },
     });
   }
+  return { storageKeys };
 }

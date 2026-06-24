@@ -13,12 +13,30 @@ import { Banner } from '../../components/Banner.js';
 import { Button } from '../../components/Button.js';
 import { Icon } from '../../components/Icon.js';
 import { EarningsCard } from '../../components/EarningsCard.js';
+import { CategoryBadge } from '../../components/CategoryBadge.js';
+import { AnimatedPressable } from '../../components/Pressable.js';
 import { shadowSm } from '../../theme/shadows.js';
 import { primitives } from '../../theme/primitives.js';
 import { useAuth } from '../../lib/auth-context.js';
-import { useWallet, useBookings } from '../../lib/hooks.js';
+import { useWallet, useWalletActivity, useBookings } from '../../lib/hooks.js';
 import { money, dateTime } from '../../lib/format.js';
-import type { Booking } from '../../lib/types.js';
+import type { Booking, WalletActivity } from '../../lib/types.js';
+
+/** Bucket credit activity into the last 7 calendar days (last slot = today) for the earnings sparkline. */
+function weeklyEarnings(activity: WalletActivity[]): { values: number[]; total: number } {
+  const days = 7;
+  const buckets = new Array<number>(days).fill(0);
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  for (const a of activity) {
+    if (a.type !== 'credit') continue;
+    const d = new Date(a.createdAt);
+    const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const dayDiff = Math.floor((startOfToday - dayStart) / 86_400_000);
+    if (dayDiff >= 0 && dayDiff < days) buckets[days - 1 - dayDiff] += a.amount;
+  }
+  return { values: buckets, total: buckets.reduce((s, v) => s + v, 0) };
+}
 
 /** Time-aware greeting — "GOOD MORNING" at 8pm read as robotic (critique). */
 function greeting(): string {
@@ -42,7 +60,7 @@ function JobRow({ booking, onPress }: Readonly<{ booking: Booking; onPress: () =
   // CONFIRMED/CHECKED_IN bookings open the check-in screen; the chevron signals it.
   const actionable = booking.status === 'CONFIRMED' || booking.status === 'CHECKED_IN';
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${booking.event?.title ?? 'Booking'}, ${meta.label}. ${actionable ? 'Tap to check in.' : ''}`}>
+    <AnimatedPressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${booking.event?.title ?? 'Booking'}, ${meta.label}. ${actionable ? 'Tap to check in.' : ''}`}>
       <Box backgroundColor="bgSurface" borderWidth={1} borderColor="borderDefault" borderRadius="lg" padding="400" style={[{ gap: 8 }, shadowSm]}>
         <Box flexDirection="row" alignItems="center" justifyContent="space-between">
           <Text variant="titleM" style={{ flex: 1 }} numberOfLines={1}>{booking.event?.title ?? 'Booking'}</Text>
@@ -52,6 +70,7 @@ function JobRow({ booking, onPress }: Readonly<{ booking: Booking; onPress: () =
             </Text>
           </Box>
         </Box>
+        {booking.event?.category ? <CategoryBadge category={booking.event.category} size="sm" /> : null}
         {booking.event ? (
           <Box flexDirection="row" alignItems="center" style={{ gap: 8 }}>
             <Icon name="calendar" size={16} color="inkMuted" />
@@ -73,7 +92,7 @@ function JobRow({ booking, onPress }: Readonly<{ booking: Booking; onPress: () =
           ) : null}
         </Box>
       </Box>
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 
@@ -84,6 +103,8 @@ export default function UsherHome(): React.JSX.Element {
   const { user } = useAuth();
   const verified = user?.usher?.verificationStatus === 'VERIFIED';
   const wallet = useWallet();
+  const activity = useWalletActivity();
+  const weekly = weeklyEarnings(activity.data ?? []);
   const bookings = useBookings();
   const name = user?.usher?.displayName ?? 'there';
   const initial = name.trim().charAt(0).toUpperCase() || 'U';
@@ -116,6 +137,7 @@ export default function UsherHome(): React.JSX.Element {
         <EarningsCard
           amount={wallet.data?.availableBalance ?? 0}
           size="md"
+          weekly={weekly}
           footer={
           <Box flexDirection="row" alignItems="center" justifyContent="space-between">
             <Pressable

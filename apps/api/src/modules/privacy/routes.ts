@@ -8,6 +8,7 @@ import { ApiError } from '../../app.js';
 import { requireAuth, type AuthedRequest } from '../auth/middleware.js';
 import { requireIdempotencyKey } from '../payments/http/middleware.js';
 import { writeAudit } from '../audit.js';
+import type { StoragePort } from '../storage/storage.js';
 import { buildExport, eraseUser } from './service.js';
 
 type Handler = (req: AuthedRequest, res: Response) => Promise<void>;
@@ -17,7 +18,7 @@ const wrap =
     h(req as AuthedRequest, res).catch(next);
   };
 
-export function privacyRouter(): Router {
+export function privacyRouter(storage?: StoragePort): Router {
   const r = Router();
   r.use(requireAuth);
 
@@ -45,9 +46,20 @@ export function privacyRouter(): Router {
         res.json({ status: 'ALREADY_ERASED', anonymizedAt: user.anonymizedAt });
         return;
       }
-      await prisma.$transaction((tx) => eraseUser(tx, userId));
+      const { storageKeys } = await prisma.$transaction((tx) => eraseUser(tx, userId));
+      // Delete the underlying KYC/photo objects AFTER the references are scrubbed.
+      // Best-effort and outside the DB tx: a failed object delete leaves an
+      // orphan (no longer referenced) for a storage cleanup job, never a dangling
+      // reference. Skipped when storage isn't configured (dev/legacy URLs).
+      if (storage && storageKeys.length) {
+        await Promise.all(
+          storageKeys.map((k) =>
+            storage.deleteObject(k).catch((e: unknown) => console.error('[erase] storage delete failed', k, e)),
+          ),
+        );
+      }
       await writeAudit({ actorId: userId, action: 'dsar.erase', target: userId });
-      res.json({ status: 'ERASED' });
+      res.json({ status: 'ERASED', objectsDeleted: storage ? storageKeys.length : 0 });
     }),
   );
 

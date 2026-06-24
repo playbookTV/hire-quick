@@ -58,7 +58,17 @@ async function executeDisputeResolution(
 }
 
 async function executeRefund(p: { bookingId: string; amountKobo: number }, paystack: PaystackPort): Promise<void> {
-  const booking = await prisma.booking.findUniqueOrThrow({ where: { id: p.bookingId } });
+  const booking = await prisma.booking.findUniqueOrThrow({
+    where: { id: p.bookingId },
+    include: { payment: true },
+  });
+  // Refunds are all-or-nothing per booking. Validate the amount BEFORE the
+  // orchestrator (which calls Paystack first) so a partial amount can never fire
+  // an external refund that the ledger then rejects.
+  const held = booking.payment?.grossAmount ?? 0;
+  if (p.amountKobo !== held) {
+    throw new ApiError(400, 'REFUND_MUST_BE_FULL', `refund must equal the booking's held amount (${held})`);
+  }
   // A still-CONFIRMED booking is cancelled first; one already CANCELLED/NO_SHOW/
   // DISPUTED goes straight to refund. The orchestrator issues the Paystack refund.
   const precursor = booking.status === 'CONFIRMED' ? ('CANCEL' as const) : undefined;
@@ -135,10 +145,27 @@ export async function decideApproval(
   if (a.makerId === checkerId) throw new ApiError(403, 'SAME_ADMIN', 'checker must differ from maker');
 
   if (decision === 'reject') {
-    await prisma.approval.update({ where: { id: approvalId }, data: { status: 'REJECTED', checkerId } });
+    // Atomic claim: only the first checker flips PENDING → REJECTED.
+    const claimed = await prisma.approval.updateMany({
+      where: { id: approvalId, status: 'PENDING' },
+      data: { status: 'REJECTED', checkerId },
+    });
+    if (claimed.count === 0) throw new ApiError(409, 'NOT_PENDING', 'approval already decided');
     await writeAudit({ actorId: checkerId, action: 'approval.reject', target: approvalId });
     return;
   }
+
+  // Atomic claim BEFORE executing: two checkers reading PENDING concurrently
+  // would otherwise both run the external refund. The conditional update is the
+  // serialization point — exactly one wins (count === 1); the loser gets 409 and
+  // never touches Paystack. (Residual: a crash after claim but before execute
+  // leaves the approval EXECUTED-but-unprocessed — addressed by the durable
+  // operation-record work, not by this race fix.)
+  const claimed = await prisma.approval.updateMany({
+    where: { id: approvalId, status: 'PENDING' },
+    data: { status: 'EXECUTED', checkerId },
+  });
+  if (claimed.count === 0) throw new ApiError(409, 'NOT_PENDING', 'approval already decided');
 
   const payload = a.payload as Record<string, unknown>;
   if (a.kind === 'DISPUTE_RESOLVE') {
@@ -152,6 +179,6 @@ export async function decideApproval(
   } else {
     await executeRefund({ bookingId: String(payload.bookingId), amountKobo: Number(payload.amountKobo) }, paystack);
   }
-  await prisma.approval.update({ where: { id: approvalId }, data: { status: 'EXECUTED', checkerId } });
+  // Status was already claimed EXECUTED above; just record the audit trail.
   await writeAudit({ actorId: checkerId, action: 'approval.execute', target: approvalId });
 }

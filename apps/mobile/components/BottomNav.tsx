@@ -4,9 +4,9 @@
  * active, ink/muted otherwise. Used as the expo-router Tabs `tabBar`.
  */
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, Box, Text } from '../theme/restyle.js';
+import { AnimatedPressable } from './Pressable.js';
 
 export function BottomNav({ state, descriptors, navigation }: BottomTabBarProps): React.JSX.Element {
   const theme = useTheme();
@@ -36,9 +36,10 @@ export function BottomNav({ state, descriptors, navigation }: BottomTabBarProps)
         };
 
         return (
-          <Pressable
+          <AnimatedPressable
             key={route.key}
             onPress={onPress}
+            scaleTo={0.9}
             style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 4 }}
           >
             {options.tabBarIcon?.({ focused, color, size: 24 })}
@@ -53,7 +54,7 @@ export function BottomNav({ state, descriptors, navigation }: BottomTabBarProps)
             >
               {label}
             </Text>
-          </Pressable>
+          </AnimatedPressable>
         );
       })}
     </Box>

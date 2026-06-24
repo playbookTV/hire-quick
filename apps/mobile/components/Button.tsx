@@ -5,10 +5,11 @@
  * treatment in the file). Secondary is a white surface with a soft ring; Ghost
  * is text-only. Full-width by default (set the instance to Fill in Figma).
  */
-import { Pressable, View, ActivityIndicator, StyleSheet, type ViewStyle } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, type ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme, Text } from '../theme/restyle.js';
 import { Icon, type IconName } from './Icon.js';
+import { AnimatedPressable } from './Pressable.js';
 import type { Theme } from '../theme/theme.js';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
@@ -128,19 +129,19 @@ export function Button({
     );
 
   return (
-    <Pressable
+    <AnimatedPressable
       onPress={onPress}
       disabled={isDisabled}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: isDisabled, busy: loading }}
-      style={({ pressed }) => ({
+      style={{
         alignSelf: fullWidth ? 'stretch' : 'flex-start',
-        opacity: isDisabled ? 0.5 : pressed ? 0.9 : 1,
-      })}
+        opacity: isDisabled ? 0.5 : 1,
+      }}
     >
       {body}
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 

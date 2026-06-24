@@ -8,6 +8,7 @@ import { Box, Text } from '../theme/restyle.js';
 import { Card } from './Card.js';
 import { StatusPill } from './StatusPill.js';
 import { MetaRow } from './MetaRow.js';
+import { CategoryBadge } from './CategoryBadge.js';
 import { formatEventDate, formatTimeRange } from '../lib/format.js';
 import type { EventResource } from '../lib/types.js';
 
@@ -24,6 +25,10 @@ export const EventCard = memo(function EventCard({ event, onPress }: EventCardPr
           {event.title}
         </Text>
         <StatusPill status={event.status} />
+      </Box>
+
+      <Box marginBottom="300">
+        <CategoryBadge category={event.category} size="sm" />
       </Box>
 
       <MetaRow icon="map-pin" text={event.venue} />
