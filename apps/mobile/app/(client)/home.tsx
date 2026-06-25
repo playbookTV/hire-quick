@@ -31,7 +31,15 @@ export default function ClientHome(): React.JSX.Element {
 
   return (
     <Box flex={1} backgroundColor="bgCanvas" style={{ paddingTop: insets.top }}>
-      <Screen scroll padding={false}>
+      <Screen
+        scroll
+        padding={false}
+        refreshing={events.isFetching || suggested.isFetching}
+        onRefresh={() => {
+          void events.refetch();
+          void suggested.refetch();
+        }}
+      >
         <Box style={{ paddingHorizontal: 20, paddingTop: 16, gap: 24 }}>
           {/* greeting */}
           <Box flexDirection="row" alignItems="center" justifyContent="space-between">

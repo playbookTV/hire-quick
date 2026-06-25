@@ -4,7 +4,6 @@
  * (`@hq/shared/policy`), and cancels via `useCancelBooking`. The API only
  * executes full-refund windows; late windows return an explained error.
  */
-import { Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { cancelWindow, policyForCancellation } from '@hq/shared';
@@ -16,6 +15,7 @@ import { KeyValueRow } from '../../components/KeyValueRow.js';
 import { Button } from '../../components/Button.js';
 import { Loading } from '../../components/Loading.js';
 import { useBooking, useCancelBooking } from '../../lib/hooks.js';
+import { useToast } from '../../lib/toast.js';
 import { money } from '../../lib/format.js';
 
 const WINDOW_NOTE: Record<string, string> = {
@@ -37,6 +37,7 @@ export default function Cancellation(): React.JSX.Element {
   const { booking: bookingId } = useLocalSearchParams<{ booking: string }>();
   const booking = useBooking(bookingId ?? '');
   const cancel = useCancelBooking(bookingId ?? '');
+  const toast = useToast();
 
   if (booking.isLoading || !booking.data) {
     return (
@@ -58,11 +59,11 @@ export default function Cancellation(): React.JSX.Element {
   const onCancel = (): void => {
     cancel.mutate(undefined, {
       onSuccess: () => {
-        Alert.alert('Booking cancelled', `${money(refund)} will be refunded.`);
+        toast.success(`${money(refund)} will be refunded.`, 'Booking cancelled');
         router.dismissAll();
       },
       onError: (e: unknown) =>
-        Alert.alert('Couldn’t cancel', e instanceof Error ? e.message : 'This cancellation needs support to settle.'),
+        toast.error(e instanceof Error ? e.message : 'This cancellation needs support to settle.', 'Couldn’t cancel'),
     });
   };
 

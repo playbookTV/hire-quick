@@ -35,6 +35,9 @@ async function lockOrder(tx: Tx, id: string): Promise<void> {
 async function lockWallet(tx: Tx, id: string): Promise<void> {
   await tx.$queryRaw`SELECT id FROM wallets WHERE id = ${id}::uuid FOR UPDATE`;
 }
+async function lockWithdrawal(tx: Tx, id: string): Promise<void> {
+  await tx.$queryRaw`SELECT id FROM withdrawals WHERE id = ${id}::uuid FOR UPDATE`;
+}
 
 async function escrowBalance(tx: Tx, bookingId: string): Promise<number> {
   const agg = await tx.escrowLedger.aggregate({
@@ -310,26 +313,44 @@ export async function requestWithdrawal(
   return withdrawal.id;
 }
 
-/** Transfer failed: keep funds in the wallet (REVERSAL), mark FAILED (§10). */
-export async function failWithdrawal(tx: Tx, withdrawalId: string): Promise<void> {
+/**
+ * Transfer failed or reversed: re-credit the wallet (REVERSAL) and mark FAILED
+ * (§10). Locks the withdrawal + wallet and re-reads under the lock so a
+ * `transfer.failed`/`transfer.reversed` racing or following a `transfer.success`
+ * settles to exactly one terminal state and the REVERSAL is applied at most once
+ * (already-FAILED is a no-op). Returns whether this call applied the transition.
+ */
+export async function failWithdrawal(tx: Tx, withdrawalId: string): Promise<boolean> {
+  await lockWithdrawal(tx, withdrawalId);
   const w = await tx.withdrawal.findUniqueOrThrow({ where: { id: withdrawalId } });
-  assertWithdrawalTransition(w.status, 'FAILED');
+  if (w.status === 'FAILED') return false; // reversal already applied — ignore duplicate
+  assertWithdrawalTransition(w.status, 'FAILED'); // PROCESSING→FAILED or PAID→FAILED (reversed)
   await appendWallet(tx, w.walletId, 'REVERSAL', w.amount, { withdrawalId });
   await tx.withdrawal.update({ where: { id: withdrawalId }, data: { status: 'FAILED' } });
+  return true;
 }
 
-/** Transfer succeeded: withdrawal PAID (funds already debited at request). */
+/**
+ * Transfer succeeded: withdrawal PAID (funds already debited at request). Locks
+ * the withdrawal and re-reads under the lock so a duplicate/replayed
+ * `transfer.success` (or one racing a failure) settles exactly once. A success
+ * arriving after a terminal FAILED is ignored (audited by the caller) rather
+ * than re-paying. Returns whether this call applied the transition.
+ */
 export async function completeWithdrawal(
   tx: Tx,
   withdrawalId: string,
   transferRef: string,
-): Promise<void> {
+): Promise<boolean> {
+  await lockWithdrawal(tx, withdrawalId);
   const w = await tx.withdrawal.findUniqueOrThrow({ where: { id: withdrawalId } });
+  if (w.status === 'PAID' || w.status === 'FAILED') return false; // already terminal
   assertWithdrawalTransition(w.status, 'PAID');
   await tx.withdrawal.update({
     where: { id: withdrawalId },
     data: { status: 'PAID', paystackTransferRef: transferRef },
   });
+  return true;
 }
 
 /** Sweep accumulated platform fees out of the Balance to the operating bank (D3). */

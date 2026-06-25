@@ -9,7 +9,7 @@
  * filters without rendering every usher at once.
  */
 import { memo, useCallback, useState } from 'react';
-import { Pressable, ScrollView, TextInput } from 'react-native';
+import { Pressable, ScrollView, TextInput, RefreshControl } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -128,6 +128,7 @@ export default function Discover(): React.JSX.Element {
         renderItem={renderItem}
         ListHeaderComponent={header}
         ItemSeparatorComponent={Separator}
+        refreshControl={<RefreshControl refreshing={ushers.isFetching} onRefresh={() => { void ushers.refetch(); }} />}
         ListEmptyComponent={
           ushers.isLoading ? (
             <Box style={{ gap: 12 }}>

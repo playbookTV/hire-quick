@@ -4,7 +4,7 @@
  * "Submit & continue" / "Skip". Static preview until the reviews API is wired.
  */
 import { useState } from 'react';
-import { Pressable, Alert } from 'react-native';
+import { Pressable } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTheme, Box, Text } from '../../theme/restyle.js';
 import { Screen } from '../../components/Screen.js';
@@ -13,6 +13,7 @@ import { TextArea } from '../../components/TextArea.js';
 import { Button } from '../../components/Button.js';
 import { Icon } from '../../components/Icon.js';
 import { useCreateReview } from '../../lib/hooks.js';
+import { useToast } from '../../lib/toast.js';
 
 const LABELS = ['', 'Poor', 'Fair', 'Good', 'Great', 'Excellent'];
 const TAGS = ['Punctual', 'Professional', 'Great presentation', 'Friendly'];
@@ -27,6 +28,7 @@ export default function RateStaff(): React.JSX.Element {
   const { booking, name: rawName } = useLocalSearchParams<{ booking: string; name: string }>();
   const name = rawName ?? 'your usher';
   const review = useCreateReview(booking ?? '');
+  const toast = useToast();
   const [rating, setRating] = useState(5);
   const [tags, setTags] = useState<Record<string, boolean>>({ Punctual: true, Professional: true });
   const [comment, setComment] = useState('');
@@ -41,8 +43,11 @@ export default function RateStaff(): React.JSX.Element {
     review.mutate(
       { rating, comment: full },
       {
-        onSuccess: () => router.back(),
-        onError: (e: unknown) => Alert.alert('Couldn’t submit', e instanceof Error ? e.message : 'Please try again.'),
+        onSuccess: () => {
+          toast.success('Thanks — your review helps the community.', 'Review submitted');
+          router.back();
+        },
+        onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Please try again.', 'Couldn’t submit'),
       },
     );
   };

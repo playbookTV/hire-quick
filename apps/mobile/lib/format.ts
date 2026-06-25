@@ -52,3 +52,26 @@ export function dateTime(iso: string, hhmm?: string): string {
   const base = shortDate(iso);
   return hhmm ? `${base} · ${to12h(hhmm)}` : base;
 }
+
+/** "2:30 PM" — clock time from a full ISO timestamp (for chat bubbles). */
+export function formatTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const h = d.getHours();
+  const m = d.getMinutes().toString().padStart(2, '0');
+  const period = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${m} ${period}`;
+}
+
+/** "Today" / "Yesterday" / "Sat 12 Jul" — day-separator label for a timestamp. */
+export function formatDayLabel(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const now = new Date();
+  const startOf = (x: Date): number => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const dayDiff = Math.round((startOf(now) - startOf(d)) / 86_400_000);
+  if (dayDiff === 0) return 'Today';
+  if (dayDiff === 1) return 'Yesterday';
+  return shortDate(iso);
+}

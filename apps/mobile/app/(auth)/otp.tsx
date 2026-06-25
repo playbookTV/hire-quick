@@ -1,7 +1,9 @@
 /**
  * OTP — verify the 6-digit code. On success, persist the session and move to
- * profile completion. In dev the API echoes the code (`devCode`), which we
- * prefill so the smoke test is one tap.
+ * profile completion. On non-production APIs the server echoes the code
+ * (`devCode`); when present we prefill it so the smoke test is one tap. The
+ * server is the gate — production never echoes — so this is safe in release
+ * builds pointed at staging.
  */
 import { useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -19,7 +21,6 @@ import { useRequestOtp, useVerifyOtp } from '../../lib/hooks.js';
 import { hapticSuccess, hapticError } from '../../lib/haptics.js';
 import { useAuth } from '../../lib/auth-context.js';
 import { ApiError } from '../../lib/api-error.js';
-import { env } from '../../lib/env.js';
 
 export default function Otp(): React.JSX.Element {
   const router = useRouter();
@@ -33,9 +34,9 @@ export default function Otp(): React.JSX.Element {
   const verify = useVerifyOtp();
   const requestOtp = useRequestOtp();
 
-  // Dev convenience: prefill the echoed code.
+  // Prefill the echoed code when the server provides one (non-prod only).
   useEffect(() => {
-    if (env.IS_DEV && params.devCode) setCode(params.devCode);
+    if (params.devCode) setCode(params.devCode);
   }, [params.devCode]);
 
   const submit = async () => {
@@ -54,7 +55,9 @@ export default function Otp(): React.JSX.Element {
   const resend = async () => {
     setError(null);
     try {
-      await requestOtp.mutateAsync(phone);
+      const res = await requestOtp.mutateAsync(phone);
+      // Surface the freshly echoed code so the prefill stays in sync on staging.
+      if (res.devCode) setCode(res.devCode);
     } catch {
       setError('Could not resend the code.');
     }
@@ -74,9 +77,9 @@ export default function Otp(): React.JSX.Element {
           Sent to {phone}.
         </Text>
 
-        {env.IS_DEV && params.devCode ? (
+        {params.devCode ? (
           <Box marginBottom="400">
-            <Banner tone="info" title="Dev mode" message={`Code prefilled: ${params.devCode}`} />
+            <Banner tone="info" title="Test build" message={`Your code is ${params.devCode} — already filled in below.`} />
           </Box>
         ) : null}
 
@@ -93,7 +96,7 @@ export default function Otp(): React.JSX.Element {
         </Field>
 
         <Box marginTop="400" marginBottom="600" alignItems="flex-start">
-          <Pressable onPress={resend} hitSlop={8} disabled={requestOtp.isPending}>
+          <Pressable onPress={() => void resend()} hitSlop={8} disabled={requestOtp.isPending}>
             <Text variant="label" color="brandEmerald">
               {requestOtp.isPending ? 'Sending…' : 'Resend code'}
             </Text>
@@ -104,7 +107,7 @@ export default function Otp(): React.JSX.Element {
           label="Verify"
           disabled={code.length !== 6}
           loading={verify.isPending}
-          onPress={submit}
+          onPress={() => void submit()}
         />
       </Screen>
     </Box>

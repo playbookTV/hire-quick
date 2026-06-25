@@ -89,19 +89,38 @@ async function handleChargeSuccess(
   }
 }
 
+/**
+ * Find the withdrawal a transfer event refers to. Primary lookup is by the
+ * stored `paystackTransferRef`; the reference is deterministic (`wd_<id>`), so we
+ * fall back to the id when the column write was lost mid-flight — otherwise such
+ * a withdrawal would be invisible to its own webhooks and stick in PROCESSING.
+ */
+async function findWithdrawalByTransferRef(prisma: PrismaClient, ref: string) {
+  const include = { wallet: { include: { usher: true } } };
+  const byRef = await prisma.withdrawal.findFirst({ where: { paystackTransferRef: ref }, include });
+  if (byRef) return byRef;
+  const id = /^wd_(.+)$/.exec(ref)?.[1];
+  if (!id) return null;
+  return prisma.withdrawal.findUnique({ where: { id }, include });
+}
+
 async function handleTransferSuccess(
   prisma: PrismaClient,
   key: string,
   ref: string,
   realtime: RealtimeGateway,
 ): Promise<void> {
-  const w = await prisma.withdrawal.findFirst({
-    where: { paystackTransferRef: ref },
-    include: { wallet: { include: { usher: true } } },
-  });
+  const w = await findWithdrawalByTransferRef(prisma, ref);
   if (!w) return;
+  // completeWithdrawal locks the row and no-ops if already terminal, so a
+  // duplicate success or one racing a failure never double-settles.
   const done = await runIdempotent(prisma, key, 'paystack_event_id', (tx) => completeWithdrawal(tx, w.id, ref));
-  if (done.duplicate) return;
+  if (done.duplicate || done.result === false) {
+    if (done.result === false) {
+      await safeAudit({ actorId: null, action: 'withdrawal.complete.ignored', target: w.id, metadata: { ref } });
+    }
+    return;
+  }
   await safeAudit({ actorId: null, action: 'withdrawal.complete', target: w.id, metadata: { ref, amount: w.amount } });
   realtime.emitToUser(w.wallet.usher.userId, RT.WITHDRAWAL_COMPLETED, withdrawalEvent(w.id, 'PAID', w.amount));
 }
@@ -113,13 +132,13 @@ async function handleTransferFailed(
   event: string,
   realtime: RealtimeGateway,
 ): Promise<void> {
-  const w = await prisma.withdrawal.findFirst({
-    where: { paystackTransferRef: ref },
-    include: { wallet: { include: { usher: true } } },
-  });
-  if (!w || w.status === 'FAILED') return;
+  const w = await findWithdrawalByTransferRef(prisma, ref);
+  if (!w) return;
+  // failWithdrawal locks the row, re-credits the wallet at most once, and no-ops
+  // if already FAILED — so racing/duplicate failed+reversed events can't apply
+  // multiple reversals or restore funds on an already-settled withdrawal.
   const failed = await runIdempotent(prisma, key, 'paystack_event_id', (tx) => failWithdrawal(tx, w.id));
-  if (failed.duplicate) return;
+  if (failed.duplicate || failed.result === false) return;
   await safeAudit({ actorId: null, action: 'withdrawal.failed', target: w.id, metadata: { ref, event } });
   realtime.emitToUser(w.wallet.usher.userId, RT.WITHDRAWAL_FAILED, withdrawalEvent(w.id, 'FAILED', w.amount));
 }

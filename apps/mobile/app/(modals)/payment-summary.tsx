@@ -6,7 +6,6 @@
  * "payment opened" state. Line items come from the accepted applications.
  */
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Alert } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Box, Text } from '../../theme/restyle.js';
@@ -18,7 +17,9 @@ import { ListItem } from '../../components/ListItem.js';
 import { Button } from '../../components/Button.js';
 import { useEvent, useApplications, useConfirmEvent } from '../../lib/hooks.js';
 import { useAuth } from '../../lib/auth-context.js';
-import { money } from '../../lib/format.js';
+import { useToast } from '../../lib/toast.js';
+import { CategoryBadge } from '../../components/CategoryBadge.js';
+import { money, formatEventDate, formatTimeRange } from '../../lib/format.js';
 
 export default function PaymentSummary(): React.JSX.Element {
   const router = useRouter();
@@ -30,6 +31,8 @@ export default function PaymentSummary(): React.JSX.Element {
   const applications = useApplications(eventId);
   const confirm = useConfirmEvent(eventId);
   const { user } = useAuth();
+  const toast = useToast();
+  const ev = event.data;
 
   const perHead = event.data?.budgetPerHead ?? 0;
   const chosen = (applications.data ?? []).filter((a) => appIds.includes(a.id));
@@ -41,13 +44,20 @@ export default function PaymentSummary(): React.JSX.Element {
     confirm.mutate(
       { applicationIds: appIds, email },
       {
-        onSuccess: async (res) => {
-          if (res.authorizationUrl) {
-            await WebBrowser.openBrowserAsync(res.authorizationUrl);
+        onSuccess: (res) => {
+          const bookingId = res.bookingIds[0];
+          if (!bookingId) {
+            toast.error('We couldn’t confirm your booking. Please try again.', 'Payment couldn’t start');
+            return;
           }
-          router.replace({ pathname: '/(modals)/funds-held', params: { booking: res.bookingIds[0] ?? '' } });
+          void (async () => {
+            if (res.authorizationUrl) {
+              await WebBrowser.openBrowserAsync(res.authorizationUrl);
+            }
+            router.replace({ pathname: '/(modals)/funds-held', params: { booking: bookingId } });
+          })();
         },
-        onError: (e: unknown) => Alert.alert('Payment couldn’t start', e instanceof Error ? e.message : 'Please try again.'),
+        onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Please try again.', 'Payment couldn’t start'),
       },
     );
   };
@@ -57,6 +67,20 @@ export default function PaymentSummary(): React.JSX.Element {
       <AppBar title="Confirm & pay" showBack inset />
       <Screen scroll>
         <Box style={{ gap: 16 }}>
+          {/* event context — what you're paying for */}
+          {ev ? (
+            <Box backgroundColor="bgSurface" borderWidth={1} borderColor="borderDefault" borderRadius="lg" padding="400" style={{ gap: 8 }}>
+              <Text variant="overline" color="inkMuted">PAYING FOR</Text>
+              <Text variant="titleM" numberOfLines={2}>{ev.title}</Text>
+              {ev.category ? <CategoryBadge category={ev.category} size="sm" /> : null}
+              <Text variant="bodySm" color="inkMuted">{ev.venue}</Text>
+              <Text variant="bodySm" color="inkMuted">
+                {formatEventDate(ev.eventDate)}
+                {ev.startTime && ev.endTime ? ` · ${formatTimeRange(ev.startTime, ev.endTime)}` : ''}
+              </Text>
+            </Box>
+          ) : null}
+
           {/* line items */}
           <Box backgroundColor="bgSurface" borderWidth={1} borderColor="borderDefault" borderRadius="lg" padding="400" style={{ gap: 12 }}>
             <Text variant="titleM">Booking {count} {count === 1 ? 'usher' : 'ushers'}</Text>

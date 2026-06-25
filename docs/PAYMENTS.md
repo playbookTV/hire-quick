@@ -100,6 +100,12 @@ Key points:
 - **Partial refund of a batch:** refunding one booking moves only that booking
   to `REFUNDED` and the order to `PARTIALLY_REFUNDED`; sibling bookings are
   untouched. When all siblings are refunded the order becomes `REFUNDED`.
+- **Loyalty milestones are evaluated at the completion chokepoint.** Every release
+  path (manual complete, auto-complete, dispute-release) calls
+  `rewards.evaluateMilestones(tx, usherId)` **inside the same transaction**, so an
+  usher's lifetime completed-job count and any unlocked tiers update atomically
+  with the payout. This involves no escrow/wallet movement — `ledger.ts` stays the
+  sole writer of money; rewards only own the milestone tables.
 
 Ledger functions (all in `payments/ledger/ledger.ts`):
 

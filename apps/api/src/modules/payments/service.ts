@@ -6,6 +6,7 @@
 import { type PrismaClient } from '@hq/database';
 import { ApiError } from '../../app.js';
 import { runIdempotent } from './ledger/idempotency.js';
+import { claimOperation, runOperation } from './ledger/operations.js';
 import {
   requestWithdrawal,
   failWithdrawal,
@@ -50,18 +51,39 @@ export async function refundBookingToClient(
   });
   if (booking.status === 'REFUNDED') return { refunded: false }; // idempotent retry guard
 
-  if (params.amountKobo > 0) {
-    const chargeRef = booking.order?.paystackChargeRef;
-    if (!chargeRef) throw new Error(`booking ${params.bookingId}: order has no charge reference to refund`);
-    await deps.paystack.refund({ chargeReference: chargeRef, amountKobo: params.amountKobo });
+  // Claim a durable BOOKING_REFUND operation FIRST. The unique dedupeKey is the
+  // serialization point: a concurrent retry loses the insert and never reaches the
+  // Paystack refund below, so a booking's allocation can be refunded at most once
+  // (closes the double-refund race — TRD §10).
+  const chargeRef = booking.order?.paystackChargeRef ?? null;
+  if (params.amountKobo > 0 && !chargeRef) {
+    throw new Error(`booking ${params.bookingId}: order has no charge reference to refund`);
   }
-
-  await deps.prisma.$transaction(async (tx) => {
-    if (params.precursor === 'CANCEL') await cancelBooking(tx, params.bookingId);
-    else if (params.precursor === 'NO_SHOW') await markNoShow(tx, params.bookingId);
-    await refundBooking(tx, params.bookingId, params.amountKobo);
-  }, TX);
-  return { refunded: true };
+  const { op } = await claimOperation(deps.prisma, {
+    kind: 'BOOKING_REFUND',
+    dedupeKey: `BOOKING_REFUND:${params.bookingId}`,
+    payload: { bookingId: params.bookingId, amountKobo: params.amountKobo, precursor: params.precursor ?? null },
+  });
+  const outcome = await runOperation(
+    deps.prisma,
+    op,
+    {
+      provider: async () => {
+        if (params.amountKobo > 0 && chargeRef) {
+          await deps.paystack.refund({ chargeReference: chargeRef, amountKobo: params.amountKobo });
+        }
+        return { ok: true };
+      },
+      onSuccess: async (tx) => {
+        if (params.precursor === 'CANCEL') await cancelBooking(tx, params.bookingId);
+        else if (params.precursor === 'NO_SHOW') await markNoShow(tx, params.bookingId);
+        await refundBooking(tx, params.bookingId, params.amountKobo);
+        return true;
+      },
+    },
+    TX,
+  );
+  return { refunded: outcome.status === 'RECORDED' };
 }
 
 /** Initialize the Paystack charge for a PENDING order; HOLD happens on webhook. */
@@ -137,6 +159,7 @@ export async function initWithdrawal(
     throw new ApiError(403, 'FORBIDDEN', 'bank account does not belong to you');
   }
   if (!bank.paystackRecipientCode) throw new Error('bank account has no transfer recipient');
+  const recipientCode = bank.paystackRecipientCode;
 
   const { duplicate, result } = await runIdempotent(
     deps.prisma,
@@ -144,24 +167,38 @@ export async function initWithdrawal(
     'withdrawal',
     (tx) => requestWithdrawal(tx, params.walletId, params.bankAccountId, params.amountKobo),
   );
-  if (duplicate || !result) return { withdrawalId: '', duplicate: true };
+  if (!result) return { withdrawalId: '', duplicate: true };
+  // A duplicate request resumes with the original withdrawal id; the first call
+  // already owns the transfer (and the recovery job resumes it if it crashed).
+  if (duplicate) return { withdrawalId: result, duplicate: true };
 
   const withdrawalId = result;
   const reference = `wd_${withdrawalId}`;
-  const transfer = await deps.paystack.transfer({
-    amountKobo: params.amountKobo,
-    recipientCode: bank.paystackRecipientCode,
-    reason: 'HireQuick payout',
-    reference,
+  // The transfer + its bookkeeping run as a durable operation so a crash between
+  // the wallet debit and the Paystack transfer leaves no stuck debit — the
+  // recovery job re-issues the transfer (idempotent by `reference`) or reverses it.
+  const { op } = await claimOperation(deps.prisma, {
+    kind: 'WITHDRAWAL_TRANSFER',
+    dedupeKey: `WITHDRAWAL_TRANSFER:${withdrawalId}`,
+    payload: { withdrawalId, amountKobo: params.amountKobo, recipientCode, reference },
   });
-  await deps.prisma.withdrawal.update({
-    where: { id: withdrawalId },
-    data: { paystackTransferRef: reference },
+  await runOperation(deps.prisma, op, {
+    provider: async () => {
+      const transfer = await deps.paystack.transfer({
+        amountKobo: params.amountKobo,
+        recipientCode,
+        reason: 'HireQuick payout',
+        reference,
+      });
+      return { ok: transfer.status !== 'failed', providerRef: reference };
+    },
+    // Success: persist the ref; transfer.success/failed webhooks finalize status.
+    onSuccess: (tx) => tx.withdrawal.update({ where: { id: withdrawalId }, data: { paystackTransferRef: reference } }),
+    // Synchronous failure → reverse immediately (funds stay in the wallet, §10).
+    onFailure: async (tx) => {
+      await failWithdrawal(tx, withdrawalId);
+    },
   });
-  if (transfer.status === 'failed') {
-    // synchronous failure → reverse immediately (funds stay in wallet, §10)
-    await deps.prisma.$transaction((tx) => failWithdrawal(tx, withdrawalId));
-  }
   return { withdrawalId, duplicate: false };
 }
 
@@ -184,21 +221,38 @@ export async function commissionSweepAmount(prisma: PrismaClient): Promise<numbe
  */
 export async function runCommissionSweep(
   deps: Deps,
-  params: { operatingRecipientCode: string; minKobo?: number },
+  params: { operatingRecipientCode: string; minKobo?: number; period?: string },
 ): Promise<{ swept: number }> {
   const amount = await commissionSweepAmount(deps.prisma);
   const min = params.minKobo ?? 10_000; // ₦100 floor
   if (amount < min) return { swept: 0 };
 
-  const ref = `sweep_${Date.now()}`;
-  const transfer = await deps.paystack.transfer({
-    amountKobo: amount,
-    recipientCode: params.operatingRecipientCode,
-    reason: 'HireQuick commission sweep',
-    reference: ref,
+  // One durable sweep per period (default: today) — the dedupeKey caps it at once
+  // per day and makes the transfer→ledger pair recoverable. A resume uses the
+  // amount captured at claim time (op.payload), never a recomputed figure, so a
+  // crashed sweep can't double-record a different amount.
+  const period = params.period ?? new Date().toISOString().slice(0, 10);
+  const reference = `sweep_${period}`;
+  const { op } = await claimOperation(deps.prisma, {
+    kind: 'COMMISSION_SWEEP',
+    dedupeKey: `COMMISSION_SWEEP:${period}`,
+    payload: { amountKobo: amount, recipientCode: params.operatingRecipientCode, reference },
   });
-  if (transfer.status === 'failed') return { swept: 0 };
-
-  await deps.prisma.$transaction((tx) => commissionSweep(tx, amount));
-  return { swept: amount };
+  const payload = op.payload as { amountKobo: number; recipientCode: string; reference: string };
+  const out = await runOperation(deps.prisma, op, {
+    provider: async () => {
+      const transfer = await deps.paystack.transfer({
+        amountKobo: payload.amountKobo,
+        recipientCode: payload.recipientCode,
+        reason: 'HireQuick commission sweep',
+        reference: payload.reference,
+      });
+      return { ok: transfer.status !== 'failed', providerRef: payload.reference };
+    },
+    onSuccess: async (tx) => {
+      await commissionSweep(tx, payload.amountKobo);
+      return payload.amountKobo;
+    },
+  });
+  return { swept: out.result ?? 0 };
 }

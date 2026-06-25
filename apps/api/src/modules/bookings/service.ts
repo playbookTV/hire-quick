@@ -131,21 +131,35 @@ export async function confirmBatch(
     });
     return { orderId: order.id, bookingIds: ids };
   });
-  if (duplicate || !result) {
+  if (!result) {
+    // Defensive: the idempotency response is now persisted, so a duplicate carries
+    // the original ids. A null here means neither path produced a result.
     return { orderId: '', authorizationUrl: '', reference: '', bookingIds: [], duplicate: true };
   }
 
-  const init = await initChargeForOrder(deps, {
-    orderId: result.orderId,
-    email: params.email,
-    clientUserId: params.clientUserId,
-  });
+  // Re-derive the hosted checkout URL for both fresh and duplicate requests so a
+  // retry resumes with the original order/bookings instead of an empty payload.
+  // initChargeForOrder is idempotent by the `hq_<orderId>` reference; if the order
+  // already advanced past PENDING (charge held), reuse its stored reference and let
+  // the client proceed straight to the held-funds screen.
+  const order = await deps.prisma.order.findUniqueOrThrow({ where: { id: result.orderId } });
+  let authorizationUrl = '';
+  let reference = order.paystackChargeRef ?? '';
+  if (order.status === 'PENDING') {
+    const init = await initChargeForOrder(deps, {
+      orderId: result.orderId,
+      email: params.email,
+      clientUserId: params.clientUserId,
+    });
+    authorizationUrl = init.authorizationUrl;
+    reference = init.reference;
+  }
   return {
     orderId: result.orderId,
-    authorizationUrl: init.authorizationUrl,
-    reference: init.reference,
+    authorizationUrl,
+    reference,
     bookingIds: result.bookingIds,
-    duplicate: false,
+    duplicate,
   };
 }
 

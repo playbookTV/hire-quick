@@ -76,7 +76,7 @@ export default function FundsHeld(): React.JSX.Element {
       <Box style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: insets.bottom + 16, gap: 12 }}>
         <Button label="View booking" onPress={() => router.dismissAll()} />
         {!held ? (
-          <Button label="Refresh status" variant="ghost" onPress={() => booking.refetch()} />
+          <Button label="Refresh status" variant="ghost" onPress={() => void booking.refetch()} />
         ) : null}
       </Box>
     </Box>

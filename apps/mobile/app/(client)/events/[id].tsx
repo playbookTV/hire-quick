@@ -12,6 +12,8 @@ import { Screen } from '../../../components/Screen.js';
 import { AppBar } from '../../../components/AppBar.js';
 import { Card } from '../../../components/Card.js';
 import { StatusPill } from '../../../components/StatusPill.js';
+import { CoverImage } from '../../../components/CoverImage.js';
+import { CategoryBadge } from '../../../components/CategoryBadge.js';
 import { MetaRow } from '../../../components/MetaRow.js';
 import { KeyValueRow } from '../../../components/KeyValueRow.js';
 import { SectionHeader } from '../../../components/SectionHeader.js';
@@ -98,6 +100,13 @@ export default function EventDetail(): React.JSX.Element {
     <Box flex={1} backgroundColor="bgCanvas">
       <AppBar showBack inset title="Event" />
       <Screen scroll>
+        {/* hero */}
+        <Box marginBottom="400">
+          <CoverImage category={event.category} height={110}>
+            <CategoryBadge category={event.category} size="sm" />
+          </CoverImage>
+        </Box>
+
         {/* header */}
         <Box flexDirection="row" alignItems="center" justifyContent="space-between" style={{ gap: 12 }} marginBottom="200">
           <Text variant="h1" style={{ flex: 1 }} numberOfLines={2}>
@@ -149,7 +158,15 @@ export default function EventDetail(): React.JSX.Element {
           </>
         ) : null}
 
-        {/* quick actions */}
+        {/* primary action */}
+        <Box height={20} />
+        <Button
+          label={`Review applications${applicants ? ` (${applicants})` : ''}`}
+          disabled={applicants === 0}
+          onPress={() => router.push({ pathname: '/(modals)/applications', params: { id } })}
+        />
+
+        {/* secondary actions */}
         <Box height={16} />
         <Box flexDirection="row" flexWrap="wrap" style={{ gap: 8 }}>
           {editable ? (
@@ -163,13 +180,6 @@ export default function EventDetail(): React.JSX.Element {
             <ActionChip label="Cancel booking" danger onPress={() => router.push({ pathname: '/(modals)/cancellation', params: { booking: firstBooking } })} />
           ) : null}
         </Box>
-
-        <Box height={20} />
-        <Button
-          label={`Review applications${applicants ? ` (${applicants})` : ''}`}
-          disabled={applicants === 0}
-          onPress={() => router.push({ pathname: '/(modals)/applications', params: { id } })}
-        />
         <Box style={{ height: insets.bottom }} />
       </Screen>
     </Box>

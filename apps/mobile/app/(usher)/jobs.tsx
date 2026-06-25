@@ -12,7 +12,7 @@ import { Box, Text } from '../../theme/restyle.js';
 import { Segmented } from '../../components/Segmented.js';
 import { JobCard } from '../../components/JobCard.js';
 import { EmptyState } from '../../components/EmptyState.js';
-import { Loading } from '../../components/Loading.js';
+import { SkeletonCard } from '../../components/Skeleton.js';
 import { useEvents, useMyApplications, useSavedJobs, useSaveJob, useUnsaveJob } from '../../lib/hooks.js';
 import { money, shortDate } from '../../lib/format.js';
 import type { ApplicationStatus, EventResource } from '../../lib/types.js';
@@ -84,7 +84,11 @@ export default function Jobs(): React.JSX.Element {
         <Segmented options={TABS} value={tab} onChange={setTab} />
 
         {active.isLoading ? (
-          <Loading />
+          <Box style={{ gap: 12 }}>
+            {[0, 1, 2].map((i) => (
+              <SkeletonCard key={i} lines={2} />
+            ))}
+          </Box>
         ) : active.isError ? (
           <Box style={{ paddingTop: 40 }}>
             <EmptyState

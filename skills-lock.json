@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "skills": {
+    "expo-react-native-coder": {
+      "source": "pproenca/dot-skills",
+      "sourceType": "github",
+      "skillPath": "skills/.experimental/expo-react-native-coder/SKILL.md",
+      "computedHash": "dd487bc4412ab78ade7b12aae1356a78cb710fa178b35e1ef14aec72d53c9b88"
+    },
+    "react-native-best-practices": {
+      "source": "callstackincubator/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/react-native-best-practices/SKILL.md",
+      "computedHash": "15bd57b18d9ad0dcd003bd2c7ec6ed17d813cc671dd4d423e1d904d2a7b9d2bb"
+    },
+    "ux-audit": {
+      "source": "jezweb/claude-skills",
+      "sourceType": "github",
+      "skillPath": "plugins/dev-tools/skills/ux-audit/SKILL.md",
+      "computedHash": "154f60e2331a26d5776dec0254342f0a516ce8b3deb7fec094d1c33d3069e22a"
+    }
+  }
+}

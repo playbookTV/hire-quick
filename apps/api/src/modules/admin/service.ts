@@ -4,9 +4,10 @@
  * approves to execute. Below the threshold it executes immediately. Every step
  * is audit-logged.
  */
-import { prisma } from '@hq/database';
+import { prisma, type ApprovalKind } from '@hq/database';
 import { ApiError } from '../../app.js';
 import { resolveDisputeRelease } from '../payments/ledger/ledger.js';
+import { claimOperation, runOperation } from '../payments/ledger/operations.js';
 import { refundBookingToClient } from '../payments/service.js';
 import type { PaystackPort } from '../payments/port/paystack-port.js';
 import { notifyPayoutReleased, notifyMilestoneUnlocked } from '../notifications/service.js';
@@ -158,27 +159,51 @@ export async function decideApproval(
   // Atomic claim BEFORE executing: two checkers reading PENDING concurrently
   // would otherwise both run the external refund. The conditional update is the
   // serialization point — exactly one wins (count === 1); the loser gets 409 and
-  // never touches Paystack. (Residual: a crash after claim but before execute
-  // leaves the approval EXECUTED-but-unprocessed — addressed by the durable
-  // operation-record work, not by this race fix.)
+  // never touches Paystack.
   const claimed = await prisma.approval.updateMany({
     where: { id: approvalId, status: 'PENDING' },
     data: { status: 'EXECUTED', checkerId },
   });
   if (claimed.count === 0) throw new ApiError(409, 'NOT_PENDING', 'approval already decided');
 
-  const payload = a.payload as Record<string, unknown>;
-  if (a.kind === 'DISPUTE_RESOLVE') {
-    await executeDisputeResolution({
-      bookingId: String(payload.bookingId),
-      outcome: payload.outcome as DisputeOutcome,
-      disputeId: String(payload.disputeId),
-      resolution: typeof payload.resolution === 'string' ? payload.resolution : '',
-      adminId: a.makerId,
-    }, paystack, realtime);
-  } else {
-    await executeRefund({ bookingId: String(payload.bookingId), amountKobo: Number(payload.amountKobo) }, paystack);
-  }
+  await executeApprovalOp(a, paystack, realtime);
   // Status was already claimed EXECUTED above; just record the audit trail.
   await writeAudit({ actorId: checkerId, action: 'approval.execute', target: approvalId });
+}
+
+/**
+ * Run a claimed approval's money move through a durable APPROVAL_EXECUTE op.
+ * Shared by decideApproval (first run) and the recovery job (resume after a
+ * crash between the EXECUTED claim and the money move). Idempotent: refunds flow
+ * through the durable BOOKING_REFUND op and dispute release is status-guarded, so
+ * a resumed re-run never double-pays.
+ */
+export async function executeApprovalOp(
+  a: { id: string; kind: ApprovalKind; makerId: string; payload: unknown },
+  paystack: PaystackPort,
+  realtime: RealtimeGateway = noopGateway,
+): Promise<void> {
+  const payload = a.payload as Record<string, unknown>;
+  const { op } = await claimOperation(prisma, {
+    kind: 'APPROVAL_EXECUTE',
+    dedupeKey: `APPROVAL_EXECUTE:${a.id}`,
+    payload: { approvalId: a.id },
+  });
+  await runOperation(prisma, op, {
+    provider: async () => {
+      if (a.kind === 'DISPUTE_RESOLVE') {
+        await executeDisputeResolution({
+          bookingId: String(payload.bookingId),
+          outcome: payload.outcome as DisputeOutcome,
+          disputeId: String(payload.disputeId),
+          resolution: typeof payload.resolution === 'string' ? payload.resolution : '',
+          adminId: a.makerId,
+        }, paystack, realtime);
+      } else {
+        await executeRefund({ bookingId: String(payload.bookingId), amountKobo: Number(payload.amountKobo) }, paystack);
+      }
+      return { ok: true };
+    },
+    onSuccess: () => Promise.resolve(true),
+  });
 }

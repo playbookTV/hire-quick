@@ -9,9 +9,11 @@ where to extend it. For the money/escrow internals, see
 
 ## System design
 
-HireQuick is a **pnpm + Turbo monorepo**. There is one runtime application today
-(`apps/api`, an Express HTTP service) plus a separate **worker** process for
-scheduled jobs. Both lean on three shared packages.
+HireQuick is a **pnpm + Turbo monorepo**. There are three apps — `apps/api` (an
+Express HTTP service, plus a separate **worker** process for scheduled jobs),
+`apps/admin` (a Vite + React operations console), and `apps/mobile` (an Expo
+React Native client/usher app). All three lean on the shared packages. This
+document is about the backend (`apps/api`).
 
 ```
                          ┌─────────────────────────────────────────┐
@@ -20,28 +22,33 @@ scheduled jobs. Both lean on three shared packages.
                          │  money · policy · state-machines · enums  │
                          │  · dto (Zod)                              │
                          └───────────────┬───────────────────────────┘
-                                         │ imported by everything
+                                         │ imported by every app
         ┌────────────────────────────────┼────────────────────────────────┐
         │                                 │                                 │
 ┌───────▼─────────┐              ┌────────▼──────────┐            ┌─────────▼────────┐
-│ apps/api        │              │ packages/database │            │ (future)         │
-│ @hq/api         │   uses       │ @hq/database      │            │ mobile / admin   │
-│ Express service │─────────────▶│ Prisma client +   │            │ apps — will      │
-│ + worker        │   prisma     │ schema (Postgres) │            │ import @hq/shared│
-└───────┬─────────┘              └───────────────────┘            └──────────────────┘
-        │ port
-┌───────▼──────────────┐
-│ Paystack             │
-│ (HttpPaystack live   │
-│  TEST / InMemory fake)│
-└──────────────────────┘
+│ apps/api        │   uses       │ packages/database │            │ apps/admin       │
+│ @hq/api         │─────────────▶│ @hq/database      │            │ (Vite + React)   │
+│ Express service │   prisma     │ Prisma client +   │            │ apps/mobile      │
+│ + worker        │              │ schema (Postgres) │            │ (Expo RN)        │
+└───┬────────┬────┘              └───────────────────┘            │  → HTTP + Socket │
+    │ ports  │                                                     └──────────────────┘
+    │        └──────────────┬──────────────────┐
+┌───▼────────────┐  ┌───────▼────────┐  ┌───────▼────────────┐
+│ Paystack       │  │ Storage (S3 /  │  │ Realtime (Socket.IO│
+│ (HttpPaystack  │  │ R2 / B2, or    │  │ + Redis adapter,   │
+│  / InMemory)   │  │ URL passthru)  │  │ or no-op gateway)  │
+└────────────────┘  └────────────────┘  └────────────────────┘
+        + Brevo (SMS/WhatsApp/email) · Redis (rate limit + socket fan-out)
 ```
 
 Why a monorepo with a `shared` package? The policy matrix, money math, and state
-machines must produce **identical outcomes** on every surface. When the mobile
-and admin apps arrive, they import the same `@hq/shared` matrices instead of
-re-implementing them, so a refund computed in the app equals the refund computed
-by the ledger.
+machines must produce **identical outcomes** on every surface. The mobile and
+admin apps import the same `@hq/shared` matrices instead of re-implementing them,
+so a refund computed in the app equals the refund computed by the ledger.
+
+External services all sit behind **injected ports** (Paystack, storage, realtime)
+or degrade to safe fakes when unconfigured, so the backend runs and is fully
+tested with no live keys.
 
 ---
 
@@ -75,11 +82,31 @@ by the other packages.
 ### `apps/api` (`@hq/api`)
 
 The Express (ESM) HTTP service. Feature modules live under `src/modules/*`:
-`auth`, `events`, `bookings`, `payments`, `profile`, `admin`, `jobs`, plus
-`audit.ts`. Two entrypoints:
+`auth`, `events`, `bookings`, `payments`, `ushers`, `profile`, `privacy`,
+`notifications`, `rewards`, `storage`, `admin`, `jobs`, plus `audit.ts`.
+Cross-cutting infrastructure sits alongside `modules/`: `middleware/` (rate
+limiting), `realtime/` (the Socket.IO gateway), and `logger.ts` (structured
+pino logging). Two entrypoints:
 
-- `server.ts` — the HTTP API (`pnpm dev` / `pnpm --filter @hq/api start`).
-- `worker.ts` — the scheduled-jobs process (`pnpm --filter @hq/api worker`).
+- `server.ts` — the HTTP API (`pnpm dev` / `pnpm --filter @hq/api start`). Wires
+  the real `HttpPaystack`, a Redis client (rate limiting + socket fan-out), the
+  S3 storage port, and the Socket.IO gateway.
+- `worker.ts` — the scheduled-jobs process (`pnpm --filter @hq/api worker`). Uses
+  a Redis **emitter** gateway so job-driven lifecycle pushes reach connected
+  clients even though the worker holds no sockets.
+
+### `apps/admin` (`@hq/admin`)
+
+A Vite + React 18 single-page operations console (verifications, disputes,
+refunds, two-person approvals, ledger, stats). Talks to `apps/api` over HTTP.
+
+### `apps/mobile` (`@hq/mobile`)
+
+An Expo React Native app using `expo-router`, with route groups for `(auth)`,
+`(client)`, `(usher)`, `(verification)`, and `(modals)`. Talks to `apps/api`
+over HTTP and the Socket.IO gateway (chat + lifecycle pushes), and imports
+`@hq/shared` for identical money/policy math. (The repo pins `@types/react` to a
+single version so RN and the shared types line up.)
 
 ---
 
@@ -90,27 +117,45 @@ The Express (ESM) HTTP service. Feature modules live under `src/modules/*`:
 `createApp(config)` builds the app in a deliberate order:
 
 ```
-1. helmet() + cors()                         security headers
-2. x-request-id middleware                    request correlation
-3. /webhooks/paystack  (express.raw)          ← mounted BEFORE express.json,
+0. production fail-closed check               refuse to boot in NODE_ENV=production
+                                                 without corsOrigins + rateLimitRedis
+1. trust proxy (N hops)                        so req.ip is the real client IP
+2. helmet() + cors(allowlist)                  security headers; CORS allowlist
+                                                 (reflect-all only with no list = dev)
+3. global rate limiter                         coarse Redis-backed abuse backstop
+4. x-request-id middleware                     request correlation
+5. /webhooks/paystack  (express.raw)           ← mounted BEFORE express.json,
                                                  because HMAC verification needs
-                                                 the raw body
-4. express.json({ limit: '1mb' })             body parsing for everything else
-5. /health                                    liveness
-6. /auth, /api/me, /api/admin, /api           feature routers
-7. /api/payments, /api (events)               mounted only when a Paystack port
+                                                 the raw body (only with a port)
+6. express.json({ limit: '1mb' })              body parsing for everything else
+7. /health                                     liveness
+8. /auth (+auth limiter), /api/me (profile +
+   privacy), /api/admin, /api (bookings,
+   ushers, events)                             feature routers
+9. /api/payments (+money limiter)              mounted only when a Paystack port
                                                  is provided (see DI below)
-8. 404 handler                                { error: { code, message } }
-9. error middleware                           Zod → 400 VALIDATION;
+10. 404 handler                                { error: { code, message } }
+11. error middleware                           Zod → 400 VALIDATION;
                                                  ApiError → its status/code;
                                                  anything else → 500 INTERNAL
-                                                 (generic, leak-free message)
+                                                 (generic, leak-free; logged)
 ```
 
-`createApp` takes its dependencies as config (`{ paystack, paystackSecret }`),
-so tests can pass an in-memory Paystack and the payments routes mount only when a
-port is present. `server.ts` is the production wiring that injects the real
-`HttpPaystack`.
+`createApp` takes its dependencies as config (`{ paystack, paystackSecret,
+realtime, corsOrigins, rateLimitRedis, trustProxy, storage }`), so tests can pass
+in-memory/no-op fakes and run with nothing external. `server.ts` is the
+production wiring that injects the real implementations.
+
+**The events router now mounts unconditionally** — discovery, applications,
+invitations, and saved jobs don't need Paystack. Only the payments router (and
+the webhook) gate on a port; `confirm-batch` itself returns `503` when no port is
+present, so the rest of the events feature stays available without payments.
+
+**Hardening is fail-closed.** `createApp` refuses to boot in `NODE_ENV=production`
+without a CORS allowlist and a Redis client (otherwise the dev-friendly
+reflect-all CORS and pass-through rate limiters would silently ship). `env.ts`
+additionally requires strong JWT secrets, Paystack keys, a Brevo key, and a
+storage bucket in production.
 
 ### Example: a client confirms a batch of ushers
 
@@ -145,14 +190,18 @@ verified attendance. The full money lifecycle is in [`PAYMENTS.md`](./PAYMENTS.m
 The schema (`packages/database/prisma/schema.prisma`) groups into:
 
 - **Identity:** `User` (role CLIENT/USHER/ADMIN, phone-unique), `Client`,
-  `Usher` (+ `UsherVerification`, `Photo`, `Availability`), `BankAccount`,
-  `VerificationCode` (OTP + attendance codes).
-- **Marketplace:** `Event`, `Application`, `Invitation`.
+  `Usher` (+ `UsherVerification`, `Photo`, `Availability`, rating/ratingCount/
+  completedJobsCount), `BankAccount`, `DeviceToken` (push), `VerificationCode`
+  (OTP + attendance codes).
+- **Marketplace:** `Event`, `Application`, `Invitation`, `SavedJob`.
 - **Booking & money:** `Order` (a confirmed batch), `Booking` (one usher on one
   event), `Payment` (gross/fee/payout + escrow status), `Wallet`, `Withdrawal`.
 - **Ledgers (append-only):** `EscrowLedger`, `WalletLedger` — never UPDATE/DELETE.
-- **Ops & social:** `Dispute`, `Conversation`/`Message`, `Review`, `AuditLog`,
-  `IdempotencyKey`, `Device`.
+- **Rewards:** `MilestoneTier` (loyalty thresholds + reward type), `UsherMilestone`
+  (per-usher unlocks).
+- **Ops & social:** `Dispute`, `Conversation`/`Message`, `Review`, `Approval`
+  (two-person admin actions), `AuditLog` + `AuditChainHead` (hash-chained),
+  `IdempotencyKey`.
 
 Everything monetary is `Int` (kobo). Timestamps are `Timestamptz(6)`.
 
@@ -226,9 +275,48 @@ wrappers over already-tested service functions:
 | `reconcile` | `17 3 * * *` | Compare ledger-expected vs real Paystack balance; raise the alarm on drift or stale holds (§17). |
 | `commission` | `23 4 * * *` | Sweep accumulated platform fees to the operating bank account (D3). |
 | `transferRetry` | `*/30 * * * *` | Surface withdrawals stuck in `PROCESSING` >30 min for ops follow-up. |
+| `retentionPurge` | `41 2 * * *` | NDPR retention purge of transient PII past its window (TRD §14). Financial/ledger rows are never purged. |
+| `auditVerify` | `47 2 * * *` | Walk the hash-chained audit log and raise the alarm if a row's chain hash doesn't verify (tamper detection). |
 
 Cron minutes are deliberately off-zero so many deployments don't all hit
 Paystack/Neon on the same tick.
+
+---
+
+## Realtime (Socket.IO)
+
+Booking chat and server→client lifecycle pushes share one Socket.IO surface
+behind a `RealtimeGateway` port (`realtime/gateway.ts`), mirroring the Paystack
+port: business code emits through the interface and is testable against a no-op
+gateway. Three implementations:
+
+- **Socket gateway** (`createSocketGateway`) — the API process. Wraps a live
+  `io` server with a Redis adapter so emits fan out across Railway replicas.
+- **Emitter gateway** (`createEmitterGateway`) — the worker process. Publishes
+  the same Redis channels via `@socket.io/redis-emitter`, so job-driven pushes
+  (auto-complete, no-show) reach clients even though the worker owns no sockets.
+- **No-op gateway** — tests / single-node dev with no Redis.
+
+Sockets authenticate with the access JWT on connect. Rooms: `user:<id>`
+(per-user pushes), `booking:<id>` (chat + booking events), `admin:feed`
+(ADMIN-only operational feed). Chat messages are persisted (`Conversation`/
+`Message`); typing is ephemeral. The event catalogue and payload shapes live in
+`realtime/events.ts` so every surface agrees on the wire format. Lifecycle pushes
+are **convenience signals only** — the ledger and DB stay the source of truth, so
+a client that missed an event simply re-fetches.
+
+---
+
+## Notifications & storage
+
+- **Notifications** (`modules/notifications`) deliver OTPs and transactional
+  messages through Brevo: WhatsApp OTP is the primary channel (TRD §4), with SMS
+  and email fallbacks, plus stubbed FCM push (intent recorded). With no
+  `BREVO_API_KEY` every send logs a dev stub, so OTP login works offline.
+- **Storage** (`modules/storage`) is an S3-compatible `StoragePort` (AWS / R2 /
+  B2) that mints short-lived presigned upload/download URLs, so KYC documents and
+  photos never transit the API and live under server-owned, un-forgeable keys.
+  Unconfigured, it falls back to legacy plain-URL passthrough.
 
 ---
 
@@ -254,8 +342,11 @@ Paystack/Neon on the same tick.
   `@hq/shared/state-machines` **first**, add a `LedgerEntryType` if needed, then
   write the ledger function — and update the reconciliation formula if the entry
   affects the Paystack Balance (see [`PAYMENTS.md`](./PAYMENTS.md#reconciliation)).
-- **Real SMS / storage:** swap the dev OTP logger for an SMS provider
-  (`auth/otp.ts`) and replace the stubbed signed-URL handling in
-  `profile/routes.ts`.
 - **New scheduled job:** add a function to `jobs/jobs.ts` and a `SCHEDULES` entry
   + `case` in `jobs/queues.ts`.
+- **New realtime event:** add it to the `RT` catalogue in `realtime/events.ts`
+  (with a typed payload), then emit through the injected `RealtimeGateway`.
+- **New notification channel:** extend `modules/notifications` (the Brevo
+  transport already covers SMS / WhatsApp / email; FCM push is the open stub).
+- **New external service:** follow the port pattern — define an interface, inject
+  it via `createApp` config, and provide a fake for tests.

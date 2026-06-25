@@ -76,9 +76,9 @@ export function ProfileView(): React.JSX.Element {
               label="Sign out"
               variant="secondary"
               loading={signingOut}
-              onPress={async () => {
+              onPress={() => {
                 setSigningOut(true);
-                await logout();
+                void logout();
               }}
             />
           </Pressable>

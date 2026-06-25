@@ -128,6 +128,23 @@ export class HttpPaystack implements PaystackPort {
     }
   }
 
+  async verifyTransfer(
+    reference: string,
+  ): Promise<{ status: 'success' | 'failed' | 'pending' | 'unknown' }> {
+    try {
+      const data = await this.call<{ status: string }>(
+        `/transfer/verify/${encodeURIComponent(reference)}`,
+      );
+      if (data.status === 'success') return { status: 'success' };
+      if (data.status === 'failed' || data.status === 'reversed') return { status: 'failed' };
+      return { status: 'pending' }; // otp/pending/processing
+    } catch (err) {
+      // 404 → Paystack never saw this reference (transfer not issued yet).
+      if (err instanceof PaystackHttpError && err.status === 404) return { status: 'unknown' };
+      throw err;
+    }
+  }
+
   async refund(params: { chargeReference: string; amountKobo: number }): Promise<{ status: 'processed' }> {
     await this.call('/refund', {
       method: 'POST',

@@ -6,7 +6,7 @@
  */
 import { useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Alert, ScrollView } from 'react-native';
+import { ScrollView } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, Box, Text } from '../../theme/restyle.js';
@@ -19,6 +19,7 @@ import { ReviewCard } from '../../components/ReviewCard.js';
 import { SectionHeader } from '../../components/SectionHeader.js';
 import { Loading } from '../../components/Loading.js';
 import { useUsher, useUsherReviews } from '../../lib/hooks.js';
+import { useToast } from '../../lib/toast.js';
 import { shortDate } from '../../lib/format.js';
 
 function Pill({ label }: { label: string }) {
@@ -124,9 +125,10 @@ export default function StaffProfile(): React.JSX.Element {
   const { id } = useLocalSearchParams<{ id: string }>();
   const usher = useUsher(id ?? '');
   const reviews = useUsherReviews(id ?? '');
+  const toast = useToast();
 
   const invite = (): void => {
-    Alert.alert('Invite to an event', 'Open one of your events to invite this usher.');
+    toast.info('Open one of your events to invite this usher.', 'Invite to an event');
     router.back();
   };
 

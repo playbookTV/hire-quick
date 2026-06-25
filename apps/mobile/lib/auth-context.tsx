@@ -61,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }): React.JSX.E
   // Cold-start hydration.
   useEffect(() => {
     mounted.current = true;
-    (async () => {
+    void (async () => {
       const tokens = await getTokens();
       if (!tokens) {
         goGuest();

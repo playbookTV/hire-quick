@@ -18,14 +18,17 @@
     "db:generate": "pnpm --filter @hq/database generate",
     "db:push": "pnpm --filter @hq/database push",
     "db:migrate": "pnpm --filter @hq/database migrate",
+    "db:deploy": "pnpm --filter @hq/database deploy",
     "db:seed": "pnpm --filter @hq/database seed",
     "db:studio": "pnpm --filter @hq/database studio"
   },
   "pnpm": {
     "onlyBuiltDependencies": ["@prisma/client", "@prisma/engines", "prisma", "esbuild"],
-    "comment-overrides": "Dedupe @types/react to ONE copy so react-native + restyle + the mobile app share identical ReactNode types. Mixed copies intersect to a ReactNode missing bigint → children type errors. admin (React 18 runtime) compiles fine against these types.",
+    "comment-overrides": "Dedupe @types/react to ONE copy so react-native + restyle + the mobile app share identical ReactNode types. Mixed copies intersect to a ReactNode missing bigint → children type errors. admin (React 18 runtime) compiles fine against these types. postcss/js-yaml pinned to patched same-major versions to clear transitive NDPR advisories (expo metro-config / babel-jest paths) without a risky major bump.",
     "overrides": {
-      "@types/react": "19.1.10"
+      "@types/react": "19.1.10",
+      "postcss": ">=8.5.10",
+      "js-yaml": ">=4.2.0"
     }
   },
   "devDependencies": {

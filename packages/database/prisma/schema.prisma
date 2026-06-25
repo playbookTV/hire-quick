@@ -156,6 +156,24 @@ enum ApprovalStatus {
   EXECUTED
 }
 
+// Durable cross-system operation record (TRD §10/§17). Every Paystack call that
+// must be paired with a ledger/state write flows through one of these so a crash
+// between the provider call and the ledger write is resumable, and a concurrent
+// retry is deduped by `dedupeKey` before the provider is ever called.
+enum PaymentOpKind {
+  BOOKING_REFUND
+  WITHDRAWAL_TRANSFER
+  COMMISSION_SWEEP
+  APPROVAL_EXECUTE
+}
+
+enum PaymentOpStatus {
+  PENDING // claimed; provider call not yet confirmed
+  PROVIDER_OK // provider (Paystack) call succeeded; ledger not yet recorded
+  RECORDED // ledger/state recorded — terminal success
+  FAILED // provider reported failure — terminal
+}
+
 // Late-night safety disclosure on a job posting (visible to staff pre-accept).
 enum Accommodation {
   PROVIDED
@@ -171,6 +189,14 @@ enum RewardType {
 enum MilestoneStatus {
   UNLOCKED
   FULFILLED
+}
+
+enum NotificationType {
+  INVITATION_RECEIVED
+  BOOKING_CONFIRMED
+  PAYOUT_RELEASED
+  NEW_MESSAGE
+  DISPUTE_OPENED
 }
 
 // ---------- identity ----------
@@ -197,17 +223,19 @@ model User {
   auditLogs         AuditLog[]
   approvalsMade     Approval[]          @relation("ApprovalMaker")
   approvalsChecked  Approval[]          @relation("ApprovalChecker")
+  notifications     Notification[]
 
   @@map("users")
 }
 
 model Client {
-  id          String  @id @default(uuid()) @db.Uuid
-  userId      String  @unique @db.Uuid
-  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  displayName String
-  ratingAvg   Float   @default(0)
-  ratingCount Int     @default(0)
+  id           String  @id @default(uuid()) @db.Uuid
+  userId       String  @unique @db.Uuid
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName  String
+  businessName String? // optional company/brand name shown on the client profile
+  ratingAvg    Float   @default(0)
+  ratingCount  Int     @default(0)
 
   events Event[]
   orders Order[]
@@ -228,6 +256,9 @@ model Usher {
   ratingCount        Int              @default(0)
   completedJobsCount Int              @default(0) // denormalized rank key; bumped on each completion
   avatarKey          String? // server-owned storage key for the profile photo; null = initials fallback
+  city               String? // base area in Lagos (e.g. "Lekki"); powers the location discovery filter
+  languages          String[]         @default([]) // spoken languages; powers the language discovery filter
+  dayRateKobo        Int? // indicative day rate — display + discovery filter only; escrow math uses Event.budgetPerHead
 
   verifications UsherVerification[]
   photos        Photo[]
@@ -254,6 +285,10 @@ model UsherVerification {
   reviewedBy    User?              @relation("VerificationReviewer", fields: [reviewedById], references: [id])
   reason        String?
   createdAt     DateTime           @default(now()) @db.Timestamptz(6)
+  // Set when status leaves PENDING (VERIFIED/REJECTED). Drives NDPR retention
+  // (TRD §14): raw ID doc + selfie deleted 90 days after VERIFIED / 30 after
+  // REJECTED, leaving only the pass/fail status + reviewer/audit trail.
+  reviewedAt    DateTime?          @db.Timestamptz(6)
 
   @@index([usherId])
   @@map("usher_verifications")
@@ -285,23 +320,23 @@ model Availability {
 
 // ---------- marketplace ----------
 model Event {
-  id              String      @id @default(uuid()) @db.Uuid
-  clientId        String      @db.Uuid
-  client          Client      @relation(fields: [clientId], references: [id])
-  title           String
-  venue           String
-  eventDate       DateTime    @db.Date
-  startTime       String // "HH:MM"
-  endTime         String // "HH:MM" — drives auto-complete (§12)
-  category        String
-  headcount       Int
-  budgetPerHead   Int // kobo
-  dressCode       String?
-  accommodation   Accommodation? // required by API when endTime >= 22:00 (late-night safety, visible to staff)
-  preferences     Json?
-  status          EventStatus @default(DRAFT)
-  createdAt       DateTime    @default(now()) @db.Timestamptz(6)
-  updatedAt       DateTime    @updatedAt @db.Timestamptz(6)
+  id            String         @id @default(uuid()) @db.Uuid
+  clientId      String         @db.Uuid
+  client        Client         @relation(fields: [clientId], references: [id])
+  title         String
+  venue         String
+  eventDate     DateTime       @db.Date
+  startTime     String // "HH:MM"
+  endTime       String // "HH:MM" — drives auto-complete (§12)
+  category      String
+  headcount     Int
+  budgetPerHead Int // kobo
+  dressCode     String?
+  accommodation Accommodation? // required by API when endTime >= 22:00 (late-night safety, visible to staff)
+  preferences   Json?
+  status        EventStatus    @default(DRAFT)
+  createdAt     DateTime       @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime       @updatedAt @db.Timestamptz(6)
 
   applications Application[]
   invitations  Invitation[]
@@ -357,16 +392,16 @@ model SavedJob {
 
 // ---------- orders / bookings / payments ----------
 model Order {
-  id               String      @id @default(uuid()) @db.Uuid
-  clientId         String      @db.Uuid
-  client           Client      @relation(fields: [clientId], references: [id])
-  eventId          String      @db.Uuid
-  event            Event       @relation(fields: [eventId], references: [id])
+  id                String      @id @default(uuid()) @db.Uuid
+  clientId          String      @db.Uuid
+  client            Client      @relation(fields: [clientId], references: [id])
+  eventId           String      @db.Uuid
+  event             Event       @relation(fields: [eventId], references: [id])
   paystackChargeRef String?
-  grossAmount      Int // kobo — Σ per-head over this batch
-  status           OrderStatus @default(PENDING)
-  createdAt        DateTime    @default(now()) @db.Timestamptz(6)
-  updatedAt        DateTime    @updatedAt @db.Timestamptz(6)
+  grossAmount       Int // kobo — Σ per-head over this batch
+  status            OrderStatus @default(PENDING)
+  createdAt         DateTime    @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime    @updatedAt @db.Timestamptz(6)
 
   bookings Booking[]
 
@@ -526,12 +561,12 @@ model Dispute {
 }
 
 model Conversation {
-  id        String    @id @default(uuid()) @db.Uuid
-  bookingId String    @unique @db.Uuid
-  booking   Booking   @relation(fields: [bookingId], references: [id])
-  clientId  String    @db.Uuid
-  usherId   String    @db.Uuid
-  createdAt DateTime  @default(now()) @db.Timestamptz(6)
+  id        String   @id @default(uuid()) @db.Uuid
+  bookingId String   @unique @db.Uuid
+  booking   Booking  @relation(fields: [bookingId], references: [id])
+  clientId  String   @db.Uuid
+  usherId   String   @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
 
   messages Message[]
 
@@ -584,6 +619,22 @@ model DeviceToken {
   @@map("device_tokens")
 }
 
+model Notification {
+  id         String           @id @default(uuid()) @db.Uuid
+  userId     String           @db.Uuid
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       NotificationType
+  title      String
+  body       String
+  targetType String? // entity kind for deep-linking, e.g. "invitation" | "booking"
+  targetId   String? // entity id the mobile app routes on when the notification is tapped
+  readAt     DateTime?        @db.Timestamptz(6)
+  createdAt  DateTime         @default(now()) @db.Timestamptz(6)
+
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
 model VerificationCode {
   id         String      @id @default(uuid()) @db.Uuid
   purpose    CodePurpose
@@ -602,6 +653,9 @@ model IdempotencyKey {
   key          String   @id
   scope        String
   responseHash String?
+  // Stored result of the guarded operation (ids/url/etc.) so a duplicate request
+  // resumes with the original outcome instead of an empty response (TRD §10/§25).
+  response     Json?
   createdAt    DateTime @default(now()) @db.Timestamptz(6)
 
   @@map("idempotency_keys")
@@ -618,7 +672,7 @@ model AuditLog {
   // Tamper-evident hash chain (TRD §14). seq gives a strict order; entryHash =
   // sha256(canonical(entry) + prevHash). Nullable so rows written before the
   // chain existed are tolerated as legacy (pre-genesis) entries.
-  seq       BigInt   @default(autoincrement()) @unique
+  seq       BigInt   @unique @default(autoincrement())
   prevHash  String?
   entryHash String?  @unique
 
@@ -653,6 +707,28 @@ model Approval {
 
   @@index([status])
   @@map("approvals")
+}
+
+// Durable record for a Paystack call paired with a ledger/state write (TRD §10/§17).
+// `dedupeKey` is the logical idempotency unit — its unique constraint is the claim
+// that prevents a concurrent retry from firing the provider twice; `status` lets a
+// crash between the provider call and the ledger write be resumed by the recovery
+// job. This is orchestration metadata only: it is NOT a ledger row and does not
+// affect the §17 reconciliation formula.
+model PaymentOperation {
+  id          String          @id @default(uuid()) @db.Uuid
+  kind        PaymentOpKind
+  dedupeKey   String          @unique
+  providerRef String?         @unique // deterministic Paystack reference (transfers/sweeps)
+  status      PaymentOpStatus @default(PENDING)
+  payload     Json // params needed to resume the operation
+  attempts    Int             @default(0)
+  lastError   String?
+  createdAt   DateTime        @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime        @updatedAt @db.Timestamptz(6)
+
+  @@index([status])
+  @@map("payment_operations")
 }
 
 // ---------- rewards / milestones (usher loyalty) ----------

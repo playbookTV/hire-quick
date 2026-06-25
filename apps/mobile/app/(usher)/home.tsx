@@ -6,7 +6,7 @@
  */
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Pressable, ScrollView } from 'react-native';
+import { Pressable, ScrollView, RefreshControl } from 'react-native';
 import { useTheme, Box, Text } from '../../theme/restyle.js';
 import { SectionHeader } from '../../components/SectionHeader.js';
 import { Banner } from '../../components/Banner.js';
@@ -112,7 +112,20 @@ export default function UsherHome(): React.JSX.Element {
 
   return (
     <Box flex={1} backgroundColor="bgCanvas" style={{ paddingTop: insets.top }}>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24, gap: 20 }} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24, gap: 20 }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={wallet.isFetching || activity.isFetching || bookings.isFetching}
+            onRefresh={() => {
+              void wallet.refetch();
+              void activity.refetch();
+              void bookings.refetch();
+            }}
+          />
+        }
+      >
         {/* greeting */}
         <Box flexDirection="row" alignItems="center" justifyContent="space-between">
           <Box style={{ gap: 2 }}>

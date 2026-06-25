@@ -9,7 +9,7 @@
     "ios": "expo start --ios",
     "dev": "expo start",
     "typecheck": "tsc --noEmit",
-    "build": "expo export --platform all --output-dir dist",
+    "build": "expo export --platform ios --platform android --output-dir dist",
     "lint": "eslint .",
     "eas-build-post-install": "pnpm --filter @hq/shared build"
   },

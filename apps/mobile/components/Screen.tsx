@@ -3,7 +3,7 @@
  * ScrollView with sensible keyboard handling; otherwise it's a plain Box.
  */
 import type { ReactNode } from 'react';
-import { ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { ScrollView, KeyboardAvoidingView, Platform, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Box } from '../theme/restyle.js';
 
@@ -13,6 +13,9 @@ interface ScreenProps {
   /** Pad the top by the safe-area inset (use when there's no AppBar). */
   topInset?: boolean;
   padding?: boolean;
+  /** When provided (with `scroll`), adds pull-to-refresh to the ScrollView. */
+  refreshing?: boolean;
+  onRefresh?: () => void;
 }
 
 export function Screen({
@@ -20,6 +23,8 @@ export function Screen({
   scroll = false,
   topInset = false,
   padding = true,
+  refreshing,
+  onRefresh,
 }: ScreenProps): React.JSX.Element {
   const insets = useSafeAreaInsets();
   const pad = padding ? ('500' as const) : ('none' as const);
@@ -47,6 +52,9 @@ export function Screen({
           }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            onRefresh ? <RefreshControl refreshing={refreshing ?? false} onRefresh={onRefresh} /> : undefined
+          }
         >
           {children}
         </ScrollView>

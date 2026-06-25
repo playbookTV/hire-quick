@@ -4,7 +4,6 @@
  * then "Submit dispute" / "Cancel". Static preview until the disputes API wires.
  */
 import { useState } from 'react';
-import { Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Box, Text } from '../../theme/restyle.js';
@@ -16,6 +15,7 @@ import { TextArea } from '../../components/TextArea.js';
 import { Button } from '../../components/Button.js';
 import { Icon } from '../../components/Icon.js';
 import { useCreateDispute } from '../../lib/hooks.js';
+import { useToast } from '../../lib/toast.js';
 
 const REASONS = ['Usher didn’t show up', 'Arrived late', 'Conduct or presentation', 'Something else'];
 
@@ -24,6 +24,7 @@ export default function Dispute(): React.JSX.Element {
   const insets = useSafeAreaInsets();
   const { booking } = useLocalSearchParams<{ booking: string }>();
   const dispute = useCreateDispute(booking ?? '');
+  const toast = useToast();
   const [reason, setReason] = useState(REASONS[0]);
   const [details, setDetails] = useState('');
 
@@ -36,10 +37,10 @@ export default function Dispute(): React.JSX.Element {
       { reason: reason ?? 'Something else', note: details.trim() || undefined },
       {
         onSuccess: () => {
-          Alert.alert('Dispute opened', 'Funds are frozen while our team reviews.');
+          toast.success('Funds are frozen while our team reviews.', 'Dispute opened');
           router.back();
         },
-        onError: (e: unknown) => Alert.alert('Couldn’t open dispute', e instanceof Error ? e.message : 'Please try again.'),
+        onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Please try again.', 'Couldn’t open dispute'),
       },
     );
   };

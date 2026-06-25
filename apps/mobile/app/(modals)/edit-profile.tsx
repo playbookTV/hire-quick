@@ -5,7 +5,6 @@
  */
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Box } from '../../theme/restyle.js';
 import { Screen } from '../../components/Screen.js';
@@ -15,12 +14,14 @@ import { Input } from '../../components/Input.js';
 import { Button } from '../../components/Button.js';
 import { useAuth } from '../../lib/auth-context.js';
 import { useUpdateProfile } from '../../lib/hooks.js';
+import { useToast } from '../../lib/toast.js';
 
 export default function EditProfile(): React.JSX.Element {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user, refreshMe } = useAuth();
   const update = useUpdateProfile();
+  const toast = useToast();
   const usher = user?.usher;
 
   const [displayName, setDisplayName] = useState(usher?.displayName ?? '');
@@ -30,7 +31,7 @@ export default function EditProfile(): React.JSX.Element {
   const onSave = (): void => {
     const name = displayName.trim();
     if (name.length < 2) {
-      Alert.alert('Name too short', 'Enter the name clients will see (at least 2 characters).');
+      toast.error('Enter the name clients will see (at least 2 characters).', 'Name too short');
       return;
     }
     const yearsExperience = Math.max(0, Math.min(60, Math.round(Number(years) || 0)));
@@ -39,9 +40,10 @@ export default function EditProfile(): React.JSX.Element {
       {
         onSuccess: () => {
           void refreshMe();
+          toast.success('Your profile was updated.', 'Saved');
           router.back();
         },
-        onError: (e: unknown) => Alert.alert('Couldn’t save', e instanceof Error ? e.message : 'Try again.'),
+        onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Try again.', 'Couldn’t save'),
       },
     );
   };

@@ -18,11 +18,13 @@ import { Loading } from '../../components/Loading.js';
 import { shadowMd, shadowSm } from '../../theme/shadows.js';
 import { primitives } from '../../theme/primitives.js';
 import { useEvent, useBookings, useGenerateCheckin, useCompleteBooking } from '../../lib/hooks.js';
+import { useToast } from '../../lib/toast.js';
 import type { Booking } from '../../lib/types.js';
 
 function RosterRow({ booking, onCode, onRate }: { booking: Booking; onCode: (code: string) => void; onRate: (id: string) => void }) {
   const generate = useGenerateCheckin(booking.id);
   const complete = useCompleteBooking(booking.id);
+  const toast = useToast();
   const checkedIn = booking.status === 'CHECKED_IN';
   const paid = booking.status === 'PAID';
   const name = booking.usher?.displayName ?? booking.usher?.user.phone ?? 'Usher';
@@ -33,12 +35,12 @@ function RosterRow({ booking, onCode, onRate }: { booking: Booking; onCode: (cod
         if (res.devCode) onCode(res.devCode);
         Alert.alert('Check-in code', res.devCode ? `Give this to the usher: ${res.devCode}` : 'Code sent.');
       },
-      onError: (e: unknown) => Alert.alert('Couldn’t generate', e instanceof Error ? e.message : 'Try again.'),
+      onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Try again.', 'Couldn’t generate'),
     });
   };
   const done = (): void => {
     complete.mutate(undefined, {
-      onError: (e: unknown) => Alert.alert('Couldn’t complete', e instanceof Error ? e.message : 'Try again.'),
+      onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Try again.', 'Couldn’t complete'),
     });
   };
 

@@ -42,7 +42,11 @@ export const ORDER_TRANSITIONS: Record<OrderStatus, readonly OrderStatus[]> = {
 export const WITHDRAWAL_TRANSITIONS: Record<WithdrawalStatus, readonly WithdrawalStatus[]> = {
   REQUESTED: ['PROCESSING', 'FAILED'],
   PROCESSING: ['PAID', 'FAILED'],
-  PAID: [],
+  // PAID → FAILED covers a `transfer.reversed`: the payout bounced back to the
+  // Balance after success, so the wallet is re-credited (REVERSAL) once and the
+  // withdrawal moves to FAILED. The reversal is idempotent — FAILED is terminal,
+  // so a replayed/duplicate reversal is a no-op.
+  PAID: ['FAILED'],
   FAILED: [], // retry creates a fresh withdrawal; FAILED is terminal
 };
 

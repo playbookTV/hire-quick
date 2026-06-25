@@ -7,7 +7,7 @@
  * (`usePatchApplication` → ACCEPTED) then opens Payment Summary.
  */
 import { useState } from 'react';
-import { Pressable, Alert } from 'react-native';
+import { Pressable } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, Box, Text } from '../../theme/restyle.js';
@@ -16,10 +16,11 @@ import { AppBar } from '../../components/AppBar.js';
 import { Avatar } from '../../components/Avatar.js';
 import { Button } from '../../components/Button.js';
 import { Icon } from '../../components/Icon.js';
-import { Loading } from '../../components/Loading.js';
+import { SkeletonCard } from '../../components/Skeleton.js';
 import { EmptyState } from '../../components/EmptyState.js';
 import { shadowSm } from '../../theme/shadows.js';
 import { useApplications, usePatchApplication, useEvent } from '../../lib/hooks.js';
+import { useToast } from '../../lib/toast.js';
 import { money, formatEventDate } from '../../lib/format.js';
 import type { Application } from '../../lib/types.js';
 
@@ -32,11 +33,21 @@ export default function Applications(): React.JSX.Element {
   const apps = useApplications(eventId);
   const event = useEvent(eventId);
   const patch = usePatchApplication(eventId);
+  const toast = useToast();
 
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(false);
 
-  const list = apps.data ?? [];
+  // Rank active applicants by rating then experience; rejected sink to the bottom.
+  const list = [...(apps.data ?? [])].sort((a, b) => {
+    const ar = a.status === 'REJECTED' ? 1 : 0;
+    const br = b.status === 'REJECTED' ? 1 : 0;
+    if (ar !== br) return ar - br;
+    if (b.usher.ratingAvg !== a.usher.ratingAvg) return b.usher.ratingAvg - a.usher.ratingAvg;
+    return b.usher.completedJobsCount - a.usher.completedJobsCount;
+  });
+  // Highlight the strongest pick when there's a real choice to make.
+  const topId = list.length > 1 && list[0].status !== 'REJECTED' && list[0].usher.ratingAvg > 0 ? list[0].id : null;
   const slots = event.data?.headcount ?? 0;
   const perHead = event.data?.budgetPerHead ?? 0;
   const selectedIds = list.filter((a) => selected[a.id]).map((a) => a.id);
@@ -59,13 +70,13 @@ export default function Applications(): React.JSX.Element {
       }
       router.push({ pathname: '/(modals)/payment-summary', params: { id: eventId, apps: selectedIds.join(',') } });
     } catch (e: unknown) {
-      Alert.alert('Couldn’t confirm', e instanceof Error ? e.message : 'Please try again.');
+      toast.error(e instanceof Error ? e.message : 'Please try again.', 'Couldn’t confirm');
     } finally {
       setBusy(false);
     }
   };
 
-  const renderCard = (a: Application): React.JSX.Element => {
+  const renderCard = (a: Application, isTop: boolean): React.JSX.Element => {
     const on = !!selected[a.id];
     const name = a.usher.displayName ?? a.usher.user.phone;
     const verified = a.usher.verificationStatus === 'VERIFIED';
@@ -98,6 +109,14 @@ export default function Applications(): React.JSX.Element {
                   {name}
                 </Text>
                 {verified ? <Icon name="check-circle" size={15} color="brandEmerald" /> : null}
+                {isTop && !shortlisted ? (
+                  <Box flexDirection="row" alignItems="center" style={{ gap: 3, backgroundColor: theme.colors.brandEmeraldTint, paddingHorizontal: 8, paddingVertical: 2, borderRadius: theme.borderRadii.pill }}>
+                    <Icon name="award" size={11} color="brandEmeraldStrong" />
+                    <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 11, lineHeight: 14, letterSpacing: 0.6 }} color="brandEmeraldStrong">
+                      Top rated
+                    </Text>
+                  </Box>
+                ) : null}
                 {shortlisted ? (
                   <Box style={{ backgroundColor: theme.colors.accentGoldTint, paddingHorizontal: 8, paddingVertical: 2, borderRadius: theme.borderRadii.pill }}>
                     <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 11, lineHeight: 14, letterSpacing: 1 }} color="accentGoldStrong">
@@ -183,7 +202,11 @@ export default function Applications(): React.JSX.Element {
         </Box>
 
         {apps.isLoading ? (
-          <Loading />
+          <Box style={{ gap: 12 }}>
+            {[0, 1, 2].map((i) => (
+              <SkeletonCard key={i} lines={2} />
+            ))}
+          </Box>
         ) : list.length === 0 ? (
           <Box style={{ paddingTop: 32 }}>
             <EmptyState
@@ -193,7 +216,7 @@ export default function Applications(): React.JSX.Element {
             />
           </Box>
         ) : (
-          <Box style={{ gap: 12 }}>{list.map((a) => <Box key={a.id}>{renderCard(a)}</Box>)}</Box>
+          <Box style={{ gap: 12 }}>{list.map((a) => <Box key={a.id}>{renderCard(a, a.id === topId)}</Box>)}</Box>
         )}
 
         <Box style={{ flex: 1, minHeight: 16 }} />

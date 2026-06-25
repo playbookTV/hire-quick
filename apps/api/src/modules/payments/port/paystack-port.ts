@@ -43,6 +43,12 @@ export interface PaystackPort {
     accountName: string;
   }): Promise<{ recipientCode: string }>;
   transfer(params: TransferParams): Promise<TransferResult>;
+  /**
+   * Authoritative status of a previously-issued transfer by reference (Paystack
+   * `GET /transfer/verify/:reference`). Used by the recovery job to resume a
+   * withdrawal stuck in PROCESSING when its webhook never arrived.
+   */
+  verifyTransfer(reference: string): Promise<{ status: 'success' | 'failed' | 'pending' | 'unknown' }>;
   refund(params: { chargeReference: string; amountKobo: number }): Promise<{ status: 'processed' }>;
   /** Current Paystack Balance (kobo) — reconciled daily against the ledger (§17). */
   getBalanceKobo(): Promise<number>;
@@ -57,6 +63,9 @@ export class InMemoryPaystack implements PaystackPort {
   // server-side transaction verification (set at initializeCharge, or seeded
   // directly in tests that don't go through the charge-init flow).
   private readonly charges = new Map<string, number>();
+  // Issued transfers by reference, so verifyTransfer can mirror a real
+  // GET /transfer/verify/:reference for the recovery job.
+  private readonly transfers = new Map<string, 'success' | 'failed' | 'pending'>();
 
   /** Simulate funds landing in the Balance when a client charge settles. */
   creditBalance(amountKobo: number): void {
@@ -118,8 +127,13 @@ export class InMemoryPaystack implements PaystackPort {
   }
 
   transfer(params: TransferParams): Promise<TransferResult> {
+    // Re-issuing the same reference is idempotent (mirrors Paystack rejecting a
+    // duplicate reference): return the recorded outcome without double-debiting.
+    const prior = this.transfers.get(params.reference);
+    if (prior) return Promise.resolve({ reference: params.reference, status: prior === 'failed' ? 'failed' : 'success' });
     if (this.nextTransferFails) {
       this.nextTransferFails = false;
+      this.transfers.set(params.reference, 'failed');
       return Promise.resolve({
         reference: params.reference,
         status: 'failed',
@@ -127,7 +141,12 @@ export class InMemoryPaystack implements PaystackPort {
       });
     }
     this.balanceKobo -= params.amountKobo;
+    this.transfers.set(params.reference, 'success');
     return Promise.resolve({ reference: params.reference, status: 'success' });
+  }
+
+  verifyTransfer(reference: string): Promise<{ status: 'success' | 'failed' | 'pending' | 'unknown' }> {
+    return Promise.resolve({ status: this.transfers.get(reference) ?? 'unknown' });
   }
 
   refund(params: { chargeReference: string; amountKobo: number }): Promise<{ status: 'processed' }> {

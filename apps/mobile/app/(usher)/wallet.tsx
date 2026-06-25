@@ -11,7 +11,9 @@ import { SectionHeader } from '../../components/SectionHeader.js';
 import { ActivityRow } from '../../components/ActivityRow.js';
 import { Button } from '../../components/Button.js';
 import { Icon } from '../../components/Icon.js';
-import { Loading } from '../../components/Loading.js';
+import { SkeletonRow } from '../../components/Skeleton.js';
+import { EmptyState } from '../../components/EmptyState.js';
+import { Banner } from '../../components/Banner.js';
 import { EarningsCard } from '../../components/EarningsCard.js';
 import { useWallet, useWalletActivity, useBookings } from '../../lib/hooks.js';
 import { money, signedMoney, formatEventDate } from '../../lib/format.js';
@@ -104,11 +106,18 @@ export default function Wallet(): React.JSX.Element {
 
         <SectionHeader title="Recent activity" />
         {activity.isLoading ? (
-          <Loading />
+          <Box style={{ gap: 8 }}>
+            {[0, 1, 2].map((i) => (
+              <SkeletonRow key={i} />
+            ))}
+          </Box>
         ) : activity.isError ? (
-          <Text variant="bodySm" color="statusDanger">Couldn’t load recent activity. Pull down to retry.</Text>
+          <Box style={{ gap: 12 }}>
+            <Banner tone="warning" message="Couldn’t load your recent activity." />
+            <Button label="Retry" variant="secondary" size="md" onPress={() => { void activity.refetch(); }} />
+          </Box>
         ) : (activity.data ?? []).length === 0 ? (
-          <Text variant="bodySm" color="inkMuted">No activity yet. Your payouts and withdrawals will show here.</Text>
+          <EmptyState icon="inbox" title="No activity yet" subtitle="Your payouts and withdrawals will show up here." />
         ) : (
           <Box style={{ gap: 8 }}>
             {(activity.data ?? []).map((a) => (

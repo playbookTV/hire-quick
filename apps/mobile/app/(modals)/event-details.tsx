@@ -4,7 +4,6 @@
  * VERIFIED ushers can apply (the API enforces this; we surface the error).
  */
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, Box, Text } from '../../theme/restyle.js';
 import { Screen } from '../../components/Screen.js';
@@ -13,7 +12,8 @@ import { Button } from '../../components/Button.js';
 import { Icon, type IconName } from '../../components/Icon.js';
 import { Loading } from '../../components/Loading.js';
 import { useEvent, useApplyToEvent, useSavedJobs, useSaveJob, useUnsaveJob } from '../../lib/hooks.js';
-import { hapticSuccess, hapticSelection } from '../../lib/haptics.js';
+import { hapticSelection } from '../../lib/haptics.js';
+import { useToast } from '../../lib/toast.js';
 import { money, shortDate, formatTimeRange } from '../../lib/format.js';
 import type { Theme } from '../../theme/theme.js';
 
@@ -43,6 +43,7 @@ export default function EventDetails(): React.JSX.Element {
   const saved = useSavedJobs();
   const saveJob = useSaveJob();
   const unsaveJob = useUnsaveJob();
+  const toast = useToast();
   const isSaved = (saved.data ?? []).some((s) => s.id === id);
 
   const onToggleSave = (): void => {
@@ -56,11 +57,10 @@ export default function EventDetails(): React.JSX.Element {
     if (!id) return;
     apply.mutate(id, {
       onSuccess: () => {
-        hapticSuccess();
-        Alert.alert('Applied', 'Your application was sent. You’ll be notified if you’re booked.');
+        toast.success('Your application was sent. You’ll be notified if you’re booked.', 'Applied');
         router.back();
       },
-      onError: (e: unknown) => Alert.alert('Couldn’t apply', e instanceof Error ? e.message : 'Please try again.'),
+      onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Please try again.', 'Couldn’t apply'),
     });
   };
 

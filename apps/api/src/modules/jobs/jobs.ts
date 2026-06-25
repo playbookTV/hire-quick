@@ -7,6 +7,7 @@ import { prisma } from '@hq/database';
 import { autoComplete, noShowSweep } from '../bookings/service.js';
 import { reconcile } from '../payments/ledger/reconciliation.js';
 import { runCommissionSweep, type Deps } from '../payments/service.js';
+import { resumePaymentOperation, reconcileStuckWithdrawals } from '../payments/recovery.js';
 import { noopGateway, type RealtimeGateway } from '../../realtime/gateway.js';
 import { writeAudit, verifyAuditChain } from '../audit.js';
 import { env } from '../../env.js';
@@ -46,14 +47,40 @@ export async function jobCommissionSweep(deps: Deps): Promise<void> {
   log(`commission swept: ${String(r.swept)} kobo`);
 }
 
-/** Surface withdrawals stuck in PROCESSING (no transfer webhook) for ops follow-up. */
-export async function jobTransferRetry(): Promise<void> {
-  const cutoff = new Date(Date.now() - 30 * 60_000);
-  const stuck = await prisma.withdrawal.findMany({
-    where: { status: 'PROCESSING', updatedAt: { lt: cutoff } },
-    select: { id: true },
+/**
+ * Resume durable payment operations after a crash and finalise withdrawals whose
+ * transfer webhook was lost (TRD §10/§17). Replaces the previous log-only retry:
+ * it re-drives PENDING/PROVIDER_OK operations and reconciles stuck withdrawals
+ * against Paystack's authoritative transfer status.
+ */
+export async function jobResumePaymentOps(deps: Deps, realtime: RealtimeGateway = noopGateway): Promise<void> {
+  const cutoff = new Date(Date.now() - 5 * 60_000); // let the synchronous path finish first
+  const ops = await prisma.paymentOperation.findMany({
+    where: { status: { in: ['PENDING', 'PROVIDER_OK'] }, createdAt: { lt: cutoff } },
+    orderBy: { createdAt: 'asc' },
+    take: 100,
   });
-  if (stuck.length) log(`⚠ ${String(stuck.length)} withdrawal(s) stuck in PROCESSING >30m`);
+  let recorded = 0;
+  let failed = 0;
+  let stillPending = 0;
+  for (const op of ops) {
+    try {
+      const r = await resumePaymentOperation(deps, op, realtime);
+      if (r === 'recorded') recorded += 1;
+      else if (r === 'failed') failed += 1;
+      else stillPending += 1;
+    } catch (e) {
+      stillPending += 1;
+      log(`resume op ${op.id} (${op.kind}) failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+  const wd = await reconcileStuckWithdrawals(deps);
+  if (recorded || failed || stillPending || wd.completed || wd.failed) {
+    log(
+      `payment-op resume: ${String(recorded)} recorded, ${String(failed)} failed, ${String(stillPending)} pending; ` +
+        `withdrawals reconciled +${String(wd.completed)}/-${String(wd.failed)} (${String(wd.pending)} pending)`,
+    );
+  }
 }
 
 /**

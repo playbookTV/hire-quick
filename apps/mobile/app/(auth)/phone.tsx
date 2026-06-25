@@ -86,7 +86,7 @@ export default function Phone(): React.JSX.Element {
           </Text>
         </Box>
 
-        <Button label="Send code" disabled={!valid} loading={requestOtp.isPending} onPress={submit} />
+        <Button label="Send code" disabled={!valid} loading={requestOtp.isPending} onPress={() => void submit()} />
       </Screen>
     </Box>
   );

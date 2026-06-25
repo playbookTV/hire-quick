@@ -41,7 +41,7 @@ interface StatusPillProps {
 
 export function StatusPill({ status, label }: StatusPillProps): React.JSX.Element {
   const theme = useTheme();
-  const entry = STATUS[status] ?? { label: label ?? status, bg: 'bgSubtle' as C, fg: 'inkMuted' as C };
+  const entry = STATUS[status] ?? { label: label ?? status, bg: 'bgSubtle', fg: 'inkMuted' };
   return (
     <Box
       style={{

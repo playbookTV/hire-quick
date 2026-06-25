@@ -108,7 +108,7 @@ export default function CompleteProfile(): React.JSX.Element {
           )}
         </Box>
 
-        <Button label="Continue" disabled={!valid} loading={update.isPending} onPress={submit} />
+        <Button label="Continue" disabled={!valid} loading={update.isPending} onPress={() => void submit()} />
       </Screen>
     </Box>
   );

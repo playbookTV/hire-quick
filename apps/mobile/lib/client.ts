@@ -86,7 +86,7 @@ async function refreshAccessToken(): Promise<string | null> {
   return refreshPromise;
 }
 
-async function send<T>(path: string, opts: RequestOptions, accessToken: string | null): Promise<Response> {
+async function send(path: string, opts: RequestOptions, accessToken: string | null): Promise<Response> {
   const headers: Record<string, string> = {
     accept: 'application/json',
     'x-request-id': requestId(),

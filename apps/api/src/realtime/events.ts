@@ -16,6 +16,8 @@ export const RT = {
   BOOKING_DISPUTED: 'booking.disputed',
   BOOKING_DISPUTE_RESOLVED: 'booking.dispute_resolved',
   ORDER_PAID: 'order.paid',
+  // Invitations (→ the invited usher).
+  INVITATION_RECEIVED: 'invitation.received',
   // Withdrawals (→ the usher who owns the wallet).
   WITHDRAWAL_REQUESTED: 'withdrawal.requested',
   WITHDRAWAL_COMPLETED: 'withdrawal.completed',

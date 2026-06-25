@@ -4,18 +4,20 @@
  * photo shows immediately. Falls back to gradient initials when none is set.
  */
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable } from 'react-native';
+import { ActivityIndicator, Pressable } from 'react-native';
 import { useTheme, Box } from '../theme/restyle.js';
 import { Avatar } from './Avatar.js';
 import { Icon } from './Icon.js';
 import { useAuth } from '../lib/auth-context.js';
 import { useSetAvatar } from '../lib/hooks.js';
+import { useToast } from '../lib/toast.js';
 import { pickImageAsset, uploadUsherPhoto } from '../lib/upload.js';
 
 export function AvatarPicker({ size = 96 }: { size?: number }): React.JSX.Element {
   const theme = useTheme();
   const { user, refreshMe } = useAuth();
   const setAvatar = useSetAvatar();
+  const toast = useToast();
   const [busy, setBusy] = useState(false);
   const usher = user?.usher ?? null;
   const badge = Math.max(22, Math.round(size * 0.3));
@@ -30,7 +32,7 @@ export function AvatarPicker({ size = 96 }: { size?: number }): React.JSX.Elemen
       await setAvatar.mutateAsync(key);
       await refreshMe();
     } catch (e) {
-      Alert.alert('Upload failed', e instanceof Error ? e.message : 'Please try again.');
+      toast.error(e instanceof Error ? e.message : 'Please try again.', 'Upload failed');
     } finally {
       setBusy(false);
     }

@@ -4,11 +4,12 @@
  * then refresh `me` so the grid updates immediately.
  */
 import { useState } from 'react';
-import { ActivityIndicator, Alert } from 'react-native';
+import { ActivityIndicator } from 'react-native';
 import { useTheme, Box } from '../theme/restyle.js';
 import { AddPhoto } from './AddPhoto.js';
 import { useAuth } from '../lib/auth-context.js';
 import { useAddPortfolioPhoto, useDeletePortfolioPhoto } from '../lib/hooks.js';
+import { useToast } from '../lib/toast.js';
 import { pickImageAsset, uploadUsherPhoto } from '../lib/upload.js';
 import { MAX_PORTFOLIO_PHOTOS } from '@hq/shared';
 
@@ -17,6 +18,7 @@ export function PortfolioEditor(): React.JSX.Element {
   const { user, refreshMe } = useAuth();
   const add = useAddPortfolioPhoto();
   const remove = useDeletePortfolioPhoto();
+  const toast = useToast();
   const [busy, setBusy] = useState(false);
   const photos = user?.usher?.portfolio ?? [];
 
@@ -30,7 +32,7 @@ export function PortfolioEditor(): React.JSX.Element {
       await add.mutateAsync(key);
       await refreshMe();
     } catch (e) {
-      Alert.alert('Upload failed', e instanceof Error ? e.message : 'Please try again.');
+      toast.error(e instanceof Error ? e.message : 'Please try again.', 'Upload failed');
     } finally {
       setBusy(false);
     }
@@ -41,7 +43,7 @@ export function PortfolioEditor(): React.JSX.Element {
       await remove.mutateAsync(id);
       await refreshMe();
     } catch (e) {
-      Alert.alert('Couldn’t remove photo', e instanceof Error ? e.message : 'Please try again.');
+      toast.error(e instanceof Error ? e.message : 'Please try again.', 'Couldn’t remove photo');
     }
   };
 

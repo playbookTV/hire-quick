@@ -332,9 +332,9 @@ export default function CreateEvent(): React.JSX.Element {
 
         <Box height={8} />
         {step < 2 ? (
-          <Button label={step === 0 ? 'Next: Staffing' : 'Next: Review'} onPress={next} />
+          <Button label={step === 0 ? 'Next: Staffing' : 'Next: Review'} onPress={() => void next()} />
         ) : (
-          <Button label="Create event" loading={createEvent.isPending} onPress={handleSubmit(onSubmit)} />
+          <Button label="Create event" loading={createEvent.isPending} onPress={() => void handleSubmit(onSubmit)()} />
         )}
       </Screen>
     </Box>

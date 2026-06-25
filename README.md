@@ -4,10 +4,12 @@
 > event staff; funds are held in **escrow until verified attendance**; the
 > platform takes a **15% commission**.
 
-This repository is the **backend monorepo**. The mobile and admin apps are not
-built yet — `apps/api` is currently the only application. The canonical product
-and technical specs live in [`documentation/`](./documentation) (Executive
-Summary, PRD, UXRD, TRD). Code comments cite section numbers like `(TRD §6)` or
+This repository is a **pnpm + Turbo monorepo** with three apps: the **`apps/api`**
+backend (Express), an **`apps/admin`** operations console (Vite + React), and the
+**`apps/mobile`** client/usher app (Expo React Native). The backend is the centre
+of gravity and the focus of this documentation. The canonical product and
+technical specs live in [`documentation/`](./documentation) (Executive Summary,
+PRD, UXRD, TRD). Code comments cite section numbers like `(TRD §6)` or
 `(PRD §13)`; when they do, **the doc is the source of truth** — read the
 referenced section before changing money, escrow, policy, or state-transition
 logic.
@@ -45,6 +47,10 @@ pnpm install
 cp .env.example .env
 #    Fill in DATABASE_URL + DIRECT_URL (on Neon: DIRECT_URL is the
 #    DATABASE_URL host with "-pooler" removed). Set JWT secrets for non-dev.
+#    The external services (Redis, Brevo, S3 storage, Paystack) are OPTIONAL in
+#    dev — without their env vars the app degrades to safe stubs (OTPs log to
+#    the console, rate limiters pass through, storage falls back to plain URLs).
+#    Production refuses to boot without them (see env.ts).
 
 # 3. Create the schema + seed a demo client/usher/admin/event
 pnpm db:push
@@ -64,6 +70,13 @@ the test suite (it is DB-backed and uses an in-memory Paystack fake):
 pnpm test
 ```
 
+The other apps:
+
+```bash
+pnpm mobile                  # Expo dev server for apps/mobile (RN client/usher app)
+pnpm --filter @hq/admin dev  # Vite dev server for apps/admin (ops console)
+```
+
 ---
 
 ## Project structure
@@ -71,28 +84,38 @@ pnpm test
 ```
 hire-quick/
 ├── apps/
-│   └── api/                      # @hq/api — Express HTTP service (the only app)
-│       └── src/
-│           ├── app.ts            # createApp(): middleware, routers, error envelope
-│           ├── server.ts         # HTTP entrypoint (wires the real Paystack client)
-│           ├── worker.ts         # Scheduled-jobs entrypoint (BullMQ)
-│           ├── env.ts            # Zod-validated environment
-│           └── modules/
-│               ├── auth/         # phone-OTP login, JWT, RBAC middleware
-│               ├── events/       # events, applications, invitations, confirm-batch
-│               ├── bookings/     # booking lifecycle, attendance, disputes
-│               ├── payments/     # ★ ledger, reconciliation, Paystack port, webhook
-│               ├── profile/      # profile + usher verification submission
-│               ├── admin/        # verification approve/reject (audit-logged)
-│               ├── jobs/         # scheduled job fns + BullMQ cron wiring
-│               └── audit.ts      # append-only audit log writer
+│   ├── api/                      # @hq/api — Express HTTP service (the backend)
+│   │   └── src/
+│   │       ├── app.ts            # createApp(): middleware, routers, error envelope
+│   │       ├── server.ts         # HTTP entrypoint (wires Paystack, Redis, storage, sockets)
+│   │       ├── worker.ts         # Scheduled-jobs entrypoint (BullMQ)
+│   │       ├── env.ts            # Zod-validated environment (fail-closed in prod)
+│   │       ├── logger.ts         # structured (pino) logger
+│   │       ├── middleware/       # rate limiting (global / auth / money tiers)
+│   │       ├── realtime/         # Socket.IO gateway — chat + lifecycle pushes
+│   │       └── modules/
+│   │           ├── auth/         # phone-OTP login, JWT, RBAC middleware
+│   │           ├── events/       # events, applications, invitations, saved jobs, confirm-batch
+│   │           ├── bookings/     # booking lifecycle, attendance, disputes, reviews, chat
+│   │           ├── payments/     # ★ ledger, reconciliation, Paystack port, webhook
+│   │           ├── ushers/       # usher discovery + public profile/reviews
+│   │           ├── profile/      # profile, photos, availability, devices, KYC submission
+│   │           ├── privacy/      # NDPR data export + erasure (data-subject rights)
+│   │           ├── notifications/# Brevo SMS / WhatsApp OTP / email transport
+│   │           ├── rewards/      # usher loyalty milestones
+│   │           ├── storage/      # S3-compatible presigned-URL storage port
+│   │           ├── admin/        # verifications, disputes, refunds, approvals, stats, ledger
+│   │           ├── jobs/         # scheduled job fns + BullMQ cron wiring
+│   │           └── audit.ts      # hash-chained, tamper-evident audit log
+│   ├── admin/                    # @hq/admin — Vite + React ops console
+│   └── mobile/                   # @hq/mobile — Expo React Native client/usher app
 ├── packages/
 │   ├── shared/    # @hq/shared — pure domain logic (money, policy, state machines)
 │   ├── database/  # @hq/database — Prisma schema + generated client singleton
 │   └── config/    # @hq/config — shared tsconfig / eslint / vitest preset
-├── documentation/ # Canonical spec (Executive Summary, PRD, UXRD, TRD)
+├── documentation/ # Canonical spec (Executive Summary, PRD, UXRD, TRD) + compliance/
 ├── docs/          # ← this generated developer documentation
-└── CLAUDE.md      # Guidance for AI agents working in this repo
+└── CLAUDE.md      # Guidance for AI agents working in this repo (mirrored in AGENTS.md)
 ```
 
 See [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) for how these fit together.
@@ -110,6 +133,10 @@ See [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) for how these fit together.
 | **Policy matrix** | Cancellation / no-show / refund percentages, defined once so every surface computes the same outcome. | `@hq/shared/policy` |
 | **Paystack port** | All Paystack access goes through one interface, so the ledger is fully testable with an in-memory fake. | `payments/port` |
 | **Idempotency** | Money-mutating requests require an `Idempotency-Key` header; webhooks dedupe by event id. | `payments/ledger/idempotency` |
+| **Realtime gateway** | One Socket.IO surface (behind a `RealtimeGateway` port) for booking chat and server→client lifecycle pushes; Redis adapter fans out across replicas. | `realtime/gateway` |
+| **Hexagonal ports** | External services (Paystack, storage, realtime) sit behind injected interfaces with in-memory/no-op fakes, so the app runs and tests with no live keys. | `app.ts` DI |
+| **Fail-closed in prod** | `createApp` and `env.ts` refuse to boot in production without CORS allowlist, Redis rate limiting, strong JWT secrets, Paystack, Brevo, and storage configured. | `app.ts`, `env.ts` |
+| **Audit chain** | The audit log is hash-chained (each row commits to the prior); a daily `auditVerify` job detects tampering. | `audit.ts` |
 
 ---
 
@@ -157,17 +184,26 @@ pnpm --filter @hq/api exec vitest run -t "holds full order amount"
 - Commission sweep, withdrawals
 - Paystack webhook pipeline (HMAC verify → dedupe → dispatch)
 - Real `HttpPaystack` client (TEST mode) and `InMemoryPaystack` fake
-- BullMQ scheduled jobs (auto-complete, no-show, reconcile, commission, retry)
-- Admin verification approve/reject (audit-logged)
+- BullMQ scheduled jobs (auto-complete, no-show, reconcile, commission, retry,
+  NDPR retention purge, audit-chain verify)
+- OTP & notification delivery via Brevo (WhatsApp OTP primary; SMS + email)
+- S3-compatible KYC/photo storage with server-minted presigned URLs
+- Realtime: Socket.IO booking chat + lifecycle pushes (Redis adapter, worker emitter)
+- Usher discovery, reviews, ratings, availability, profile photos
+- Loyalty milestones (rewards) evaluated atomically at booking completion
+- NDPR data-subject rights: data export + pseudonymizing erasure
+- Hash-chained, tamper-evident audit log + daily integrity check
+- Per-endpoint Redis rate limiting; CORS allowlist; production fail-closed config
+- Expanded admin console surface (disputes, refunds, two-person approvals, stats, ledger)
+- `apps/admin` (Vite + React ops console) and `apps/mobile` (Expo RN client/usher app)
 - Dev seed + CI pipeline
 
 **Stubbed / pending (documented in code):**
 
-- SMS provider for OTP (currently logs the code in dev)
-- File storage for verification assets (accepts pre-signed URLs as plain URLs)
+- FCM push notifications (intent is recorded; sender stubbed until credentials)
+- WhatsApp OTP template wiring (logs a dev stub until the WABA + template exist)
 - Refresh-token denylist on logout (Phase 9)
 - Processing-fee deduction on refunds (pending TRD §23 Q4)
-- Mobile and admin client apps
 
 ---
 
