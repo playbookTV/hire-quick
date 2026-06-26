@@ -18,7 +18,7 @@ import { AnimatedPressable } from '../../components/Pressable.js';
 import { shadowSm } from '../../theme/shadows.js';
 import { primitives } from '../../theme/primitives.js';
 import { useAuth } from '../../lib/auth-context.js';
-import { useWallet, useWalletActivity, useBookings } from '../../lib/hooks.js';
+import { useWallet, useWalletActivity, useBookings, useNotifications } from '../../lib/hooks.js';
 import { money, dateTime } from '../../lib/format.js';
 import type { Booking, WalletActivity } from '../../lib/types.js';
 
@@ -106,6 +106,8 @@ export default function UsherHome(): React.JSX.Element {
   const activity = useWalletActivity();
   const weekly = weeklyEarnings(activity.data ?? []);
   const bookings = useBookings();
+  const notif = useNotifications();
+  const unread = notif.data?.unreadCount ?? 0;
   const name = user?.usher?.displayName ?? 'there';
   const initial = name.trim().charAt(0).toUpperCase() || 'U';
   const upcoming = (bookings.data ?? []).filter((b) => b.status !== 'PAID' && b.status !== 'CANCELLED');
@@ -134,8 +136,27 @@ export default function UsherHome(): React.JSX.Element {
             </Text>
             <Text variant="h2">Hi {name}</Text>
           </Box>
-          <Box style={{ width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandEmeraldTint }}>
-            <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 15, color: theme.colors.brandEmerald }}>{initial}</Text>
+          <Box flexDirection="row" alignItems="center" style={{ gap: 12 }}>
+            <Pressable
+              onPress={() => router.push('/(modals)/notifications')}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
+            >
+              <Box style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.bgSurface, borderWidth: 1, borderColor: theme.colors.borderDefault }}>
+                <Icon name="bell" size={20} color="inkStrong" />
+                {unread > 0 ? (
+                  <Box style={{ position: 'absolute', top: -3, right: -3, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, backgroundColor: theme.colors.statusDanger, alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 10, lineHeight: 12, color: theme.colors.inverseInk }}>
+                      {unread > 9 ? '9+' : unread}
+                    </Text>
+                  </Box>
+                ) : null}
+              </Box>
+            </Pressable>
+            <Box style={{ width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandEmeraldTint }}>
+              <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 15, color: theme.colors.brandEmerald }}>{initial}</Text>
+            </Box>
           </Box>
         </Box>
 

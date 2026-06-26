@@ -32,6 +32,13 @@ const patchMeSchema = z.object({
   displayName: z.string().min(2).max(120).optional(),
   bio: z.string().max(2000).optional(),
   yearsExperience: z.number().int().min(0).max(60).optional(),
+  // Client-only.
+  businessName: z.string().max(120).optional(),
+  // Usher-only discovery fields. `dayRateKobo` is display + filter sugar only —
+  // it never feeds escrow/order math (that stays Event.budgetPerHead, TRD §6).
+  city: z.string().max(80).optional(),
+  languages: z.array(z.string().min(1).max(40)).max(10).optional(),
+  dayRateKobo: z.number().int().min(0).max(100_000_000).optional(),
 });
 
 // When storage is on these are bucket keys; when off, legacy URLs. Validated
@@ -127,14 +134,35 @@ export function profileRouter(storage?: StoragePort): Router {
         where: { id: req.auth.userId },
         include: { client: true, usher: true },
       });
-      if (user.client && body.displayName) {
-        await prisma.client.update({ where: { id: user.client.id }, data: { displayName: body.displayName } });
+      if (user.client && (body.displayName !== undefined || body.businessName !== undefined)) {
+        const data: { displayName?: string; businessName?: string } = {};
+        if (body.displayName !== undefined) data.displayName = body.displayName;
+        if (body.businessName !== undefined) data.businessName = body.businessName;
+        await prisma.client.update({ where: { id: user.client.id }, data });
       }
-      if (user.usher && (body.bio !== undefined || body.yearsExperience !== undefined || body.displayName !== undefined)) {
-        const data: { bio?: string; yearsExperience?: number; displayName?: string } = {};
+      if (
+        user.usher &&
+        (body.bio !== undefined ||
+          body.yearsExperience !== undefined ||
+          body.displayName !== undefined ||
+          body.city !== undefined ||
+          body.languages !== undefined ||
+          body.dayRateKobo !== undefined)
+      ) {
+        const data: {
+          bio?: string;
+          yearsExperience?: number;
+          displayName?: string;
+          city?: string;
+          languages?: string[];
+          dayRateKobo?: number;
+        } = {};
         if (body.bio !== undefined) data.bio = body.bio;
         if (body.yearsExperience !== undefined) data.yearsExperience = body.yearsExperience;
         if (body.displayName !== undefined) data.displayName = body.displayName;
+        if (body.city !== undefined) data.city = body.city;
+        if (body.languages !== undefined) data.languages = body.languages;
+        if (body.dayRateKobo !== undefined) data.dayRateKobo = body.dayRateKobo;
         await prisma.usher.update({ where: { id: user.usher.id }, data });
       }
       res.json({ updated: true });

@@ -179,7 +179,7 @@ export async function confirmBatch(
 export async function generateCheckin(
   bookingId: string,
   clientUserId: string,
-): Promise<{ devCode?: string }> {
+): Promise<{ code: string }> {
   const booking = await prisma.booking.findUniqueOrThrow({
     where: { id: bookingId },
     include: { event: { include: { client: true } } },
@@ -196,7 +196,11 @@ export async function generateCheckin(
       expiresAt: new Date(Date.now() + 8 * 3_600_000),
     },
   });
-  return process.env.NODE_ENV === 'production' ? {} : { devCode: code };
+  // The attendance code is meant to be shown to the booking's client so they can
+  // relay it to the usher on arrival (the usher enters it to release escrow). It
+  // is not a secret OTP delivered out-of-band — the owning client is the only one
+  // who can mint it (checked above) — so it is returned in every environment.
+  return { code };
 }
 
 export async function verifyCheckin(

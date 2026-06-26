@@ -49,7 +49,12 @@ export default function CompleteProfile(): React.JSX.Element {
     setError(null);
     try {
       await update.mutateAsync(
-        isUsher ? { bio: bio.trim(), yearsExperience: years } : { displayName: name.trim() },
+        isUsher
+          ? { bio: bio.trim(), yearsExperience: years }
+          : {
+              displayName: name.trim(),
+              ...(business.trim() ? { businessName: business.trim() } : {}),
+            },
       );
       await refreshMe();
       router.replace('/');

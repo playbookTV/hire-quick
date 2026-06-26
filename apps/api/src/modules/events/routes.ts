@@ -17,6 +17,8 @@ import { requireAuth, type AuthedRequest } from '../auth/middleware.js';
 import { requireIdempotencyKey } from '../payments/http/middleware.js';
 import { confirmBatch } from '../bookings/service.js';
 import { writeAudit } from '../audit.js';
+import { notifyInvitationReceived } from '../notifications/service.js';
+import { RT } from '../../realtime/events.js';
 import type { Deps } from '../payments/service.js';
 import type { PaystackPort } from '../payments/port/paystack-port.js';
 import { type StoragePort, presignDoc } from '../storage/storage.js';
@@ -336,7 +338,46 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
         update: { status: 'SENT' },
         create: { eventId, usherId, status: 'SENT' },
       });
+      // Notify the invited usher: a persisted inbox row (+ push) and a live socket
+      // nudge so an open app surfaces the invite immediately and can deep-link to it.
+      const usher = await prisma.usher.findUnique({ where: { id: usherId }, select: { userId: true } });
+      if (usher) {
+        notifyInvitationReceived(usher.userId, event.title, inv.id);
+        deps.realtime?.emitToUser(usher.userId, RT.INVITATION_RECEIVED, {
+          invitationId: inv.id,
+          eventId,
+          at: new Date().toISOString(),
+        });
+      }
       res.status(201).json(inv);
+    }),
+  );
+
+  // usher lists their own invitations (+ event/client join) for the invites inbox
+  r.get(
+    '/me/invitations',
+    wrap(async (req, res) => {
+      const usherId = await verifiedUsherFor(req.auth.userId);
+      const invites = await prisma.invitation.findMany({
+        where: { usherId },
+        orderBy: { createdAt: 'desc' },
+        include: { event: { include: { client: { select: { displayName: true, businessName: true } } } } },
+      });
+      res.json(invites);
+    }),
+  );
+
+  // a single invitation (the usher's own) — hydrates the invitation modal from a deep link
+  r.get(
+    '/invitations/:id',
+    wrap(async (req, res) => {
+      const usherId = await verifiedUsherFor(req.auth.userId);
+      const inv = await prisma.invitation.findUniqueOrThrow({
+        where: { id: String(req.params.id) },
+        include: { event: { include: { client: { select: { displayName: true, businessName: true } } } } },
+      });
+      if (inv.usherId !== usherId) throw new ApiError(404, 'NOT_FOUND', 'invitation not found');
+      res.json(inv);
     }),
   );
 

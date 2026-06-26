@@ -21,6 +21,9 @@ import type {
   Bank,
   Availability,
   ConfirmResult,
+  Notification,
+  NotificationFeed,
+  Invitation,
 } from './types.js';
 
 export function useRequestOtp() {
@@ -40,8 +43,15 @@ export function useVerifyOtp() {
 export function useUpdateProfile() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { displayName?: string; bio?: string; yearsExperience?: number }) =>
-      api.patch<{ updated: boolean }>('/api/me', body),
+    mutationFn: (body: {
+      displayName?: string;
+      bio?: string;
+      yearsExperience?: number;
+      businessName?: string;
+      city?: string;
+      languages?: string[];
+      dayRateKobo?: number;
+    }) => api.patch<{ updated: boolean }>('/api/me', body),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.me }),
   });
 }
@@ -150,7 +160,7 @@ export function useSendMessage(bookingId: string) {
 export function useGenerateCheckin(bookingId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => api.post<{ generated: boolean; devCode?: string }>(`/api/bookings/${bookingId}/checkin/generate`),
+    mutationFn: () => api.post<{ generated: boolean; code: string }>(`/api/bookings/${bookingId}/checkin/generate`),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.booking(bookingId) }),
   });
 }
@@ -401,5 +411,65 @@ export function useSetAvailability() {
     mutationFn: (vars: { date: string; status: 'AVAILABLE' | 'UNAVAILABLE' }) =>
       request<Availability>('/api/me/availability', { method: 'PUT', body: vars }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['availability'] }),
+  });
+}
+
+// ── Notifications & invitations ────────────────────────────────────────────
+// No Socket.IO client on mobile yet, so the inbox/invites poll (matching the
+// jobs feed). The realtime nudge the API emits lights these up instantly once a
+// socket client is added; until then a short poll keeps them fresh.
+
+export function useNotifications() {
+  return useQuery({
+    queryKey: queryKeys.notifications,
+    queryFn: () => api.get<NotificationFeed>('/api/me/notifications'),
+    refetchInterval: 20_000,
+  });
+}
+
+export function useMarkNotificationRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => request<{ read: boolean }>(`/api/me/notifications/${id}/read`, { method: 'PATCH' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.notifications }),
+  });
+}
+
+export function useMarkAllNotificationsRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<{ read: boolean }>('/api/me/notifications/read-all'),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.notifications }),
+  });
+}
+
+export function useMyInvitations() {
+  return useQuery({
+    queryKey: queryKeys.invitations,
+    queryFn: () => api.get<Invitation[]>('/api/me/invitations'),
+    refetchInterval: 20_000,
+  });
+}
+
+export function useInvitation(id: string) {
+  return useQuery({
+    queryKey: queryKeys.invitation(id),
+    queryFn: () => api.get<Invitation>(`/api/invitations/${id}`),
+    enabled: !!id,
+  });
+}
+
+export function useRespondInvitation(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (status: 'ACCEPTED' | 'DECLINED') =>
+      request<{ status: string }>(`/api/invitations/${id}`, { method: 'PATCH', body: { status } }),
+    onSuccess: () => {
+      // The invite changes state and (on accept) creates an application + job row.
+      void qc.invalidateQueries({ queryKey: queryKeys.invitations });
+      void qc.invalidateQueries({ queryKey: queryKeys.invitation(id) });
+      void qc.invalidateQueries({ queryKey: queryKeys.myApplications });
+      void qc.invalidateQueries({ queryKey: queryKeys.notifications });
+    },
   });
 }

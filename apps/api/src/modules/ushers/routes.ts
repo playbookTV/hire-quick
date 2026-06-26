@@ -27,6 +27,9 @@ const usherCard = {
   reliabilityScore: true,
   verificationStatus: true,
   avatarKey: true,
+  city: true,
+  languages: true,
+  dayRateKobo: true,
 } as const;
 
 export function ushersRouter(storage?: StoragePort): Router {
@@ -45,6 +48,10 @@ export function ushersRouter(storage?: StoragePort): Router {
             .enum(['true', 'false'])
             .optional()
             .transform((v) => v !== 'false'),
+          // Discovery filters (display/discovery only — no escrow impact).
+          location: z.string().max(80).optional(),
+          maxRate: z.coerce.number().int().min(0).optional(), // kobo ceiling on dayRateKobo
+          availableOn: z.coerce.date().optional(), // ISO date the usher must be AVAILABLE on
           limit: z.coerce.number().int().min(1).max(50).optional(),
         })
         .parse(req.query);
@@ -57,6 +64,13 @@ export function ushersRouter(storage?: StoragePort): Router {
         where.verificationStatus = 'VERIFIED';
       }
       if (q.minRating) where.ratingAvg = { gte: q.minRating };
+      if (q.location) where.city = { contains: q.location, mode: 'insensitive' };
+      // A rate ceiling matches priced ushers at/under it; ushers with no rate set
+      // are excluded from a maxRate search (they can't be compared on price).
+      if (q.maxRate !== undefined) where.dayRateKobo = { not: null, lte: q.maxRate };
+      if (q.availableOn) {
+        where.availability = { some: { date: q.availableOn, status: 'AVAILABLE' } };
+      }
       if (q.query) {
         where.OR = [
           { displayName: { contains: q.query, mode: 'insensitive' } },

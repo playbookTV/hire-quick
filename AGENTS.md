@@ -87,4 +87,4 @@ All Paystack access goes through the `PaystackPort` interface (`payments/port/pa
 
 - **Vitest**, files named `*.test.ts` (and `__tests__/**/*.test.ts`). Tests are **DB-backed** and hit a real Postgres (Neon locally via `.env`; an ephemeral `postgres:16` service in CI).
 - They run **serially** (`fileParallelism: false`, `singleFork`) with a 60s timeout because suites share one database and the reconciliation test reads global ledger aggregates — parallel runs would see each other's rows. Concurrency tests (`payments/__tests__/concurrency.test.ts`) deliberately open their own connections to exercise the `FOR UPDATE` locks.
-- CI (`.github/workflows/ci.yml`) runs: install → `prisma generate` → `typecheck` → `lint` → `prisma db push` → `test`. Match that order when reproducing CI locally.
+- CI (`.github/workflows/ci.yml`) runs: install → `prisma generate` → `typecheck` → `lint` → `prisma migrate deploy` → migration-drift guard (`prisma migrate diff --from-url … --to-schema-datamodel … --exit-code`) → `test`. Match that order when reproducing CI locally.

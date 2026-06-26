@@ -4,7 +4,7 @@
  * events" section; and a "Suggested staff" StaffCardCompact row.
  */
 import { useRouter } from 'expo-router';
-import { ActivityIndicator } from 'react-native';
+import { ActivityIndicator, Pressable } from 'react-native';
 import { Screen } from '../../components/Screen.js';
 import { QuickActionCard } from '../../components/QuickActionCard.js';
 import { SectionHeader } from '../../components/SectionHeader.js';
@@ -12,10 +12,11 @@ import { EventCard } from '../../components/EventCard.js';
 import { StaffCardCompact } from '../../components/StaffCardCompact.js';
 import { EmptyState } from '../../components/EmptyState.js';
 import { Avatar } from '../../components/Avatar.js';
+import { Icon } from '../../components/Icon.js';
 import { Box, Text, useTheme } from '../../theme/restyle.js';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../lib/auth-context.js';
-import { useEvents, useUshers } from '../../lib/hooks.js';
+import { useEvents, useUshers, useNotifications } from '../../lib/hooks.js';
 
 export default function ClientHome(): React.JSX.Element {
   const router = useRouter();
@@ -24,6 +25,8 @@ export default function ClientHome(): React.JSX.Element {
   const { user } = useAuth();
   const events = useEvents();
   const suggested = useUshers({ limit: 4 });
+  const notif = useNotifications();
+  const unread = notif.data?.unreadCount ?? 0;
 
   const fullName = user?.client?.displayName && user.client.displayName !== user.phone ? user.client.displayName : null;
   const firstName = fullName ? fullName.split(' ')[0] : 'there';
@@ -49,7 +52,26 @@ export default function ClientHome(): React.JSX.Element {
               </Text>
               <Text variant="h2">Hello, {firstName}</Text>
             </Box>
-            <Avatar name={fullName ?? user?.phone} size={48} />
+            <Box flexDirection="row" alignItems="center" style={{ gap: 12 }}>
+              <Pressable
+                onPress={() => router.push('/(modals)/notifications')}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
+              >
+                <Box style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.bgSurface, borderWidth: 1, borderColor: theme.colors.borderDefault }}>
+                  <Icon name="bell" size={20} color="inkStrong" />
+                  {unread > 0 ? (
+                    <Box style={{ position: 'absolute', top: -3, right: -3, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, backgroundColor: theme.colors.statusDanger, alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 10, lineHeight: 12, color: theme.colors.inverseInk }}>
+                        {unread > 9 ? '9+' : unread}
+                      </Text>
+                    </Box>
+                  ) : null}
+                </Box>
+              </Pressable>
+              <Avatar name={fullName ?? user?.phone} size={48} />
+            </Box>
           </Box>
 
           {/* quick actions */}

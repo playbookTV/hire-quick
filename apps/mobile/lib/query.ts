@@ -36,4 +36,7 @@ export const queryKeys = {
   walletActivity: ['wallet', 'activity'] as const,
   bankAccounts: ['bank-accounts'] as const,
   availability: (range?: string) => ['availability', range ?? 'all'] as const,
+  notifications: ['me', 'notifications'] as const,
+  invitations: ['me', 'invitations'] as const,
+  invitation: (id: string) => ['me', 'invitations', id] as const,
 };

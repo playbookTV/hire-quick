@@ -32,8 +32,8 @@ function RosterRow({ booking, onCode, onRate, onCancel }: { booking: Booking; on
   const gen = (): void => {
     generate.mutate(undefined, {
       onSuccess: (res) => {
-        if (res.devCode) onCode(res.devCode);
-        Alert.alert('Check-in code', res.devCode ? `Give this to the usher: ${res.devCode}` : 'Code sent.');
+        onCode(res.code);
+        Alert.alert('Check-in code', `Give this to the usher: ${res.code}`);
       },
       onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Try again.', 'Couldn’t generate'),
     });

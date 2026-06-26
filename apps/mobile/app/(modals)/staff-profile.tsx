@@ -21,7 +21,7 @@ import { Loading } from '../../components/Loading.js';
 import { EmptyState } from '../../components/EmptyState.js';
 import { useUsher, useUsherReviews } from '../../lib/hooks.js';
 import { useToast } from '../../lib/toast.js';
-import { shortDate } from '../../lib/format.js';
+import { shortDate, money } from '../../lib/format.js';
 
 function Pill({ label }: { label: string }) {
   const theme = useTheme();
@@ -204,13 +204,27 @@ export default function StaffProfile(): React.JSX.Element {
           </Box>
         ) : null}
 
-        {/* experience */}
+        {/* details — experience, base area, indicative rate */}
         <Box style={{ gap: 8 }}>
-          <Text variant="labelSm" color="inkMuted">Experience</Text>
-          <Box flexDirection="row">
-            <Pill label={`${u.yearsExperience} year${u.yearsExperience === 1 ? '' : 's'}`} />
+          <Text variant="labelSm" color="inkMuted">Details</Text>
+          <Box flexDirection="row" flexWrap="wrap" style={{ gap: 8 }}>
+            <Pill label={`${u.yearsExperience} year${u.yearsExperience === 1 ? '' : 's'} exp`} />
+            {u.city ? <Pill label={u.city} /> : null}
+            {u.dayRateKobo ? <Pill label={`${money(u.dayRateKobo)}/day`} /> : null}
           </Box>
         </Box>
+
+        {/* languages */}
+        {(u.languages ?? []).length > 0 ? (
+          <Box style={{ gap: 8 }}>
+            <Text variant="labelSm" color="inkMuted">Languages</Text>
+            <Box flexDirection="row" flexWrap="wrap" style={{ gap: 8 }}>
+              {(u.languages ?? []).map((lang) => (
+                <Pill key={lang} label={lang} />
+              ))}
+            </Box>
+          </Box>
+        ) : null}
 
         {/* reviews */}
         <Box style={{ gap: 12 }}>
