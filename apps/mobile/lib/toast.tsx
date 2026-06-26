@@ -7,6 +7,7 @@
  * Yes/Cancel confirmations of destructive actions.
  */
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
+import { AccessibilityInfo } from 'react-native';
 import { ToastHost, type ToastItem, type ToastTone } from '../components/Toast.js';
 import { hapticSuccess, hapticError, hapticSelection } from './haptics.js';
 
@@ -48,6 +49,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }): Reac
     (tone: ToastTone, message: string, title?: string) => {
       idRef.current += 1;
       setToast({ id: idRef.current, tone, message, title });
+      // Announce for screen readers (iOS doesn't reliably speak a freshly-mounted alert) — S13.
+      AccessibilityInfo.announceForAccessibility(title ? `${title}. ${message}` : message);
       if (tone === 'success') hapticSuccess();
       else if (tone === 'error') hapticError();
       else hapticSelection();

@@ -20,7 +20,7 @@ import { Box, Text } from '../../theme/restyle.js';
 import { useAuth } from '../../lib/auth-context.js';
 import { useUpdateProfile } from '../../lib/hooks.js';
 import { Loading } from '../../components/Loading.js';
-import { ApiError } from '../../lib/api-error.js';
+import { userMessage } from '../../lib/api-error.js';
 
 export default function CompleteProfile(): React.JSX.Element {
   const router = useRouter();
@@ -54,7 +54,7 @@ export default function CompleteProfile(): React.JSX.Element {
       await refreshMe();
       router.replace('/');
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Could not save. Try again.');
+      setError(userMessage(e));
     }
   };
 

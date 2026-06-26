@@ -67,12 +67,22 @@ export function AuthProvider({ children }: { children: ReactNode }): React.JSX.E
         goGuest();
         return;
       }
+      // Bound the cold-start probe so a hung /api/me resolves to guest instead of
+      // trapping the splash on an infinite spinner (S16).
+      let timer: ReturnType<typeof setTimeout> | undefined;
       try {
-        const me = await fetchMe();
+        const me = await Promise.race([
+          fetchMe(),
+          new Promise<never>((_, reject) => {
+            timer = setTimeout(() => reject(new Error('Auth check timed out')), 8000);
+          }),
+        ]);
+        clearTimeout(timer);
         if (!mounted.current) return;
         setUser(me);
         setStatus('authed');
       } catch {
+        clearTimeout(timer);
         await clearTokens();
         goGuest();
       }

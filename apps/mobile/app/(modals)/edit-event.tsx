@@ -13,6 +13,7 @@ import { updateEventSchema, type UpdateEventInput, kobo, formatNaira, ACCOMMODAT
 
 import { Screen } from '../../components/Screen.js';
 import { AppBar } from '../../components/AppBar.js';
+import { EmptyState } from '../../components/EmptyState.js';
 import { Field } from '../../components/Field.js';
 import { Input } from '../../components/Input.js';
 import { TextArea } from '../../components/TextArea.js';
@@ -258,6 +259,26 @@ export default function EditEvent(): React.JSX.Element {
       <Box flex={1} backgroundColor="bgCanvas">
         <AppBar title="Edit event" showBack inset />
         <Loading />
+      </Box>
+    );
+  }
+  // A failed fetch leaves data undefined — show a retry, not the "staff already
+  // confirmed" lock message below (which would falsely imply the event is closed — C4).
+  if (event.isError) {
+    return (
+      <Box flex={1} backgroundColor="bgCanvas">
+        <AppBar title="Edit event" showBack inset />
+        <Box style={{ paddingTop: 40 }}>
+          <EmptyState
+            icon="alert-circle"
+            title="Couldn’t load this event"
+            subtitle="Check your connection and try again."
+            actionLabel="Try again"
+            onAction={() => {
+              void event.refetch();
+            }}
+          />
+        </Box>
       </Box>
     );
   }

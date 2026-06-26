@@ -42,7 +42,7 @@ export function ToastHost({ toast, onDismiss }: ToastHostProps): React.JSX.Eleme
     <Box pointerEvents="box-none" style={{ position: 'absolute', top: insets.top + 8, left: 16, right: 16, zIndex: 1000 }}>
       {toast && t ? (
         <Animated.View key={toast.id} entering={SlideInUp.springify().damping(18)} exiting={SlideOutUp.duration(200)}>
-          <Pressable onPress={onDismiss} accessibilityRole="alert" accessibilityLabel={`${toast.title ? toast.title + '. ' : ''}${toast.message}`}>
+          <Pressable onPress={onDismiss} accessibilityRole="alert" accessibilityLiveRegion="assertive" accessibilityLabel={`${toast.title ? toast.title + '. ' : ''}${toast.message}`}>
             <Box
               flexDirection="row"
               alignItems="center"

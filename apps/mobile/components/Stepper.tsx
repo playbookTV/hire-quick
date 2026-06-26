@@ -24,6 +24,9 @@ export function Stepper({ value, onChange, min = 0, max = 999, step = 1 }: Stepp
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={name === 'minus' ? 'Decrease' : 'Increase'}
+      accessibilityState={{ disabled }}
       style={{
         width: 48,
         height: 48,

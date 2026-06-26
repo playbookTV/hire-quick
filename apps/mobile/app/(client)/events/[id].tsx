@@ -176,8 +176,12 @@ export default function EventDetail(): React.JSX.Element {
             <ActionChip label="Event day" onPress={() => router.push({ pathname: '/(modals)/event-day', params: { id } })} />
           ) : null}
           <ActionChip label="Message all" onPress={() => router.push('/(client)/messages')} />
-          {firstBooking ? (
+          {eventBookings.length === 1 && firstBooking ? (
             <ActionChip label="Cancel booking" danger onPress={() => router.push({ pathname: '/(modals)/cancellation', params: { booking: firstBooking } })} />
+          ) : eventBookings.length > 1 ? (
+            // Multi-usher events: cancel per-usher from the Event-Day roster, not a single
+            // chip that would silently cancel only the first booking (C5).
+            <ActionChip label="Cancel a booking" danger onPress={() => router.push({ pathname: '/(modals)/event-day', params: { id } })} />
           ) : null}
         </Box>
         <Box style={{ height: insets.bottom }} />

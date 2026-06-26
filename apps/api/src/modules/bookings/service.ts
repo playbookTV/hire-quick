@@ -11,8 +11,10 @@ import {
   cancelWindow,
   policyForCancellation,
   type PolicyOutcome,
+  type ReputationEffect,
 } from '@hq/shared';
 import { ApiError } from '../../app.js';
+import { writeAudit } from '../audit.js';
 import {
   notifyPayoutReleased,
   notifyDisputeOpened,
@@ -45,6 +47,17 @@ function emitBooking(
   realtime.emitToUser(parties.usherUserId, event, payload);
   if (toAdmins) realtime.emitToAdmins(event, payload);
 }
+
+/** 72-hour dispute window after the event ends (PRD §13 / TRD §20). */
+const DISPUTE_WINDOW_MS = 72 * 3_600_000;
+
+/** reliabilityScore decrement per reputation tier on an usher cancellation (PRD §13). */
+const REPUTATION_PENALTY: Record<ReputationEffect, number> = {
+  NONE: 0,
+  MINOR_FLAG: 5,
+  PENALTY: 15,
+  MAJOR_PENALTY: 25,
+};
 
 /** Combine an event's date (UTC midnight) with an "HH:MM" time into a Date. */
 // Event wall-clock times are Lagos local (WAT = UTC+1, no DST). Convert to the
@@ -333,6 +346,14 @@ export async function openDispute(
   if (userId !== clientUserId && userId !== usherUserId) {
     throw new ApiError(403, 'FORBIDDEN', 'not a party to this booking');
   }
+  // Enforce the 72-hour dispute window (PRD §13 / TRD §20): disputes are only
+  // accepted up to 72h after the event ends. (freezeBooking separately requires
+  // funds still HELD, so once a payout completes the window is effectively shorter
+  // — the two gates compose rather than conflict.)
+  const eventEnd = combine(booking.event.eventDate, booking.event.endTime);
+  if (Date.now() > eventEnd.getTime() + DISPUTE_WINDOW_MS) {
+    throw new ApiError(409, 'DISPUTE_WINDOW_CLOSED', 'the 72-hour dispute window for this booking has closed');
+  }
 
   const dispute = await prisma.$transaction(async (tx) => {
     await freezeBooking(tx, bookingId);
@@ -428,6 +449,64 @@ export async function cancelBookingByClient(
   // Full client refund: issues the real Paystack refund, then the ledger
   // CANCELLED + REFUND in one tx.
   await refundBookingToClient(deps, { bookingId, amountKobo: gross, precursor: 'CANCEL' });
+  emitBooking(
+    realtime,
+    { clientUserId: booking.event.client.userId, usherUserId: booking.usher.userId },
+    RT.BOOKING_CANCELLED,
+    bookingId,
+    'CANCELLED',
+    true,
+  );
+  return { status: 'REFUNDED', outcome };
+}
+
+/**
+ * Usher cancels a CONFIRMED booking (PRD §13). Every usher-cancel window refunds
+ * the client 100%, so the money path is always the full refund (no partial-release
+ * math). The usher's reliabilityScore is docked per the reputation tier, and a
+ * repeat late (<12h) canceller is suspended. Repeat detection reads the audit
+ * trail so a client-initiated cancellation never counts against the usher.
+ */
+export async function cancelBookingByUsher(
+  deps: Deps,
+  bookingId: string,
+  usherUserId: string,
+  realtime: RealtimeGateway = noopGateway,
+): Promise<{ status: 'REFUNDED'; outcome: PolicyOutcome }> {
+  const booking = await prisma.booking.findUniqueOrThrow({
+    where: { id: bookingId },
+    include: { event: { include: { client: true } }, usher: true, payment: true },
+  });
+  if (booking.usher.userId !== usherUserId) throw new ApiError(403, 'FORBIDDEN', 'not your booking');
+  if (booking.status !== 'CONFIRMED') throw new ApiError(400, 'NOT_CONFIRMED', 'only confirmed bookings can be cancelled');
+
+  const start = combine(booking.event.eventDate, booking.event.startTime);
+  const window = cancelWindow(start, new Date());
+  const outcome = policyForCancellation('USHER', window);
+  const gross = booking.payment?.grossAmount ?? booking.amount;
+  await refundBookingToClient(deps, { bookingId, amountKobo: gross, precursor: 'CANCEL' });
+
+  // Reputation hit + audit (the audit entry is also the attribution signal for
+  // repeat-offender detection below).
+  const penalty = REPUTATION_PENALTY[outcome.usherReputation];
+  if (penalty > 0) {
+    await prisma.usher.update({ where: { id: booking.usherId }, data: { reliabilityScore: { decrement: penalty } } });
+  }
+  await writeAudit({
+    actorId: usherUserId,
+    action: 'booking.cancel.usher',
+    target: bookingId,
+    metadata: { window, reputation: outcome.usherReputation },
+  });
+  if (outcome.suspendIfRepeat) {
+    const priorUsherCancels = await prisma.auditLog.count({
+      where: { actorId: usherUserId, action: 'booking.cancel.usher', target: { not: bookingId } },
+    });
+    if (priorUsherCancels > 0) {
+      await prisma.user.update({ where: { id: usherUserId }, data: { status: 'SUSPENDED' } });
+    }
+  }
+
   emitBooking(
     realtime,
     { clientUserId: booking.event.client.userId, usherUserId: booking.usher.userId },

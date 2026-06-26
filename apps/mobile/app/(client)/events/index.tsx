@@ -36,6 +36,27 @@ export default function EventsList(): React.JSX.Element {
     );
   }
 
+  if (events.isError) {
+    return (
+      <Box flex={1} backgroundColor="bgCanvas">
+        <AppBar title="Events" inset right={createBtn} />
+        <Screen>
+          <Box flex={1} justifyContent="center">
+            <EmptyState
+              icon="alert-circle"
+              title="Couldn’t load your events"
+              subtitle="Check your connection and try again — your events and payments are safe."
+              actionLabel="Try again"
+              onAction={() => {
+                void events.refetch();
+              }}
+            />
+          </Box>
+        </Screen>
+      </Box>
+    );
+  }
+
   const data = events.data ?? [];
 
   return (

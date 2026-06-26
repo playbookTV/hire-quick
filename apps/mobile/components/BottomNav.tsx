@@ -40,6 +40,9 @@ export function BottomNav({ state, descriptors, navigation }: BottomTabBarProps)
             key={route.key}
             onPress={onPress}
             scaleTo={0.9}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: focused }}
+            accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
             style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 4 }}
           >
             {options.tabBarIcon?.({ focused, color, size: 24 })}

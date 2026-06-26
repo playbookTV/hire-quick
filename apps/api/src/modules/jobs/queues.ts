@@ -7,6 +7,7 @@ import { prisma } from '@hq/database';
 import { redisConnection } from './redis.js';
 import { env } from '../../env.js';
 import { HttpPaystack } from '../payments/port/http-paystack.js';
+import { createStorageFromEnv } from '../storage/storage.js';
 import { createEmitterGateway } from '../../realtime/gateway.js';
 import {
   jobAutoComplete,
@@ -45,6 +46,7 @@ export function createWorker(): Worker {
   const deps = { prisma, paystack: new HttpPaystack(env.PAYSTACK_SECRET_KEY) };
   // Worker holds no sockets — publish to the same Redis channels the API adapter reads.
   const realtime = createEmitterGateway(env.REDIS_URL);
+  const storage = createStorageFromEnv(env);
   const processor: Processor = async (job) => {
     switch (job.name) {
       case 'autocomplete':
@@ -58,7 +60,7 @@ export function createWorker(): Worker {
       case 'resumeOps':
         return jobResumePaymentOps(deps, realtime);
       case 'retentionPurge':
-        return jobRetentionPurge();
+        return jobRetentionPurge(storage);
       case 'auditVerify':
         return jobAuditVerify();
       default:

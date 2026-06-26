@@ -39,6 +39,9 @@ export function Select<T extends string>({
     <>
       <Pressable
         onPress={() => setOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel={selected?.label ?? placeholder}
+        accessibilityHint={title}
         style={{
           flexDirection: 'row',
           alignItems: 'center',
@@ -83,6 +86,9 @@ export function Select<T extends string>({
                           onSelect(item.value);
                           setOpen(false);
                         }}
+                        accessibilityRole="menuitem"
+                        accessibilityLabel={item.label}
+                        accessibilityState={{ selected: active }}
                         style={{
                           flexDirection: 'row',
                           alignItems: 'center',

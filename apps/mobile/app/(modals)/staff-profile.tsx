@@ -18,6 +18,7 @@ import { Icon } from '../../components/Icon.js';
 import { ReviewCard } from '../../components/ReviewCard.js';
 import { SectionHeader } from '../../components/SectionHeader.js';
 import { Loading } from '../../components/Loading.js';
+import { EmptyState } from '../../components/EmptyState.js';
 import { useUsher, useUsherReviews } from '../../lib/hooks.js';
 import { useToast } from '../../lib/toast.js';
 import { shortDate } from '../../lib/format.js';
@@ -132,11 +133,29 @@ export default function StaffProfile(): React.JSX.Element {
     router.back();
   };
 
-  if (usher.isLoading || !usher.data) {
+  if (usher.isLoading) {
     return (
       <Box flex={1} backgroundColor="bgCanvas">
         <AppBar showBack inset />
         <Loading />
+      </Box>
+    );
+  }
+  if (usher.isError || !usher.data) {
+    return (
+      <Box flex={1} backgroundColor="bgCanvas">
+        <AppBar showBack inset />
+        <Box style={{ paddingTop: 40 }}>
+          <EmptyState
+            icon="alert-circle"
+            title="Couldn’t load this profile"
+            subtitle="Check your connection and try again."
+            actionLabel="Try again"
+            onAction={() => {
+              void usher.refetch();
+            }}
+          />
+        </Box>
       </Box>
     );
   }

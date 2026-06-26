@@ -154,8 +154,9 @@ pnpm format             # prettier --write .
 
 # Database (Prisma, package @hq/database)
 pnpm db:generate        # prisma generate (after editing schema.prisma)
-pnpm db:push            # sync schema without a migration
-pnpm db:migrate         # prisma migrate dev
+pnpm db:push            # sync schema without a migration (local dev only)
+pnpm db:migrate         # prisma migrate dev — author a tracked migration
+pnpm db:deploy          # prisma migrate deploy — apply migrations (CI / prod)
 pnpm db:seed            # tsx prisma/seed.ts
 pnpm db:studio          # prisma studio
 ```

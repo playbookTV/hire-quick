@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, Box, Text } from '../../theme/restyle.js';
 import { Screen } from '../../components/Screen.js';
 import { AppBar } from '../../components/AppBar.js';
+import { EmptyState } from '../../components/EmptyState.js';
 import { Button } from '../../components/Button.js';
 import { Icon, type IconName } from '../../components/Icon.js';
 import { Loading } from '../../components/Loading.js';
@@ -64,11 +65,29 @@ export default function EventDetails(): React.JSX.Element {
     });
   };
 
-  if (event.isLoading || !event.data) {
+  if (event.isLoading) {
     return (
       <Box flex={1} backgroundColor="bgCanvas">
         <AppBar title="Job details" showBack inset />
         <Loading />
+      </Box>
+    );
+  }
+  if (event.isError || !event.data) {
+    return (
+      <Box flex={1} backgroundColor="bgCanvas">
+        <AppBar title="Job details" showBack inset />
+        <Box style={{ paddingTop: 40 }}>
+          <EmptyState
+            icon="alert-circle"
+            title="Couldn’t load this job"
+            subtitle="Check your connection and try again."
+            actionLabel="Try again"
+            onAction={() => {
+              void event.refetch();
+            }}
+          />
+        </Box>
       </Box>
     );
   }

@@ -207,6 +207,18 @@ export default function Applications(): React.JSX.Element {
               <SkeletonCard key={i} lines={2} />
             ))}
           </Box>
+        ) : apps.isError ? (
+          <Box style={{ paddingTop: 32 }}>
+            <EmptyState
+              icon="alert-circle"
+              title="Couldn’t load applications"
+              subtitle="Check your connection and try again."
+              actionLabel="Try again"
+              onAction={() => {
+                void apps.refetch();
+              }}
+            />
+          </Box>
         ) : list.length === 0 ? (
           <Box style={{ paddingTop: 32 }}>
             <EmptyState

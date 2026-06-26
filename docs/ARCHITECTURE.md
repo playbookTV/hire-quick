@@ -330,7 +330,9 @@ a client that missed an event simply re-fetches.
   ledger aggregates — parallel runs would see each other's rows.
 - Concurrency tests open their own connections to exercise `FOR UPDATE` locks.
 - CI (`.github/workflows/ci.yml`): install → `prisma generate` → `typecheck` →
-  `lint` → `prisma db push` → `test`. Reproduce CI locally by matching that order.
+  `lint` → `prisma migrate deploy` → migration-drift guard → `test`. Reproduce CI
+  locally by matching that order. Schema changes ship as tracked migrations under
+  `packages/database/prisma/migrations/` (baseline `0_init`); `db push` is local-dev only.
 
 ---
 

@@ -80,6 +80,16 @@ export default function ClientHome(): React.JSX.Element {
               <Box paddingVertical="800" alignItems="center">
                 <ActivityIndicator color={theme.colors.brandEmerald} />
               </Box>
+            ) : events.isError ? (
+              <EmptyState
+                icon="alert-circle"
+                title="Couldn’t load your events"
+                subtitle="Check your connection and try again — your events and payments are safe."
+                actionLabel="Try again"
+                onAction={() => {
+                  void events.refetch();
+                }}
+              />
             ) : recent.length === 0 ? (
               <EmptyState
                 icon="calendar"

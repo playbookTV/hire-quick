@@ -13,6 +13,7 @@ import {
   openDispute,
   createReview,
   cancelBookingByClient,
+  cancelBookingByUsher,
 } from './service.js';
 import { listMessages, sendMessage, unreadCount, markSeen } from '../../realtime/messages.js';
 import type { RealtimeGateway } from '../../realtime/gateway.js';
@@ -132,19 +133,20 @@ export function bookingsRouter(deps: { realtime: RealtimeGateway; paystack?: Pay
     }),
   );
 
-  // ★ client cancels a confirmed booking (policy-driven refund of escrow)
+  // ★ cancel a confirmed booking (policy-driven refund of escrow). Role-aware:
+  // an usher cancelling always refunds the client 100% and takes a reputation hit;
+  // a client cancellation follows the windowed client matrix (PRD §13).
   r.post(
     '/bookings/:id/cancel',
     requireIdempotencyKey,
     wrap(async (req, res) => {
       cancelBookingSchema.parse(req.body ?? {});
       if (!deps.paystack) throw new ApiError(503, 'PAYMENTS_UNAVAILABLE', 'payments are not configured');
-      const out = await cancelBookingByClient(
-        { prisma, paystack: deps.paystack, realtime: deps.realtime },
-        String(req.params.id),
-        req.auth.userId,
-        deps.realtime,
-      );
+      const ledgerDeps = { prisma, paystack: deps.paystack, realtime: deps.realtime };
+      const out =
+        req.auth.role === 'USHER'
+          ? await cancelBookingByUsher(ledgerDeps, String(req.params.id), req.auth.userId, deps.realtime)
+          : await cancelBookingByClient(ledgerDeps, String(req.params.id), req.auth.userId, deps.realtime);
       res.json(out);
     }),
   );

@@ -15,6 +15,8 @@ import { Avatar } from '../../components/Avatar.js';
 import { Banner } from '../../components/Banner.js';
 import { ListItem } from '../../components/ListItem.js';
 import { Button } from '../../components/Button.js';
+import { Loading } from '../../components/Loading.js';
+import { EmptyState } from '../../components/EmptyState.js';
 import { useEvent, useApplications, useConfirmEvent } from '../../lib/hooks.js';
 import { useAuth } from '../../lib/auth-context.js';
 import { useToast } from '../../lib/toast.js';
@@ -61,6 +63,36 @@ export default function PaymentSummary(): React.JSX.Element {
       },
     );
   };
+
+  // Don't render the pay screen until the event AND the chosen ushers have loaded —
+  // otherwise the line-items list is empty while the total still shows the full price (C7).
+  if (event.isLoading || applications.isLoading) {
+    return (
+      <Box flex={1} backgroundColor="bgCanvas">
+        <AppBar title="Confirm & pay" showBack inset />
+        <Loading />
+      </Box>
+    );
+  }
+  if (event.isError || !ev || chosen.length !== count) {
+    return (
+      <Box flex={1} backgroundColor="bgCanvas">
+        <AppBar title="Confirm & pay" showBack inset />
+        <Box style={{ paddingTop: 40 }}>
+          <EmptyState
+            icon="alert-circle"
+            title="Couldn’t load your booking"
+            subtitle="We couldn’t confirm the staff and price for this order. Check your connection and try again."
+            actionLabel="Try again"
+            onAction={() => {
+              void event.refetch();
+              void applications.refetch();
+            }}
+          />
+        </Box>
+      </Box>
+    );
+  }
 
   return (
     <Box flex={1} backgroundColor="bgCanvas">

@@ -107,13 +107,13 @@ export async function request<T = unknown>(path: string, opts: RequestOptions = 
   const useAuth = opts.auth !== false;
   const tokens = useAuth ? await getTokens() : null;
 
-  let res = await send<T>(path, opts, tokens?.accessToken ?? null);
+  let res = await send(path, opts, tokens?.accessToken ?? null);
 
   // One refresh + retry on an expired access token.
   if (res.status === 401 && useAuth && tokens) {
     const fresh = await refreshAccessToken();
     if (fresh) {
-      res = await send<T>(path, opts, fresh);
+      res = await send(path, opts, fresh);
     }
   }
 

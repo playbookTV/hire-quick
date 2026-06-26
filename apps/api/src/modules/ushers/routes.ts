@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { prisma } from '@hq/database';
 import { requireAuth, type AuthedRequest } from '../auth/middleware.js';
 import { type StoragePort, presignDoc } from '../storage/storage.js';
+import { ApiError } from '../../app.js';
 
 type Handler = (req: AuthedRequest, res: Response) => Promise<void>;
 const wrap =
@@ -48,7 +49,13 @@ export function ushersRouter(storage?: StoragePort): Router {
         })
         .parse(req.query);
       const where: Record<string, unknown> = {};
-      if (q.verified) where.verificationStatus = 'VERIFIED';
+      // Discovery is VERIFIED-only for non-admins (PRD §8: a profile is discoverable
+      // only once verified). The unverified view (verified=false) is admin-only — a
+      // client must never be able to enumerate PENDING/REJECTED ushers or their
+      // portfolios. q.verified defaults to true.
+      if (req.auth.role !== 'ADMIN' || q.verified) {
+        where.verificationStatus = 'VERIFIED';
+      }
       if (q.minRating) where.ratingAvg = { gte: q.minRating };
       if (q.query) {
         where.OR = [
@@ -79,10 +86,20 @@ export function ushersRouter(storage?: StoragePort): Router {
   r.get(
     '/ushers/:id',
     wrap(async (req, res) => {
-      const { avatarKey, photos, ...u } = await prisma.usher.findUniqueOrThrow({
+      const { avatarKey, photos, userId, ...u } = await prisma.usher.findUniqueOrThrow({
         where: { id: String(req.params.id) },
-        select: { ...usherCard, photos: { select: { id: true, imageUrl: true }, orderBy: { createdAt: 'asc' } } },
+        select: {
+          ...usherCard,
+          userId: true,
+          photos: { select: { id: true, imageUrl: true }, orderBy: { createdAt: 'asc' } },
+        },
       });
+      // An unverified profile (PENDING/REJECTED) is visible only to an admin or the
+      // usher themselves — never fetchable by ID by other users (PRD §8).
+      const auth = req.auth;
+      if (u.verificationStatus !== 'VERIFIED' && auth.role !== 'ADMIN' && userId !== auth.userId) {
+        throw new ApiError(404, 'NOT_FOUND', 'usher not found');
+      }
       res.json({
         ...u,
         avatarUrl: avatarKey ? await presignDoc(storage, avatarKey) : null,

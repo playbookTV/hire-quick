@@ -21,7 +21,7 @@ import { useEvent, useBookings, useGenerateCheckin, useCompleteBooking } from '.
 import { useToast } from '../../lib/toast.js';
 import type { Booking } from '../../lib/types.js';
 
-function RosterRow({ booking, onCode, onRate }: { booking: Booking; onCode: (code: string) => void; onRate: (id: string) => void }) {
+function RosterRow({ booking, onCode, onRate, onCancel }: { booking: Booking; onCode: (code: string) => void; onRate: (id: string) => void; onCancel: (id: string) => void }) {
   const generate = useGenerateCheckin(booking.id);
   const complete = useCompleteBooking(booking.id);
   const toast = useToast();
@@ -38,10 +38,20 @@ function RosterRow({ booking, onCode, onRate }: { booking: Booking; onCode: (cod
       onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Try again.', 'Couldn’t generate'),
     });
   };
-  const done = (): void => {
+  const release = (): void => {
     complete.mutate(undefined, {
       onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Try again.', 'Couldn’t complete'),
     });
+  };
+  const done = (): void => {
+    Alert.alert(
+      'Release payment?',
+      `This pays ${name} their fee from escrow. It can’t be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Release', style: 'destructive', onPress: release },
+      ],
+    );
   };
 
   return (
@@ -60,7 +70,10 @@ function RosterRow({ booking, onCode, onRate }: { booking: Booking; onCode: (cod
       ) : checkedIn ? (
         <Button label={complete.isPending ? '…' : 'Release'} size="md" fullWidth={false} onPress={done} disabled={complete.isPending} />
       ) : (
-        <Button label={generate.isPending ? '…' : 'Code'} variant="secondary" size="md" fullWidth={false} onPress={gen} disabled={generate.isPending} />
+        <Box flexDirection="row" style={{ gap: 8 }}>
+          <Button label={generate.isPending ? '…' : 'Code'} variant="secondary" size="md" fullWidth={false} onPress={gen} disabled={generate.isPending} />
+          <Button label="Cancel" variant="ghost" size="md" fullWidth={false} onPress={() => onCancel(booking.id)} />
+        </Box>
       )}
     </Box>
   );
@@ -124,6 +137,7 @@ export default function EventDay(): React.JSX.Element {
                   booking={b}
                   onCode={setLastCode}
                   onRate={(bid) => router.push({ pathname: '/(modals)/rate-staff', params: { booking: bid, name: 'your usher' } })}
+                  onCancel={(bid) => router.push({ pathname: '/(modals)/cancellation', params: { booking: bid } })}
                 />
               ))}
             </Box>

@@ -20,7 +20,10 @@ import { Pressable } from 'react-native';
 import { useRequestOtp, useVerifyOtp } from '../../lib/hooks.js';
 import { hapticSuccess, hapticError } from '../../lib/haptics.js';
 import { useAuth } from '../../lib/auth-context.js';
-import { ApiError } from '../../lib/api-error.js';
+import { userMessage } from '../../lib/api-error.js';
+import { useToast } from '../../lib/toast.js';
+
+const RESEND_COOLDOWN_S = 30;
 
 export default function Otp(): React.JSX.Element {
   const router = useRouter();
@@ -31,13 +34,22 @@ export default function Otp(): React.JSX.Element {
 
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [cooldown, setCooldown] = useState(RESEND_COOLDOWN_S); // a code was sent before navigating here
   const verify = useVerifyOtp();
   const requestOtp = useRequestOtp();
+  const toast = useToast();
 
   // Prefill the echoed code when the server provides one (non-prod only).
   useEffect(() => {
     if (params.devCode) setCode(params.devCode);
   }, [params.devCode]);
+
+  // Resend cooldown tick — prevents code-mashing (rate limits / invalidated codes) — S2.
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
 
   const submit = async () => {
     setError(null);
@@ -48,16 +60,19 @@ export default function Otp(): React.JSX.Element {
       router.replace('/(auth)/complete-profile');
     } catch (e) {
       hapticError();
-      setError(e instanceof ApiError ? e.message : 'Verification failed. Try again.');
+      setError(userMessage(e));
     }
   };
 
   const resend = async () => {
+    if (cooldown > 0 || requestOtp.isPending) return;
     setError(null);
     try {
       const res = await requestOtp.mutateAsync(phone);
       // Surface the freshly echoed code so the prefill stays in sync on staging.
       if (res.devCode) setCode(res.devCode);
+      setCooldown(RESEND_COOLDOWN_S);
+      toast.success('New code sent.');
     } catch {
       setError('Could not resend the code.');
     }
@@ -87,8 +102,17 @@ export default function Otp(): React.JSX.Element {
           <Input
             placeholder="000000"
             keyboardType="number-pad"
+            textContentType="oneTimeCode"
+            autoComplete="sms-otp"
+            importantForAutofill="yes"
             value={code}
-            onChangeText={(t) => setCode(t.replace(/[^\d]/g, '').slice(0, 6))}
+            onChangeText={(t) => {
+              if (error) setError(null);
+              setCode(t.replace(/[^\d]/g, '').slice(0, 6));
+            }}
+            onSubmitEditing={() => {
+              if (code.length === 6) void submit();
+            }}
             error={!!error}
             maxLength={6}
             autoFocus
@@ -96,9 +120,16 @@ export default function Otp(): React.JSX.Element {
         </Field>
 
         <Box marginTop="400" marginBottom="600" alignItems="flex-start">
-          <Pressable onPress={() => void resend()} hitSlop={8} disabled={requestOtp.isPending}>
-            <Text variant="label" color="brandEmerald">
-              {requestOtp.isPending ? 'Sending…' : 'Resend code'}
+          <Pressable
+            onPress={() => void resend()}
+            hitSlop={8}
+            disabled={cooldown > 0 || requestOtp.isPending}
+            accessibilityRole="button"
+            accessibilityLabel={cooldown > 0 ? `Resend code in ${cooldown} seconds` : 'Resend code'}
+            accessibilityState={{ disabled: cooldown > 0 || requestOtp.isPending }}
+          >
+            <Text variant="label" color={cooldown > 0 ? 'inkMuted' : 'brandEmerald'}>
+              {requestOtp.isPending ? 'Sending…' : cooldown > 0 ? `Resend code in ${cooldown}s` : 'Resend code'}
             </Text>
           </Pressable>
         </Box>

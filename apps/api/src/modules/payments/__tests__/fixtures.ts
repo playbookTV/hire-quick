@@ -92,6 +92,18 @@ export async function createScenario(opts: { headcount?: number; amountKobo?: nu
 export async function teardown(s: Scenario): Promise<void> {
   await prisma.escrowLedger.deleteMany({ where: { bookingId: { in: s.bookingIds } } });
   await prisma.walletLedger.deleteMany({ where: { walletId: s.walletId } });
+  // Durable operation records this scenario may have created (refund/transfer).
+  const wds = await prisma.withdrawal.findMany({ where: { walletId: s.walletId }, select: { id: true } });
+  await prisma.paymentOperation.deleteMany({
+    where: {
+      dedupeKey: {
+        in: [
+          ...s.bookingIds.map((id) => `BOOKING_REFUND:${id}`),
+          ...wds.map((w) => `WITHDRAWAL_TRANSFER:${w.id}`),
+        ],
+      },
+    },
+  });
   await prisma.withdrawal.deleteMany({ where: { walletId: s.walletId } });
   await prisma.bankAccount.deleteMany({ where: { usherId: s.usherId } });
   await prisma.payment.deleteMany({ where: { bookingId: { in: s.bookingIds } } });

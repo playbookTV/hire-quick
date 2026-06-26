@@ -9,6 +9,7 @@ import { reconcile } from '../payments/ledger/reconciliation.js';
 import { runCommissionSweep, type Deps } from '../payments/service.js';
 import { resumePaymentOperation, reconcileStuckWithdrawals } from '../payments/recovery.js';
 import { noopGateway, type RealtimeGateway } from '../../realtime/gateway.js';
+import { type StoragePort } from '../storage/storage.js';
 import { writeAudit, verifyAuditChain } from '../audit.js';
 import { env } from '../../env.js';
 
@@ -88,7 +89,7 @@ export async function jobResumePaymentOps(deps: Deps, realtime: RealtimeGateway 
  * consumed/expired OTP codes and stale device tokens. Never touches financial
  * or ledger rows (those keep the 7-year obligation).
  */
-export async function jobRetentionPurge(): Promise<void> {
+export async function jobRetentionPurge(storage?: StoragePort): Promise<void> {
   const now = Date.now();
   const otpCutoff = new Date(now - env.RETENTION_OTP_DAYS * DAY_MS);
   const deviceCutoff = new Date(now - env.RETENTION_DEVICE_TOKEN_DAYS * DAY_MS);
@@ -101,14 +102,68 @@ export async function jobRetentionPurge(): Promise<void> {
   });
   const devices = await prisma.deviceToken.deleteMany({ where: { lastSeenAt: { lt: deviceCutoff } } });
 
-  if (otp.count || devices.count) {
-    log(`retention purge: ${String(otp.count)} otp code(s), ${String(devices.count)} device token(s)`);
+  // KYC raw documents (TRD §14): delete the ID doc + selfie objects 90 days after
+  // VERIFIED (APPROVED) / 30 days after REJECTED, leaving only the pass/fail flag
+  // and reviewer/audit record. Purged rows are tombstoned with '' so they aren't
+  // reprocessed; the ledger/KYC *trail* (7-year) lives in other tables, untouched.
+  const kycVerifiedCutoff = new Date(now - env.RETENTION_KYC_VERIFIED_DAYS * DAY_MS);
+  const kycRejectedCutoff = new Date(now - env.RETENTION_KYC_REJECTED_DAYS * DAY_MS);
+  const kycRows = await prisma.usherVerification.findMany({
+    where: {
+      idDocumentUrl: { not: '' },
+      OR: [
+        { status: 'APPROVED', reviewedAt: { lt: kycVerifiedCutoff } },
+        { status: 'REJECTED', reviewedAt: { lt: kycRejectedCutoff } },
+      ],
+    },
+    select: { id: true, idDocumentUrl: true, selfieUrl: true },
+  });
+  for (const v of kycRows) {
+    if (storage) {
+      await Promise.allSettled(
+        [v.idDocumentUrl, v.selfieUrl].filter(Boolean).map((k) => storage.deleteObject(k)),
+      );
+    }
+    await prisma.usherVerification.update({ where: { id: v.id }, data: { idDocumentUrl: '', selfieUrl: '' } });
+  }
+
+  // Chat/media (TRD §14): delete messages (and their media objects) 180 days after
+  // the booking's dispute window closes. Gate on the event date plus a safety
+  // margin (≥ end + 72h dispute window) so nothing is deleted before the window.
+  const chatCutoff = new Date(now - (env.RETENTION_CHAT_DAYS + 4) * DAY_MS);
+  const staleConvos = await prisma.conversation.findMany({
+    where: { booking: { event: { eventDate: { lt: chatCutoff } } } },
+    select: { id: true },
+  });
+  const convoIds = staleConvos.map((c) => c.id);
+  let chatDeleted = 0;
+  if (convoIds.length) {
+    if (storage) {
+      const media = await prisma.message.findMany({
+        where: { conversationId: { in: convoIds }, contentType: { in: ['IMAGE', 'VOICE'] } },
+        select: { content: true },
+      });
+      await Promise.allSettled(media.map((m) => storage.deleteObject(m.content)));
+    }
+    chatDeleted = (await prisma.message.deleteMany({ where: { conversationId: { in: convoIds } } })).count;
+  }
+
+  if (otp.count || devices.count || kycRows.length || chatDeleted) {
+    log(
+      `retention purge: ${String(otp.count)} otp, ${String(devices.count)} device token(s), ` +
+        `${String(kycRows.length)} kyc doc set(s), ${String(chatDeleted)} message(s)`,
+    );
   }
   await writeAudit({
     actorId: null,
     action: 'retention.purge',
     target: 'system',
-    metadata: { verificationCodes: otp.count, deviceTokens: devices.count },
+    metadata: {
+      verificationCodes: otp.count,
+      deviceTokens: devices.count,
+      kycDocuments: kycRows.length,
+      messages: chatDeleted,
+    },
   });
 }
 

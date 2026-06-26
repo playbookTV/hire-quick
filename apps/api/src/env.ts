@@ -26,6 +26,13 @@ const EnvSchema = z.object({
   // rows are never purged by this — only transient PII.
   RETENTION_OTP_DAYS: z.coerce.number().int().positive().default(30),
   RETENTION_DEVICE_TOKEN_DAYS: z.coerce.number().int().positive().default(180),
+  // KYC: raw ID document + selfie deleted this many days after verification
+  // VERIFIED / REJECTED (only the pass/fail flag + reviewer/audit record persist).
+  RETENTION_KYC_VERIFIED_DAYS: z.coerce.number().int().positive().default(90),
+  RETENTION_KYC_REJECTED_DAYS: z.coerce.number().int().positive().default(30),
+  // Chat messages (+ their media) deleted this many days after the booking's
+  // dispute window closes.
+  RETENTION_CHAT_DAYS: z.coerce.number().int().positive().default(180),
   // S3-compatible object storage for KYC documents (Backblaze B2 / Cloudflare R2
   // / AWS S3). Empty bucket/creds = storage disabled (dev/test fall back to the
   // legacy URL-passthrough behavior). STORAGE_ENDPOINT empty = AWS S3 default.

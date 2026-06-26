@@ -13,7 +13,7 @@ import { Button } from '../../components/Button.js';
 import { StepIndicator } from '../../components/StepIndicator.js';
 import { Box, Text, useTheme } from '../../theme/restyle.js';
 import { useRequestOtp } from '../../lib/hooks.js';
-import { ApiError } from '../../lib/api-error.js';
+import { userMessage } from '../../lib/api-error.js';
 
 export default function Phone(): React.JSX.Element {
   const router = useRouter();
@@ -39,7 +39,7 @@ export default function Phone(): React.JSX.Element {
         params: { phone, role: role ?? '', devCode: res.devCode ?? '' },
       });
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Could not send code. Try again.');
+      setError(userMessage(e));
     }
   };
 
@@ -75,6 +75,13 @@ export default function Phone(): React.JSX.Element {
               placeholder="801 234 5678"
               placeholderTextColor={theme.colors.inkFaint}
               keyboardType="phone-pad"
+              textContentType="telephoneNumber"
+              autoComplete="tel"
+              accessibilityLabel="Phone number"
+              returnKeyType="send"
+              onSubmitEditing={() => {
+                if (valid) void submit();
+              }}
               autoFocus
               maxLength={15}
               style={{ flex: 1, fontFamily: 'PlusJakartaSans_400Regular', fontSize: 16, color: theme.colors.inkStrong, paddingVertical: 0 }}

@@ -36,6 +36,9 @@ const wrap =
     h(req as AuthedRequest, res).catch(next);
   };
 
+/** Placeholder shown for an event's precise venue until escrow is held (PRD §7/§13). */
+const VENUE_MASKED = 'Exact venue is shared once your booking is confirmed';
+
 async function clientFor(userId: string): Promise<string> {
   const c = await prisma.client.findFirst({ where: { userId } });
   if (!c) throw new ApiError(403, 'NOT_A_CLIENT', 'only clients do this');
@@ -126,7 +129,41 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
         where: { id: String(req.params.id) },
         include: { _count: { select: { applications: true, bookings: true } } },
       });
-      res.json(event);
+      const auth = req.auth;
+      if (auth.role === 'ADMIN') {
+        res.json(event);
+        return;
+      }
+      if (auth.role === 'CLIENT') {
+        // A client may read only their own events.
+        if (event.clientId !== (await clientFor(auth.userId))) {
+          throw new ApiError(404, 'NOT_FOUND', 'event not found');
+        }
+        res.json(event);
+        return;
+      }
+      // USHER: readable only if the event is discoverable (OPEN/PARTIALLY_STAFFED)
+      // or the usher is related to it (applied/booked). Otherwise it does not exist
+      // for them — no enumerating arbitrary events by id (PRD §7).
+      const usherId = await usherFor(auth.userId);
+      const booking = await prisma.booking.findFirst({
+        where: { eventId: event.id, usherId },
+        select: { status: true },
+      });
+      const application = await prisma.application.findFirst({
+        where: { eventId: event.id, usherId },
+        select: { id: true },
+      });
+      const discoverable = event.status === 'OPEN' || event.status === 'PARTIALLY_STAFFED';
+      if (!discoverable && !booking && !application) {
+        throw new ApiError(404, 'NOT_FOUND', 'event not found');
+      }
+      // Withhold the precise venue until escrow is held for this usher — i.e. a
+      // CONFIRMED+ booking. Until then they see a masked placeholder (PRD §7/§13:
+      // contact-masking + withholding precise venue until escrow is held).
+      const escrowHeld =
+        booking != null && ['CONFIRMED', 'CHECKED_IN', 'COMPLETED', 'PAID', 'DISPUTED'].includes(booking.status);
+      res.json(escrowHeld ? event : { ...event, venue: VENUE_MASKED });
     }),
   );
 

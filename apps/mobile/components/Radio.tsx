@@ -9,12 +9,20 @@ interface RadioProps {
   selected?: boolean;
   onPress?: () => void;
   size?: number;
+  /** Spoken name of this option, e.g. "Client". */
+  label?: string;
 }
 
-export function Radio({ selected = false, onPress, size = 20 }: RadioProps): React.JSX.Element {
+export function Radio({ selected = false, onPress, size = 20, label }: RadioProps): React.JSX.Element {
   const theme = useTheme();
   return (
-    <Pressable onPress={onPress} hitSlop={8}>
+    <Pressable
+      onPress={onPress}
+      hitSlop={12}
+      accessibilityRole="radio"
+      accessibilityLabel={label}
+      accessibilityState={{ selected }}
+    >
       <Box
         style={{
           width: size,

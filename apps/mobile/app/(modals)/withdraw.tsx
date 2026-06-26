@@ -38,6 +38,7 @@ type Step = 'form' | 'review' | 'done';
 interface Sent {
   amountKobo: number;
   account: BankAccount;
+  balanceBefore: number; // wallet balance at confirm time; `done` derives `remaining` from this, not the refetched (already-decremented) balance
 }
 
 export default function Withdraw(): React.JSX.Element {
@@ -53,7 +54,16 @@ export default function Withdraw(): React.JSX.Element {
   const available = wallet.data?.availableBalance ?? 0;
   const [step, setStep] = useState<Step>('form');
   const [selected, setSelected] = useState<string | null>(null);
-  const [amount, setAmount] = useState(String(Math.floor(available / 100)));
+  const [amount, setAmount] = useState('');
+  // Seed the amount with the full balance once the wallet resolves — not at mount, when
+  // `available` is still 0 and would prefill "0" the user must clear (U6).
+  const amountSeeded = useRef(false);
+  useEffect(() => {
+    if (!amountSeeded.current && wallet.data) {
+      amountSeeded.current = true;
+      setAmount(String(Math.floor(available / 100)));
+    }
+  }, [wallet.data, available]);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [sent, setSent] = useState<Sent | null>(null);
 
@@ -115,7 +125,7 @@ export default function Withdraw(): React.JSX.Element {
       {
         onSuccess: () => {
           hapticSuccess();
-          setSent({ amountKobo, account: activeAccount });
+          setSent({ amountKobo, account: activeAccount, balanceBefore: available });
           setStep('done');
         },
         onError: (e: unknown) =>
@@ -126,7 +136,9 @@ export default function Withdraw(): React.JSX.Element {
 
   // ---------------------------------------------------------------- done
   if (step === 'done' && sent) {
-    const remaining = Math.max(0, available - sent.amountKobo);
+    // Derive from the snapshot, NOT live `available` — the wallet query is invalidated on
+    // withdraw success and refetches to the already-decremented balance (U1 double-subtract).
+    const remaining = Math.max(0, sent.balanceBefore - sent.amountKobo);
     return (
       <Box flex={1} backgroundColor="bgCanvas">
         <AppBar title="" inset />
@@ -210,6 +222,14 @@ export default function Withdraw(): React.JSX.Element {
   }
 
   // ---------------------------------------------------------------- form
+  if (wallet.isLoading) {
+    return (
+      <Box flex={1} backgroundColor="bgCanvas">
+        <AppBar title="Withdraw" showBack inset />
+        <Loading />
+      </Box>
+    );
+  }
   return (
     <Box flex={1} backgroundColor="bgCanvas">
       <AppBar title="Withdraw" showBack inset />

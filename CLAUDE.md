@@ -27,11 +27,14 @@ pnpm --filter @hq/api worker # scheduled-jobs process (BullMQ; needs REDIS_URL)
 
 # Database (Prisma, package @hq/database)
 pnpm db:generate             # prisma generate (run after schema edits)
-pnpm db:push                 # prisma db push (sync schema without a migration)
-pnpm db:migrate              # prisma migrate dev
+pnpm db:push                 # prisma db push (local dev only — sync schema without a migration)
+pnpm db:migrate              # prisma migrate dev (author a new tracked migration after a schema change)
+pnpm db:deploy               # prisma migrate deploy (apply tracked migrations — what CI/prod run)
 pnpm db:seed                 # tsx prisma/seed.ts
 pnpm db:studio               # prisma studio
 ```
+
+Schema changes are tracked as Prisma **migrations** under `packages/database/prisma/migrations/` (baseline `0_init`). After editing `schema.prisma`, run `pnpm db:migrate` to author a migration; CI and production apply them with `prisma migrate deploy`. `db:push` is a local-dev convenience only and must not be used to ship schema changes.
 
 Run a **single package's** tasks with a filter, e.g. `pnpm --filter @hq/api test`. Run a **single test file or test name** via vitest directly:
 
@@ -84,4 +87,4 @@ All Paystack access goes through the `PaystackPort` interface (`payments/port/pa
 
 - **Vitest**, files named `*.test.ts` (and `__tests__/**/*.test.ts`). Tests are **DB-backed** and hit a real Postgres (Neon locally via `.env`; an ephemeral `postgres:16` service in CI).
 - They run **serially** (`fileParallelism: false`, `singleFork`) with a 60s timeout because suites share one database and the reconciliation test reads global ledger aggregates — parallel runs would see each other's rows. Concurrency tests (`payments/__tests__/concurrency.test.ts`) deliberately open their own connections to exercise the `FOR UPDATE` locks.
-- CI (`.github/workflows/ci.yml`) runs: install → `prisma generate` → `typecheck` → `lint` → `prisma db push` → `test`. Match that order when reproducing CI locally.
+- CI (`.github/workflows/ci.yml`) runs: install → `prisma generate` → `typecheck` → `lint` → `prisma migrate deploy` → migration-drift guard (`prisma migrate diff --from-url … --to-schema-datamodel … --exit-code`) → `test`. Match that order when reproducing CI locally.

@@ -96,7 +96,10 @@ export function adminRouter(deps: {
       const v = await prisma.usherVerification.findUnique({ where: { id } });
       if (!v) throw new ApiError(404, 'NOT_FOUND', 'verification not found');
       await prisma.$transaction([
-        prisma.usherVerification.update({ where: { id }, data: { status: 'APPROVED', reviewedById: req.auth.userId } }),
+        prisma.usherVerification.update({
+          where: { id },
+          data: { status: 'APPROVED', reviewedById: req.auth.userId, reviewedAt: new Date() },
+        }),
         prisma.usher.update({ where: { id: v.usherId }, data: { verificationStatus: 'VERIFIED' } }),
       ]);
       await writeAudit({ actorId: req.auth.userId, action: 'verification.approve', target: id });
@@ -112,7 +115,10 @@ export function adminRouter(deps: {
       const v = await prisma.usherVerification.findUnique({ where: { id } });
       if (!v) throw new ApiError(404, 'NOT_FOUND', 'verification not found');
       await prisma.$transaction([
-        prisma.usherVerification.update({ where: { id }, data: { status: 'REJECTED', reviewedById: req.auth.userId, reason } }),
+        prisma.usherVerification.update({
+          where: { id },
+          data: { status: 'REJECTED', reviewedById: req.auth.userId, reason, reviewedAt: new Date() },
+        }),
         prisma.usher.update({ where: { id: v.usherId }, data: { verificationStatus: 'REJECTED' } }),
       ]);
       await writeAudit({ actorId: req.auth.userId, action: 'verification.reject', target: id, metadata: { reason } });

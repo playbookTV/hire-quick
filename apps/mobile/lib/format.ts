@@ -1,7 +1,10 @@
 /**
- * Display formatters. Money formatting lives in `@hq/shared` (formatNaira); this
- * adds date/time helpers that don't depend on a full Intl/ICU build.
+ * Display formatters. Money formatting lives in `@hq/shared` (formatNaira) — re-exported
+ * here as `money` so every surface renders identical strings; this file adds date/time
+ * helpers that don't depend on a full Intl/ICU build.
  */
+import { formatNaira, type Kobo } from '@hq/shared';
+
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -26,11 +29,16 @@ function to12h(hhmm: string): string {
   return `${h12}:${m} ${period}`;
 }
 
-/** Whole-naira ₦ string from kobo (no decimals), e.g. 1_500_000 → "₦15,000". */
+/**
+ * ₦ display string from kobo, e.g. 1_500_000 → "₦15,000.00".
+ * Delegates to the canonical `@hq/shared` formatter so every surface in the app
+ * renders identical money (was previously a local whole-naira variant that
+ * disagreed with `formatNaira` inside the pay funnel — C3).
+ */
 export function money(k: number): string {
-  const sign = k < 0 ? '−' : '';
-  const whole = Math.floor(Math.abs(k) / 100);
-  return `${sign}₦${whole.toLocaleString('en-NG')}`;
+  // Mobile amounts are plain `number` kobo; `formatNaira` wants the branded `Kobo`.
+  // The brand is compile-time only (runtime is a number), so the cast is safe.
+  return formatNaira(k as Kobo);
 }
 
 /** Signed ₦ for wallet activity rows: credit "+₦…", debit "−₦…", pending plain. */

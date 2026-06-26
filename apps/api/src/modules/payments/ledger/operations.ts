@@ -58,52 +58,49 @@ export async function claimOperation(
 }
 
 /**
- * Drive a claimed operation to a terminal state. Safe to re-invoke on a
- * non-terminal op to resume it (the recovery job does exactly this). Returns the
- * onSuccess result on a fresh success, or null when the op was already terminal
- * (the value was not persisted — resume paths read their own domain rows).
+ * Drive a claimed operation to a terminal state, exactly once. The operation row
+ * is locked FOR UPDATE for the whole run, so a concurrent retry that shares the
+ * same `dedupeKey` blocks here and — once the winner commits — re-reads a terminal
+ * status and returns without re-invoking the provider. This row lock (on a single
+ * orchestration row, not on bookings/wallets) is what actually closes the
+ * double-refund / double-transfer race. Safe to re-invoke to resume a crash:
+ * PROVIDER_OK skips straight to recording. Returns the onSuccess result on a fresh
+ * success, or null when the op was already terminal on entry.
+ *
+ * NOTE: the provider (Paystack) call runs inside the transaction so at-most-once
+ * holds; pass a generous timeout via txOpts for live HTTP (defaults to 30s).
  */
 export async function runOperation<T>(
   prisma: PrismaClient,
   op: PaymentOperation,
   handlers: OperationHandlers<T>,
-  txOpts?: TxOpts,
+  txOpts: TxOpts = { timeout: 30_000, maxWait: 30_000 },
 ): Promise<{ status: 'RECORDED' | 'FAILED'; result: T | null }> {
-  let current = op;
-  if (current.status === 'RECORDED') return { status: 'RECORDED', result: null };
-  if (current.status === 'FAILED') return { status: 'FAILED', result: null };
+  return prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM payment_operations WHERE id = ${op.id}::uuid FOR UPDATE`;
+    let row = await tx.paymentOperation.findUniqueOrThrow({ where: { id: op.id } });
+    if (row.status === 'RECORDED') return { status: 'RECORDED' as const, result: null };
+    if (row.status === 'FAILED') return { status: 'FAILED' as const, result: null };
 
-  if (current.status === 'PENDING') {
-    let provider: ProviderResult;
-    try {
-      provider = await handlers.provider();
-    } catch (e) {
-      await prisma.paymentOperation.update({
-        where: { id: current.id },
-        data: { attempts: { increment: 1 }, lastError: e instanceof Error ? e.message : String(e) },
-      });
-      throw e;
-    }
-    if (!provider.ok) {
-      // Provider reported failure → run the compensating write (if any) and stop.
-      if (handlers.onFailure) {
-        const fail = handlers.onFailure;
-        await prisma.$transaction((tx) => fail(tx), txOpts);
+    if (row.status === 'PENDING') {
+      const provider = await handlers.provider();
+      if (!provider.ok) {
+        if (handlers.onFailure) await handlers.onFailure(tx);
+        await tx.paymentOperation.update({
+          where: { id: row.id },
+          data: { status: 'FAILED', attempts: { increment: 1 }, providerRef: provider.providerRef ?? row.providerRef },
+        });
+        return { status: 'FAILED' as const, result: null };
       }
-      await prisma.paymentOperation.update({
-        where: { id: current.id },
-        data: { status: 'FAILED', attempts: { increment: 1 }, providerRef: provider.providerRef ?? current.providerRef },
+      row = await tx.paymentOperation.update({
+        where: { id: row.id },
+        data: { status: 'PROVIDER_OK', attempts: { increment: 1 }, providerRef: provider.providerRef ?? row.providerRef },
       });
-      return { status: 'FAILED', result: null };
     }
-    current = await prisma.paymentOperation.update({
-      where: { id: current.id },
-      data: { status: 'PROVIDER_OK', attempts: { increment: 1 }, providerRef: provider.providerRef ?? current.providerRef },
-    });
-  }
 
-  // PROVIDER_OK → record the ledger/state write, then mark RECORDED.
-  const result = await prisma.$transaction((tx) => handlers.onSuccess(tx), txOpts);
-  await prisma.paymentOperation.update({ where: { id: current.id }, data: { status: 'RECORDED' } });
-  return { status: 'RECORDED', result };
+    // PROVIDER_OK → record the ledger/state write, then mark RECORDED.
+    const result = await handlers.onSuccess(tx);
+    await tx.paymentOperation.update({ where: { id: row.id }, data: { status: 'RECORDED' } });
+    return { status: 'RECORDED' as const, result };
+  }, txOpts);
 }

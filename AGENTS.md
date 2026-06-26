@@ -27,11 +27,14 @@ pnpm --filter @hq/api worker # scheduled-jobs process (BullMQ; needs REDIS_URL)
 
 # Database (Prisma, package @hq/database)
 pnpm db:generate             # prisma generate (run after schema edits)
-pnpm db:push                 # prisma db push (sync schema without a migration)
-pnpm db:migrate              # prisma migrate dev
+pnpm db:push                 # prisma db push (local dev only — sync schema without a migration)
+pnpm db:migrate              # prisma migrate dev (author a new tracked migration after a schema change)
+pnpm db:deploy               # prisma migrate deploy (apply tracked migrations — what CI/prod run)
 pnpm db:seed                 # tsx prisma/seed.ts
 pnpm db:studio               # prisma studio
 ```
+
+Schema changes are tracked as Prisma **migrations** under `packages/database/prisma/migrations/` (baseline `0_init`). After editing `schema.prisma`, run `pnpm db:migrate` to author a migration; CI and production apply them with `prisma migrate deploy`. `db:push` is a local-dev convenience only and must not be used to ship schema changes.
 
 Run a **single package's** tasks with a filter, e.g. `pnpm --filter @hq/api test`. Run a **single test file or test name** via vitest directly:
 
