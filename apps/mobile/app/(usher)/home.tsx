@@ -22,6 +22,15 @@ import { useWallet, useWalletActivity, useBookings, useNotifications } from '../
 import { money, dateTime } from '../../lib/format.js';
 import type { Booking, WalletActivity } from '../../lib/types.js';
 
+/** Event start as epoch ms for chronological sort; bookings with no event sort last. */
+function bookingStartMs(b: Booking): number {
+  if (!b.event) return Number.POSITIVE_INFINITY;
+  const d = new Date(b.event.eventDate);
+  const [h, m] = b.event.startTime.split(':').map(Number);
+  d.setHours(h ?? 0, m ?? 0, 0, 0);
+  return d.getTime();
+}
+
 /** Bucket credit activity into the last 7 calendar days (last slot = today) for the earnings sparkline. */
 function weeklyEarnings(activity: WalletActivity[]): { values: number[]; total: number } {
   const days = 7;
@@ -110,7 +119,9 @@ export default function UsherHome(): React.JSX.Element {
   const unread = notif.data?.unreadCount ?? 0;
   const name = user?.usher?.displayName ?? 'there';
   const initial = name.trim().charAt(0).toUpperCase() || 'U';
-  const upcoming = (bookings.data ?? []).filter((b) => b.status !== 'PAID' && b.status !== 'CANCELLED');
+  const upcoming = (bookings.data ?? [])
+    .filter((b) => b.status !== 'PAID' && b.status !== 'CANCELLED')
+    .sort((a, b) => bookingStartMs(a) - bookingStartMs(b)); // soonest first (U10)
 
   return (
     <Box flex={1} backgroundColor="bgCanvas" style={{ paddingTop: insets.top }}>

@@ -27,12 +27,23 @@ export default function FundsHeld(): React.JSX.Element {
   const title = held ? 'Funds held safely' : 'Payment opened';
   const body = held
     ? `${money(amount)} is held in escrow. We’ll release it to the usher only after they check in on the day — never before.`
-    : 'Finish the payment in the Paystack window. Once your bank confirms it, your funds move into escrow and the booking is confirmed.';
+    : 'If you finished paying, this updates on its own the moment your bank confirms — usually a few seconds. If you closed Paystack without paying, you can leave and start the payment again from your event.';
 
   // Celebrate the moment the booking flips to held (after the bank confirms).
   useEffect(() => {
     if (held) hapticSuccess();
   }, [held]);
+
+  // The HOLD lands asynchronously via the Paystack webhook, so poll the booking
+  // while it's still pending — a completed payment then confirms without the user
+  // tapping "Refresh", and a cancelled one simply stays pending (C9). refetch is
+  // stable across renders, so the interval isn't reset each render.
+  const refetchBooking = booking.refetch;
+  useEffect(() => {
+    if (held) return;
+    const t = setInterval(() => void refetchBooking(), 5000);
+    return () => clearInterval(t);
+  }, [held, refetchBooking]);
 
   return (
     <Box flex={1} backgroundColor="bgCanvas" style={{ paddingTop: insets.top }}>
@@ -74,10 +85,16 @@ export default function FundsHeld(): React.JSX.Element {
       </Box>
 
       <Box style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: insets.bottom + 16, gap: 12 }}>
-        <Button label="View booking" onPress={() => router.dismissAll()} />
-        {!held ? (
-          <Button label="Refresh status" variant="ghost" onPress={() => void booking.refetch()} />
-        ) : null}
+        {held ? (
+          <Button label="View booking" onPress={() => router.dismissAll()} />
+        ) : (
+          <>
+            <Button label="Done" onPress={() => router.dismissAll()} />
+            <Text variant="bodySm" color="inkFaint" style={{ textAlign: 'center' }}>
+              Checking for confirmation automatically…
+            </Text>
+          </>
+        )}
       </Box>
     </Box>
   );

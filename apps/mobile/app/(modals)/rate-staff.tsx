@@ -1,7 +1,7 @@
 /**
  * Rate Staff — matches Figma `Client / 20 Rate Staff` (38:449): per-usher rating
  * with a star row, a descriptor, quick tag chips, and an optional comment, then
- * "Submit & continue" / "Skip". Static preview until the reviews API is wired.
+ * "Submit & continue" / "Skip". Wired to the reviews API via `useCreateReview`.
  */
 import { useState } from 'react';
 import { Pressable } from 'react-native';
@@ -30,7 +30,9 @@ export default function RateStaff(): React.JSX.Element {
   const review = useCreateReview(booking ?? '');
   const toast = useToast();
   const [rating, setRating] = useState(5);
-  const [tags, setTags] = useState<Record<string, boolean>>({ Punctual: true, Professional: true });
+  // Start with no tags selected — pre-checking puts words in the rater's mouth and
+  // biases the review (C17).
+  const [tags, setTags] = useState<Record<string, boolean>>({});
   const [comment, setComment] = useState('');
 
   const submit = (): void => {
@@ -57,10 +59,6 @@ export default function RateStaff(): React.JSX.Element {
       <AppBar title="Rate your staff" showBack inset />
       <Screen scroll>
         <Box alignItems="center" style={{ gap: 20 }}>
-          <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 11, lineHeight: 14, letterSpacing: 1.2 }} color="accentGoldStrong">
-            USHER 1 OF 2
-          </Text>
-
           <Box
             style={{ width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandEmeraldTint }}
           >
@@ -73,7 +71,14 @@ export default function RateStaff(): React.JSX.Element {
 
           <Box flexDirection="row" style={{ gap: 8 }}>
             {[1, 2, 3, 4, 5].map((n) => (
-              <Pressable key={n} onPress={() => setRating(n)} hitSlop={4}>
+              <Pressable
+                key={n}
+                onPress={() => setRating(n)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={`Rate ${n} ${n === 1 ? 'star' : 'stars'}`}
+                accessibilityState={{ selected: n <= rating }}
+              >
                 <Icon name="star" size={38} color={n <= rating ? 'accentGold' : 'borderStrong'} />
               </Pressable>
             ))}
@@ -87,7 +92,14 @@ export default function RateStaff(): React.JSX.Element {
             {TAGS.map((t) => {
               const on = !!tags[t];
               return (
-                <Pressable key={t} onPress={() => setTags((s) => ({ ...s, [t]: !s[t] }))}>
+                <Pressable
+                  key={t}
+                  onPress={() => setTags((s) => ({ ...s, [t]: !s[t] }))}
+                  hitSlop={{ top: 8, bottom: 8 }}
+                  accessibilityRole="checkbox"
+                  accessibilityLabel={t}
+                  accessibilityState={{ checked: on }}
+                >
                   <Box
                     style={{
                       paddingHorizontal: 16,

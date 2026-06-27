@@ -19,7 +19,7 @@ import { ReviewCard } from '../../components/ReviewCard.js';
 import { SectionHeader } from '../../components/SectionHeader.js';
 import { Loading } from '../../components/Loading.js';
 import { EmptyState } from '../../components/EmptyState.js';
-import { useUsher, useUsherReviews } from '../../lib/hooks.js';
+import { useUsher, useUsherReviews, useBookings } from '../../lib/hooks.js';
 import { useToast } from '../../lib/toast.js';
 import { shortDate, money } from '../../lib/format.js';
 
@@ -126,6 +126,7 @@ export default function StaffProfile(): React.JSX.Element {
   const { id } = useLocalSearchParams<{ id: string }>();
   const usher = useUsher(id ?? '');
   const reviews = useUsherReviews(id ?? '');
+  const bookings = useBookings();
   const toast = useToast();
 
   const invite = (): void => {
@@ -162,6 +163,20 @@ export default function StaffProfile(): React.JSX.Element {
 
   const u = usher.data;
   const name = u.displayName ?? 'Usher';
+
+  // Chat is booking-scoped (rooms are `booking:<id>`; there is no DM without a
+  // booking — the API even flags messages that leak contact details). So
+  // "Message" opens the most recent thread we already share with this usher; if
+  // none exists yet, nudge the client to invite them (a thread exists once a
+  // booking does).
+  const existingThread = (bookings.data ?? []).find((b) => b.usherId === (id ?? ''));
+  const message = (): void => {
+    if (existingThread) {
+      router.push({ pathname: '/(modals)/message-thread', params: { booking: existingThread.id } });
+      return;
+    }
+    toast.info(`You can message ${name} once they've accepted an invite to one of your events.`, 'No booking yet');
+  };
 
   return (
     <Box flex={1} backgroundColor="bgCanvas">
@@ -245,7 +260,7 @@ export default function StaffProfile(): React.JSX.Element {
       {/* action bar */}
       <Box flexDirection="row" backgroundColor="bgCanvas" style={{ gap: 12, paddingHorizontal: 20, paddingTop: 16, paddingBottom: insets.bottom + 16, borderTopWidth: 1.5, borderTopColor: theme.colors.borderDefault }}>
         <Box flex={1}>
-          <Button label="Message" variant="secondary" onPress={() => router.back()} />
+          <Button label="Message" variant="secondary" onPress={message} />
         </Box>
         <Box flex={1}>
           <Button label="Invite" onPress={invite} />

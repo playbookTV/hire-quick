@@ -49,7 +49,24 @@ export interface PaystackPort {
    * withdrawal stuck in PROCESSING when its webhook never arrived.
    */
   verifyTransfer(reference: string): Promise<{ status: 'success' | 'failed' | 'pending' | 'unknown' }>;
-  refund(params: { chargeReference: string; amountKobo: number }): Promise<{ status: 'processed' }>;
+  /**
+   * Refund a settled charge (full or partial) back to the client.
+   *
+   * `reference` is a caller-supplied, deterministic idempotency key (the durable
+   * BOOKING_REFUND dedupeKey). Implementations MUST be at-most-once with respect
+   * to it: a retry carrying the same reference must NOT issue a second refund.
+   * This is what makes a crash between the provider call and the PROVIDER_OK
+   * commit (payments/ledger/operations.ts) safe to replay.
+   *
+   * Paystack's `POST /refund` has no native idempotency field, so the Phase-2
+   * HTTP adapter MUST embed `reference` in `merchant_note` and, before creating a
+   * refund, call `GET /refund?transaction=<chargeReference>` and short-circuit
+   * (return { status: 'processed' }) when a refund whose merchant_note ===
+   * reference already exists. Per-booking dedup matters because one order/charge
+   * can legitimately be refunded once per booking, so a transaction-only check is
+   * insufficient — the reference is what distinguishes the bookings.
+   */
+  refund(params: { chargeReference: string; amountKobo: number; reference: string }): Promise<{ status: 'processed' }>;
   /** Current Paystack Balance (kobo) — reconciled daily against the ledger (§17). */
   getBalanceKobo(): Promise<number>;
 }
@@ -66,6 +83,10 @@ export class InMemoryPaystack implements PaystackPort {
   // Issued transfers by reference, so verifyTransfer can mirror a real
   // GET /transfer/verify/:reference for the recovery job.
   private readonly transfers = new Map<string, 'success' | 'failed' | 'pending'>();
+  // Processed refunds keyed by idempotency reference, so a replayed reference is a
+  // no-op (mirrors the HTTP adapter's merchant_note dedup) and never double-debits
+  // the Balance — the contract the durable BOOKING_REFUND op relies on.
+  private readonly refunds = new Map<string, number>();
 
   /** Simulate funds landing in the Balance when a client charge settles. */
   creditBalance(amountKobo: number): void {
@@ -149,7 +170,13 @@ export class InMemoryPaystack implements PaystackPort {
     return Promise.resolve({ status: this.transfers.get(reference) ?? 'unknown' });
   }
 
-  refund(params: { chargeReference: string; amountKobo: number }): Promise<{ status: 'processed' }> {
+  refund(params: { chargeReference: string; amountKobo: number; reference: string }): Promise<{ status: 'processed' }> {
+    // At-most-once by reference: a replayed reference must not debit the Balance
+    // twice (mirrors the HTTP adapter's merchant_note dedup, TRD §10).
+    if (this.refunds.has(params.reference)) {
+      return Promise.resolve({ status: 'processed' });
+    }
+    this.refunds.set(params.reference, params.amountKobo);
     this.balanceKobo -= params.amountKobo;
     return Promise.resolve({ status: 'processed' });
   }

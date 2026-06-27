@@ -82,11 +82,11 @@ export const eventFields = z.object({
 /** POST /events — create a multi-staff event (PRD §7). */
 export const createEventSchema = eventFields
   .refine((e) => e.endTime > e.startTime, {
-    message: 'endTime must be after startTime',
+    message: 'End time must be after the start time.',
     path: ['endTime'],
   })
   .refine((e) => accommodationDisclosed(e.endTime, e.accommodation), {
-    message: 'accommodation is required for events ending at or after 22:00',
+    message: 'Accommodation must be disclosed for events ending at or after 10:00 PM.',
     path: ['accommodation'],
   });
 export type CreateEventInput = z.infer<typeof createEventSchema>;
@@ -98,7 +98,7 @@ export type CreateEventInput = z.infer<typeof createEventSchema>;
  */
 export const updateEventSchema = eventFields.partial().superRefine((e, ctx) => {
   if (e.startTime != null && e.endTime != null && e.endTime <= e.startTime) {
-    ctx.addIssue({ code: 'custom', message: 'endTime must be after startTime', path: ['endTime'] });
+    ctx.addIssue({ code: 'custom', message: 'End time must be after the start time.', path: ['endTime'] });
   }
 });
 export type UpdateEventInput = z.infer<typeof updateEventSchema>;

@@ -78,7 +78,7 @@ export default function Applications(): React.JSX.Element {
 
   const renderCard = (a: Application, isTop: boolean): React.JSX.Element => {
     const on = !!selected[a.id];
-    const name = a.usher.displayName ?? a.usher.user.phone;
+    const name = a.usher.displayName ?? 'Usher';
     const verified = a.usher.verificationStatus === 'VERIFIED';
     const rejected = a.status === 'REJECTED';
     const shortlisted = a.status === 'SHORTLISTED';
@@ -135,7 +135,13 @@ export default function Applications(): React.JSX.Element {
             </Box>
           </Pressable>
           {!rejected ? (
-            <Pressable onPress={() => setSelected((s) => ({ ...s, [a.id]: !s[a.id] }))} hitSlop={6}>
+            <Pressable
+              onPress={() => setSelected((s) => ({ ...s, [a.id]: !s[a.id] }))}
+              hitSlop={8}
+              accessibilityRole="checkbox"
+              accessibilityLabel={`Select ${name}`}
+              accessibilityState={{ checked: on }}
+            >
               <Box
                 style={{
                   width: 28,

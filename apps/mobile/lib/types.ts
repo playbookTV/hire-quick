@@ -190,7 +190,9 @@ export interface Application {
     verificationStatus: UsherVerifyState;
     bio: string | null;
     avatarUrl: string | null;
-    user: { phone: string };
+    // NB: contact details (user.phone) are intentionally NOT sent by the
+    // applications endpoint — they stay off-platform until a booking exists.
+    // displayName is the source of name here; fall back to 'Usher' if null.
   };
 }
 

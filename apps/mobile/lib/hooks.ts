@@ -21,7 +21,6 @@ import type {
   Bank,
   Availability,
   ConfirmResult,
-  Notification,
   NotificationFeed,
   Invitation,
 } from './types.js';

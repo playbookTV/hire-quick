@@ -31,7 +31,13 @@ export function OptionCard({
   const chipFg: keyof Theme['colors'] = iconTone === 'gold' ? 'accentGoldStrong' : 'brandEmerald';
 
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.94 : 1 })}>
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="radio"
+      accessibilityState={{ checked: selected }}
+      accessibilityLabel={subtitle ? `${title}. ${subtitle}` : title}
+      style={({ pressed }) => ({ opacity: pressed ? 0.94 : 1 })}
+    >
       <Box
         flexDirection="row"
         alignItems="center"

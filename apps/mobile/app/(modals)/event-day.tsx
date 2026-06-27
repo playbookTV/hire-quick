@@ -5,7 +5,7 @@
  * then releases each payout once checked in (`useCompleteBooking`). The big card
  * shows the most recently generated code (dev returns it inline).
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTheme, Box, Text } from '../../theme/restyle.js';
@@ -88,6 +88,15 @@ export default function EventDay(): React.JSX.Element {
   const bookings = useBookings();
   const [lastCode, setLastCode] = useState<string | null>(null);
 
+  // The roster is the live check-in board; poll it while this screen is open so an
+  // usher who just checked in appears without a manual refresh (keeps "Live" honest).
+  // refetch is stable across renders, so the interval isn't torn down each render.
+  const refetchBookings = bookings.refetch;
+  useEffect(() => {
+    const t = setInterval(() => void refetchBookings(), 15_000);
+    return () => clearInterval(t);
+  }, [refetchBookings]);
+
   const roster = (bookings.data ?? []).filter((b) => b.eventId === eventId);
   const checkedIn = roster.filter((b) => b.status === 'CHECKED_IN' || b.status === 'PAID').length;
 
@@ -119,8 +128,8 @@ export default function EventDay(): React.JSX.Element {
           {/* count */}
           <Box flexDirection="row" alignItems="center" justifyContent="space-between">
             <Text variant="headingS">{checkedIn} of {roster.length} checked in</Text>
-            <Text variant="label" style={{ fontSize: 13 }} color="statusSuccess">
-              Live
+            <Text variant="label" style={{ fontSize: 13 }} color={bookings.isFetching ? 'inkMuted' : 'statusSuccess'}>
+              {bookings.isFetching ? 'Updating…' : 'Live'}
             </Text>
           </Box>
 

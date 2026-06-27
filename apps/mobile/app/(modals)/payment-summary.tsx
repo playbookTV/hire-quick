@@ -117,7 +117,7 @@ export default function PaymentSummary(): React.JSX.Element {
           <Box backgroundColor="bgSurface" borderWidth={1} borderColor="borderDefault" borderRadius="lg" padding="400" style={{ gap: 12 }}>
             <Text variant="titleM">Booking {count} {count === 1 ? 'usher' : 'ushers'}</Text>
             {chosen.map((a) => {
-              const name = a.usher.displayName ?? a.usher.user.phone;
+              const name = a.usher.displayName ?? 'Usher';
               return (
                 <Box key={a.id} flexDirection="row" alignItems="center" style={{ gap: 12 }}>
                   <Avatar name={name} size={32} />

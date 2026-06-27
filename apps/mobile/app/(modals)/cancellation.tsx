@@ -16,6 +16,8 @@ import { Button } from '../../components/Button.js';
 import { Loading } from '../../components/Loading.js';
 import { useBooking, useCancelBooking } from '../../lib/hooks.js';
 import { useToast } from '../../lib/toast.js';
+import { openSupport } from '../../lib/support.js';
+import { Banner } from '../../components/Banner.js';
 import { money } from '../../lib/format.js';
 
 const WINDOW_NOTE: Record<string, string> = {
@@ -55,6 +57,12 @@ export default function Cancellation(): React.JSX.Element {
   const outcome = policyForCancellation('CLIENT', window);
   const refund = Math.floor((gross * outcome.clientRefundPct) / 100);
   const usherShare = Math.floor((gross * outcome.usherPayoutPct) / 100);
+  // The API only self-executes full (100%) client refunds; late windows split the
+  // usher payout and must be settled by support (server returns 409 otherwise).
+  // Guard the action so the user is routed to support instead of tapping into a
+  // confusing failure (C11).
+  const selfServe = outcome.clientRefundPct === 100;
+  const supportMessage = `Hi HireQuick support — I need to cancel my booking for "${ev?.title ?? 'my event'}" but it's inside the late-cancellation window. Booking ID: ${bookingId ?? ''}.`;
 
   const onCancel = (): void => {
     cancel.mutate(undefined, {
@@ -96,11 +104,23 @@ export default function Cancellation(): React.JSX.Element {
           <Text variant="bodySm" color="inkFaint" style={{ textAlign: 'center' }}>
             {WINDOW_NOTE[window]}
           </Text>
+
+          {selfServe ? null : (
+            <Banner
+              tone="warning"
+              title="This cancellation needs support"
+              message="Because the usher is owed part of the fee, our team settles late cancellations by hand so the split is fair. Message support and we’ll sort it quickly."
+            />
+          )}
         </Box>
 
         <Box style={{ flex: 1, minHeight: 20 }} />
         <Box style={{ gap: 12, paddingBottom: insets.bottom }}>
-          <Button label={cancel.isPending ? 'Cancelling…' : 'Cancel booking'} variant="danger" onPress={onCancel} disabled={cancel.isPending} />
+          {selfServe ? (
+            <Button label={cancel.isPending ? 'Cancelling…' : 'Cancel booking'} variant="danger" onPress={onCancel} disabled={cancel.isPending} />
+          ) : (
+            <Button label="Contact support to cancel" variant="primary" onPress={() => void openSupport(supportMessage)} />
+          )}
           <Button label="Keep booking" variant="ghost" onPress={() => router.back()} />
         </Box>
       </Screen>

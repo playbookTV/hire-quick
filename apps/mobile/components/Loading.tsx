@@ -5,7 +5,15 @@ import { useTheme, Box } from '../theme/restyle.js';
 export function Loading(): React.JSX.Element {
   const theme = useTheme();
   return (
-    <Box flex={1} alignItems="center" justifyContent="center" backgroundColor="bgCanvas">
+    <Box
+      flex={1}
+      alignItems="center"
+      justifyContent="center"
+      backgroundColor="bgCanvas"
+      accessibilityRole="progressbar"
+      accessibilityLabel="Loading"
+      accessibilityLiveRegion="polite"
+    >
       <ActivityIndicator color={theme.colors.brandEmerald} size="large" />
     </Box>
   );

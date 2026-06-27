@@ -32,9 +32,10 @@ export interface Deps {
  * refund against the order's charge, TRD §10) fires FIRST, then the ledger
  * REFUND is recorded in one transaction — mirroring runCommissionSweep's
  * "external call first, ledger entry only on success" so a failed refund never
- * leaves a phantom REFUND in the ledger. A crash between a successful Paystack
- * refund and the ledger write degrades to reconciliation drift (caught by §17),
- * the same accepted tradeoff the sweep makes.
+ * leaves a phantom REFUND in the ledger. Because the durable op hands Paystack a
+ * deterministic idempotency reference (the dedupeKey), a crash on either side of
+ * the PROVIDER_OK commit is safe to replay: the refund is issued at most once and
+ * the REFUND ledger row is written exactly once — no reconciliation drift.
  *
  * `precursor` performs the booking's status step (CONFIRMED → CANCELLED/NO_SHOW)
  * inside the same ledger tx before the refund; omit it when the booking is
@@ -54,14 +55,18 @@ export async function refundBookingToClient(
   // Claim a durable BOOKING_REFUND operation FIRST. The unique dedupeKey is the
   // serialization point: a concurrent retry loses the insert and never reaches the
   // Paystack refund below, so a booking's allocation can be refunded at most once
-  // (closes the double-refund race — TRD §10).
+  // (closes the double-refund race — TRD §10). The SAME dedupeKey is handed to
+  // Paystack as the refund's idempotency reference, so even a crash between a
+  // successful refund and the PROVIDER_OK commit can't double-refund on replay —
+  // PaystackPort.refund dedupes by this reference.
   const chargeRef = booking.order?.paystackChargeRef ?? null;
   if (params.amountKobo > 0 && !chargeRef) {
     throw new Error(`booking ${params.bookingId}: order has no charge reference to refund`);
   }
+  const dedupeKey = `BOOKING_REFUND:${params.bookingId}`;
   const { op } = await claimOperation(deps.prisma, {
     kind: 'BOOKING_REFUND',
-    dedupeKey: `BOOKING_REFUND:${params.bookingId}`,
+    dedupeKey,
     payload: { bookingId: params.bookingId, amountKobo: params.amountKobo, precursor: params.precursor ?? null },
   });
   const outcome = await runOperation(
@@ -70,7 +75,7 @@ export async function refundBookingToClient(
     {
       provider: async () => {
         if (params.amountKobo > 0 && chargeRef) {
-          await deps.paystack.refund({ chargeReference: chargeRef, amountKobo: params.amountKobo });
+          await deps.paystack.refund({ chargeReference: chargeRef, amountKobo: params.amountKobo, reference: dedupeKey });
         }
         return { ok: true };
       },

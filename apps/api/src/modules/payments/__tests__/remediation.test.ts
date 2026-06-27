@@ -19,7 +19,7 @@ import { createScenario, teardown, type Scenario } from './fixtures.js';
 /** InMemoryPaystack that counts refund() so we can assert at-most-once. */
 class CountingPaystack extends InMemoryPaystack {
   refundCalls = 0;
-  override refund(p: { chargeReference: string; amountKobo: number }): Promise<{ status: 'processed' }> {
+  override refund(p: { chargeReference: string; amountKobo: number; reference: string }): Promise<{ status: 'processed' }> {
     this.refundCalls += 1;
     return super.refund(p);
   }

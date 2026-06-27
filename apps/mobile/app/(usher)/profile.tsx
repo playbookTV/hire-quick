@@ -4,7 +4,7 @@
  * `useAuth().user.usher`, the reliability score from `reliabilityScore`, and
  * received reviews from `useUsherReviews`.
  */
-import { Pressable, ScrollView, RefreshControl } from 'react-native';
+import { Pressable, ScrollView, RefreshControl, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, Box, Text } from '../../theme/restyle.js';
@@ -159,7 +159,9 @@ export default function UsherProfile(): React.JSX.Element {
         </Box>
 
         <SectionHeader title="Recent reviews" />
-        {reviews.isError ? (
+        {reviews.isLoading ? (
+          <Text variant="bodySm" color="inkMuted">Loading your reviews…</Text>
+        ) : reviews.isError ? (
           <Text variant="bodySm" color="statusDanger">Couldn’t load your reviews. Pull down to retry.</Text>
         ) : (reviews.data ?? []).length === 0 ? (
           <Text variant="bodySm" color="inkMuted">No reviews yet — they’ll appear after your first completed job.</Text>
@@ -169,7 +171,16 @@ export default function UsherProfile(): React.JSX.Element {
           ))
         )}
 
-        <Button label="Sign out" variant="ghost" onPress={() => { void logout(); }} />
+        <Button
+          label="Sign out"
+          variant="ghost"
+          onPress={() =>
+            Alert.alert('Sign out?', 'You’ll need your phone number and a new code to sign back in.', [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Sign out', style: 'destructive', onPress: () => void logout() },
+            ])
+          }
+        />
       </ScrollView>
     </Box>
   );
