@@ -220,7 +220,6 @@ model User {
   disputesResolved  Dispute[]           @relation("DisputeResolvedBy")
   verificationsDone UsherVerification[] @relation("VerificationReviewer")
   messagesSent      Message[]
-  auditLogs         AuditLog[]
   approvalsMade     Approval[]          @relation("ApprovalMaker")
   approvalsChecked  Approval[]          @relation("ApprovalChecker")
   notifications     Notification[]
@@ -663,8 +662,12 @@ model IdempotencyKey {
 
 model AuditLog {
   id        String   @id @default(uuid()) @db.Uuid
+  // Denormalized actor reference — intentionally NOT a live FK. The audit log is
+  // append-only and tamper-evident (entryHash covers actorId), so a referential
+  // action like ON DELETE SET NULL mutating this column would silently break the
+  // hash chain. Deleting/erasing a user must never touch immutable audit rows
+  // (NDPR erasure pseudonymizes the user; the historical actorId is retained).
   actorId   String?  @db.Uuid
-  actor     User?    @relation(fields: [actorId], references: [id])
   action    String
   target    String
   metadata  Json?

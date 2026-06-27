@@ -16,6 +16,14 @@ const gateway: SocketGateway = createSocketGateway();
 const app = createApp({ paystack: new InMemoryPaystack(), paystackSecret: 'x', realtime: gateway });
 let server: HttpServer;
 let port: number;
+const createdUserIds: string[] = [];
+
+/** Persist an ACTIVE user so the gateway's auth status check admits the socket. */
+async function activeUserId(role: 'USHER' | 'ADMIN' | 'CLIENT'): Promise<string> {
+  const u = await prisma.user.create({ data: { role, phone: `rt-${randomUUID()}`, status: 'ACTIVE' } });
+  createdUserIds.push(u.id);
+  return u.id;
+}
 
 beforeAll(async () => {
   server = createServer(app);
@@ -23,8 +31,9 @@ beforeAll(async () => {
   await new Promise<void>((res) => server.listen(0, res));
   port = (server.address() as AddressInfo).port;
 });
-afterAll(() => {
+afterAll(async () => {
   server.close();
+  await prisma.user.deleteMany({ where: { id: { in: createdUserIds } } });
 });
 
 function connect(token: string): Promise<ClientSocket> {
@@ -44,8 +53,8 @@ const settle = (): Promise<void> => new Promise((r) => setTimeout(r, 25));
 
 describe('realtime gateway pushes (TRD §4)', () => {
   it('emitToUser reaches only the targeted user room', async () => {
-    const aliceId = randomUUID();
-    const bobId = randomUUID();
+    const aliceId = await activeUserId('USHER');
+    const bobId = await activeUserId('USHER');
     const alice = await connect(await signAccessToken(aliceId, 'USHER'));
     const bob = await connect(await signAccessToken(bobId, 'USHER'));
     await settle(); // let the auto-join to user:<id> settle
@@ -65,8 +74,8 @@ describe('realtime gateway pushes (TRD §4)', () => {
   });
 
   it('emitToAdmins reaches ADMINs only (the check-in feed)', async () => {
-    const admin = await connect(await signAccessToken(randomUUID(), 'ADMIN'));
-    const usher = await connect(await signAccessToken(randomUUID(), 'USHER'));
+    const admin = await connect(await signAccessToken(await activeUserId('ADMIN'), 'ADMIN'));
+    const usher = await connect(await signAccessToken(await activeUserId('USHER'), 'USHER'));
     await settle();
     try {
       const got = once<{ bookingId: string }>(admin, 'booking.checked_in');
