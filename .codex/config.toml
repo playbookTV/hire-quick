@@ -1,8 +1,0 @@
-[mcp_servers.paystack]
-command = "npx"
-args = [
-    "-y",
-    "@paystack/mcp-server",
-    "--api-key",
-    "sk_test_984fc1393fbc67bc31691dc4bd50f052b6badb2a",
-]
