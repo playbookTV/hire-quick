@@ -41,6 +41,18 @@ const wrap =
 /** Placeholder shown for an event's precise venue until escrow is held (PRD §7/§13). */
 const VENUE_MASKED = 'Exact venue is shared once your booking is confirmed';
 
+/** Booking states in which escrow is held for the usher, unlocking the precise venue. */
+const ESCROW_HELD_STATUSES = ['CONFIRMED', 'CHECKED_IN', 'COMPLETED', 'PAID', 'DISPUTED'] as const;
+
+/**
+ * Withhold the precise venue from an usher until escrow is held for them (PRD
+ * §7/§13). Single source of the masking rule so list and detail endpoints stay
+ * consistent — a leak on any discovery surface defeats contact-masking.
+ */
+function maskVenue<T extends { venue: string }>(event: T, escrowHeld: boolean): T {
+  return escrowHeld ? event : { ...event, venue: VENUE_MASKED };
+}
+
 async function clientFor(userId: string): Promise<string> {
   const c = await prisma.client.findFirst({ where: { userId } });
   if (!c) throw new ApiError(403, 'NOT_A_CLIENT', 'only clients do this');
@@ -57,6 +69,20 @@ async function usherFor(userId: string): Promise<string> {
   const u = await prisma.usher.findFirst({ where: { userId } });
   if (!u) throw new ApiError(403, 'NOT_AN_USHER', 'only ushers do this');
   return u.id;
+}
+
+/**
+ * Of the given event ids, the set for which this usher has an escrow-held
+ * booking — i.e. the events whose precise venue they may see. One batched query
+ * so list endpoints don't N+1 or leak the venue (PRD §7/§13).
+ */
+async function escrowHeldEventIds(usherId: string, eventIds: string[]): Promise<Set<string>> {
+  if (eventIds.length === 0) return new Set();
+  const rows = await prisma.booking.findMany({
+    where: { usherId, eventId: { in: eventIds }, status: { in: [...ESCROW_HELD_STATUSES] } },
+    select: { eventId: true },
+  });
+  return new Set(rows.map((b) => b.eventId));
 }
 
 /** Map a validated partial-event payload to a Prisma update (only provided keys). */
@@ -112,11 +138,18 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
     '/events',
     wrap(async (req, res) => {
       if (req.auth.role === 'USHER') {
+        const usherId = await usherFor(req.auth.userId);
         const events = await prisma.event.findMany({
           where: { status: { in: ['OPEN', 'PARTIALLY_STAFFED'] } },
           orderBy: { eventDate: 'asc' },
         });
-        res.json(events);
+        // Mask the precise venue per event unless this usher already has escrow
+        // held for it (PRD §7/§13) — the detail endpoint does the same.
+        const unlocked = await escrowHeldEventIds(
+          usherId,
+          events.map((e) => e.id),
+        );
+        res.json(events.map((e) => maskVenue(e, unlocked.has(e.id))));
         return;
       }
       const clientId = await clientFor(req.auth.userId);
@@ -163,9 +196,8 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
       // Withhold the precise venue until escrow is held for this usher — i.e. a
       // CONFIRMED+ booking. Until then they see a masked placeholder (PRD §7/§13:
       // contact-masking + withholding precise venue until escrow is held).
-      const escrowHeld =
-        booking != null && ['CONFIRMED', 'CHECKED_IN', 'COMPLETED', 'PAID', 'DISPUTED'].includes(booking.status);
-      res.json(escrowHeld ? event : { ...event, venue: VENUE_MASKED });
+      const escrowHeld = booking != null && (ESCROW_HELD_STATUSES as readonly string[]).includes(booking.status);
+      res.json(maskVenue(event, escrowHeld));
     }),
   );
 
@@ -227,13 +259,18 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
     '/me/applications',
     wrap(async (req, res) => {
       const usherId = await usherFor(req.auth.userId);
-      res.json(
-        await prisma.application.findMany({
-          where: { usherId },
-          orderBy: { createdAt: 'desc' },
-          include: { event: true },
-        }),
+      const apps = await prisma.application.findMany({
+        where: { usherId },
+        orderBy: { createdAt: 'desc' },
+        include: { event: true },
+      });
+      // Applying does not unlock the precise venue — only an escrow-held booking
+      // does (PRD §7/§13), same rule as discovery.
+      const unlocked = await escrowHeldEventIds(
+        usherId,
+        apps.map((a) => a.eventId),
       );
+      res.json(apps.map((a) => ({ ...a, event: maskVenue(a.event, unlocked.has(a.eventId)) })));
     }),
   );
 
@@ -269,7 +306,11 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
         orderBy: { createdAt: 'desc' },
         include: { event: true },
       });
-      res.json(rows.map((s) => s.event));
+      const unlocked = await escrowHeldEventIds(
+        usherId,
+        rows.map((s) => s.event.id),
+      );
+      res.json(rows.map((s) => maskVenue(s.event, unlocked.has(s.event.id))));
     }),
   );
 

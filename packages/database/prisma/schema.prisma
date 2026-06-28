@@ -144,6 +144,17 @@ enum DevicePlatform {
   ANDROID
 }
 
+enum ConsentPurpose {
+  PUSH_NOTIFICATIONS
+  MARKETING_EMAIL
+  SMS
+}
+
+enum ConsentSource {
+  EXPLICIT
+  LEGITIMATE_INTEREST
+}
+
 enum ApprovalKind {
   DISPUTE_RESOLVE
   REFUND
@@ -223,6 +234,9 @@ model User {
   approvalsMade     Approval[]          @relation("ApprovalMaker")
   approvalsChecked  Approval[]          @relation("ApprovalChecker")
   notifications     Notification[]
+  consents          ConsentRecord[]
+  revokedTokens     RevokedToken[]
+  policyAcceptances PolicyAcceptance[]
 
   @@map("users")
 }
@@ -506,15 +520,17 @@ model WalletLedger {
 }
 
 model BankAccount {
-  id                    String   @id @default(uuid()) @db.Uuid
-  usherId               String   @db.Uuid
-  usher                 Usher    @relation(fields: [usherId], references: [id], onDelete: Cascade)
+  id                    String    @id @default(uuid()) @db.Uuid
+  usherId               String    @db.Uuid
+  usher                 Usher     @relation(fields: [usherId], references: [id], onDelete: Cascade)
   bankCode              String
   accountNumber         String
   accountName           String
   paystackRecipientCode String?
-  verified              Boolean  @default(false)
-  createdAt             DateTime @default(now()) @db.Timestamptz(6)
+  verified              Boolean   @default(false) // account-name resolution matched the usher (§23 Q3)
+  bvnVerified           Boolean   @default(false) // BVN match confirmed (flag-gated live check)
+  bvnVerifiedAt         DateTime? @db.Timestamptz(6)
+  createdAt             DateTime  @default(now()) @db.Timestamptz(6)
 
   withdrawals Withdrawal[]
 
@@ -691,6 +707,53 @@ model AuditChainHead {
   lastHash String?
 
   @@map("audit_chain_head")
+}
+
+/// Refresh-token denylist (Phase 9). Logout and refresh-rotation insert the
+/// consumed token's jti; /refresh rejects any jti present here. Rows past
+/// expiresAt are dropped by the retention purge.
+model RevokedToken {
+  jti       String   @id
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("revoked_tokens")
+}
+
+/// Consent ledger (NDPR). One row per (user, purpose), flipped on grant/withdraw;
+/// withdrawal must stop the corresponding processing (e.g. drop device tokens).
+model ConsentRecord {
+  id          String         @id @default(uuid()) @db.Uuid
+  userId      String         @db.Uuid
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose     ConsentPurpose
+  granted     Boolean
+  source      ConsentSource  @default(EXPLICIT)
+  grantedAt   DateTime       @default(now()) @db.Timestamptz(6)
+  withdrawnAt DateTime?      @db.Timestamptz(6)
+  updatedAt   DateTime       @updatedAt @db.Timestamptz(6)
+
+  @@unique([userId, purpose])
+  @@index([userId])
+  @@map("consent_records")
+}
+
+/// Record of a user accepting a published legal document version (NDPR publication).
+model PolicyAcceptance {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @db.Uuid
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documentKey String // e.g. "privacy-policy"
+  version     String
+  acceptedAt  DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([userId, documentKey, version])
+  @@index([userId])
+  @@map("policy_acceptances")
 }
 
 // Maker-checker for money moves above a threshold (TRD §15). A maker creates a

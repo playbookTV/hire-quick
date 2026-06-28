@@ -3,6 +3,7 @@
  * Logic lives in service.ts; this file is just the HTTP surface.
  */
 import { Router, type Request, type Response, type NextFunction } from 'express';
+import { z } from 'zod';
 import { prisma } from '@hq/database';
 import { ApiError } from '../../app.js';
 import { requireAuth, type AuthedRequest } from '../auth/middleware.js';
@@ -17,6 +18,11 @@ const wrap =
   (req: Request, res: Response, next: NextFunction): void => {
     h(req as AuthedRequest, res).catch(next);
   };
+
+const consentSchema = z.object({
+  purpose: z.enum(['PUSH_NOTIFICATIONS', 'MARKETING_EMAIL', 'SMS']),
+  granted: z.boolean(),
+});
 
 export function privacyRouter(storage?: StoragePort): Router {
   const r = Router();
@@ -60,6 +66,43 @@ export function privacyRouter(storage?: StoragePort): Router {
       }
       await writeAudit({ actorId: userId, action: 'dsar.erase', target: userId });
       res.json({ status: 'ERASED', objectsDeleted: storage ? storageKeys.length : 0 });
+    }),
+  );
+
+  // GET /api/me/consents — the subject's current consent state per purpose (NDPR).
+  r.get(
+    '/consents',
+    wrap(async (req, res) => {
+      const consents = await prisma.consentRecord.findMany({
+        where: { userId: req.auth.userId },
+        select: { purpose: true, granted: true, source: true, grantedAt: true, withdrawnAt: true },
+      });
+      res.json(consents);
+    }),
+  );
+
+  // POST /api/me/consents — grant or withdraw consent for a purpose. Withdrawing
+  // PUSH_NOTIFICATIONS stops processing immediately by dropping the device tokens.
+  r.post(
+    '/consents',
+    wrap(async (req, res) => {
+      const { purpose, granted } = consentSchema.parse(req.body);
+      const userId = req.auth.userId;
+      const consent = await prisma.consentRecord.upsert({
+        where: { userId_purpose: { userId, purpose } },
+        update: {
+          granted,
+          source: 'EXPLICIT',
+          withdrawnAt: granted ? null : new Date(),
+          ...(granted ? { grantedAt: new Date() } : {}),
+        },
+        create: { userId, purpose, granted, source: 'EXPLICIT' },
+      });
+      if (purpose === 'PUSH_NOTIFICATIONS' && !granted) {
+        await prisma.deviceToken.deleteMany({ where: { userId } });
+      }
+      await writeAudit({ actorId: userId, action: granted ? 'consent.grant' : 'consent.withdraw', target: purpose });
+      res.json({ purpose: consent.purpose, granted: consent.granted });
     }),
   );
 

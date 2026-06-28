@@ -11,18 +11,21 @@ const REDACTED = '[redacted]';
 
 /** Assemble a machine-readable copy of everything we hold on this subject. */
 export async function buildExport(userId: string): Promise<Record<string, unknown>> {
-  const [user, client, usher, deviceTokens, reviewsAuthored, messagesSent, disputesRaised] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, role: true, phone: true, email: true, status: true, createdAt: true },
-    }),
-    prisma.client.findUnique({ where: { userId } }),
-    prisma.usher.findUnique({ where: { userId } }),
-    prisma.deviceToken.findMany({ where: { userId } }),
-    prisma.review.findMany({ where: { reviewerId: userId } }),
-    prisma.message.findMany({ where: { senderId: userId } }),
-    prisma.dispute.findMany({ where: { raisedById: userId } }),
-  ]);
+  const [user, client, usher, deviceTokens, reviewsAuthored, messagesSent, disputesRaised, consents, policyAcceptances] =
+    await Promise.all([
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, role: true, phone: true, email: true, status: true, createdAt: true },
+      }),
+      prisma.client.findUnique({ where: { userId } }),
+      prisma.usher.findUnique({ where: { userId } }),
+      prisma.deviceToken.findMany({ where: { userId } }),
+      prisma.review.findMany({ where: { reviewerId: userId } }),
+      prisma.message.findMany({ where: { senderId: userId } }),
+      prisma.dispute.findMany({ where: { raisedById: userId } }),
+      prisma.consentRecord.findMany({ where: { userId } }),
+      prisma.policyAcceptance.findMany({ where: { userId } }),
+    ]);
 
   const usherData = usher
     ? await (async () => {
@@ -54,6 +57,8 @@ export async function buildExport(userId: string): Promise<Record<string, unknow
     reviewsAuthored,
     messagesSent,
     disputesRaised,
+    consents,
+    policyAcceptances,
   };
 }
 

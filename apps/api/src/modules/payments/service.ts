@@ -5,6 +5,7 @@
  */
 import { type PrismaClient } from '@hq/database';
 import { ApiError } from '../../app.js';
+import { env } from '../../env.js';
 import { runIdempotent } from './ledger/idempotency.js';
 import { claimOperation, runOperation } from './ledger/operations.js';
 import {
@@ -162,6 +163,16 @@ export async function initWithdrawal(
   // could route their own payout to anyone else's registered bank account.
   if (bank.usherId !== params.usherId) {
     throw new ApiError(403, 'FORBIDDEN', 'bank account does not belong to you');
+  }
+  // Money-safety gate (§23 Q3): a payout may only leave to a verified destination
+  // — the account name was resolved/matched server-side at registration. The live
+  // BVN match is an additional, flag-gated requirement (off until that check is
+  // wired against live Paystack); when on, the account must also be bvnVerified.
+  if (!bank.verified) {
+    throw new ApiError(403, 'UNVERIFIED_ACCOUNT', 'bank account is not verified for payouts');
+  }
+  if (env.WITHDRAWAL_REQUIRE_BVN && !bank.bvnVerified) {
+    throw new ApiError(403, 'UNVERIFIED_ACCOUNT', 'bank account requires BVN verification before payouts');
   }
   if (!bank.paystackRecipientCode) throw new Error('bank account has no transfer recipient');
   const recipientCode = bank.paystackRecipientCode;

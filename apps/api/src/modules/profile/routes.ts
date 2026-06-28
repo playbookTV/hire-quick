@@ -311,6 +311,14 @@ export function profileRouter(storage?: StoragePort): Router {
         update: { userId: req.auth.userId, platform, lastSeenAt: new Date() },
         create: { userId: req.auth.userId, fcmToken, platform },
       });
+      // Registering a device is the consent signal for push (NDPR). Record it
+      // explicitly, but don't clobber a prior withdrawal — re-registering only
+      // (re)grants when not already on record as granted.
+      await prisma.consentRecord.upsert({
+        where: { userId_purpose: { userId: req.auth.userId, purpose: 'PUSH_NOTIFICATIONS' } },
+        update: { granted: true, withdrawnAt: null, grantedAt: new Date() },
+        create: { userId: req.auth.userId, purpose: 'PUSH_NOTIFICATIONS', granted: true, source: 'EXPLICIT' },
+      });
       res.status(201).json({ registered: true });
     }),
   );

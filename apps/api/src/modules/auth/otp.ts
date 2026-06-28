@@ -72,7 +72,14 @@ export async function verifyOtp(phone: string, code: string, role?: UserRole): P
     }
     throw new ApiError(400, 'OTP_INVALID', 'incorrect code');
   }
-  await prisma.verificationCode.update({ where: { id: rec.id }, data: { consumedAt: new Date() } });
+  // Consume atomically (compare-and-swap on consumedAt): two concurrent
+  // submissions of the same valid code must not both mint tokens — only the
+  // request that flips consumedAt from null wins.
+  const consumed = await prisma.verificationCode.updateMany({
+    where: { id: rec.id, consumedAt: null },
+    data: { consumedAt: new Date() },
+  });
+  if (consumed.count === 0) throw new ApiError(400, 'OTP_INVALID', 'code already used; request a new one');
 
   let user = await prisma.user.findUnique({ where: { phone } });
   // A suspended or erased account must not be able to re-authenticate, even with

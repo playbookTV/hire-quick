@@ -54,7 +54,7 @@ export function createWorker(): Worker {
       case 'noshow':
         return jobNoShow(deps, realtime);
       case 'reconcile':
-        return jobReconcile(deps);
+        return jobReconcile(deps, realtime);
       case 'commission':
         return jobCommissionSweep(deps);
       case 'resumeOps':

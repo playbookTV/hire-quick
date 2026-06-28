@@ -30,12 +30,32 @@ export async function jobNoShow(deps: Deps, realtime: RealtimeGateway = noopGate
   if (r.noShows.length) log(`flagged ${String(r.noShows.length)} no-show(s)`);
 }
 
-export async function jobReconcile(deps: Deps): Promise<void> {
+export async function jobReconcile(deps: Deps, realtime: RealtimeGateway = noopGateway): Promise<void> {
   const r = await reconcile(prisma, deps.paystack);
-  if (!r.ok) {
-    log(`⚠ RECONCILIATION ALARM drift=${String(r.driftKobo)} stale=${String(r.staleHeldBookingIds.length)}`);
-  } else {
+  if (r.ok) {
     log('reconciliation ok');
+    return;
+  }
+  log(`⚠ RECONCILIATION ALARM drift=${String(r.driftKobo)} stale=${String(r.staleHeldBookingIds.length)}`);
+  // Push the alarm to the admin operational feed so drift gets investigated and
+  // stale HELD allocations are actioned before Paystack's 90-day Manual Payouts
+  // cutoff (§10/§17) — previously this was log-only and nothing consumed it.
+  realtime.emitToAdmins('recon:alarm', {
+    driftKobo: r.driftKobo,
+    staleHeldBookingIds: r.staleHeldBookingIds,
+    at: new Date().toISOString(),
+  });
+  if (r.staleHeldBookingIds.length > 0) {
+    await writeAudit({
+      actorId: null,
+      action: 'reconciliation.stale_held',
+      target: 'system',
+      metadata: {
+        count: r.staleHeldBookingIds.length,
+        bookingIds: r.staleHeldBookingIds,
+        driftKobo: r.driftKobo,
+      },
+    });
   }
 }
 
@@ -101,6 +121,9 @@ export async function jobRetentionPurge(storage?: StoragePort): Promise<void> {
     },
   });
   const devices = await prisma.deviceToken.deleteMany({ where: { lastSeenAt: { lt: deviceCutoff } } });
+  // Refresh-token denylist: a revoked jti only needs to outlive the token it
+  // blocks; once expired the JWT is rejected on its own, so the row is dead weight.
+  const revokedTokens = await prisma.revokedToken.deleteMany({ where: { expiresAt: { lt: new Date(now) } } });
 
   // KYC raw documents (TRD §14): delete the ID doc + selfie objects 90 days after
   // VERIFIED (APPROVED) / 30 days after REJECTED, leaving only the pass/fail flag
@@ -161,6 +184,7 @@ export async function jobRetentionPurge(storage?: StoragePort): Promise<void> {
     metadata: {
       verificationCodes: otp.count,
       deviceTokens: devices.count,
+      revokedTokens: revokedTokens.count,
       kycDocuments: kycRows.length,
       messages: chatDeleted,
     },

@@ -63,6 +63,18 @@ const EnvSchema = z.object({
   BREVO_WHATSAPP_SENDER: z.string().default(''),
   BREVO_WHATSAPP_OTP_TEMPLATE_ID: z.coerce.number().int().nonnegative().default(0),
   BREVO_WHATSAPP_OTP_PARAM: z.string().default('code'),
+  // Firebase Cloud Messaging (push). All three from the service-account JSON.
+  // When all are set, recordPush sends real pushes; otherwise it stubs to a log.
+  FCM_PROJECT_ID: z.string().default(''),
+  FCM_CLIENT_EMAIL: z.string().default(''),
+  FCM_PRIVATE_KEY: z.string().default(''),
+  // §23 Q3: when 'true', a payout additionally requires a BVN-verified bank
+  // account. Off until the live Paystack BVN match is wired; the account-name
+  // verification gate applies regardless.
+  WITHDRAWAL_REQUIRE_BVN: z
+    .string()
+    .default('false')
+    .transform((v) => v === 'true'),
 }).superRefine((cfg, ctx) => {
   // Fail fast: the JWT secrets carry dev-friendly defaults so tests/dev boot with
   // zero config, but in production a forgotten env var would mean signing tokens

@@ -3,6 +3,7 @@
  * via plain fetch. When BREVO_API_KEY is unset it logs (dev stub). Every send is
  * recorded so tests can assert intent without network.
  */
+import { SignJWT, importPKCS8 } from 'jose';
 import { env } from '../../env.js';
 
 export interface SentRecord {
@@ -113,8 +114,60 @@ export async function sendWhatsAppOtp(to: string, code: string): Promise<boolean
   return true;
 }
 
-/** FCM push is stubbed until creds; record intent so the lifecycle wiring is testable. */
+// ---- FCM push (HTTP v1) ----
+function fcmConfigured(): boolean {
+  return !!env.FCM_PROJECT_ID && !!env.FCM_CLIENT_EMAIL && !!env.FCM_PRIVATE_KEY;
+}
+
+// Cached service-account OAuth token (FCM v1 needs a Bearer token, ~1h-lived).
+let fcmAuth: { token: string; expSec: number } | null = null;
+
+async function fcmAccessToken(): Promise<string> {
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (fcmAuth && fcmAuth.expSec - 60 > nowSec) return fcmAuth.token;
+  // Service-account JWT-bearer grant → short-lived access token (Google OAuth2).
+  const key = await importPKCS8(env.FCM_PRIVATE_KEY.replace(/\\n/g, '\n'), 'RS256');
+  const assertion = await new SignJWT({ scope: 'https://www.googleapis.com/auth/firebase.messaging' })
+    .setProtectedHeader({ alg: 'RS256' })
+    .setIssuer(env.FCM_CLIENT_EMAIL)
+    .setSubject(env.FCM_CLIENT_EMAIL)
+    .setAudience('https://oauth2.googleapis.com/token')
+    .setIssuedAt(nowSec)
+    .setExpirationTime(nowSec + 3600)
+    .sign(key);
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion }),
+  });
+  if (!res.ok) throw new Error(`FCM token exchange failed: ${String(res.status)}`);
+  const json = (await res.json()) as { access_token: string; expires_in: number };
+  fcmAuth = { token: json.access_token, expSec: nowSec + json.expires_in };
+  return json.access_token;
+}
+
+async function sendFcm(to: string, summary: string): Promise<void> {
+  const token = await fcmAccessToken();
+  const res = await fetch(`https://fcm.googleapis.com/v1/projects/${env.FCM_PROJECT_ID}/messages:send`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ message: { token: to, notification: { title: 'HireQuick', body: summary } } }),
+  });
+  if (!res.ok) log(`push to ${to} failed: ${String(res.status)}`);
+}
+
+/**
+ * FCM push. Always records intent (so lifecycle wiring stays testable); when FCM
+ * creds are configured it also sends via the FCM HTTP v1 API. Fire-and-forget —
+ * a push failure must never block the action that triggered it — so the real
+ * send is not awaited. Falls back to a log stub when creds are unset (the
+ * credentials themselves remain an external gap).
+ */
 export function recordPush(to: string, summary: string): void {
   record({ kind: 'push', to, summary });
-  log(`(stub) push → ${to}: ${summary}`);
+  if (!fcmConfigured()) {
+    log(`(stub) push → ${to}: ${summary}`);
+    return;
+  }
+  void sendFcm(to, summary).catch((e: unknown) => log(`push to ${to} failed: ${String(e)}`));
 }

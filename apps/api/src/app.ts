@@ -15,6 +15,7 @@ import { authRouter } from './modules/auth/routes.js';
 import { profileRouter } from './modules/profile/routes.js';
 import { privacyRouter } from './modules/privacy/routes.js';
 import { notificationsRouter } from './modules/notifications/routes.js';
+import { legalRouter } from './modules/legal/routes.js';
 import { adminRouter } from './modules/admin/routes.js';
 import { eventsRouter } from './modules/events/routes.js';
 import { bookingsRouter } from './modules/bookings/routes.js';
@@ -109,6 +110,7 @@ export function createApp(config: AppConfig = {}): Express {
   app.use('/api/me', profileRouter(config.storage));
   app.use('/api/me', privacyRouter(config.storage));
   app.use('/api/me', notificationsRouter());
+  app.use('/api/legal', legalRouter());
   app.use('/api/admin', adminRouter({ realtime, storage: config.storage, paystack: config.paystack }));
   app.use('/api', bookingsRouter({ realtime, paystack: config.paystack }));
   app.use('/api', ushersRouter(config.storage));

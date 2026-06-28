@@ -21,7 +21,17 @@ async function deliver(userId: string, title: string, body: string): Promise<voi
     prisma.deviceToken.findMany({ where: { userId }, select: { fcmToken: true } }),
   ]);
   if (user?.email) await sendEmail(user.email, title, `<p>${body}</p>`);
-  for (const t of tokens) recordPush(t.fcmToken, `${title}: ${body}`);
+  if (tokens.length === 0) return; // nothing to push → skip the consent lookup
+  // Push unless consent was explicitly withdrawn. Absence of a record means
+  // implicit consent (registering a device is the signal), so existing tokens
+  // keep working; an explicit withdraw (granted=false) suppresses push.
+  const pushConsent = await prisma.consentRecord.findUnique({
+    where: { userId_purpose: { userId, purpose: 'PUSH_NOTIFICATIONS' } },
+    select: { granted: true },
+  });
+  if (pushConsent?.granted !== false) {
+    for (const t of tokens) recordPush(t.fcmToken, `${title}: ${body}`);
+  }
 }
 
 /**

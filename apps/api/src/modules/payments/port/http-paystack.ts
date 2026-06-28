@@ -145,10 +145,31 @@ export class HttpPaystack implements PaystackPort {
     }
   }
 
-  async refund(params: { chargeReference: string; amountKobo: number }): Promise<{ status: 'processed' }> {
+  async refund(params: {
+    chargeReference: string;
+    amountKobo: number;
+    reference: string;
+  }): Promise<{ status: 'processed' }> {
+    // Paystack's POST /refund has no native idempotency field, so we dedup on a
+    // merchant_note carrying the caller's deterministic `reference` (the durable
+    // BOOKING_REFUND dedupeKey). Before creating a refund, list this charge's
+    // refunds and short-circuit when one already carries this reference — that's
+    // a replay (e.g. a crash between the call and the PROVIDER_OK commit) and
+    // must NOT issue a second refund. Per-booking dedup is why a transaction-only
+    // check is insufficient. (PaystackPort contract; mirrors InMemoryPaystack.)
+    const existing = await this.call<Array<{ merchant_note?: string | null }>>(
+      `/refund?transaction=${encodeURIComponent(params.chargeReference)}`,
+    );
+    if (existing.some((r) => r.merchant_note === params.reference)) {
+      return { status: 'processed' };
+    }
     await this.call('/refund', {
       method: 'POST',
-      body: JSON.stringify({ transaction: params.chargeReference, amount: params.amountKobo }),
+      body: JSON.stringify({
+        transaction: params.chargeReference,
+        amount: params.amountKobo,
+        merchant_note: params.reference,
+      }),
     });
     return { status: 'processed' };
   }

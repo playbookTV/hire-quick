@@ -222,7 +222,14 @@ export async function verifyCheckin(
     if (rec) await prisma.verificationCode.update({ where: { id: rec.id }, data: { attempts: { increment: 1 } } });
     throw new ApiError(400, 'CODE_INVALID', 'invalid attendance code');
   }
-  await prisma.verificationCode.update({ where: { id: rec.id }, data: { consumedAt: new Date() } });
+  // Consume atomically (compare-and-swap on consumedAt) so two concurrent
+  // submissions of the same code can't both drive a check-in — only the request
+  // that flips consumedAt from null proceeds.
+  const consumed = await prisma.verificationCode.updateMany({
+    where: { id: rec.id, consumedAt: null },
+    data: { consumedAt: new Date() },
+  });
+  if (consumed.count === 0) throw new ApiError(400, 'CODE_INVALID', 'attendance code already used');
   await prisma.$transaction((tx) => markCheckedIn(tx, bookingId, 'OTP'), TX);
   // Check-in is the core of the admin attendance feed (feature #2) + tells the client.
   emitBooking(

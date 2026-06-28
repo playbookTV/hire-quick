@@ -257,6 +257,11 @@ export async function refundBooking(tx: Tx, bookingId: string, amountKobo: numbe
     throw new LedgerError('REFUND_MUST_BE_FULL', `refund ${amountKobo} must equal the held balance ${held}`);
   }
 
+  // §23 Q4 (processing-fee on refund) integration point — INTENTIONALLY INACTIVE.
+  // When DEDUCT_PROCESSING_FEE_ON_REFUND is settled and turned on, the client
+  // refund here becomes refundWithFeeDeduction(amountKobo, REFUND_PROCESSING_FEE_BPS)
+  // and the retained fee needs its own ledger entry plus a reconciliation-formula
+  // update — do NOT just shrink the REFUND amount, or the Balance won't reconcile.
   assertBookingTransition(booking.status, 'REFUNDED');
   if (amountKobo > 0) await appendEscrow(tx, bookingId, 'REFUND', -amountKobo);
   if (booking.payment) {

@@ -5,6 +5,7 @@
  */
 import { z } from 'zod';
 import { ACCOMMODATION_STATUSES, REWARD_TYPES } from './enums.js';
+import { MAX_INT32_KOBO } from './money.js';
 
 export const uuid = z.string().uuid();
 
@@ -47,7 +48,7 @@ export type ConfirmOrderInput = z.infer<typeof confirmOrderSchema>;
 /** ★ POST /withdrawals — usher withdraws available wallet balance to a bank account. */
 export const withdrawSchema = z.object({
   bankAccountId: uuid,
-  amountKobo: z.number().int().positive(),
+  amountKobo: z.number().int().positive().max(MAX_INT32_KOBO),
 });
 export type WithdrawInput = z.infer<typeof withdrawSchema>;
 
@@ -70,10 +71,10 @@ export const eventFields = z.object({
   venue: z.string().min(2).max(200),
   category: z.string().min(2).max(60),
   eventDate: z.coerce.date(),
-  startTime: z.string().regex(/^\d{2}:\d{2}$/),
-  endTime: z.string().regex(/^\d{2}:\d{2}$/),
+  startTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  endTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
   headcount: z.number().int().min(1).max(100),
-  budgetPerHeadKobo: z.number().int().positive(),
+  budgetPerHeadKobo: z.number().int().positive().max(MAX_INT32_KOBO),
   dressCode: z.string().max(200).optional(),
   accommodation: z.enum(ACCOMMODATION_STATUSES).optional(),
   requirements: z.string().max(2000).optional(),
@@ -88,6 +89,12 @@ export const createEventSchema = eventFields
   .refine((e) => accommodationDisclosed(e.endTime, e.accommodation), {
     message: 'Accommodation must be disclosed for events ending at or after 10:00 PM.',
     path: ['accommodation'],
+  })
+  // The aggregate charge (Order.gross = headcount × budgetPerHead) must also fit
+  // the signed 32-bit Int money column, not just each field on its own.
+  .refine((e) => e.headcount * e.budgetPerHeadKobo <= MAX_INT32_KOBO, {
+    message: 'Total event budget exceeds the maximum allowed.',
+    path: ['budgetPerHeadKobo'],
   });
 export type CreateEventInput = z.infer<typeof createEventSchema>;
 
