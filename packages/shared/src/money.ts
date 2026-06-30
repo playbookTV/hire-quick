@@ -57,6 +57,26 @@ export function pctOf(amount: Kobo, pct: number): Kobo {
   return kobo(Math.floor((amount * pct) / 100));
 }
 
+/**
+ * Split a refund into the amount returned to the client and the non-refundable
+ * processing fee retained, using basis points. Like `splitFee`, the fee is
+ * floored and the client refund is the exact remainder, so
+ * `clientRefund + retainedFee === refund` (no rounding leak).
+ *
+ * SCAFFOLD ONLY (TRD §23 Q4 pending). This computes the split but is NOT wired
+ * into the live refund path: enabling fee-on-refund also requires a ledger entry
+ * for the retained fee and a reconciliation-formula update, which wait on the
+ * Q4 answer. See `DEDUCT_PROCESSING_FEE_ON_REFUND` in `policy.ts`.
+ */
+export function refundWithFeeDeduction(refund: Kobo, feeBps: number): { clientRefund: Kobo; retainedFee: Kobo } {
+  if (!Number.isInteger(feeBps) || feeBps < 0 || feeBps > 10_000) {
+    throw new MoneyError(`feeBps must be an integer in [0, 10000], got ${feeBps}`);
+  }
+  const retainedFee = kobo(Math.floor((refund * feeBps) / 10_000));
+  const clientRefund = subKobo(refund, retainedFee);
+  return { clientRefund, retainedFee };
+}
+
 /** Format kobo as a ₦ string for display/logging (not for math). */
 export function formatNaira(amount: Kobo): string {
   const sign = amount < 0 ? '-' : '';
@@ -68,3 +88,11 @@ export function formatNaira(amount: Kobo): string {
 
 export const ZERO = kobo(0);
 export const PLATFORM_FEE_BPS = 1500; // 15% (TRD §6 / EXEC §6)
+
+/**
+ * Upper bound for any single kobo amount accepted at the API boundary. Money is
+ * stored in Postgres `Int` (signed 32-bit), so a value past this overflows the
+ * column — and an aggregate (e.g. `Order.gross = headcount × budgetPerHead`)
+ * must also stay within it. DTOs cap inputs to this; see `dto.ts`.
+ */
+export const MAX_INT32_KOBO = 2_147_483_647;

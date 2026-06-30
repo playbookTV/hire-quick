@@ -24,7 +24,8 @@ describe('scheduled jobs (TRD §17, D1/D3)', () => {
       data: { eventDate: new Date('2020-01-01'), startTime: '10:00', endTime: '18:00' },
     });
 
-    const { noShows } = await noShowSweep(new Date());
+    const deps = { prisma, paystack: new InMemoryPaystack() };
+    const { noShows } = await noShowSweep(deps);
     expect(noShows).toContain(scenario.bookingIds[0]);
 
     const booking = await prisma.booking.findUniqueOrThrow({

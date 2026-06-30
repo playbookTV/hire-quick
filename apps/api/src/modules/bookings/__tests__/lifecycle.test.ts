@@ -124,7 +124,8 @@ describe('full booking lifecycle (TRD §7/§8/§12)', () => {
       .post(`/api/bookings/${s.bookingId}/checkin/generate`)
       .set('Authorization', `Bearer ${s.clientToken}`);
     expect(gen.status).toBe(200);
-    const code = gen.body.devCode as string;
+    const code = gen.body.code as string;
+    expect(code).toMatch(/^\d{4,}$/); // returned in every env so the client can relay it
 
     const verify = await request(app)
       .post(`/api/bookings/${s.bookingId}/checkin/verify`)

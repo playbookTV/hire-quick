@@ -10,9 +10,10 @@ import type { UserRole } from '@hq/shared';
 import { Screen } from '../../components/Screen.js';
 import { AppBar } from '../../components/AppBar.js';
 import { Button } from '../../components/Button.js';
+import { StepIndicator } from '../../components/StepIndicator.js';
 import { Box, Text, useTheme } from '../../theme/restyle.js';
 import { useRequestOtp } from '../../lib/hooks.js';
-import { ApiError } from '../../lib/api-error.js';
+import { userMessage } from '../../lib/api-error.js';
 
 export default function Phone(): React.JSX.Element {
   const router = useRouter();
@@ -38,7 +39,7 @@ export default function Phone(): React.JSX.Element {
         params: { phone, role: role ?? '', devCode: res.devCode ?? '' },
       });
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Could not send code. Try again.');
+      setError(userMessage(e));
     }
   };
 
@@ -46,6 +47,9 @@ export default function Phone(): React.JSX.Element {
     <Box flex={1} backgroundColor="bgCanvas">
       <AppBar showBack />
       <Screen scroll>
+        <Box marginBottom="500">
+          <StepIndicator total={3} current={0} label="ACCOUNT SETUP" />
+        </Box>
         <Box style={{ gap: 16 }} marginBottom="600">
           <Box style={{ gap: 8 }}>
             <Text variant="h1">What’s your number?</Text>
@@ -71,6 +75,13 @@ export default function Phone(): React.JSX.Element {
               placeholder="801 234 5678"
               placeholderTextColor={theme.colors.inkFaint}
               keyboardType="phone-pad"
+              textContentType="telephoneNumber"
+              autoComplete="tel"
+              accessibilityLabel="Phone number"
+              returnKeyType="send"
+              onSubmitEditing={() => {
+                if (valid) void submit();
+              }}
               autoFocus
               maxLength={15}
               style={{ flex: 1, fontFamily: 'PlusJakartaSans_400Regular', fontSize: 16, color: theme.colors.inkStrong, paddingVertical: 0 }}
@@ -82,7 +93,7 @@ export default function Phone(): React.JSX.Element {
           </Text>
         </Box>
 
-        <Button label="Send code" disabled={!valid} loading={requestOtp.isPending} onPress={submit} />
+        <Button label="Send code" disabled={!valid} loading={requestOtp.isPending} onPress={() => void submit()} />
       </Screen>
     </Box>
   );

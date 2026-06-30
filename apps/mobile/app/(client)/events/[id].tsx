@@ -12,6 +12,8 @@ import { Screen } from '../../../components/Screen.js';
 import { AppBar } from '../../../components/AppBar.js';
 import { Card } from '../../../components/Card.js';
 import { StatusPill } from '../../../components/StatusPill.js';
+import { CoverImage } from '../../../components/CoverImage.js';
+import { CategoryBadge } from '../../../components/CategoryBadge.js';
 import { MetaRow } from '../../../components/MetaRow.js';
 import { KeyValueRow } from '../../../components/KeyValueRow.js';
 import { SectionHeader } from '../../../components/SectionHeader.js';
@@ -20,7 +22,7 @@ import { Dot } from '../../../components/Dot.js';
 import { EmptyState } from '../../../components/EmptyState.js';
 import { Loading } from '../../../components/Loading.js';
 import { useTheme, Box, Text } from '../../../theme/restyle.js';
-import { useEvent } from '../../../lib/hooks.js';
+import { useEvent, useBookings } from '../../../lib/hooks.js';
 import { formatEventDate, formatTimeRange } from '../../../lib/format.js';
 import { ApiError } from '../../../lib/api-error.js';
 
@@ -52,6 +54,9 @@ export default function EventDetail(): React.JSX.Element {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: event, isLoading, error, refetch } = useEvent(id ?? '');
+  const bookings = useBookings();
+  const eventBookings = (bookings.data ?? []).filter((b) => b.eventId === id);
+  const firstBooking = eventBookings[0]?.id;
 
   if (isLoading) {
     return (
@@ -74,7 +79,7 @@ export default function EventDetail(): React.JSX.Element {
             title={notFound ? 'Event not found' : 'Couldn’t load this event'}
             subtitle={notFound ? 'It may have been removed.' : 'Check your connection and try again.'}
             actionLabel="Retry"
-            onAction={() => refetch()}
+            onAction={() => { void refetch(); }}
           />
         </Box>
       </Box>
@@ -87,11 +92,21 @@ export default function EventDetail(): React.JSX.Element {
   const open = Math.max(0, event.headcount - confirmed);
   const requirements = event.preferences?.requirements;
   const dots = Math.min(event.headcount, 12);
+  // Editable only before any booking is confirmed (mirrors the PATCH guard).
+  const editable =
+    (event.status === 'OPEN' || event.status === 'PARTIALLY_STAFFED') && (event._count?.bookings ?? 0) === 0;
 
   return (
     <Box flex={1} backgroundColor="bgCanvas">
       <AppBar showBack inset title="Event" />
       <Screen scroll>
+        {/* hero */}
+        <Box marginBottom="400">
+          <CoverImage category={event.category} height={110}>
+            <CategoryBadge category={event.category} size="sm" />
+          </CoverImage>
+        </Box>
+
         {/* header */}
         <Box flexDirection="row" alignItems="center" justifyContent="space-between" style={{ gap: 12 }} marginBottom="200">
           <Text variant="h1" style={{ flex: 1 }} numberOfLines={2}>
@@ -143,20 +158,32 @@ export default function EventDetail(): React.JSX.Element {
           </>
         ) : null}
 
-        {/* quick actions */}
-        <Box height={16} />
-        <Box flexDirection="row" flexWrap="wrap" style={{ gap: 8 }}>
-          <ActionChip label="Add slots" />
-          <ActionChip label="Message all" onPress={() => router.push('/(client)/messages')} />
-          <ActionChip label="Cancel event" danger onPress={() => router.push('/(modals)/cancellation')} />
-        </Box>
-
+        {/* primary action */}
         <Box height={20} />
         <Button
           label={`Review applications${applicants ? ` (${applicants})` : ''}`}
           disabled={applicants === 0}
-          onPress={() => router.push('/(modals)/applications')}
+          onPress={() => router.push({ pathname: '/(modals)/applications', params: { id } })}
         />
+
+        {/* secondary actions */}
+        <Box height={16} />
+        <Box flexDirection="row" flexWrap="wrap" style={{ gap: 8 }}>
+          {editable ? (
+            <ActionChip label="Edit event" onPress={() => router.push({ pathname: '/(modals)/edit-event', params: { id } })} />
+          ) : null}
+          {eventBookings.length > 0 ? (
+            <ActionChip label="Event day" onPress={() => router.push({ pathname: '/(modals)/event-day', params: { id } })} />
+          ) : null}
+          <ActionChip label="Message all" onPress={() => router.push('/(client)/messages')} />
+          {eventBookings.length === 1 && firstBooking ? (
+            <ActionChip label="Cancel booking" danger onPress={() => router.push({ pathname: '/(modals)/cancellation', params: { booking: firstBooking } })} />
+          ) : eventBookings.length > 1 ? (
+            // Multi-usher events: cancel per-usher from the Event-Day roster, not a single
+            // chip that would silently cancel only the first booking (C5).
+            <ActionChip label="Cancel a booking" danger onPress={() => router.push({ pathname: '/(modals)/event-day', params: { id } })} />
+          ) : null}
+        </Box>
         <Box style={{ height: insets.bottom }} />
       </Screen>
     </Box>

@@ -9,12 +9,20 @@ import { useTheme, Box } from '../theme/restyle.js';
 interface ToggleProps {
   value: boolean;
   onChange: (value: boolean) => void;
+  /** Spoken name of what this switch controls, e.g. "Available for work". */
+  label?: string;
 }
 
-export function Toggle({ value, onChange }: ToggleProps): React.JSX.Element {
+export function Toggle({ value, onChange, label }: ToggleProps): React.JSX.Element {
   const theme = useTheme();
   return (
-    <Pressable onPress={() => onChange(!value)} hitSlop={8}>
+    <Pressable
+      onPress={() => onChange(!value)}
+      hitSlop={8}
+      accessibilityRole="switch"
+      accessibilityLabel={label}
+      accessibilityState={{ checked: value }}
+    >
       <Box
         style={{
           width: 46,

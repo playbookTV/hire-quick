@@ -2,16 +2,15 @@
   "expo": {
     "name": "HireQuick",
     "slug": "hirequick",
+    "owner": "ovalay-studios",
     "scheme": "hirequick",
     "version": "0.0.1",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "splash": {
-      "backgroundColor": "#FBF7F0",
-      "resizeMode": "contain"
-    },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.hirequick.mobile"
@@ -20,15 +19,32 @@
       "package": "com.hirequick.mobile",
       "adaptiveIcon": {
         "backgroundColor": "#FBF7F0"
-      }
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "expo-font"
+      "expo-font",
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "HireQuick needs photo access so you can upload your ID, profile photo, and work photos.",
+          "cameraPermission": "HireQuick needs camera access so you can take a verification selfie or profile photo."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": false
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "2b9864f5-7637-4151-983b-8a1bc1c29459"
+      }
     }
   }
 }

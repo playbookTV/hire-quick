@@ -16,6 +16,7 @@ import theme, { darkTheme } from '../theme/theme.js';
 import { useAppFonts } from '../theme/fonts.js';
 import { queryClient } from '../lib/query.js';
 import { AuthProvider } from '../lib/auth-context.js';
+import { ToastProvider } from '../lib/toast.js';
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -37,14 +38,18 @@ export default function RootLayout(): React.JSX.Element | null {
         <ThemeProvider theme={activeTheme}>
           <QueryClientProvider client={queryClient}>
             <AuthProvider>
-              <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="index" />
-                <Stack.Screen name="(auth)" />
-                <Stack.Screen name="(client)" />
-                <Stack.Screen name="(usher)" />
-                <Stack.Screen name="(modals)" options={{ presentation: 'modal' }} />
-              </Stack>
+              <ToastProvider>
+                <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+                <Stack screenOptions={{ headerShown: false }}>
+                  <Stack.Screen name="index" />
+                  <Stack.Screen name="(auth)" />
+                  <Stack.Screen name="(client)" />
+                  <Stack.Screen name="(usher)" />
+                  {/* Verification is a first-class card flow (gestures off in its layout), not a modal. */}
+                  <Stack.Screen name="(verification)" />
+                  <Stack.Screen name="(modals)" options={{ presentation: 'modal' }} />
+                </Stack>
+              </ToastProvider>
             </AuthProvider>
           </QueryClientProvider>
         </ThemeProvider>

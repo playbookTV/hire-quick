@@ -7,6 +7,16 @@
 export type CancelWindow = 'GT_48H' | 'BETWEEN_12_48H' | 'LT_12H';
 export type CancelActor = 'CLIENT' | 'USHER';
 
+/**
+ * Whether the non-refundable Paystack processing fee is deducted from a client
+ * refund (TRD §23 Q4). DEFAULT OFF and intentionally not yet wired into the
+ * ledger: turning this on also requires a retained-fee ledger entry and a
+ * reconciliation-formula change. Pair with `refundWithFeeDeduction` in money.ts.
+ */
+export const DEDUCT_PROCESSING_FEE_ON_REFUND = false;
+/** Paystack processing fee in basis points, applied only when the flag above is on. */
+export const REFUND_PROCESSING_FEE_BPS = 150; // 1.5% — placeholder until §23 Q4 settles
+
 export type ReputationEffect = 'NONE' | 'MINOR_FLAG' | 'PENALTY' | 'MAJOR_PENALTY';
 
 export interface PolicyOutcome {

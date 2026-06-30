@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { prisma } from '@hq/database';
 import { ApiError } from '../../app.js';
 import { requestOtp, verifyOtp } from './otp.js';
-import { signAccessToken, signRefreshToken, verifyRefreshToken } from './tokens.js';
+import { signAccessToken, signRefreshToken, verifyRefreshToken, revokeRefreshToken } from './tokens.js';
+import { writeAudit } from '../audit.js';
 
 type Handler = (req: Request, res: Response) => Promise<void>;
 const wrap =
@@ -29,7 +30,8 @@ export function authRouter(): Router {
     wrap(async (req, res) => {
       const { phone: p } = otpRequestSchema.parse(req.body);
       const out = await requestOtp(p);
-      res.status(200).json({ sent: true, ...out });
+      // Surface real delivery status (out.sent) instead of always-true.
+      res.status(out.sent ? 200 : 502).json(out);
     }),
   );
 
@@ -47,29 +49,47 @@ export function authRouter(): Router {
     wrap(async (req, res) => {
       const { refreshToken } = refreshSchema.parse(req.body);
       let userId: string;
+      let jti: string;
       try {
-        ({ userId } = await verifyRefreshToken(refreshToken));
+        ({ userId, jti } = await verifyRefreshToken(refreshToken));
       } catch {
         throw new ApiError(401, 'INVALID_REFRESH', 'invalid or expired refresh token');
       }
+      // Denylist check: a token revoked on logout, or already consumed by an
+      // earlier rotation, must not mint a new pair.
+      if (await prisma.revokedToken.findUnique({ where: { jti } })) {
+        throw new ApiError(401, 'INVALID_REFRESH', 'refresh token has been revoked');
+      }
       const user = await prisma.user.findUnique({ where: { id: userId } });
-      if (!user || user.status === 'SUSPENDED') {
+      // Any non-ACTIVE state (SUSPENDED, ANONYMIZED, PENDING) must not mint tokens.
+      if (!user || user.status !== 'ACTIVE') {
         throw new ApiError(401, 'INVALID_REFRESH', 'user not active');
       }
-      // Rotation: issue a fresh pair on every refresh.
+      // Rotation: issue a fresh pair and burn the presented token so it can't be
+      // replayed (single-use refresh).
       const [accessToken, newRefresh] = await Promise.all([
         signAccessToken(user.id, user.role),
         signRefreshToken(user.id),
+        revokeRefreshToken(refreshToken),
       ]);
+      await writeAudit({ actorId: user.id, action: 'auth.refresh', target: user.id });
       res.status(200).json({ accessToken, refreshToken: newRefresh });
     }),
   );
 
-  // Stateless JWTs: logout is client-side discard. A refresh denylist is a
-  // documented hardening item (Phase 9).
-  r.post('/logout', (_req, res) => {
-    res.status(204).end();
-  });
+  // Logout revokes the presented refresh token via the denylist (best-effort:
+  // a malformed/expired token still returns 204 so logout is idempotent).
+  r.post(
+    '/logout',
+    wrap(async (req, res) => {
+      const parsed = refreshSchema.safeParse(req.body);
+      if (parsed.success) {
+        const revoked = await revokeRefreshToken(parsed.data.refreshToken);
+        if (revoked) await writeAudit({ actorId: revoked.userId, action: 'auth.logout', target: revoked.userId });
+      }
+      res.status(204).end();
+    }),
+  );
 
   return r;
 }

@@ -10,6 +10,9 @@ import { requireAuth, requireRole, type AuthedRequest } from '../auth/middleware
 import { writeAudit } from '../audit.js';
 import { resolveDispute, createRefund, decideApproval, APPROVAL_THRESHOLD_KOBO } from './service.js';
 import { createMilestoneTierSchema, updateMilestoneTierSchema } from '@hq/shared';
+import type { RealtimeGateway } from '../../realtime/gateway.js';
+import type { PaystackPort } from '../payments/port/paystack-port.js';
+import { type StoragePort, presignDoc } from '../storage/storage.js';
 
 type Handler = (req: AuthedRequest, res: Response) => Promise<void>;
 const wrap =
@@ -20,9 +23,20 @@ const wrap =
 
 const rejectSchema = z.object({ reason: z.string().min(3).max(500) });
 
-export function adminRouter(): Router {
+export function adminRouter(deps: {
+  realtime: RealtimeGateway;
+  storage?: StoragePort | undefined;
+  paystack?: PaystackPort | undefined;
+}): Router {
   const r = Router();
   r.use(requireAuth, requireRole('ADMIN'));
+
+  // Refund/dispute execution issues a real Paystack refund, so those routes
+  // can't run without a configured port.
+  const requirePaystack = (): PaystackPort => {
+    if (!deps.paystack) throw new ApiError(503, 'PAYMENTS_UNAVAILABLE', 'payments are not configured');
+    return deps.paystack;
+  };
 
   // dashboard counters
   r.get(
@@ -51,13 +65,27 @@ export function adminRouter(): Router {
     '/verifications',
     wrap(async (req, res) => {
       const status = z.enum(['PENDING', 'APPROVED', 'REJECTED']).catch('PENDING').parse(req.query.status);
-      res.json(
-        await prisma.usherVerification.findMany({
-          where: { status },
-          orderBy: { createdAt: 'asc' },
-          include: { usher: { include: { user: { select: { phone: true, email: true } } } } },
-        }),
+      const list = await prisma.usherVerification.findMany({
+        where: { status },
+        orderBy: { createdAt: 'asc' },
+        include: { usher: { include: { user: { select: { phone: true, email: true } } } } },
+      });
+      // Sensitive class (TRD §14): log who saw which ID documents. One aggregate
+      // row per list view, not one per record, to stay proportionate.
+      await writeAudit({
+        actorId: req.auth.userId,
+        action: 'verification.read',
+        target: status,
+        metadata: { byAdmin: true, count: list.length, ids: list.map((v) => v.id) },
+      });
+      const resolved = await Promise.all(
+        list.map(async (v) => ({
+          ...v,
+          idDocumentUrl: await presignDoc(deps.storage, v.idDocumentUrl),
+          selfieUrl: await presignDoc(deps.storage, v.selfieUrl),
+        })),
       );
+      res.json(resolved);
     }),
   );
 
@@ -68,7 +96,10 @@ export function adminRouter(): Router {
       const v = await prisma.usherVerification.findUnique({ where: { id } });
       if (!v) throw new ApiError(404, 'NOT_FOUND', 'verification not found');
       await prisma.$transaction([
-        prisma.usherVerification.update({ where: { id }, data: { status: 'APPROVED', reviewedById: req.auth.userId } }),
+        prisma.usherVerification.update({
+          where: { id },
+          data: { status: 'APPROVED', reviewedById: req.auth.userId, reviewedAt: new Date() },
+        }),
         prisma.usher.update({ where: { id: v.usherId }, data: { verificationStatus: 'VERIFIED' } }),
       ]);
       await writeAudit({ actorId: req.auth.userId, action: 'verification.approve', target: id });
@@ -84,7 +115,10 @@ export function adminRouter(): Router {
       const v = await prisma.usherVerification.findUnique({ where: { id } });
       if (!v) throw new ApiError(404, 'NOT_FOUND', 'verification not found');
       await prisma.$transaction([
-        prisma.usherVerification.update({ where: { id }, data: { status: 'REJECTED', reviewedById: req.auth.userId, reason } }),
+        prisma.usherVerification.update({
+          where: { id },
+          data: { status: 'REJECTED', reviewedById: req.auth.userId, reason, reviewedAt: new Date() },
+        }),
         prisma.usher.update({ where: { id: v.usherId }, data: { verificationStatus: 'REJECTED' } }),
       ]);
       await writeAudit({ actorId: req.auth.userId, action: 'verification.reject', target: id, metadata: { reason } });
@@ -113,7 +147,7 @@ export function adminRouter(): Router {
       const { outcome, resolution } = z
         .object({ outcome: z.enum(['RELEASE', 'REFUND']), resolution: z.string().min(3).max(1000) })
         .parse(req.body);
-      const out = await resolveDispute(req.auth.userId, String(req.params.id), outcome, resolution);
+      const out = await resolveDispute(req.auth.userId, String(req.params.id), outcome, resolution, requirePaystack(), deps.realtime);
       res.json(out);
     }),
   );
@@ -125,7 +159,7 @@ export function adminRouter(): Router {
       const { bookingId, amountKobo, reason } = z
         .object({ bookingId: z.string().uuid(), amountKobo: z.number().int().positive(), reason: z.string().min(3).max(500) })
         .parse(req.body);
-      const out = await createRefund(req.auth.userId, bookingId, amountKobo, reason);
+      const out = await createRefund(req.auth.userId, bookingId, amountKobo, reason, requirePaystack());
       res.json(out);
     }),
   );
@@ -149,7 +183,7 @@ export function adminRouter(): Router {
     '/approvals/:id',
     wrap(async (req, res) => {
       const { decision } = z.object({ decision: z.enum(['approve', 'reject']) }).parse(req.body);
-      await decideApproval(req.auth.userId, String(req.params.id), decision);
+      await decideApproval(req.auth.userId, String(req.params.id), decision, requirePaystack(), deps.realtime);
       res.json({ ok: true });
     }),
   );

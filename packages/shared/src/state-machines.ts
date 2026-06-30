@@ -20,8 +20,12 @@ export const BOOKING_TRANSITIONS: Record<BookingStatus, readonly BookingStatus[]
   PENDING_PAYMENT: ['CONFIRMED', 'CANCELLED'],
   CONFIRMED: ['CHECKED_IN', 'CANCELLED', 'NO_SHOW', 'DISPUTED'],
   CHECKED_IN: ['COMPLETED', 'DISPUTED'],
-  COMPLETED: ['PAID', 'DISPUTED'],
-  PAID: ['DISPUTED'], // post-payout dispute → clawback handled at resolution
+  // Disputes are only permitted while funds are still escrowed. Post-payout
+  // dispute (PAID/COMPLETED → DISPUTED) is temporarily forbidden until wallet
+  // clawback/debt is modelled — otherwise resolution double-pays or funds an
+  // unrecorded refund. (Reinstate with a clawback path.)
+  COMPLETED: ['PAID'],
+  PAID: [],
   DISPUTED: ['COMPLETED', 'REFUNDED', 'CANCELLED'], // admin resolution targets
   CANCELLED: ['REFUNDED'],
   NO_SHOW: ['REFUNDED'],
@@ -38,7 +42,11 @@ export const ORDER_TRANSITIONS: Record<OrderStatus, readonly OrderStatus[]> = {
 export const WITHDRAWAL_TRANSITIONS: Record<WithdrawalStatus, readonly WithdrawalStatus[]> = {
   REQUESTED: ['PROCESSING', 'FAILED'],
   PROCESSING: ['PAID', 'FAILED'],
-  PAID: [],
+  // PAID → FAILED covers a `transfer.reversed`: the payout bounced back to the
+  // Balance after success, so the wallet is re-credited (REVERSAL) once and the
+  // withdrawal moves to FAILED. The reversal is idempotent — FAILED is terminal,
+  // so a replayed/duplicate reversal is a no-op.
+  PAID: ['FAILED'],
   FAILED: [], // retry creates a fresh withdrawal; FAILED is terminal
 };
 

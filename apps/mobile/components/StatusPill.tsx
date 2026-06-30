@@ -32,6 +32,11 @@ const STATUS: Record<string, Entry> = {
   PARTIALLY_STAFFED: { label: 'Partially staffed', bg: 'accentGoldTint', fg: 'accentGoldStrong' },
   FULLY_STAFFED: { label: 'Fully staffed', bg: 'brandEmeraldTint', fg: 'brandEmerald' },
   IN_PROGRESS: { label: 'In progress', bg: 'accentGoldTint', fg: 'accentGoldStrong' },
+  // invitation lifecycle
+  SENT: { label: 'Pending', bg: 'bgSubtle', fg: 'inkMuted' },
+  ACCEPTED: { label: 'Accepted', bg: 'brandEmeraldTint', fg: 'brandEmerald' },
+  DECLINED: { label: 'Declined', bg: 'statusDangerTint', fg: 'statusDanger' },
+  EXPIRED: { label: 'Expired', bg: 'bgSubtle', fg: 'inkMuted' },
 };
 
 interface StatusPillProps {
@@ -41,7 +46,7 @@ interface StatusPillProps {
 
 export function StatusPill({ status, label }: StatusPillProps): React.JSX.Element {
   const theme = useTheme();
-  const entry = STATUS[status] ?? { label: label ?? status, bg: 'bgSubtle' as C, fg: 'inkMuted' as C };
+  const entry = STATUS[status] ?? { label: label ?? status, bg: 'bgSubtle', fg: 'inkMuted' };
   return (
     <Box
       style={{

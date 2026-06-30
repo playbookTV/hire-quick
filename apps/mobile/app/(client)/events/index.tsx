@@ -8,7 +8,7 @@ import { Screen } from '../../../components/Screen.js';
 import { AppBar } from '../../../components/AppBar.js';
 import { EventCard } from '../../../components/EventCard.js';
 import { EmptyState } from '../../../components/EmptyState.js';
-import { Loading } from '../../../components/Loading.js';
+import { SkeletonCard } from '../../../components/Skeleton.js';
 import { Box } from '../../../theme/restyle.js';
 import { Icon } from '../../../components/Icon.js';
 import { useEvents } from '../../../lib/hooks.js';
@@ -27,7 +27,32 @@ export default function EventsList(): React.JSX.Element {
     return (
       <Box flex={1} backgroundColor="bgCanvas">
         <AppBar title="Events" inset right={createBtn} />
-        <Loading />
+        <Box style={{ padding: 16, gap: 12 }}>
+          {[0, 1, 2, 3].map((i) => (
+            <SkeletonCard key={i} lines={3} />
+          ))}
+        </Box>
+      </Box>
+    );
+  }
+
+  if (events.isError) {
+    return (
+      <Box flex={1} backgroundColor="bgCanvas">
+        <AppBar title="Events" inset right={createBtn} />
+        <Screen>
+          <Box flex={1} justifyContent="center">
+            <EmptyState
+              icon="alert-circle"
+              title="Couldn’t load your events"
+              subtitle="Check your connection and try again — your events and payments are safe."
+              actionLabel="Try again"
+              onAction={() => {
+                void events.refetch();
+              }}
+            />
+          </Box>
+        </Screen>
       </Box>
     );
   }
@@ -55,7 +80,7 @@ export default function EventsList(): React.JSX.Element {
           keyExtractor={(e) => e.id}
           contentContainerStyle={{ padding: 20, gap: 12 }}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={events.isFetching} onRefresh={() => events.refetch()} />}
+          refreshControl={<RefreshControl refreshing={events.isFetching} onRefresh={() => void events.refetch()} />}
           renderItem={({ item }) => (
             <EventCard event={item} onPress={() => router.push(`/(client)/events/${item.id}`)} />
           )}

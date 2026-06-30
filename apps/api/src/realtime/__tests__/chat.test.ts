@@ -27,7 +27,11 @@ afterAll(() => {
 });
 
 let scenario: Scenario | null = null;
+const extraUserIds: string[] = [];
 afterEach(async () => {
+  if (extraUserIds.length) {
+    await prisma.user.deleteMany({ where: { id: { in: extraUserIds.splice(0) } } });
+  }
   if (scenario) {
     const convs = await prisma.conversation.findMany({ where: { bookingId: { in: scenario.bookingIds } } });
     await prisma.message.deleteMany({ where: { conversationId: { in: convs.map((c) => c.id) } } });
@@ -86,8 +90,12 @@ describe('realtime booking chat (UXRD §6)', () => {
       expect(hist.status).toBe(200);
       expect(hist.body).toHaveLength(2);
 
-      // a non-party cannot join the room
-      const strangerSock = await connect(await signAccessToken(randomUUID(), 'CLIENT'));
+      // a non-party (real ACTIVE user, but not on this booking) cannot join the room
+      const stranger = await prisma.user.create({
+        data: { role: 'CLIENT', phone: `stranger-${randomUUID()}`, status: 'ACTIVE' },
+      });
+      extraUserIds.push(stranger.id);
+      const strangerSock = await connect(await signAccessToken(stranger.id, 'CLIENT'));
       const joinAck = await emitAck<{ ok: boolean }>(strangerSock, 'room:join', { bookingId });
       expect(joinAck.ok).toBe(false);
       strangerSock.close();

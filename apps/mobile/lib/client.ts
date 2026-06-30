@@ -86,7 +86,7 @@ async function refreshAccessToken(): Promise<string | null> {
   return refreshPromise;
 }
 
-async function send<T>(path: string, opts: RequestOptions, accessToken: string | null): Promise<Response> {
+async function send(path: string, opts: RequestOptions, accessToken: string | null): Promise<Response> {
   const headers: Record<string, string> = {
     accept: 'application/json',
     'x-request-id': requestId(),
@@ -107,13 +107,13 @@ export async function request<T = unknown>(path: string, opts: RequestOptions = 
   const useAuth = opts.auth !== false;
   const tokens = useAuth ? await getTokens() : null;
 
-  let res = await send<T>(path, opts, tokens?.accessToken ?? null);
+  let res = await send(path, opts, tokens?.accessToken ?? null);
 
   // One refresh + retry on an expired access token.
   if (res.status === 401 && useAuth && tokens) {
     const fresh = await refreshAccessToken();
     if (fresh) {
-      res = await send<T>(path, opts, fresh);
+      res = await send(path, opts, fresh);
     }
   }
 
@@ -131,6 +131,10 @@ export const api = {
     request<T>(path, { ...opts, method: 'POST', body }),
   patch: <T>(path: string, body?: unknown, opts?: Omit<RequestOptions, 'method' | 'body'>) =>
     request<T>(path, { ...opts, method: 'PATCH', body }),
+  put: <T>(path: string, body?: unknown, opts?: Omit<RequestOptions, 'method' | 'body'>) =>
+    request<T>(path, { ...opts, method: 'PUT', body }),
+  delete: <T>(path: string, opts?: Omit<RequestOptions, 'method' | 'body'>) =>
+    request<T>(path, { ...opts, method: 'DELETE' }),
 };
 
 export { ApiError };

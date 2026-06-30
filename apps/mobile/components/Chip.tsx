@@ -3,8 +3,8 @@
  * emerald with inverse-ink label; unselected = white surface with a 1.5px
  * border/strong and ink/default label (Label/M).
  */
-import { Pressable } from 'react-native';
 import { useTheme, Text } from '../theme/restyle.js';
+import { AnimatedPressable } from './Pressable.js';
 
 interface ChipProps {
   label: string;
@@ -15,7 +15,7 @@ interface ChipProps {
 export function Chip({ label, selected = false, onPress }: ChipProps): React.JSX.Element {
   const theme = useTheme();
   return (
-    <Pressable
+    <AnimatedPressable
       onPress={onPress}
       style={{
         alignSelf: 'flex-start',
@@ -38,6 +38,6 @@ export function Chip({ label, selected = false, onPress }: ChipProps): React.JSX
       >
         {label}
       </Text>
-    </Pressable>
+    </AnimatedPressable>
   );
 }

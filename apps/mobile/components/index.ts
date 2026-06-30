@@ -1,5 +1,10 @@
 export { Icon, type IconName } from './Icon.js';
 export { Screen } from './Screen.js';
+export { AnimatedPressable } from './Pressable.js';
+export { Skeleton, SkeletonRow, SkeletonCard } from './Skeleton.js';
+export { CategoryBadge, categoryLook, type CategoryLook } from './CategoryBadge.js';
+export { CoverImage } from './CoverImage.js';
+export { Sparkline } from './Sparkline.js';
 export { Button, type ButtonVariant, type ButtonSize } from './Button.js';
 export { Field } from './Field.js';
 export { Input, type InputProps } from './Input.js';

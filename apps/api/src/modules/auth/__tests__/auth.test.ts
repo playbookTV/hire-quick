@@ -66,6 +66,27 @@ describe('auth + RBAC (TRD §7/§14/§15)', () => {
     expect(res.body.refreshToken).toBeTruthy();
   });
 
+  it('logout denylists the refresh token so it can no longer refresh (B3)', async () => {
+    const phone = newPhone();
+    const { refresh } = await login(phone, 'USHER');
+
+    expect((await request(app).post('/auth/logout').send({ refreshToken: refresh })).status).toBe(204);
+
+    const after = await request(app).post('/auth/refresh').send({ refreshToken: refresh });
+    expect(after.status).toBe(401);
+    expect(after.body.error.code).toBe('INVALID_REFRESH');
+  });
+
+  it('refresh rotation is single-use: the consumed token is burned (B3)', async () => {
+    const phone = newPhone();
+    const { refresh } = await login(phone, 'CLIENT');
+
+    expect((await request(app).post('/auth/refresh').send({ refreshToken: refresh })).status).toBe(200);
+    // Replaying the now-rotated token must fail — it was denylisted on rotation.
+    const replay = await request(app).post('/auth/refresh').send({ refreshToken: refresh });
+    expect(replay.status).toBe(401);
+  });
+
   it('admin can approve a verification; a non-admin is forbidden (§15)', async () => {
     // usher submits a verification
     const usherPhone = newPhone();

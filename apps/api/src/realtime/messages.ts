@@ -20,7 +20,7 @@ export function flagsContact(text: string): boolean {
   return CONTACT_PATTERNS.some((re) => re.test(text));
 }
 
-async function loadBookingParties(bookingId: string): Promise<{
+export async function loadBookingParties(bookingId: string): Promise<{
   clientId: string;
   usherId: string;
   clientUserId: string;
@@ -115,5 +115,43 @@ export async function listMessages(bookingId: string, userId: string) {
   return prisma.message.findMany({
     where: { conversationId: conversation.id },
     orderBy: { createdAt: 'asc' },
+  });
+}
+
+/**
+ * Mark the counterparty's messages as seen (read receipts, UXRD §6). Marks every
+ * unseen inbound message, or only those up to `upToMessageId` when given. Returns
+ * how many rows were updated. `seenAt` already exists on Message — no migration.
+ */
+export async function markSeen(bookingId: string, userId: string, upToMessageId?: string): Promise<number> {
+  await assertParty(bookingId, userId);
+  const conversation = await prisma.conversation.findUnique({ where: { bookingId } });
+  if (!conversation) return 0;
+
+  let createdAtCeil: Date | undefined;
+  if (upToMessageId) {
+    const m = await prisma.message.findUnique({ where: { id: upToMessageId } });
+    if (m && m.conversationId === conversation.id) createdAtCeil = m.createdAt;
+  }
+
+  const res = await prisma.message.updateMany({
+    where: {
+      conversationId: conversation.id,
+      senderId: { not: userId },
+      seenAt: null,
+      ...(createdAtCeil ? { createdAt: { lte: createdAtCeil } } : {}),
+    },
+    data: { seenAt: new Date() },
+  });
+  return res.count;
+}
+
+/** Count unseen inbound messages for a user on a booking (inbox badge). */
+export async function unreadCount(bookingId: string, userId: string): Promise<number> {
+  await assertParty(bookingId, userId);
+  const conversation = await prisma.conversation.findUnique({ where: { bookingId } });
+  if (!conversation) return 0;
+  return prisma.message.count({
+    where: { conversationId: conversation.id, senderId: { not: userId }, seenAt: null },
   });
 }

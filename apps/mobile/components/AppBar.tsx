@@ -33,7 +33,9 @@ export function AppBar({ title, showBack = false, onBack, right, inset = true }:
         {showBack ? (
           <Pressable
             onPress={back}
-            hitSlop={6}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
             style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}
           >
             <Icon name="chevron-left" size={24} color="inkStrong" />

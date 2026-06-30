@@ -15,6 +15,7 @@ import {
   kobo,
   formatNaira,
   ACCOMMODATION_STATUSES,
+  isLateNight,
 } from '@hq/shared';
 
 import { Screen } from '../../components/Screen.js';
@@ -107,7 +108,7 @@ export default function CreateEvent(): React.JSX.Element {
 
   const values = watch();
   const total = kobo((values.headcount || 0) * (values.budgetPerHeadKobo || 0));
-  const lateNight = (values.endTime ?? '') >= '22:00';
+  const lateNight = isLateNight(values.endTime ?? '');
 
   const next = async () => {
     setFormError(null);
@@ -331,9 +332,9 @@ export default function CreateEvent(): React.JSX.Element {
 
         <Box height={8} />
         {step < 2 ? (
-          <Button label={step === 0 ? 'Next: Staffing' : 'Next: Review'} onPress={next} />
+          <Button label={step === 0 ? 'Next: Staffing' : 'Next: Review'} onPress={() => void next()} />
         ) : (
-          <Button label="Create event" loading={createEvent.isPending} onPress={handleSubmit(onSubmit)} />
+          <Button label="Create event" loading={createEvent.isPending} onPress={() => void handleSubmit(onSubmit)()} />
         )}
       </Screen>
     </Box>

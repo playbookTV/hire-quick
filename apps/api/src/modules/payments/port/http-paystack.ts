@@ -3,7 +3,7 @@
  * in dev/CI). Implements PaystackPort over the Paystack REST API. Money is in
  * kobo end-to-end, matching the ledger.
  */
-import type { PaystackPort, TransferParams, TransferResult } from './paystack-port.js';
+import type { Bank, PaystackPort, TransferParams, TransferResult } from './paystack-port.js';
 
 const BASE = 'https://api.paystack.co';
 
@@ -73,6 +73,23 @@ export class HttpPaystack implements PaystackPort {
     return { status: data.status === 'success' ? 'success' : 'failed', amountKobo: data.amount };
   }
 
+  async listBanks(): Promise<Bank[]> {
+    const data = await this.call<Array<{ name: string; code: string }>>(
+      '/bank?currency=NGN&country=nigeria',
+    );
+    return data.map((b) => ({ name: b.name, code: b.code }));
+  }
+
+  async resolveAccount(params: {
+    bankCode: string;
+    accountNumber: string;
+  }): Promise<{ accountName: string }> {
+    const data = await this.call<{ account_name: string }>(
+      `/bank/resolve?account_number=${encodeURIComponent(params.accountNumber)}&bank_code=${encodeURIComponent(params.bankCode)}`,
+    );
+    return { accountName: data.account_name };
+  }
+
   async createTransferRecipient(params: {
     bankCode: string;
     accountNumber: string;
@@ -111,10 +128,48 @@ export class HttpPaystack implements PaystackPort {
     }
   }
 
-  async refund(params: { chargeReference: string; amountKobo: number }): Promise<{ status: 'processed' }> {
+  async verifyTransfer(
+    reference: string,
+  ): Promise<{ status: 'success' | 'failed' | 'pending' | 'unknown' }> {
+    try {
+      const data = await this.call<{ status: string }>(
+        `/transfer/verify/${encodeURIComponent(reference)}`,
+      );
+      if (data.status === 'success') return { status: 'success' };
+      if (data.status === 'failed' || data.status === 'reversed') return { status: 'failed' };
+      return { status: 'pending' }; // otp/pending/processing
+    } catch (err) {
+      // 404 → Paystack never saw this reference (transfer not issued yet).
+      if (err instanceof PaystackHttpError && err.status === 404) return { status: 'unknown' };
+      throw err;
+    }
+  }
+
+  async refund(params: {
+    chargeReference: string;
+    amountKobo: number;
+    reference: string;
+  }): Promise<{ status: 'processed' }> {
+    // Paystack's POST /refund has no native idempotency field, so we dedup on a
+    // merchant_note carrying the caller's deterministic `reference` (the durable
+    // BOOKING_REFUND dedupeKey). Before creating a refund, list this charge's
+    // refunds and short-circuit when one already carries this reference — that's
+    // a replay (e.g. a crash between the call and the PROVIDER_OK commit) and
+    // must NOT issue a second refund. Per-booking dedup is why a transaction-only
+    // check is insufficient. (PaystackPort contract; mirrors InMemoryPaystack.)
+    const existing = await this.call<Array<{ merchant_note?: string | null }>>(
+      `/refund?transaction=${encodeURIComponent(params.chargeReference)}`,
+    );
+    if (existing.some((r) => r.merchant_note === params.reference)) {
+      return { status: 'processed' };
+    }
     await this.call('/refund', {
       method: 'POST',
-      body: JSON.stringify({ transaction: params.chargeReference, amount: params.amountKobo }),
+      body: JSON.stringify({
+        transaction: params.chargeReference,
+        amount: params.amountKobo,
+        merchant_note: params.reference,
+      }),
     });
     return { status: 'processed' };
   }

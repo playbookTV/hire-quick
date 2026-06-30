@@ -48,3 +48,40 @@ describe('createEventSchema — accommodation disclosure (late-night safety)', (
     expect(r.success).toBe(false);
   });
 });
+
+describe('createEventSchema — time bounds (A4)', () => {
+  it('rejects out-of-range hours/minutes like 99:99 and 24:00', () => {
+    expect(createEventSchema.safeParse({ ...base, startTime: '99:99', endTime: '21:00' }).success).toBe(false);
+    expect(createEventSchema.safeParse({ ...base, startTime: '24:00', endTime: '21:00' }).success).toBe(false);
+    expect(createEventSchema.safeParse({ ...base, startTime: '18:60', endTime: '21:00' }).success).toBe(false);
+  });
+
+  it('accepts valid boundary times 00:00 and 23:59', () => {
+    expect(createEventSchema.safeParse({ ...base, startTime: '00:00', endTime: '21:00' }).success).toBe(true);
+    // 23:59 end is late-night, so accommodation must be declared for the event to pass.
+    expect(
+      createEventSchema.safeParse({ ...base, startTime: '00:00', endTime: '23:59', accommodation: 'PROVIDED' }).success,
+    ).toBe(true);
+  });
+});
+
+describe('createEventSchema — money bounds (A5)', () => {
+  it('rejects a per-head budget above the 32-bit Int max', () => {
+    expect(
+      createEventSchema.safeParse({ ...base, endTime: '21:00', headcount: 1, budgetPerHeadKobo: 2_147_483_648 }).success,
+    ).toBe(false);
+  });
+
+  it('rejects an aggregate (headcount × budget) that would overflow Int even when each field fits', () => {
+    // 100 × 100_000_000 = 10^10 > 2_147_483_647.
+    const r = createEventSchema.safeParse({ ...base, endTime: '21:00', headcount: 100, budgetPerHeadKobo: 100_000_000 });
+    expect(r.success).toBe(false);
+    if (!r.success) expect(r.error.issues.some((i) => i.path.includes('budgetPerHeadKobo'))).toBe(true);
+  });
+
+  it('accepts a within-bounds aggregate', () => {
+    expect(
+      createEventSchema.safeParse({ ...base, endTime: '21:00', headcount: 10, budgetPerHeadKobo: 2_000_000 }).success,
+    ).toBe(true);
+  });
+});

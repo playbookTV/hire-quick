@@ -40,8 +40,16 @@ Idempotency-Key: <unique-per-logical-operation>
 | Missing/invalid token | 401 | `UNAUTHENTICATED` |
 | Wrong role / not your resource | 403 | `FORBIDDEN` (or `NOT_A_CLIENT` / `NOT_AN_USHER` / `NOT_VERIFIED`) |
 | Missing idempotency key | 400 | `IDEMPOTENCY_REQUIRED` |
+| Too many requests | 429 | `RATE_LIMITED` |
+| Payments port not configured | 503 | `PAYMENTS_UNAVAILABLE` (e.g. confirm-batch) |
 | Unknown route | 404 | `NOT_FOUND` |
 | Unhandled error | 500 | `INTERNAL` (generic message) |
+
+**Rate limiting.** When Redis is configured, three tiers apply (per client IP):
+a lenient **global** ceiling on everything, a strict **auth** limiter on
+`/auth/*` (OTP/login/refresh are brute-force targets), and a moderate **money**
+limiter on `/api/payments/*`. Exceeding a tier returns `429 RATE_LIMITED` with
+`RateLimit-*` headers. In dev/test without Redis the limiters pass through.
 
 **Request correlation.** Every response carries an `x-request-id` header (echoed
 from the request or generated).
@@ -105,18 +113,44 @@ Body (all optional): `{ "displayName", "bio", "yearsExperience" }`.
 `displayName` updates the client profile; `bio`/`yearsExperience` update the
 usher profile. Response: `{ "updated": true }`.
 
+### `POST /api/me/verification/upload-url` (usher)
+Request short-lived presigned upload URLs for KYC documents. Body names the
+document kind(s) and content type; the response returns the URL(s) to PUT to and
+the server-owned object key(s) to submit back. (When storage is unconfigured the
+flow falls back to plain URLs.)
+
 ### `POST /api/me/verification` (usher)
-Submit identity verification. Body: `{ "idDocumentUrl", "selfieUrl" }` (URLs;
-the storage layer issues these as signed URLs — currently passed through as
-plain URLs). Response: `{ "id", "status": "PENDING" }`.
+Submit identity verification, referencing the keys/URLs from the upload step.
+Response: `{ "id", "status": "PENDING" }`.
 
 ### `GET /api/me/verification` (usher)
 List the caller's verification submissions (newest first).
 
+### Photos (usher) — `/api/me/photos`
+- `POST /api/me/photos/upload-url` — presigned upload URL for an avatar or
+  portfolio photo (server-owned key, scoped to the usher).
+- `POST /api/me/photos/avatar` — set the profile avatar from an uploaded key.
+- `POST /api/me/photos/portfolio` — add a portfolio photo.
+- `DELETE /api/me/photos/portfolio/:id` — remove a portfolio photo.
+
+### `PUT /api/me/availability` (usher)
+Set the usher's availability status (used by discovery/booking).
+
+### `POST /api/me/devices`
+Register a device push token (`{ token, platform }`) for notifications.
+
+### Privacy (data-subject rights) — `/api/me`
+- `GET /api/me/export` — export the caller's personal data (NDPR access right).
+- `POST /api/me/erase` — erase the caller's account. Erasure **pseudonymizes**
+  rather than deletes, because financial/audit records are retained for the
+  legally-required window (TRD §14).
+
 ---
 
 ## Events, Applications & Invitations — `/api`
-All require auth. Event routes mount only when a Paystack port is configured.
+All require auth. The events router mounts **unconditionally** (discovery and
+applications don't need payments); only `confirm` depends on a Paystack port and
+returns `503 PAYMENTS_UNAVAILABLE` when none is configured.
 
 ### `POST /api/events` (client)
 Create a multi-staff event. Body (`createEventSchema`):
@@ -152,6 +186,12 @@ List applications with usher phone.
 
 ### `PATCH /api/applications/:id` (client, own event)
 Body: `{ "status": "SHORTLISTED" | "ACCEPTED" | "REJECTED" }`.
+
+### `GET /api/me/applications` (usher)
+The caller's own applications across events.
+
+### `POST /api/events/:id/save` · `GET /api/me/saved-jobs` (usher)
+Bookmark an event and list saved events.
 
 ### `POST /api/events/:id/invite` (client, own event)
 Body: `{ "usherId": "<uuid>" }`. Upserts an invitation (`SENT`).
@@ -208,14 +248,44 @@ Usher self-asserts arrival (D1 passive-client path). Allowed when `CONFIRMED` or
 Client confirms completion of a `CHECKED_IN` booking → releases payout to the
 usher's wallet (`releaseBooking`). Response: `{ "status": "PAID" }`.
 
+### `POST /api/bookings/:id/cancel` (client or usher party)
+Cancel a booking. The refund/payout outcome is computed from the
+[cancellation policy matrix](./PAYMENTS.md#policy-matrix) by actor and window.
+
 ### `POST /api/bookings/:id/disputes` (client or usher party)
 Open a dispute → **freezes the escrow** (booking → `DISPUTED`,
 `escrowStatus = FROZEN`). Body: `{ "reason": "...", "note": "..."? }`.
 Response: `201 { "id": "<disputeId>" }`.
 
+### `POST /api/bookings/:id/reviews`
+Leave a review for the counterparty on a completed booking (drives the usher's
+`ratingAvg` / `ratingCount`).
+
+### Booking chat — `/api/bookings/:id/messages`
+REST companions to the realtime chat (the live path is Socket.IO; see below):
+- `GET /api/bookings/:id/messages` — message history (booking parties only).
+- `POST /api/bookings/:id/messages` — send a message.
+- `POST /api/bookings/:id/messages/seen` — mark messages seen up to an id.
+- `GET /api/bookings/:id/messages/unread` — unread count for the badge.
+
 > **Attendance / completion windows are also driven by scheduled jobs**
 > (auto-complete, no-show) rather than only by these endpoints — see
 > [`ARCHITECTURE.md`](./ARCHITECTURE.md#scheduled-jobs).
+
+---
+
+## Ushers (discovery) — `/api`
+All require auth. Read-only public-ish surface for client-side discovery.
+
+### `GET /api/ushers`
+Search/browse usher cards (id, displayName, bio, yearsExperience, ratingAvg,
+ratingCount, completedJobsCount, avatar). Supports discovery filters.
+
+### `GET /api/ushers/:id`
+A single usher's public profile (card + portfolio photos, presigned for reading).
+
+### `GET /api/ushers/:id/reviews`
+Reviews an usher has received.
 
 ---
 
@@ -240,15 +310,52 @@ status (a failure reverses the debit). See
 ---
 
 ## Admin — `/api/admin`
-Require auth **and** `ADMIN` role. Every action is audit-logged.
+Require auth **and** `ADMIN` role. Every action is written to the hash-chained
+audit log. This surface backs the `apps/admin` console.
 
-### `POST /api/admin/verifications/:id/approve`
-Approve an usher verification → usher `verificationStatus = VERIFIED` (now
-discoverable/payable). Response: `{ "id", "status": "APPROVED" }`.
+**Verifications**
+- `GET /api/admin/verifications` — queue of pending KYC submissions.
+- `POST /api/admin/verifications/:id/approve` — usher `verificationStatus =
+  VERIFIED` (now discoverable/payable).
+- `POST /api/admin/verifications/:id/reject` — body `{ "reason" }`; marks usher
+  `REJECTED`.
 
-### `POST /api/admin/verifications/:id/reject`
-Body: `{ "reason": "..." }`. Marks the verification and usher `REJECTED`.
-Response: `{ "id", "status": "REJECTED" }`.
+**Disputes**
+- `GET /api/admin/disputes` — open disputes (frozen escrow).
+- `POST /api/admin/disputes/:id/resolve` — resolve toward release / refund /
+  cancel per the booking state machine; unfreezes the escrow.
+
+**Refunds**
+- `POST /api/admin/refunds` — issue a manual/administrative refund on a booking.
+
+**Two-person approvals**
+- `GET /api/admin/approvals` · `POST /api/admin/approvals/:id` — review and
+  approve/reject sensitive actions that require a second admin.
+
+**Rewards (loyalty)**
+- `GET`/`POST` `/api/admin/milestone-tiers` · `PATCH /api/admin/milestone-tiers/:id`
+  — manage loyalty tiers.
+- `GET /api/admin/milestones` · `POST /api/admin/milestones/:id/fulfill` — see
+  unlocked milestones and mark physical rewards fulfilled.
+
+**Operations**
+- `GET /api/admin/stats` — operational dashboard metrics.
+- `GET /api/admin/ledger` — inspect ledger entries.
+- `GET /api/admin/users` — user directory.
+
+---
+
+## Realtime (Socket.IO)
+Clients connect to the same origin over Socket.IO, authenticating with the
+**access JWT** on connect. Joining `booking:<id>` requires being a party to the
+booking. Client→server events: `room:join`, `message:send`, `message:seen`,
+`typing:start`/`typing:stop`. Server→client events (catalogue in
+`realtime/events.ts`): booking lifecycle (`booking.confirmed`, `booking.checked_in`,
+`booking.completed`, `booking.paid`, `booking.cancelled`, `booking.no_show`,
+`booking.disputed`, `booking.dispute_resolved`, `order.paid`), withdrawals
+(`withdrawal.requested/completed/failed`), and chat (`message:new`,
+`message:seen`, `typing`, `conversation.unread`). Pushes are convenience signals;
+the REST/DB state remains authoritative.
 
 ---
 

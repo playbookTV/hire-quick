@@ -1,24 +1,24 @@
 /**
- * Wallet — matches Figma `Usher / 05 Wallet` (44:44): an emerald balance card
- * (Display/2XL figure + Withdraw), pending/lifetime stat cards, and a Recent
- * activity list of ActivityRows. Stub data until the wallet API is wired.
+ * Wallet — matches Figma `Usher / 05 Wallet` (44:44). Live: balance + pending +
+ * lifetime from `useWallet`; the recent-activity feed from `useWalletActivity`.
+ * Withdraw opens the bank-transfer sheet.
  */
-import { ScrollView } from 'react-native';
+import { useRouter } from 'expo-router';
+import { ScrollView, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme, Box, Text } from '../../theme/restyle.js';
+import { Box, Text } from '../../theme/restyle.js';
 import { SectionHeader } from '../../components/SectionHeader.js';
-import { ActivityRow, type ActivityType } from '../../components/ActivityRow.js';
+import { ActivityRow } from '../../components/ActivityRow.js';
 import { Button } from '../../components/Button.js';
-import { shadowMd } from '../../theme/shadows.js';
-import { primitives } from '../../theme/primitives.js';
+import { Icon } from '../../components/Icon.js';
+import { SkeletonRow } from '../../components/Skeleton.js';
+import { EmptyState } from '../../components/EmptyState.js';
+import { Banner } from '../../components/Banner.js';
+import { EarningsCard } from '../../components/EarningsCard.js';
+import { useWallet, useWalletActivity, useBookings } from '../../lib/hooks.js';
+import { money, signedMoney, formatEventDate } from '../../lib/format.js';
 
-const ACTIVITY: { type: ActivityType; title: string; subtitle: string; amount: string }[] = [
-  { type: 'credit', title: 'Payout received', subtitle: 'Adeola’s Wedding', amount: '+₦15,000' },
-  { type: 'debit', title: 'Withdrawal', subtitle: 'GTBank ••4321', amount: '−₦40,000' },
-  { type: 'pending', title: 'Escrow hold', subtitle: 'Corporate Gala', amount: '₦16,000' },
-];
-
-function StatCard({ label, value, gold }: { label: string; value: string; gold?: boolean }) {
+function StatCard({ label, value, gold }: Readonly<{ label: string; value: string; gold?: boolean }>) {
   return (
     <Box flex={1} backgroundColor="bgSurface" borderWidth={1} borderColor="borderDefault" borderRadius="md" padding="400" style={{ gap: 4 }}>
       <Text variant="bodySm" color="inkMuted">
@@ -31,36 +31,100 @@ function StatCard({ label, value, gold }: { label: string; value: string; gold?:
   );
 }
 
+/**
+ * Escrow explainer — defines the term and, crucially, says WHEN held money
+ * releases (critique P1: held funds with no release date are an anxiety source).
+ * The next-release date is derived from the usher's soonest unfinished booking.
+ */
+function escrowCopy(pending: number, nextReleaseDate?: string): string {
+  if (pending <= 0) return 'When you’re booked, your pay is held safely here until the event is verified.';
+  if (nextReleaseDate) return `Released to your wallet after each event is verified. Next: after ${formatEventDate(nextReleaseDate)}.`;
+  return 'Held safely until each event is verified, then released to your wallet.';
+}
+
+function EscrowPanel({ pending, nextReleaseDate }: Readonly<{ pending: number; nextReleaseDate?: string }>) {
+  return (
+    <Box backgroundColor="bgSurface" borderWidth={1} borderColor="borderDefault" borderRadius="md" padding="400" style={{ gap: 8 }}>
+      <Box flexDirection="row" alignItems="center" justifyContent="space-between">
+        <Box flexDirection="row" alignItems="center" style={{ gap: 8 }}>
+          <Icon name="shield" size={16} color="accentGoldStrong" />
+          <Text variant="bodySm" color="inkMuted">Held in escrow</Text>
+        </Box>
+        <Text variant="amountM" color="accentGoldStrong">{money(pending)}</Text>
+      </Box>
+      <Text variant="bodySm" color="inkMuted">{escrowCopy(pending, nextReleaseDate)}</Text>
+    </Box>
+  );
+}
+
 export default function Wallet(): React.JSX.Element {
-  const theme = useTheme();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
+  const wallet = useWallet();
+  const activity = useWalletActivity();
+  const bookings = useBookings();
+
+  // Soonest unfinished booking ≈ when the next escrow hold releases.
+  const nextRelease = (bookings.data ?? [])
+    .filter((b) => b.status === 'CONFIRMED' || b.status === 'CHECKED_IN')
+    .map((b) => b.event?.eventDate)
+    .filter((d): d is string => !!d)
+    .sort()[0];
+
+  const refreshing = wallet.isFetching || activity.isFetching;
+  const refresh = (): void => {
+    void wallet.refetch();
+    void activity.refetch();
+  };
 
   return (
     <Box flex={1} backgroundColor="bgCanvas" style={{ paddingTop: insets.top }}>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24, gap: 16 }} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24, gap: 16 }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}
+      >
         <Text variant="h2">Wallet</Text>
 
-        {/* balance */}
-        <Box borderRadius="lg" style={[{ backgroundColor: theme.colors.brandEmerald, padding: 20, gap: 12 }, shadowMd]}>
-          <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 11, lineHeight: 14, letterSpacing: 1.2, color: primitives.gold[500] }}>
-            AVAILABLE TO WITHDRAW
-          </Text>
-          <Text style={{ fontFamily: 'Fraunces_900Black', fontSize: 40, lineHeight: 44, letterSpacing: -1.5, color: '#FBF7F0' }}>₦48,000</Text>
-          <Button label="Withdraw to bank" variant="secondary" onPress={() => { /* withdraw flow */ }} />
-        </Box>
+        {wallet.isError ? (
+          <Box flexDirection="row" alignItems="center" backgroundColor="statusDangerTint" borderRadius="md" padding="300" style={{ gap: 8 }}>
+            <Icon name="wifi-off" size={16} color="statusDanger" />
+            <Text variant="bodySm" color="statusDanger" style={{ flex: 1 }}>Couldn’t load your balance. Pull down to retry.</Text>
+          </Box>
+        ) : null}
 
-        {/* stats */}
-        <Box flexDirection="row" style={{ gap: 12 }}>
-          <StatCard label="Pending in escrow" value="₦30,000" gold />
-          <StatCard label="Lifetime earned" value="₦312,000" />
-        </Box>
+        {/* balance */}
+        <EarningsCard
+          amount={wallet.data?.availableBalance ?? 0}
+          size="lg"
+          footer={<Button label="Withdraw to bank" variant="secondary" onPress={() => router.push('/(modals)/withdraw')} />}
+        />
+
+        {/* escrow (what's held + when it releases) + lifetime */}
+        <EscrowPanel pending={wallet.data?.pendingEscrow ?? 0} nextReleaseDate={nextRelease} />
+        <StatCard label="Lifetime earned" value={money(wallet.data?.lifetimeEarned ?? 0)} />
 
         <SectionHeader title="Recent activity" />
-        <Box style={{ gap: 8 }}>
-          {ACTIVITY.map((a) => (
-            <ActivityRow key={a.title} type={a.type} title={a.title} subtitle={a.subtitle} amount={a.amount} />
-          ))}
-        </Box>
+        {activity.isLoading ? (
+          <Box style={{ gap: 8 }}>
+            {[0, 1, 2].map((i) => (
+              <SkeletonRow key={i} />
+            ))}
+          </Box>
+        ) : activity.isError ? (
+          <Box style={{ gap: 12 }}>
+            <Banner tone="warning" message="Couldn’t load your recent activity." />
+            <Button label="Retry" variant="secondary" size="md" onPress={() => { void activity.refetch(); }} />
+          </Box>
+        ) : (activity.data ?? []).length === 0 ? (
+          <EmptyState icon="inbox" title="No activity yet" subtitle="Your payouts and withdrawals will show up here." />
+        ) : (
+          <Box style={{ gap: 8 }}>
+            {(activity.data ?? []).map((a) => (
+              <ActivityRow key={a.id} type={a.type} title={a.title} subtitle={a.subtitle} amount={signedMoney(a.amount, a.type)} />
+            ))}
+          </Box>
+        )}
       </ScrollView>
     </Box>
   );

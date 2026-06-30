@@ -32,6 +32,19 @@ interface ErrorEnvelope {
   error?: { code?: string; message?: string; issues?: unknown };
 }
 
+/**
+ * A user-safe message for a caught error. Hides 5xx internals behind a generic
+ * line, surfaces the server's message for 4xx, and treats anything that isn't an
+ * ApiError as a connection problem — `client.ts` throws ApiError on every non-2xx,
+ * so a raw error reaching here is a fetch/network failure (S14).
+ */
+export function userMessage(e: unknown): string {
+  if (e instanceof ApiError) {
+    return e.status >= 500 ? 'Something went wrong on our end. Please try again.' : e.message;
+  }
+  return 'No connection. Check your internet and try again.';
+}
+
 /** Build an ApiError from a non-2xx response body (best-effort, never throws). */
 export function toApiError(
   status: number,

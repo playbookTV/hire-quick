@@ -26,7 +26,7 @@ export default function ChooseRole(): React.JSX.Element {
           </Text>
         </Box>
 
-        <Box style={{ gap: 20 }} marginBottom="600">
+        <Box style={{ gap: 20 }} marginBottom="600" accessibilityRole="radiogroup">
           <OptionCard
             title="I'm hiring staff"
             subtitle="Post events and book ushers"

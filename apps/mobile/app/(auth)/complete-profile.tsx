@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { Redirect, useRouter } from 'expo-router';
 import { Screen } from '../../components/Screen.js';
 import { AppBar } from '../../components/AppBar.js';
+import { StepIndicator } from '../../components/StepIndicator.js';
 import { Field } from '../../components/Field.js';
 import { Input } from '../../components/Input.js';
 import { TextArea } from '../../components/TextArea.js';
@@ -19,7 +20,7 @@ import { Box, Text } from '../../theme/restyle.js';
 import { useAuth } from '../../lib/auth-context.js';
 import { useUpdateProfile } from '../../lib/hooks.js';
 import { Loading } from '../../components/Loading.js';
-import { ApiError } from '../../lib/api-error.js';
+import { userMessage } from '../../lib/api-error.js';
 
 export default function CompleteProfile(): React.JSX.Element {
   const router = useRouter();
@@ -48,12 +49,17 @@ export default function CompleteProfile(): React.JSX.Element {
     setError(null);
     try {
       await update.mutateAsync(
-        isUsher ? { bio: bio.trim(), yearsExperience: years } : { displayName: name.trim() },
+        isUsher
+          ? { bio: bio.trim(), yearsExperience: years }
+          : {
+              displayName: name.trim(),
+              ...(business.trim() ? { businessName: business.trim() } : {}),
+            },
       );
       await refreshMe();
       router.replace('/');
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Could not save. Try again.');
+      setError(userMessage(e));
     }
   };
 
@@ -61,6 +67,9 @@ export default function CompleteProfile(): React.JSX.Element {
     <Box flex={1} backgroundColor="bgCanvas">
       <AppBar showBack />
       <Screen scroll>
+        <Box marginBottom="500">
+          <StepIndicator total={3} current={2} label="ACCOUNT SETUP" />
+        </Box>
         <Box style={{ gap: 20 }} marginBottom="600">
           <Box style={{ gap: 8 }}>
             <Text variant="h1">{isUsher ? 'Tell clients about you' : 'Set up your profile'}</Text>
@@ -104,7 +113,7 @@ export default function CompleteProfile(): React.JSX.Element {
           )}
         </Box>
 
-        <Button label="Continue" disabled={!valid} loading={update.isPending} onPress={submit} />
+        <Button label="Continue" disabled={!valid} loading={update.isPending} onPress={() => void submit()} />
       </Screen>
     </Box>
   );

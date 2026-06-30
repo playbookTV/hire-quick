@@ -35,6 +35,9 @@ async function lockOrder(tx: Tx, id: string): Promise<void> {
 async function lockWallet(tx: Tx, id: string): Promise<void> {
   await tx.$queryRaw`SELECT id FROM wallets WHERE id = ${id}::uuid FOR UPDATE`;
 }
+async function lockWithdrawal(tx: Tx, id: string): Promise<void> {
+  await tx.$queryRaw`SELECT id FROM withdrawals WHERE id = ${id}::uuid FOR UPDATE`;
+}
 
 async function escrowBalance(tx: Tx, bookingId: string): Promise<number> {
   const agg = await tx.escrowLedger.aggregate({
@@ -237,6 +240,28 @@ export async function refundBooking(tx: Tx, bookingId: string, amountKobo: numbe
   if (booking.orderId) await lockOrder(tx, booking.orderId);
   if (amountKobo < 0) throw new LedgerError('BAD_AMOUNT', 'refund amount must be >= 0');
 
+  // Only HELD (cancel/no-show) or FROZEN (dispute) escrow is refundable — never
+  // money already RELEASED to the usher or a prior REFUND (TRD §25 invariant:
+  // "refund of an already-refunded allocation" is rejected).
+  if (booking.payment && booking.payment.escrowStatus !== 'HELD' && booking.payment.escrowStatus !== 'FROZEN') {
+    throw new LedgerError('NOT_REFUNDABLE', `escrow not refundable (is ${booking.payment.escrowStatus})`);
+  }
+  // A per-booking refund is all-or-nothing: it must equal exactly what's still
+  // held for this booking. Partial amounts would strand the remainder while the
+  // booking/order is marked terminally REFUNDED (TRD §25: HELD + released +
+  // refunded must reconcile to the charged amount). While HELD this equals the
+  // booking allocation. Partial-of-batch is modelled as full refunds of the
+  // individual bookings, not a partial refund of one.
+  const held = await escrowBalance(tx, bookingId);
+  if (amountKobo !== held) {
+    throw new LedgerError('REFUND_MUST_BE_FULL', `refund ${amountKobo} must equal the held balance ${held}`);
+  }
+
+  // §23 Q4 (processing-fee on refund) integration point — INTENTIONALLY INACTIVE.
+  // When DEDUCT_PROCESSING_FEE_ON_REFUND is settled and turned on, the client
+  // refund here becomes refundWithFeeDeduction(amountKobo, REFUND_PROCESSING_FEE_BPS)
+  // and the retained fee needs its own ledger entry plus a reconciliation-formula
+  // update — do NOT just shrink the REFUND amount, or the Balance won't reconcile.
   assertBookingTransition(booking.status, 'REFUNDED');
   if (amountKobo > 0) await appendEscrow(tx, bookingId, 'REFUND', -amountKobo);
   if (booking.payment) {
@@ -257,12 +282,20 @@ export async function refundBooking(tx: Tx, bookingId: string, amountKobo: numbe
 /** Freeze a booking's escrow when a dispute opens (blocks release/refund). */
 export async function freezeBooking(tx: Tx, bookingId: string): Promise<void> {
   await lockBooking(tx, bookingId);
-  const booking = await tx.booking.findUniqueOrThrow({ where: { id: bookingId } });
+  const booking = await tx.booking.findUniqueOrThrow({
+    where: { id: bookingId },
+    include: { payment: true },
+  });
+  // Money-safety gate: a dispute may only be opened while the booking's funds are
+  // still escrowed (HELD). Disputing after payout (RELEASED) would let resolution
+  // re-credit the usher or fire an unrecorded Paystack refund. This is stricter
+  // than the state table and is the authoritative guard.
+  if (booking.payment?.escrowStatus !== 'HELD') {
+    throw new LedgerError('NOT_DISPUTABLE', 'a dispute can only be opened while funds are in escrow');
+  }
   assertBookingTransition(booking.status, 'DISPUTED');
   await tx.booking.update({ where: { id: bookingId }, data: { status: 'DISPUTED' } });
-  await tx.payment.update({ where: { bookingId }, data: { escrowStatus: 'FROZEN' } }).catch(() => {
-    /* booking may not have a payment yet */
-  });
+  await tx.payment.update({ where: { bookingId }, data: { escrowStatus: 'FROZEN' } });
 }
 
 /** Usher requests a withdrawal: debit the wallet now; the bank transfer fires next (Phase 2). */
@@ -285,26 +318,44 @@ export async function requestWithdrawal(
   return withdrawal.id;
 }
 
-/** Transfer failed: keep funds in the wallet (REVERSAL), mark FAILED (§10). */
-export async function failWithdrawal(tx: Tx, withdrawalId: string): Promise<void> {
+/**
+ * Transfer failed or reversed: re-credit the wallet (REVERSAL) and mark FAILED
+ * (§10). Locks the withdrawal + wallet and re-reads under the lock so a
+ * `transfer.failed`/`transfer.reversed` racing or following a `transfer.success`
+ * settles to exactly one terminal state and the REVERSAL is applied at most once
+ * (already-FAILED is a no-op). Returns whether this call applied the transition.
+ */
+export async function failWithdrawal(tx: Tx, withdrawalId: string): Promise<boolean> {
+  await lockWithdrawal(tx, withdrawalId);
   const w = await tx.withdrawal.findUniqueOrThrow({ where: { id: withdrawalId } });
-  assertWithdrawalTransition(w.status, 'FAILED');
+  if (w.status === 'FAILED') return false; // reversal already applied — ignore duplicate
+  assertWithdrawalTransition(w.status, 'FAILED'); // PROCESSING→FAILED or PAID→FAILED (reversed)
   await appendWallet(tx, w.walletId, 'REVERSAL', w.amount, { withdrawalId });
   await tx.withdrawal.update({ where: { id: withdrawalId }, data: { status: 'FAILED' } });
+  return true;
 }
 
-/** Transfer succeeded: withdrawal PAID (funds already debited at request). */
+/**
+ * Transfer succeeded: withdrawal PAID (funds already debited at request). Locks
+ * the withdrawal and re-reads under the lock so a duplicate/replayed
+ * `transfer.success` (or one racing a failure) settles exactly once. A success
+ * arriving after a terminal FAILED is ignored (audited by the caller) rather
+ * than re-paying. Returns whether this call applied the transition.
+ */
 export async function completeWithdrawal(
   tx: Tx,
   withdrawalId: string,
   transferRef: string,
-): Promise<void> {
+): Promise<boolean> {
+  await lockWithdrawal(tx, withdrawalId);
   const w = await tx.withdrawal.findUniqueOrThrow({ where: { id: withdrawalId } });
+  if (w.status === 'PAID' || w.status === 'FAILED') return false; // already terminal
   assertWithdrawalTransition(w.status, 'PAID');
   await tx.withdrawal.update({
     where: { id: withdrawalId },
     data: { status: 'PAID', paystackTransferRef: transferRef },
   });
+  return true;
 }
 
 /** Sweep accumulated platform fees out of the Balance to the operating bank (D3). */

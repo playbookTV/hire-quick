@@ -37,5 +37,10 @@ jobs:
       - run: pnpm --filter @hq/database exec prisma generate
       - run: pnpm typecheck
       - run: pnpm lint
-      - run: pnpm --filter @hq/database exec prisma db push --skip-generate
+      # Apply tracked migrations (production-equivalent), not `db push`, so CI
+      # exercises the same path prod deploys use and a missing migration fails here.
+      - run: pnpm --filter @hq/database exec prisma migrate deploy
+      # Drift guard: after deploy the DB equals the migrations; if schema.prisma has
+      # drifted from them this diff is non-empty and exits non-zero (--exit-code).
+      - run: pnpm --filter @hq/database exec prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
       - run: pnpm test

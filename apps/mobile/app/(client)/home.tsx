@@ -4,7 +4,7 @@
  * events" section; and a "Suggested staff" StaffCardCompact row.
  */
 import { useRouter } from 'expo-router';
-import { ActivityIndicator } from 'react-native';
+import { ActivityIndicator, Pressable } from 'react-native';
 import { Screen } from '../../components/Screen.js';
 import { QuickActionCard } from '../../components/QuickActionCard.js';
 import { SectionHeader } from '../../components/SectionHeader.js';
@@ -12,16 +12,11 @@ import { EventCard } from '../../components/EventCard.js';
 import { StaffCardCompact } from '../../components/StaffCardCompact.js';
 import { EmptyState } from '../../components/EmptyState.js';
 import { Avatar } from '../../components/Avatar.js';
+import { Icon } from '../../components/Icon.js';
 import { Box, Text, useTheme } from '../../theme/restyle.js';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../lib/auth-context.js';
-import { useEvents } from '../../lib/hooks.js';
-
-// Suggested-staff teaser (Discover API lands in a later phase).
-const SUGGESTED = [
-  { name: 'Ada Martins', rating: '4.9 · 120 jobs', price: '₦15,000' },
-  { name: 'Bisi Okoro', rating: '4.8 · 86 jobs', price: '₦14,000' },
-];
+import { useEvents, useUshers, useNotifications } from '../../lib/hooks.js';
 
 export default function ClientHome(): React.JSX.Element {
   const router = useRouter();
@@ -29,6 +24,9 @@ export default function ClientHome(): React.JSX.Element {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const events = useEvents();
+  const suggested = useUshers({ limit: 4 });
+  const notif = useNotifications();
+  const unread = notif.data?.unreadCount ?? 0;
 
   const fullName = user?.client?.displayName && user.client.displayName !== user.phone ? user.client.displayName : null;
   const firstName = fullName ? fullName.split(' ')[0] : 'there';
@@ -36,7 +34,15 @@ export default function ClientHome(): React.JSX.Element {
 
   return (
     <Box flex={1} backgroundColor="bgCanvas" style={{ paddingTop: insets.top }}>
-      <Screen scroll padding={false}>
+      <Screen
+        scroll
+        padding={false}
+        refreshing={events.isFetching || suggested.isFetching}
+        onRefresh={() => {
+          void events.refetch();
+          void suggested.refetch();
+        }}
+      >
         <Box style={{ paddingHorizontal: 20, paddingTop: 16, gap: 24 }}>
           {/* greeting */}
           <Box flexDirection="row" alignItems="center" justifyContent="space-between">
@@ -46,7 +52,26 @@ export default function ClientHome(): React.JSX.Element {
               </Text>
               <Text variant="h2">Hello, {firstName}</Text>
             </Box>
-            <Avatar name={fullName ?? user?.phone} size={48} />
+            <Box flexDirection="row" alignItems="center" style={{ gap: 12 }}>
+              <Pressable
+                onPress={() => router.push('/(modals)/notifications')}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
+              >
+                <Box style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.bgSurface, borderWidth: 1, borderColor: theme.colors.borderDefault }}>
+                  <Icon name="bell" size={20} color="inkStrong" />
+                  {unread > 0 ? (
+                    <Box style={{ position: 'absolute', top: -3, right: -3, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, backgroundColor: theme.colors.statusDanger, alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 10, lineHeight: 12, color: theme.colors.inverseInk }}>
+                        {unread > 9 ? '9+' : unread}
+                      </Text>
+                    </Box>
+                  ) : null}
+                </Box>
+              </Pressable>
+              <Avatar name={fullName ?? user?.phone} size={48} />
+            </Box>
           </Box>
 
           {/* quick actions */}
@@ -77,6 +102,16 @@ export default function ClientHome(): React.JSX.Element {
               <Box paddingVertical="800" alignItems="center">
                 <ActivityIndicator color={theme.colors.brandEmerald} />
               </Box>
+            ) : events.isError ? (
+              <EmptyState
+                icon="alert-circle"
+                title="Couldn’t load your events"
+                subtitle="Check your connection and try again — your events and payments are safe."
+                actionLabel="Try again"
+                onAction={() => {
+                  void events.refetch();
+                }}
+              />
             ) : recent.length === 0 ? (
               <EmptyState
                 icon="calendar"
@@ -95,21 +130,24 @@ export default function ClientHome(): React.JSX.Element {
           </Box>
 
           {/* suggested staff */}
-          <Box>
-            <SectionHeader title="Suggested staff" actionLabel="See all" onAction={() => router.push('/(client)/discover')} />
-            <Box flexDirection="row" style={{ gap: 16 }}>
-              {SUGGESTED.map((s) => (
-                <StaffCardCompact
-                  key={s.name}
-                  name={s.name}
-                  rating={s.rating}
-                  price={s.price}
-                  verified
-                  onPress={() => router.push('/(client)/discover')}
-                />
-              ))}
+          {(suggested.data ?? []).length > 0 ? (
+            <Box>
+              <SectionHeader title="Suggested staff" actionLabel="See all" onAction={() => router.push('/(client)/discover')} />
+              <Box flexDirection="row" flexWrap="wrap" style={{ gap: 16 }}>
+                {(suggested.data ?? []).slice(0, 2).map((u) => (
+                  <StaffCardCompact
+                    key={u.id}
+                    name={u.displayName ?? 'Usher'}
+                    avatarUrl={u.avatarUrl}
+                    rating={`${u.ratingAvg.toFixed(1)} · ${u.completedJobsCount} jobs`}
+                    price={u.verificationStatus === 'VERIFIED' ? 'Verified' : ''}
+                    verified={u.verificationStatus === 'VERIFIED'}
+                    onPress={() => router.push({ pathname: '/(modals)/staff-profile', params: { id: u.id } })}
+                  />
+                ))}
+              </Box>
             </Box>
-          </Box>
+          ) : null}
         </Box>
       </Screen>
     </Box>

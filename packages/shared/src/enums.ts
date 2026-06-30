@@ -90,3 +90,13 @@ export type RewardType = (typeof REWARD_TYPES)[number];
 /** Lifecycle of an usher's unlocked milestone reward. */
 export const MILESTONE_STATUSES = ['UNLOCKED', 'FULFILLED'] as const;
 export type MilestoneStatus = (typeof MILESTONE_STATUSES)[number];
+
+/** Persisted notification kinds; each maps to a deep-link target on the mobile client. */
+export const NOTIFICATION_TYPES = [
+  'INVITATION_RECEIVED',
+  'BOOKING_CONFIRMED',
+  'PAYOUT_RELEASED',
+  'NEW_MESSAGE',
+  'DISPUTE_OPENED',
+] as const;
+export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
