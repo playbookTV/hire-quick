@@ -15,6 +15,7 @@ import { useTheme, Box, Text } from '../../theme/restyle.js';
 import { Screen } from '../../components/Screen.js';
 import { AppBar } from '../../components/AppBar.js';
 import { Button } from '../../components/Button.js';
+import { Banner } from '../../components/Banner.js';
 import { AddPhoto } from '../../components/AddPhoto.js';
 import { StepIndicator } from '../../components/StepIndicator.js';
 import { Icon } from '../../components/Icon.js';
@@ -97,6 +98,17 @@ export default function IdVerification(): React.JSX.Element {
           <Text variant="body" color="inkMuted">
             We verify every usher so clients can trust who they hire. This is required before you can apply.
           </Text>
+
+          {/* Biometric KYC (Dojah) — the fast, recommended path. Manual upload stays below as a fallback. */}
+          <Box backgroundColor="brandEmeraldTintWeak" borderRadius="lg" padding="400" style={{ gap: 10 }}>
+            <Text variant="titleM" color="brandEmerald">Verify instantly</Text>
+            <Text variant="bodySm" color="inkMuted">
+              Use your NIN or BVN and a quick selfie to get verified in about a minute.
+            </Text>
+            <Button label="Verify with NIN/BVN" onPress={() => router.push('/(verification)/kyc-consent')} />
+          </Box>
+          <Banner tone="info" message="Or upload your documents below for manual review (1–2 business days)." />
+
           <AddPhoto
             variant="upload"
             icon={keys.id ? 'check' : 'camera'}

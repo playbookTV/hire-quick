@@ -162,7 +162,7 @@ export default function PaymentSummary(): React.JSX.Element {
             </Text>
           </Box>
 
-          <Banner tone="brand" message="Held in escrow — released to each usher only when they check in." />
+          <Banner tone="brand" message="Held safely — released to each usher only when they check in." />
 
           <ListItem icon="credit-card" title="Paystack" subtitle="Secure card payment" actionLabel="" />
         </Box>

@@ -13,7 +13,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Pressable } from 'react-native';
+import { Pressable, Keyboard } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, Box, Text } from '../../theme/restyle.js';
 import { Screen } from '../../components/Screen.js';
@@ -116,6 +116,9 @@ export default function Withdraw(): React.JSX.Element {
       },
     );
   };
+
+  // Why the "Add account" button is disabled, so the form isn't a silent dead end.
+  const addHint = addAccountHint(bank, accountNumber);
 
   const onConfirm = (): void => {
     if (!activeAccount || !amountValid) return;
@@ -283,7 +286,14 @@ export default function Withdraw(): React.JSX.Element {
               <Text variant="headingS">Add a bank account</Text>
 
               <Field label="Bank">
-                <Pressable onPress={() => setBankModal(true)} accessibilityRole="button" accessibilityLabel="Select your bank">
+                <Pressable
+                  onPress={() => {
+                    Keyboard.dismiss(); // close the number pad before the sheet animates up (no jank)
+                    setBankModal(true);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Select your bank"
+                >
                   <Box
                     flexDirection="row"
                     alignItems="center"
@@ -334,6 +344,8 @@ export default function Withdraw(): React.JSX.Element {
                 </Box>
               ) : resolveError ? (
                 <Text variant="bodySm" color="statusDanger">{resolveError}</Text>
+              ) : addHint ? (
+                <Text variant="bodySm" color="inkMuted">{addHint}</Text>
               ) : null}
 
               <Button
@@ -362,6 +374,14 @@ export default function Withdraw(): React.JSX.Element {
 }
 
 /** Inline validation for the amount field (no nested ternary, no blocking Alert). */
+/** Guidance shown while the add-account form can't yet submit (no bank / short number). */
+function addAccountHint(bank: Bank | null, accountNumber: string): string | null {
+  if (!bank) return 'Pick your bank, then enter your 10-digit account number.';
+  if (accountNumber.length === 0) return 'Enter your 10-digit account number.';
+  if (accountNumber.length < 10) return 'Enter all 10 digits of your account number.';
+  return null;
+}
+
 function getAmountError(amount: string, amountKobo: number, valid: boolean, available: number): string | null {
   if (amount.length === 0 || valid) return null;
   if (amountKobo > available) return 'That’s more than your available balance.';

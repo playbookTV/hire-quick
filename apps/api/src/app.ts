@@ -20,6 +20,9 @@ import { adminRouter } from './modules/admin/routes.js';
 import { eventsRouter } from './modules/events/routes.js';
 import { bookingsRouter } from './modules/bookings/routes.js';
 import { ushersRouter } from './modules/ushers/routes.js';
+import { kycRouter, dojahWebhookRouter } from './modules/verification/routes.js';
+import { NoopKyc } from './modules/verification/port/noop-kyc.js';
+import type { KycPort } from './modules/verification/port/kyc-port.js';
 import { noopGateway, type RealtimeGateway } from './realtime/gateway.js';
 
 /** A leak-free error envelope: clients get a code + safe message, never internals. */
@@ -45,6 +48,8 @@ export interface AppConfig {
   trustProxy?: number;
   /** S3-compatible storage for KYC documents. When absent, legacy URL passthrough. */
   storage?: StoragePort | undefined;
+  /** KYC provider (Dojah). When absent, NoopKyc lets the app boot/tests run with no keys. */
+  kyc?: KycPort | undefined;
 }
 
 /** Allowlist in production; reflect-all only when no list is configured (dev/test). */
@@ -77,6 +82,7 @@ export function createApp(config: AppConfig = {}): Express {
   // 0 leaves trust proxy disabled (express treats 0 as "trust none").
   app.set('trust proxy', config.trustProxy ?? 0);
   const realtime = config.realtime ?? noopGateway;
+  const kyc = config.kyc ?? new NoopKyc();
   const limiters = createRateLimiters(config.rateLimitRedis);
 
   app.disable('x-powered-by');
@@ -100,6 +106,9 @@ export function createApp(config: AppConfig = {}): Express {
     );
   }
 
+  // Dojah KYC `kyc.widget` webhook — raw body, authoritative result path.
+  app.use('/webhooks/dojah', express.raw({ type: '*/*' }), dojahWebhookRouter({ kyc, realtime }));
+
   app.use(express.json({ limit: '1mb' }));
 
   app.get('/health', (_req, res) => {
@@ -107,6 +116,7 @@ export function createApp(config: AppConfig = {}): Express {
   });
 
   app.use('/auth', limiters.auth, authRouter());
+  app.use('/api/me/verification', kycRouter({ kyc }));
   app.use('/api/me', profileRouter(config.storage));
   app.use('/api/me', privacyRouter(config.storage));
   app.use('/api/me', notificationsRouter());

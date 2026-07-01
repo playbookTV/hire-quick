@@ -48,7 +48,7 @@ function EscrowPanel({ pending, nextReleaseDate }: Readonly<{ pending: number; n
       <Box flexDirection="row" alignItems="center" justifyContent="space-between">
         <Box flexDirection="row" alignItems="center" style={{ gap: 8 }}>
           <Icon name="shield" size={16} color="accentGoldStrong" />
-          <Text variant="bodySm" color="inkMuted">Held in escrow</Text>
+          <Text variant="bodySm" color="inkMuted">Held safely</Text>
         </Box>
         <Text variant="amountM" color="accentGoldStrong">{money(pending)}</Text>
       </Box>

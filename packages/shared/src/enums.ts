@@ -94,9 +94,19 @@ export type MilestoneStatus = (typeof MILESTONE_STATUSES)[number];
 /** Persisted notification kinds; each maps to a deep-link target on the mobile client. */
 export const NOTIFICATION_TYPES = [
   'INVITATION_RECEIVED',
+  'APPLICATION_RECEIVED',
   'BOOKING_CONFIRMED',
   'PAYOUT_RELEASED',
   'NEW_MESSAGE',
   'DISPUTE_OPENED',
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
+
+/** Nigeria's 36 states + the FCT. Powers usher↔job state matching and the location pickers. */
+export const NIGERIAN_STATES = [
+  'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue', 'Borno', 'Cross River',
+  'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 'Gombe', 'Imo', 'Jigawa', 'Kaduna', 'Kano', 'Katsina',
+  'Kebbi', 'Kogi', 'Kwara', 'Lagos', 'Nasarawa', 'Niger', 'Ogun', 'Ondo', 'Osun', 'Oyo', 'Plateau',
+  'Rivers', 'Sokoto', 'Taraba', 'Yobe', 'Zamfara', 'FCT - Abuja',
+] as const;
+export type NigerianState = (typeof NIGERIAN_STATES)[number];

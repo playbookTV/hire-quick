@@ -115,7 +115,7 @@ export default function EventDetail(): React.JSX.Element {
           <StatusPill status={event.status} />
         </Box>
         <MetaRow icon="calendar" text={`${formatEventDate(event.eventDate)} · ${formatTimeRange(event.startTime, event.endTime)}`} />
-        <MetaRow icon="map-pin" text={event.venue} />
+        <MetaRow icon="map-pin" text={event.state ? `${event.venue} · ${event.state}` : event.venue} />
 
         {/* progress */}
         <Box height={20} />
@@ -143,7 +143,7 @@ export default function EventDetail(): React.JSX.Element {
           <KeyValueRow label="Budget / head" value={formatNaira(kobo(event.budgetPerHead))} />
           {event.dressCode ? <KeyValueRow label="Dress code" value={event.dressCode} /> : null}
           <Box height={1} backgroundColor="borderDefault" marginVertical="200" />
-          <KeyValueRow label="Total to escrow" value={formatNaira(total)} tone="brand" emphasize />
+          <KeyValueRow label="Total held safely" value={formatNaira(total)} tone="brand" emphasize />
         </Card>
 
         {requirements ? (

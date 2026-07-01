@@ -39,6 +39,8 @@ export interface UsherProfile {
   ratingAvg: number;
   ratingCount: number;
   completedJobsCount: number;
+  /** Nigerian state; ushers only see jobs in their state. */
+  state: string | null;
   /** Base area in Lagos; powers discovery's location filter. */
   city: string | null;
   /** Spoken languages; powers discovery's language filter. */
@@ -68,6 +70,7 @@ export interface EventResource {
   clientId: string;
   title: string;
   venue: string;
+  state: string | null;
   category: string;
   eventDate: string;
   startTime: string;
@@ -76,7 +79,7 @@ export interface EventResource {
   budgetPerHead: number;
   dressCode: string | null;
   accommodation: 'PROVIDED' | 'NOT_PROVIDED' | null;
-  preferences: { requirements?: string } | null;
+  preferences: { requirements?: string; hairstyle?: string } | null;
   status: EventStatus;
   createdAt: string;
   _count?: { applications: number; bookings: number };

@@ -36,6 +36,7 @@ const patchMeSchema = z.object({
   businessName: z.string().max(120).optional(),
   // Usher-only discovery fields. `dayRateKobo` is display + filter sugar only —
   // it never feeds escrow/order math (that stays Event.budgetPerHead, TRD §6).
+  state: z.string().max(40).optional(),
   city: z.string().max(80).optional(),
   languages: z.array(z.string().min(1).max(40)).max(10).optional(),
   dayRateKobo: z.number().int().min(0).max(100_000_000).optional(),
@@ -145,6 +146,7 @@ export function profileRouter(storage?: StoragePort): Router {
         (body.bio !== undefined ||
           body.yearsExperience !== undefined ||
           body.displayName !== undefined ||
+          body.state !== undefined ||
           body.city !== undefined ||
           body.languages !== undefined ||
           body.dayRateKobo !== undefined)
@@ -153,6 +155,7 @@ export function profileRouter(storage?: StoragePort): Router {
           bio?: string;
           yearsExperience?: number;
           displayName?: string;
+          state?: string;
           city?: string;
           languages?: string[];
           dayRateKobo?: number;
@@ -160,6 +163,7 @@ export function profileRouter(storage?: StoragePort): Router {
         if (body.bio !== undefined) data.bio = body.bio;
         if (body.yearsExperience !== undefined) data.yearsExperience = body.yearsExperience;
         if (body.displayName !== undefined) data.displayName = body.displayName;
+        if (body.state !== undefined) data.state = body.state;
         if (body.city !== undefined) data.city = body.city;
         if (body.languages !== undefined) data.languages = body.languages;
         if (body.dayRateKobo !== undefined) data.dayRateKobo = body.dayRateKobo;
@@ -220,8 +224,8 @@ export function profileRouter(storage?: StoragePort): Router {
       const resolved = await Promise.all(
         list.map(async (v) => ({
           ...v,
-          idDocumentUrl: await presignDoc(storage, v.idDocumentUrl),
-          selfieUrl: await presignDoc(storage, v.selfieUrl),
+          idDocumentUrl: v.idDocumentUrl ? await presignDoc(storage, v.idDocumentUrl) : null,
+          selfieUrl: v.selfieUrl ? await presignDoc(storage, v.selfieUrl) : null,
         })),
       );
       res.json(resolved);

@@ -5,17 +5,19 @@
  * icon. Focus (emerald) and error (danger) borders are added states.
  */
 import { useState, forwardRef } from 'react';
-import { TextInput, View, type TextInputProps } from 'react-native';
+import { TextInput, View, Text, type TextInputProps } from 'react-native';
 import { useTheme } from '../theme/restyle.js';
 import { Icon, type IconName } from './Icon.js';
 
 export interface InputProps extends Omit<TextInputProps, 'style'> {
   leftIcon?: IconName;
+  /** Leading text affordance (e.g. a "₦" currency symbol). Rendered before the field. */
+  prefix?: string;
   error?: boolean;
 }
 
 export const Input = forwardRef<TextInput, InputProps>(function Input(
-  { leftIcon, error = false, onFocus, onBlur, ...props },
+  { leftIcon, prefix, error = false, onFocus, onBlur, ...props },
   ref,
 ) {
   const theme = useTheme();
@@ -46,6 +48,18 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
       }}
     >
       {leftIcon ? <Icon name={leftIcon} size={20} color="inkFaint" /> : null}
+      {prefix ? (
+        <Text
+          style={{
+            fontFamily: 'PlusJakartaSans_400Regular',
+            fontSize: 15,
+            lineHeight: 22,
+            color: theme.colors.inkMuted,
+          }}
+        >
+          {prefix}
+        </Text>
+      ) : null}
       <TextInput
         ref={ref}
         placeholderTextColor={theme.colors.inkFaint}

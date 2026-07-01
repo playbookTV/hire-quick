@@ -14,14 +14,17 @@ import { AppBar } from '../../components/AppBar.js';
 import { Field } from '../../components/Field.js';
 import { Input } from '../../components/Input.js';
 import { TextArea } from '../../components/TextArea.js';
+import { Select } from '../../components/Select.js';
 import { Chip } from '../../components/Chip.js';
 import { Button } from '../../components/Button.js';
 import { useAuth } from '../../lib/auth-context.js';
 import { useUpdateProfile } from '../../lib/hooks.js';
 import { useToast } from '../../lib/toast.js';
+import { NIGERIAN_STATES } from '@hq/shared';
 
 // Common languages on Lagos event jobs — kept short so the chips stay one or two rows.
 const LANGUAGE_OPTIONS = ['English', 'Pidgin', 'Yoruba', 'Igbo', 'Hausa', 'French'];
+const STATE_OPTIONS = NIGERIAN_STATES.map((s) => ({ value: s, label: s }));
 
 export default function EditProfile(): React.JSX.Element {
   const router = useRouter();
@@ -34,6 +37,7 @@ export default function EditProfile(): React.JSX.Element {
   const [displayName, setDisplayName] = useState(usher?.displayName ?? '');
   const [bio, setBio] = useState(usher?.bio ?? '');
   const [years, setYears] = useState(String(usher?.yearsExperience ?? 0));
+  const [state, setState] = useState(usher?.state ?? '');
   const [city, setCity] = useState(usher?.city ?? '');
   const [languages, setLanguages] = useState<string[]>(usher?.languages ?? []);
   // Day rate is held in naira for the input; converted to kobo on save.
@@ -56,6 +60,7 @@ export default function EditProfile(): React.JSX.Element {
         displayName: name,
         bio: bio.trim(),
         yearsExperience,
+        state: state || undefined,
         city: city.trim(),
         languages,
         dayRateKobo: Number.isFinite(rateNaira) ? rateNaira * 100 : 0,
@@ -87,7 +92,10 @@ export default function EditProfile(): React.JSX.Element {
               maxLength={2000}
             />
           </Field>
-          <Field label="Base area" helper="Where you’re based in Lagos — clients filter by this.">
+          <Field label="State" helper="You'll only see jobs in this state.">
+            <Select title="State" value={state || null} placeholder="Choose your state" options={STATE_OPTIONS} onSelect={setState} />
+          </Field>
+          <Field label="Base area" helper="Where you’re based — clients filter by this.">
             <Input value={city} onChangeText={setCity} placeholder="e.g. Lekki" maxLength={80} />
           </Field>
           <Field label="Languages" helper="Tap the languages you speak.">
@@ -104,7 +112,7 @@ export default function EditProfile(): React.JSX.Element {
           </Field>
           <Field label="Day rate" helper="Indicative only — clients pay the event’s set budget.">
             <Input
-              leftIcon="dollar-sign"
+              prefix="₦"
               value={rate}
               onChangeText={(t) => setRate(t.replace(/\D/g, ''))}
               keyboardType="number-pad"

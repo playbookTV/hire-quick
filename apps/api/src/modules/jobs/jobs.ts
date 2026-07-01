@@ -144,7 +144,7 @@ export async function jobRetentionPurge(storage?: StoragePort): Promise<void> {
   for (const v of kycRows) {
     if (storage) {
       await Promise.allSettled(
-        [v.idDocumentUrl, v.selfieUrl].filter(Boolean).map((k) => storage.deleteObject(k)),
+        [v.idDocumentUrl, v.selfieUrl].filter((k): k is string => Boolean(k)).map((k) => storage.deleteObject(k)),
       );
     }
     await prisma.usherVerification.update({ where: { id: v.id }, data: { idDocumentUrl: '', selfieUrl: '' } });

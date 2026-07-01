@@ -117,7 +117,9 @@ export default function EventDetails(): React.JSX.Element {
           <Box backgroundColor="bgSurface" borderWidth={1} borderColor="borderDefault" borderRadius="lg" padding="400" style={{ gap: 12 }}>
             <DetailRow icon="calendar" label="Date & time" value={`${shortDate(e.eventDate)} · ${formatTimeRange(e.startTime, e.endTime)}`} />
             <DetailRow icon="map-pin" label="Venue" value={e.venue} />
+            {e.state ? <DetailRow icon="map" label="State" value={e.state} /> : null}
             <DetailRow icon="user-check" label="Dress code" value={e.dressCode ?? e.category} />
+            {e.preferences?.hairstyle ? <DetailRow icon="scissors" label="Hairstyle" value={e.preferences.hairstyle} /> : null}
             <DetailRow icon="users" label="Slots left" value={`${Math.max(e.headcount - booked, 0)} of ${e.headcount}`} valueColor="accentGoldStrong" />
           </Box>
 

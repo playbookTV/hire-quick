@@ -34,8 +34,8 @@ import { Box, Text } from '../../theme/restyle.js';
 import { useCreateEvent } from '../../lib/hooks.js';
 import { ApiError } from '../../lib/api-error.js';
 import { formatEventDate, formatTimeRange } from '../../lib/format.js';
+import { EVENT_CATEGORIES, HAIRSTYLE_OPTIONS, TIME_OPTIONS, STATE_OPTIONS } from '../../lib/event-options.js';
 
-const CATEGORIES = ['Wedding', 'Corporate event', 'Concert', 'Conference', 'Party', 'Product launch', 'Religious event', 'Other'];
 const STEP_LABELS = ['STEP 1 OF 3 · DETAILS', 'STEP 2 OF 3 · STAFFING', 'STEP 3 OF 3 · REVIEW'];
 
 function pad(n: number): string {
@@ -75,12 +75,6 @@ export default function CreateEvent(): React.JSX.Element {
     });
   }, []);
 
-  const timeOptions = useMemo<SelectOption<string>[]>(() => {
-    const out: SelectOption<string>[] = [];
-    for (let h = 6; h <= 23; h++) for (const m of [0, 30]) out.push({ value: `${pad(h)}:${pad(m)}`, label: `${pad(h)}:${pad(m)}` });
-    return out;
-  }, []);
-
   const {
     control,
     handleSubmit,
@@ -94,6 +88,7 @@ export default function CreateEvent(): React.JSX.Element {
     defaultValues: {
       title: '',
       venue: '',
+      state: '',
       category: '',
       eventDate: tomorrow,
       startTime: '10:00',
@@ -101,6 +96,7 @@ export default function CreateEvent(): React.JSX.Element {
       headcount: 6,
       budgetPerHeadKobo: 0,
       dressCode: '',
+      hairstyle: '',
       accommodation: undefined,
       requirements: '',
     },
@@ -109,6 +105,11 @@ export default function CreateEvent(): React.JSX.Element {
   const values = watch();
   const total = kobo((values.headcount || 0) * (values.budgetPerHeadKobo || 0));
   const lateNight = isLateNight(values.endTime ?? '');
+  // End must be after start; only offer later slots so an invalid range can't be picked.
+  const endTimeOptions = useMemo(
+    () => TIME_OPTIONS.filter((o) => o.value > (values.startTime ?? '')),
+    [values.startTime],
+  );
 
   const next = async () => {
     setFormError(null);
@@ -168,6 +169,15 @@ export default function CreateEvent(): React.JSX.Element {
                 </Field>
               )}
             />
+            <Controller
+              control={control}
+              name="state"
+              render={({ field }) => (
+                <Field label="State" helper="Only ushers in this state will see the job." error={errors.state?.message}>
+                  <Select title="State" placeholder="Choose state" value={field.value || null} options={STATE_OPTIONS} onSelect={field.onChange} />
+                </Field>
+              )}
+            />
             <Box flexDirection="row" style={{ gap: 16 }}>
               <Box flex={1}>
                 <Controller
@@ -186,7 +196,7 @@ export default function CreateEvent(): React.JSX.Element {
                   name="startTime"
                   render={({ field }) => (
                     <Field label="Start" error={errors.startTime?.message} required>
-                      <Select title="Start time" value={field.value} options={timeOptions} onSelect={field.onChange} />
+                      <Select title="Start time" value={field.value} options={TIME_OPTIONS} onSelect={field.onChange} />
                     </Field>
                   )}
                 />
@@ -199,7 +209,7 @@ export default function CreateEvent(): React.JSX.Element {
                   name="endTime"
                   render={({ field }) => (
                     <Field label="End" error={errors.endTime?.message} required>
-                      <Select title="End time" value={field.value} options={timeOptions} onSelect={field.onChange} />
+                      <Select title="End time" value={field.value} options={endTimeOptions} onSelect={field.onChange} />
                     </Field>
                   )}
                 />
@@ -210,7 +220,7 @@ export default function CreateEvent(): React.JSX.Element {
                   name="category"
                   render={({ field }) => (
                     <Field label="Category" error={errors.category?.message} required>
-                      <Select title="Event category" placeholder="Choose" value={field.value || null} options={CATEGORIES.map((c) => ({ value: c, label: c }))} onSelect={field.onChange} error={!!errors.category} />
+                      <Select title="Event category" placeholder="Choose" value={field.value || null} options={EVENT_CATEGORIES.map((c) => ({ value: c, label: c }))} onSelect={field.onChange} error={!!errors.category} />
                     </Field>
                   )}
                 />
@@ -241,11 +251,20 @@ export default function CreateEvent(): React.JSX.Element {
             />
             <Controller
               control={control}
+              name="hairstyle"
+              render={({ field }) => (
+                <Field label="Hairstyle" helper="Optional" error={errors.hairstyle?.message}>
+                  <Select title="Hairstyle" value={field.value ?? ''} options={HAIRSTYLE_OPTIONS} onSelect={field.onChange} />
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
               name="budgetPerHeadKobo"
               render={({ field }) => (
                 <Field label="Budget per head" error={errors.budgetPerHeadKobo?.message} required>
                   <Input
-                    leftIcon="dollar-sign"
+                    prefix="₦"
                     placeholder="e.g. 15000"
                     keyboardType="number-pad"
                     value={field.value ? String(Math.round(field.value / 100)) : ''}
@@ -312,6 +331,7 @@ export default function CreateEvent(): React.JSX.Element {
             <Card>
               <KeyValueRow label="Title" value={values.title || '—'} />
               <KeyValueRow label="Venue" value={values.venue || '—'} />
+              {values.state ? <KeyValueRow label="State" value={values.state} /> : null}
               <KeyValueRow label="Category" value={values.category || '—'} />
               <KeyValueRow label="Date" value={values.eventDate ? formatEventDate(new Date(values.eventDate).toISOString()) : '—'} />
               <KeyValueRow label="Time" value={formatTimeRange(values.startTime, values.endTime)} />
@@ -321,12 +341,13 @@ export default function CreateEvent(): React.JSX.Element {
               <KeyValueRow label="Staff needed" value={String(values.headcount)} />
               <KeyValueRow label="Budget / head" value={formatNaira(kobo(values.budgetPerHeadKobo || 0))} />
               {values.dressCode ? <KeyValueRow label="Dress code" value={values.dressCode} /> : null}
+              {values.hairstyle ? <KeyValueRow label="Hairstyle" value={values.hairstyle} /> : null}
               {values.accommodation ? <KeyValueRow label="Accommodation" value={values.accommodation === 'PROVIDED' ? 'Provided' : 'Not provided'} /> : null}
               <Box height={1} backgroundColor="borderDefault" marginVertical="200" />
-              <KeyValueRow label="Total to escrow" value={formatNaira(total)} tone="brand" emphasize />
+              <KeyValueRow label="Total held safely" value={formatNaira(total)} tone="brand" emphasize />
             </Card>
             <Box height={16} />
-            <Banner tone="brand" message="Your event will be posted as Open. You’ll confirm staff and pay into escrow once ushers apply." />
+            <Banner tone="brand" message="Your event will be posted as Open. You’ll confirm staff and pay once ushers apply — we hold the money safely until check-in." />
           </>
         ) : null}
 

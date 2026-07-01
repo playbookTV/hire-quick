@@ -18,6 +18,10 @@ import { queryClient } from '../lib/query.js';
 import { AuthProvider } from '../lib/auth-context.js';
 import { ToastProvider } from '../lib/toast.js';
 
+// expo-router renders this for any uncaught render error below the root, instead
+// of crashing the whole app. Named export must be `ErrorBoundary`.
+export { ErrorScreen as ErrorBoundary } from '../components/ErrorScreen.js';
+
 void SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout(): React.JSX.Element | null {

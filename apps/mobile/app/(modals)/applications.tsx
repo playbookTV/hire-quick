@@ -245,7 +245,7 @@ export default function Applications(): React.JSX.Element {
             onPress={() => { void confirm(); }}
           />
           <Text variant="bodySm" color="inkFaint" style={{ textAlign: 'center' }}>
-            {count} {count === 1 ? 'usher' : 'ushers'} · funds held in escrow until check-in
+            {count} {count === 1 ? 'usher' : 'ushers'} · funds held safely until check-in
           </Text>
         </Box>
       </Screen>

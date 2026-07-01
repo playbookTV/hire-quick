@@ -17,7 +17,8 @@ import { ReviewCard } from '../../components/ReviewCard.js';
 import { Button } from '../../components/Button.js';
 import { shadowSm } from '../../theme/shadows.js';
 import { useAuth } from '../../lib/auth-context.js';
-import { useUsherReviews } from '../../lib/hooks.js';
+import { useUsherReviews, useBookings } from '../../lib/hooks.js';
+import { upcomingBookings } from '../../lib/bookings.js';
 import { shortDate } from '../../lib/format.js';
 import type { Theme } from '../../theme/theme.js';
 
@@ -58,6 +59,8 @@ export default function UsherProfile(): React.JSX.Element {
   const { user, logout } = useAuth();
   const usher = user?.usher;
   const reviews = useUsherReviews(usher?.id ?? '');
+  const bookings = useBookings();
+  const upcoming = upcomingBookings(bookings.data ?? []);
 
   const name = usher?.displayName ?? 'Your profile';
   const reliability = Math.round(usher?.reliabilityScore ?? 0);
@@ -118,6 +121,42 @@ export default function UsherProfile(): React.JSX.Element {
           <Stat value={(usher?.ratingAvg ?? 0).toFixed(1)} label="Rating" color="accentGoldStrong" />
           <Stat value={String(usher?.completedJobsCount ?? 0)} label="Jobs done" color="inkStrong" />
           <Stat value={`${reliability}%`} label="Reliability" color="statusSuccess" />
+        </Box>
+
+        {/* upcoming jobs — accepted/booked work, surfaced here per usher feedback */}
+        <Box style={{ gap: 10 }}>
+          <SectionHeader
+            title="Upcoming jobs"
+            actionLabel={upcoming.length > 0 ? 'See all' : undefined}
+            onAction={upcoming.length > 0 ? () => router.push('/(usher)/jobs') : undefined}
+          />
+          {upcoming.length === 0 ? (
+            <Text variant="bodySm" color="inkMuted">
+              No upcoming jobs yet — apply to jobs to fill your calendar.
+            </Text>
+          ) : (
+            upcoming.slice(0, 2).map((b) => (
+              <Pressable
+                key={b.id}
+                onPress={() => router.push('/(usher)/jobs')}
+                accessibilityRole="button"
+                accessibilityLabel={`${b.event?.title ?? 'Job'}${b.event ? ` on ${shortDate(b.event.eventDate)}` : ''}`}
+              >
+                <Box flexDirection="row" alignItems="center" backgroundColor="bgSurface" borderWidth={1} borderColor="borderDefault" borderRadius="lg" padding="400" style={[{ gap: 12 }, shadowSm]}>
+                  <Icon name="calendar" size={20} color="brandEmerald" />
+                  <Box flex={1} style={{ gap: 2 }}>
+                    <Text variant="titleM" numberOfLines={1}>
+                      {b.event?.title ?? 'Job'}
+                    </Text>
+                    <Text variant="bodySm" color="inkMuted">
+                      {b.event ? shortDate(b.event.eventDate) : 'Date to be confirmed'}
+                    </Text>
+                  </Box>
+                  <Icon name="chevron-right" size={20} color="inkMuted" />
+                </Box>
+              </Pressable>
+            ))
+          )}
         </Box>
 
         {/* quick links */}

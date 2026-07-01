@@ -21,15 +21,7 @@ import { useAuth } from '../../lib/auth-context.js';
 import { useWallet, useWalletActivity, useBookings, useNotifications } from '../../lib/hooks.js';
 import { money, dateTime } from '../../lib/format.js';
 import type { Booking, WalletActivity } from '../../lib/types.js';
-
-/** Event start as epoch ms for chronological sort; bookings with no event sort last. */
-function bookingStartMs(b: Booking): number {
-  if (!b.event) return Number.POSITIVE_INFINITY;
-  const d = new Date(b.event.eventDate);
-  const [h, m] = b.event.startTime.split(':').map(Number);
-  d.setHours(h ?? 0, m ?? 0, 0, 0);
-  return d.getTime();
-}
+import { upcomingBookings } from '../../lib/bookings.js';
 
 /** Bucket credit activity into the last 7 calendar days (last slot = today) for the earnings sparkline. */
 function weeklyEarnings(activity: WalletActivity[]): { values: number[]; total: number } {
@@ -119,9 +111,7 @@ export default function UsherHome(): React.JSX.Element {
   const unread = notif.data?.unreadCount ?? 0;
   const name = user?.usher?.displayName ?? 'there';
   const initial = name.trim().charAt(0).toUpperCase() || 'U';
-  const upcoming = (bookings.data ?? [])
-    .filter((b) => b.status !== 'PAID' && b.status !== 'CANCELLED')
-    .sort((a, b) => bookingStartMs(a) - bookingStartMs(b)); // soonest first (U10)
+  const upcoming = upcomingBookings(bookings.data ?? []); // soonest first (U10)
 
   return (
     <Box flex={1} backgroundColor="bgCanvas" style={{ paddingTop: insets.top }}>
@@ -188,7 +178,7 @@ export default function UsherHome(): React.JSX.Element {
             <Pressable
               onPress={() => router.push('/(usher)/wallet')}
               accessibilityRole="button"
-              accessibilityLabel={`${money(wallet.data?.pendingEscrow ?? 0)} held in escrow. View details.`}
+              accessibilityLabel={`${money(wallet.data?.pendingEscrow ?? 0)} held safely. View details.`}
               hitSlop={6}
             >
               <Box flexDirection="row" alignItems="center" style={{ gap: 4 }}>

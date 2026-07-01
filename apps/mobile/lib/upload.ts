@@ -83,6 +83,26 @@ export async function pickImageAsset(source: PickSource): Promise<PickedAsset | 
   return { uri: asset.uri, mimeType: asset.mimeType, fileName: asset.fileName };
 }
 
+/**
+ * Multi-select from the photo library. Returns up to `limit` picked assets, or []
+ * if cancelled. Used by the portfolio editor so an usher can add several work
+ * photos in one go (feedback: "can we select multiple at a time").
+ */
+export async function pickImageAssets(limit: number): Promise<PickedAsset[]> {
+  const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!perm.granted) {
+    throw new Error('Photo access is off. Allow it in Settings to choose photos.');
+  }
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ['images'],
+    quality: 0.8,
+    allowsMultipleSelection: true,
+    selectionLimit: Math.max(1, limit),
+  });
+  if (result.canceled) return [];
+  return result.assets.map((a) => ({ uri: a.uri, mimeType: a.mimeType, fileName: a.fileName }));
+}
+
 export type PhotoKind = 'avatar' | 'portfolio';
 
 /**

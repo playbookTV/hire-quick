@@ -63,6 +63,13 @@ const EnvSchema = z.object({
   BREVO_WHATSAPP_SENDER: z.string().default(''),
   BREVO_WHATSAPP_OTP_TEMPLATE_ID: z.coerce.number().int().nonnegative().default(0),
   BREVO_WHATSAPP_OTP_PARAM: z.string().default('code'),
+  // Dojah — biometric KYC (NIN/BVN + liveness + face-match). App ID + Secret Key
+  // (server-side) and the EasyOnboard flow's Widget ID. Empty = NoopKyc (dev/test
+  // boot with no account). DOJAH_ENVIRONMENT picks the sandbox vs production base.
+  DOJAH_APP_ID: z.string().default(''),
+  DOJAH_SECRET_KEY: z.string().default(''),
+  DOJAH_WIDGET_ID: z.string().default(''),
+  DOJAH_ENVIRONMENT: z.enum(['sandbox', 'production']).default('sandbox'),
   // Firebase Cloud Messaging (push). All three from the service-account JSON.
   // When all are set, recordPush sends real pushes; otherwise it stubs to a log.
   FCM_PROJECT_ID: z.string().default(''),
@@ -105,6 +112,9 @@ const EnvSchema = z.object({
   require('STORAGE_BUCKET', 'KYC document storage bucket');
   require('STORAGE_ACCESS_KEY', 'KYC document storage access key');
   require('STORAGE_SECRET_KEY', 'KYC document storage secret key');
+  require('DOJAH_APP_ID', 'Dojah App ID (biometric KYC)');
+  require('DOJAH_SECRET_KEY', 'Dojah Secret Key (biometric KYC)');
+  require('DOJAH_WIDGET_ID', 'Dojah Widget ID (biometric KYC)');
 });
 
 export type Env = z.infer<typeof EnvSchema>;

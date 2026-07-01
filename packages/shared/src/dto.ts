@@ -69,6 +69,7 @@ export type CheckinVerifyInput = z.infer<typeof checkinVerifySchema>;
 export const eventFields = z.object({
   title: z.string().min(3).max(120),
   venue: z.string().min(2).max(200),
+  state: z.string().min(2).max(40).optional(),
   category: z.string().min(2).max(60),
   eventDate: z.coerce.date(),
   startTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
@@ -76,6 +77,7 @@ export const eventFields = z.object({
   headcount: z.number().int().min(1).max(100),
   budgetPerHeadKobo: z.number().int().positive().max(MAX_INT32_KOBO),
   dressCode: z.string().max(200).optional(),
+  hairstyle: z.string().max(60).optional(),
   accommodation: z.enum(ACCOMMODATION_STATUSES).optional(),
   requirements: z.string().max(2000).optional(),
 });

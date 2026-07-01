@@ -21,7 +21,8 @@ const wrap =
     h(req as AuthedRequest, res).catch(next);
   };
 
-const rejectSchema = z.object({ reason: z.string().min(3).max(500) });
+const REJECT_REASON_CODES = ['UNCLEAR_ID', 'SELFIE_MISMATCH', 'LIVENESS_FAILED', 'ID_NOT_FOUND', 'NAME_MISMATCH', 'WATCHLISTED', 'EXPIRED_DOCUMENT', 'POOR_IMAGE', 'OTHER'] as const;
+const rejectSchema = z.object({ reason: z.string().min(3).max(500), reasonCode: z.enum(REJECT_REASON_CODES).optional() });
 
 export function adminRouter(deps: {
   realtime: RealtimeGateway;
@@ -81,8 +82,8 @@ export function adminRouter(deps: {
       const resolved = await Promise.all(
         list.map(async (v) => ({
           ...v,
-          idDocumentUrl: await presignDoc(deps.storage, v.idDocumentUrl),
-          selfieUrl: await presignDoc(deps.storage, v.selfieUrl),
+          idDocumentUrl: v.idDocumentUrl ? await presignDoc(deps.storage, v.idDocumentUrl) : null,
+          selfieUrl: v.selfieUrl ? await presignDoc(deps.storage, v.selfieUrl) : null,
         })),
       );
       res.json(resolved);
@@ -111,17 +112,17 @@ export function adminRouter(deps: {
     '/verifications/:id/reject',
     wrap(async (req, res) => {
       const id = String(req.params.id);
-      const { reason } = rejectSchema.parse(req.body);
+      const { reason, reasonCode } = rejectSchema.parse(req.body);
       const v = await prisma.usherVerification.findUnique({ where: { id } });
       if (!v) throw new ApiError(404, 'NOT_FOUND', 'verification not found');
       await prisma.$transaction([
         prisma.usherVerification.update({
           where: { id },
-          data: { status: 'REJECTED', reviewedById: req.auth.userId, reason, reviewedAt: new Date() },
+          data: { status: 'REJECTED', reviewedById: req.auth.userId, reason, reasonCode: reasonCode ?? 'OTHER', reviewedAt: new Date() },
         }),
         prisma.usher.update({ where: { id: v.usherId }, data: { verificationStatus: 'REJECTED' } }),
       ]);
-      await writeAudit({ actorId: req.auth.userId, action: 'verification.reject', target: id, metadata: { reason } });
+      await writeAudit({ actorId: req.auth.userId, action: 'verification.reject', target: id, metadata: { reason, reasonCode: reasonCode ?? 'OTHER' } });
       res.json({ id, status: 'REJECTED' });
     }),
   );

@@ -14,7 +14,7 @@ import { useAuth } from '../../lib/auth-context.js';
 import { shadowMd } from '../../theme/shadows.js';
 import { primitives } from '../../theme/primitives.js';
 
-const CHIPS = ['Verified IDs', 'Escrow held', 'Check-in payout'];
+const CHIPS = ['Verified IDs', 'Money held safe', 'Check-in payout'];
 
 export default function Welcome(): React.JSX.Element {
   const router = useRouter();
@@ -49,7 +49,7 @@ export default function Welcome(): React.JSX.Element {
             Hire vetted ushers. Money held safe.
           </Text>
           <Text style={{ fontFamily: 'PlusJakartaSans_400Regular', fontSize: 15, lineHeight: 22, color: primitives.emerald[100] }}>
-            Book staff, pay into escrow, and release funds only when they check in on the day.
+            Book staff, pay upfront, and we hold the money safely — released only when they check in on the day.
           </Text>
           <Box flexDirection="row" flexWrap="wrap" style={{ gap: 8 }}>
             {CHIPS.map((c) => (

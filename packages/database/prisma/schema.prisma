@@ -36,6 +36,25 @@ enum VerificationStatus {
   REJECTED
 }
 
+/** How an usher proved identity. BIOMETRIC = Dojah (NIN/BVN + liveness + face-match). */
+enum VerificationMethod {
+  DOCUMENT
+  BIOMETRIC
+}
+
+/** Standardised rejection codes so reviewers don't free-type and analytics can group. */
+enum VerificationRejectReason {
+  UNCLEAR_ID
+  SELFIE_MISMATCH
+  LIVENESS_FAILED
+  ID_NOT_FOUND
+  NAME_MISMATCH
+  WATCHLISTED
+  EXPIRED_DOCUMENT
+  POOR_IMAGE
+  OTHER
+}
+
 enum AvailabilityStatus {
   AVAILABLE
   UNAVAILABLE
@@ -204,6 +223,7 @@ enum MilestoneStatus {
 
 enum NotificationType {
   INVITATION_RECEIVED
+  APPLICATION_RECEIVED
   BOOKING_CONFIRMED
   PAYOUT_RELEASED
   NEW_MESSAGE
@@ -264,11 +284,14 @@ model Usher {
   bio                String?
   yearsExperience    Int              @default(0)
   verificationStatus UsherVerifyState @default(PENDING)
+  verifiedAt         DateTime?        @db.Timestamptz(6) // when KYC last passed
+  kycAttempts        Int              @default(0) // biometric attempts; caps resubmits
   reliabilityScore   Float            @default(100)
   ratingAvg          Float            @default(0)
   ratingCount        Int              @default(0)
   completedJobsCount Int              @default(0) // denormalized rank key; bumped on each completion
   avatarKey          String? // server-owned storage key for the profile photo; null = initials fallback
+  state              String? // Nigerian state (e.g. "Lagos"); ushers only see jobs in their state
   city               String? // base area in Lagos (e.g. "Lekki"); powers the location discovery filter
   languages          String[]         @default([]) // spoken languages; powers the language discovery filter
   dayRateKobo        Int? // indicative day rate — display + discovery filter only; escrow math uses Event.budgetPerHead
@@ -288,22 +311,38 @@ model Usher {
 }
 
 model UsherVerification {
-  id            String             @id @default(uuid()) @db.Uuid
-  usherId       String             @db.Uuid
-  usher         Usher              @relation(fields: [usherId], references: [id], onDelete: Cascade)
-  idDocumentUrl String
-  selfieUrl     String
-  status        VerificationStatus @default(PENDING)
-  reviewedById  String?            @db.Uuid
-  reviewedBy    User?              @relation("VerificationReviewer", fields: [reviewedById], references: [id])
+  id            String              @id @default(uuid()) @db.Uuid
+  usherId       String              @db.Uuid
+  usher         Usher               @relation(fields: [usherId], references: [id], onDelete: Cascade)
+  method        VerificationMethod  @default(DOCUMENT)
+  // Manual-upload flow only (null for biometric, which captures via the provider).
+  idDocumentUrl String?
+  selfieUrl     String?
+  status        VerificationStatus  @default(PENDING)
+  reviewedById  String?             @db.Uuid
+  reviewedBy    User?               @relation("VerificationReviewer", fields: [reviewedById], references: [id])
   reason        String?
-  createdAt     DateTime           @default(now()) @db.Timestamptz(6)
+  reasonCode    VerificationRejectReason?
+  // Biometric KYC (Dojah). NIN/BVN are sensitive PII — encrypt at rest / store
+  // minimal (NDPR §); never log raw. The returned government photo is a storage
+  // key (presigned), never inlined. govLookup keeps the raw provider payload.
+  provider         String?
+  dojahReferenceId String?
+  nin              String?
+  bvn              String?
+  livenessPassed   Boolean?
+  faceMatchScore   Float?
+  watchListed      Boolean?
+  govPhotoKey      String?
+  govLookup        Json?
+  createdAt        DateTime           @default(now()) @db.Timestamptz(6)
   // Set when status leaves PENDING (VERIFIED/REJECTED). Drives NDPR retention
   // (TRD §14): raw ID doc + selfie deleted 90 days after VERIFIED / 30 after
   // REJECTED, leaving only the pass/fail status + reviewer/audit trail.
-  reviewedAt    DateTime?          @db.Timestamptz(6)
+  reviewedAt       DateTime?          @db.Timestamptz(6)
 
   @@index([usherId])
+  @@index([dojahReferenceId])
   @@map("usher_verifications")
 }
 
@@ -338,6 +377,7 @@ model Event {
   client        Client         @relation(fields: [clientId], references: [id])
   title         String
   venue         String
+  state         String? // Nigerian state the event is in; powers usher↔job state matching
   eventDate     DateTime       @db.Date
   startTime     String // "HH:MM"
   endTime       String // "HH:MM" — drives auto-complete (§12)
@@ -359,6 +399,7 @@ model Event {
 
   @@index([clientId])
   @@index([status])
+  @@index([state])
   @@map("events")
 }
 

@@ -47,6 +47,7 @@ export function useUpdateProfile() {
       bio?: string;
       yearsExperience?: number;
       businessName?: string;
+      state?: string;
       city?: string;
       languages?: string[];
       dayRateKobo?: number;
@@ -393,6 +394,13 @@ export function useMyVerifications() {
   return useQuery({
     queryKey: ['verification'] as const,
     queryFn: () => api.get<{ id: string; status: string; reason: string | null; createdAt: string }[]>('/api/me/verification'),
+  });
+}
+
+/** Start a biometric KYC session (Dojah). Returns the widget id + reference id the device launches. */
+export function useKycStart() {
+  return useMutation({
+    mutationFn: () => api.post<{ widgetId: string; referenceId: string }>('/api/me/verification/kyc/start'),
   });
 }
 

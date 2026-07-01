@@ -5,7 +5,7 @@
  */
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { z } from 'zod';
-import { prisma, type Prisma } from '@hq/database';
+import { prisma, Prisma } from '@hq/database';
 import {
   createEventSchema,
   updateEventSchema,
@@ -17,7 +17,7 @@ import { requireAuth, type AuthedRequest } from '../auth/middleware.js';
 import { requireIdempotencyKey } from '../payments/http/middleware.js';
 import { confirmBatch } from '../bookings/service.js';
 import { writeAudit } from '../audit.js';
-import { notifyInvitationReceived } from '../notifications/service.js';
+import { notifyInvitationReceived, notifyApplicationReceived } from '../notifications/service.js';
 import { RT } from '../../realtime/events.js';
 import type { Deps } from '../payments/service.js';
 import type { PaystackPort } from '../payments/port/paystack-port.js';
@@ -85,11 +85,20 @@ async function escrowHeldEventIds(usherId: string, eventIds: string[]): Promise<
   return new Set(rows.map((b) => b.eventId));
 }
 
+/** Free-text staff preferences live in the `preferences` JSON blob (no column per field). */
+function eventPreferences(b: { requirements?: string | undefined; hairstyle?: string | undefined }): Record<string, string> | undefined {
+  const p: Record<string, string> = {};
+  if (b.requirements) p.requirements = b.requirements;
+  if (b.hairstyle) p.hairstyle = b.hairstyle;
+  return Object.keys(p).length > 0 ? p : undefined;
+}
+
 /** Map a validated partial-event payload to a Prisma update (only provided keys). */
 function eventUpdateData(b: UpdateEventInput): Prisma.EventUpdateInput {
   const data: Prisma.EventUpdateInput = {};
   if (b.title !== undefined) data.title = b.title;
   if (b.venue !== undefined) data.venue = b.venue;
+  if (b.state !== undefined) data.state = b.state ?? null;
   if (b.category !== undefined) data.category = b.category;
   if (b.eventDate !== undefined) data.eventDate = b.eventDate;
   if (b.startTime !== undefined) data.startTime = b.startTime;
@@ -98,7 +107,8 @@ function eventUpdateData(b: UpdateEventInput): Prisma.EventUpdateInput {
   if (b.budgetPerHeadKobo !== undefined) data.budgetPerHead = b.budgetPerHeadKobo;
   if (b.dressCode !== undefined) data.dressCode = b.dressCode ?? null;
   if (b.accommodation !== undefined) data.accommodation = b.accommodation ?? null;
-  if (b.requirements !== undefined) data.preferences = { requirements: b.requirements };
+  if (b.requirements !== undefined || b.hairstyle !== undefined)
+    data.preferences = eventPreferences(b) ?? Prisma.JsonNull;
   return data;
 }
 
@@ -112,11 +122,13 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
     wrap(async (req, res) => {
       const clientId = await clientFor(req.auth.userId);
       const b = createEventSchema.parse(req.body);
+      const prefs = eventPreferences(b);
       const event = await prisma.event.create({
         data: {
           clientId,
           title: b.title,
           venue: b.venue,
+          state: b.state ?? null,
           category: b.category,
           eventDate: b.eventDate,
           startTime: b.startTime,
@@ -125,7 +137,7 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
           budgetPerHead: b.budgetPerHeadKobo,
           dressCode: b.dressCode ?? null,
           accommodation: b.accommodation ?? null,
-          ...(b.requirements ? { preferences: { requirements: b.requirements } } : {}),
+          ...(prefs ? { preferences: prefs } : {}),
           status: 'OPEN',
         },
       });
@@ -139,8 +151,14 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
     wrap(async (req, res) => {
       if (req.auth.role === 'USHER') {
         const usherId = await usherFor(req.auth.userId);
+        const me = await prisma.usher.findUnique({ where: { id: usherId }, select: { state: true } });
+        // Hard state filter (feedback: Abuja/Enugu ushers shouldn't see Lagos jobs).
+        // Untagged events (state: null) stay visible to everyone; ushers with no
+        // state set yet see all until they choose one.
+        const where: Prisma.EventWhereInput = { status: { in: ['OPEN', 'PARTIALLY_STAFFED'] } };
+        if (me?.state) where.OR = [{ state: me.state }, { state: null }];
         const events = await prisma.event.findMany({
-          where: { status: { in: ['OPEN', 'PARTIALLY_STAFFED'] } },
+          where,
           orderBy: { eventDate: 'asc' },
         });
         // Mask the precise venue per event unless this usher already has escrow
@@ -245,12 +263,31 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
     wrap(async (req, res) => {
       const usherId = await verifiedUsherFor(req.auth.userId);
       const eventId = String(req.params.id);
+      // Was this usher already an active applicant? Drives whether we notify (no
+      // re-notify on a duplicate apply).
+      const prior = await prisma.application.findUnique({
+        where: { eventId_usherId: { eventId, usherId } },
+        select: { status: true },
+      });
       const app = await prisma.application.upsert({
         where: { eventId_usherId: { eventId, usherId } },
         update: { status: 'APPLIED' },
         create: { eventId, usherId, status: 'APPLIED' },
       });
       res.status(201).json(app);
+
+      // Tell the client a new usher applied (feedback: "notify me when someone applies").
+      if (!prior || prior.status !== 'APPLIED') {
+        const event = await prisma.event.findUnique({
+          where: { id: eventId },
+          select: { title: true, client: { select: { userId: true } } },
+        });
+        if (event?.client?.userId) {
+          const usher = await prisma.usher.findUnique({ where: { id: usherId }, select: { displayName: true } });
+          notifyApplicationReceived(event.client.userId, event.title, eventId, usher?.displayName ?? undefined);
+          deps.realtime?.emitToUser(event.client.userId, RT.APPLICATION_RECEIVED, { eventId });
+        }
+      }
     }),
   );
 

@@ -75,6 +75,19 @@ export function notifyInvitationReceived(usherUserId: string, eventTitle: string
   );
 }
 
+export function notifyApplicationReceived(clientUserId: string, eventTitle: string, eventId: string, usherName?: string): void {
+  const who = usherName ?? 'An usher';
+  safe(
+    notify(
+      clientUserId,
+      'APPLICATION_RECEIVED',
+      'New application',
+      `${who} applied to "${eventTitle}". Tap to review applications.`,
+      { targetType: 'event', targetId: eventId },
+    ),
+  );
+}
+
 export function notifyBookingConfirmed(usherUserId: string, bookingId?: string): void {
   safe(
     notify(
@@ -97,7 +110,7 @@ export function notifyDisputeOpened(userId: string, bookingId?: string): void {
       userId,
       'DISPUTE_OPENED',
       'A dispute was opened',
-      'A booking you are part of is under review. Escrow is frozen until it resolves.',
+      'A booking you are part of is under review. Funds stay safely on hold until it resolves.',
       bookingId ? { targetType: 'booking', targetId: bookingId } : undefined,
     ),
   );

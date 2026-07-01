@@ -26,7 +26,7 @@ export default function FundsHeld(): React.JSX.Element {
   const amount = booking.data?.amount ?? 0;
   const title = held ? 'Funds held safely' : 'Payment opened';
   const body = held
-    ? `${money(amount)} is held in escrow. We’ll release it to the usher only after they check in on the day — never before.`
+    ? `${money(amount)} is held safely. We’ll release it to the usher only after they check in on the day — never before.`
     : 'If you finished paying, this updates on its own the moment your bank confirms — usually a few seconds. If you closed Paystack without paying, you can leave and start the payment again from your event.';
 
   // Celebrate the moment the booking flips to held (after the bank confirms).

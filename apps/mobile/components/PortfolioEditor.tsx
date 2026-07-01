@@ -10,7 +10,7 @@ import { AddPhoto } from './AddPhoto.js';
 import { useAuth } from '../lib/auth-context.js';
 import { useAddPortfolioPhoto, useDeletePortfolioPhoto } from '../lib/hooks.js';
 import { useToast } from '../lib/toast.js';
-import { pickImageAsset, uploadUsherPhoto } from '../lib/upload.js';
+import { pickImageAssets, uploadUsherPhoto } from '../lib/upload.js';
 import { MAX_PORTFOLIO_PHOTOS } from '@hq/shared';
 
 export function PortfolioEditor(): React.JSX.Element {
@@ -24,14 +24,23 @@ export function PortfolioEditor(): React.JSX.Element {
 
   const onAdd = async (): Promise<void> => {
     if (busy) return;
+    const remaining = MAX_PORTFOLIO_PHOTOS - photos.length;
+    if (remaining <= 0) return;
     try {
-      const asset = await pickImageAsset('library');
-      if (!asset) return;
+      const assets = await pickImageAssets(remaining);
+      if (assets.length === 0) return;
       setBusy(true);
-      const key = await uploadUsherPhoto('portfolio', asset);
-      await add.mutateAsync(key);
+      let added = 0;
+      // Upload sequentially so a mid-batch failure still keeps what already landed.
+      for (const asset of assets) {
+        const key = await uploadUsherPhoto('portfolio', asset);
+        await add.mutateAsync(key);
+        added += 1;
+      }
       await refreshMe();
+      if (added > 1) toast.success(`${added} photos added`, 'Portfolio updated');
     } catch (e) {
+      await refreshMe(); // reflect any photos that uploaded before the error
       toast.error(e instanceof Error ? e.message : 'Please try again.', 'Upload failed');
     } finally {
       setBusy(false);

@@ -50,7 +50,7 @@ export default function Dispute(): React.JSX.Element {
       <AppBar title="Open a dispute" showBack inset />
       <Screen scroll>
         <Box style={{ gap: 16 }}>
-          <Banner tone="info" message="Funds stay frozen in escrow while our team reviews — usually within 72 hours." />
+          <Banner tone="info" message="Funds stay safely on hold while our team reviews — usually within 72 hours." />
 
           <Text variant="headingS">What went wrong?</Text>
 

@@ -46,7 +46,7 @@ function RosterRow({ booking, onCode, onRate, onCancel }: { booking: Booking; on
   const done = (): void => {
     Alert.alert(
       'Release payment?',
-      `This pays ${name} their fee from escrow. It can’t be undone.`,
+      `This releases ${name}'s held fee to them. It can’t be undone.`,
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Release', style: 'destructive', onPress: release },

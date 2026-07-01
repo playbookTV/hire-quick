@@ -68,7 +68,7 @@ export default function Invitation(): React.JSX.Element {
   const onAccept = (): void => {
     respond.mutate('ACCEPTED', {
       onSuccess: () => {
-        toast.success('Slot reserved. You’ll be booked once the client funds escrow.', 'Invitation accepted');
+        toast.success('Slot reserved. You’ll be booked once the client pays.', 'Invitation accepted');
         router.replace('/(usher)/jobs');
       },
       onError: (e: unknown) => toast.error(userMessage(e), 'Couldn’t accept'),
@@ -111,7 +111,7 @@ export default function Invitation(): React.JSX.Element {
           </Box>
 
           {pending ? (
-            <Banner tone="warning" message={`Accepting reserves your slot. The booking confirms once ${clientName} pays into escrow.`} />
+            <Banner tone="warning" message={`Accepting reserves your slot. The booking confirms once ${clientName} pays.`} />
           ) : (
             <Box flexDirection="row" alignItems="center" style={{ gap: 8 }}>
               <Text variant="bodySm" color="inkMuted">This invitation is</Text>
