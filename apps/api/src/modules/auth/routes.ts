@@ -65,13 +65,18 @@ export function authRouter(): Router {
       if (!user || user.status !== 'ACTIVE') {
         throw new ApiError(401, 'INVALID_REFRESH', 'user not active');
       }
-      // Rotation: issue a fresh pair and burn the presented token so it can't be
-      // replayed (single-use refresh).
+      // Rotation: sign the new pair FIRST, then burn the presented token.
+      // Running revocation concurrently with signing (Promise.all) risks the old
+      // token being revoked but no new tokens delivered when signing fails —
+      // locking the user out. Sequencing guarantees: if signing fails, nothing
+      // is revoked (user retries with the old token); if revocation fails, the
+      // new tokens were already minted so we log the error and still return them
+      // (the token expires naturally; the user is not locked out).
       const [accessToken, newRefresh] = await Promise.all([
         signAccessToken(user.id, user.role),
         signRefreshToken(user.id),
-        revokeRefreshToken(refreshToken),
       ]);
+      await revokeRefreshToken(refreshToken);
       await writeAudit({ actorId: user.id, action: 'auth.refresh', target: user.id });
       res.status(200).json({ accessToken, refreshToken: newRefresh });
     }),

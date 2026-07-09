@@ -102,9 +102,12 @@ export function bookingsRouter(deps: { realtime: RealtimeGateway; paystack?: Pay
     }),
   );
 
-  // client confirms completion → release payout to wallet
+  // client confirms completion → release payout to wallet (★ idempotency key
+  // required for consistency with all other money-mutating routes; the ledger
+  // itself already guards against double-release via FOR UPDATE + state machine).
   r.post(
     '/bookings/:id/complete',
+    requireIdempotencyKey,
     wrap(async (req, res) => {
       await completeBooking(String(req.params.id), req.auth.userId, deps.realtime);
       res.json({ status: 'PAID' });

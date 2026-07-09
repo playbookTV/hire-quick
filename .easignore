@@ -1,0 +1,32 @@
+# EAS upload ignore. NOTE: when this file exists, EAS uses it INSTEAD of
+# .gitignore for the build tarball, so the essential .gitignore rules are
+# mirrored here, then extra non-build dirs are excluded to keep the upload small.
+
+# --- mirrored from .gitignore (deps / env / build output) ---
+node_modules/
+.pnpm-store/
+.env
+.env.*
+!.env.example
+.mcp.json
+.codex/
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+coverage/
+packages/database/generated/
+.DS_Store
+*.log
+
+# --- mobile / Expo ---
+**/.expo/
+**/web-build/
+expo-env.d.ts
+.metro-health-check*
+
+# --- not needed to build the mobile app; trims the upload tarball ---
+# (was pushing the archive to ~12.7 MB and tripping mid-upload connection drops)
+.agents/
+documentation/
+.github/

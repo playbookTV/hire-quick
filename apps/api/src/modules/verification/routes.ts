@@ -117,8 +117,13 @@ export function dojahWebhookRouter(deps: { kyc: KycPort; realtime: RealtimeGatew
         data: {
           status,
           provider: 'DOJAH',
-          nin: result.nin ?? null,
-          bvn: result.bvn ?? null,
+          // SEC-C1: NIN/BVN MUST be encrypted at rest before being persisted.
+          // Until column-level encryption (e.g. pgcrypto / app-layer AES-256-GCM
+          // with a KMS-managed key) is wired, we record only the non-PII decision
+          // signals in `govLookup` and refuse to store the raw government IDs.
+          // Re-enable these two lines once encryption is in place.
+          nin: null,
+          bvn: null,
           livenessPassed: result.livenessPassed ?? null,
           faceMatchScore: result.faceMatchScore ?? null,
           watchListed: result.watchListed ?? null,

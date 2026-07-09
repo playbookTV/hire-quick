@@ -1,9 +1,9 @@
 /**
  * OTP — verify the 6-digit code. On success, persist the session and move to
- * profile completion. On non-production APIs the server echoes the code
- * (`devCode`); when present we prefill it so the smoke test is one tap. The
- * server is the gate — production never echoes — so this is safe in release
- * builds pointed at staging.
+ * profile completion. On dev/test APIs the server echoes the code (`devCode`);
+ * when IS_DEV is true we prefill it so the smoke test is one tap. The
+ * devCode param is ignored entirely in production and staging builds to remove
+ * the phishing surface that the unconditional URL param reading created.
  */
 import { useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -22,6 +22,7 @@ import { hapticSuccess, hapticError } from '../../lib/haptics.js';
 import { useAuth } from '../../lib/auth-context.js';
 import { userMessage } from '../../lib/api-error.js';
 import { useToast } from '../../lib/toast.js';
+import { env } from '../../lib/env.js';
 
 const RESEND_COOLDOWN_S = 30;
 
@@ -31,6 +32,10 @@ export default function Otp(): React.JSX.Element {
   const params = useLocalSearchParams<{ phone?: string; role?: string; devCode?: string }>();
   const phone = params.phone ?? '';
   const role = (params.role || undefined) as UserRole | undefined;
+  // SEC-H3: Only read devCode in development builds. In production/staging,
+  // ignore the URL param entirely so a crafted deep link can't render the
+  // "already filled in" banner or pre-populate the code field.
+  const devCode = env.IS_DEV ? params.devCode : undefined;
 
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -39,10 +44,10 @@ export default function Otp(): React.JSX.Element {
   const requestOtp = useRequestOtp();
   const toast = useToast();
 
-  // Prefill the echoed code when the server provides one (non-prod only).
+  // Prefill the echoed code when the server provides one (dev/test only).
   useEffect(() => {
-    if (params.devCode) setCode(params.devCode);
-  }, [params.devCode]);
+    if (devCode) setCode(devCode);
+  }, [devCode]);
 
   // Resend cooldown tick — prevents code-mashing (rate limits / invalidated codes) — S2.
   useEffect(() => {
@@ -69,8 +74,7 @@ export default function Otp(): React.JSX.Element {
     setError(null);
     try {
       const res = await requestOtp.mutateAsync(phone);
-      // Surface the freshly echoed code so the prefill stays in sync on staging.
-      if (res.devCode) setCode(res.devCode);
+      if (env.IS_DEV && res.devCode) setCode(res.devCode);
       setCooldown(RESEND_COOLDOWN_S);
       toast.success('New code sent.');
     } catch {
@@ -92,9 +96,9 @@ export default function Otp(): React.JSX.Element {
           Sent to {phone}.
         </Text>
 
-        {params.devCode ? (
+        {devCode ? (
           <Box marginBottom="400">
-            <Banner tone="info" title="Test build" message={`Your code is ${params.devCode} — already filled in below.`} />
+            <Banner tone="info" title="Test build" message={`Your code is ${devCode} — already filled in below.`} />
           </Box>
         ) : null}
 

@@ -19,7 +19,9 @@ export const lightColors = {
   // ink
   inkStrong: p.neutral[900],
   inkDefault: p.neutral[800],
-  inkMuted: p.neutral[600],
+  // Darkened neutral[600] → neutral[700] for WCAG AA compliance on light
+  // backgrounds (neutral[600] ≈ 3.7:1 on bgCanvas; neutral[700] ≈ 7:1).
+  inkMuted: p.neutral[700],
   inkFaint: p.neutral[400],
   inverseInk: p.neutral[50],
   // brand

@@ -6,7 +6,6 @@
  * shows the most recently generated code (dev returns it inline).
  */
 import { useState, useEffect } from 'react';
-import { Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTheme, Box, Text } from '../../theme/restyle.js';
 import { Screen } from '../../components/Screen.js';
@@ -29,47 +28,77 @@ function RosterRow({ booking, onCode, onRate, onCancel }: { booking: Booking; on
   const checkedIn = booking.status === 'CHECKED_IN';
   const paid = booking.status === 'PAID';
   const name = booking.usher?.displayName ?? booking.usher?.user.phone ?? 'Usher';
+  // REL-H1: Replace native Alert.alert with a designed inline confirmation.
+  // Alert couldn’t be disabled while isPending, making double-tap possible;
+  // this state also uses the danger variant so the action’s weight is clear.
+  const [confirming, setConfirming] = useState(false);
 
   const gen = (): void => {
     generate.mutate(undefined, {
-      onSuccess: (res) => {
-        onCode(res.code);
-        Alert.alert('Check-in code', `Give this to the usher: ${res.code}`);
-      },
-      onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Try again.', 'Couldn’t generate'),
+      onSuccess: (res) => onCode(res.code),
+      onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Try again.', "Couldn’t generate"),
     });
   };
   const release = (): void => {
+    setConfirming(false);
     complete.mutate(undefined, {
-      onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Try again.', 'Couldn’t complete'),
+      onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Try again.', "Couldn’t release"),
     });
   };
-  const done = (): void => {
-    Alert.alert(
-      'Release payment?',
-      `This releases ${name}'s held fee to them. It can’t be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Release', style: 'destructive', onPress: release },
-      ],
+
+  // In-app confirmation card replaces the native Alert.
+  if (confirming) {
+    return (
+      <Box
+        backgroundColor="statusDangerTint"
+        borderWidth={1}
+        borderColor="statusDanger"
+        borderRadius="lg"
+        padding="300"
+        style={{ gap: 10 }}
+      >
+        <Text variant="label" color="statusDanger" numberOfLines={2}>
+          Release {name}’s payment? This can’t be undone.
+        </Text>
+        <Box flexDirection="row" style={{ gap: 8 }}>
+          <Box flex={1}>
+            <Button
+              label={complete.isPending ? 'Releasing…' : 'Release'}
+              variant="danger"
+              size="md"
+              onPress={release}
+              loading={complete.isPending}
+              disabled={complete.isPending}
+            />
+          </Box>
+          <Button
+            label="Cancel"
+            variant="ghost"
+            size="md"
+            fullWidth={false}
+            onPress={() => setConfirming(false)}
+            disabled={complete.isPending}
+          />
+        </Box>
+      </Box>
     );
-  };
+  }
 
   return (
     <Box flexDirection="row" alignItems="center" backgroundColor="bgSurface" borderWidth={1} borderColor="borderDefault" borderRadius="lg" padding="300" style={[{ gap: 12 }, shadowSm]}>
       <Avatar name={name} size={40} />
       <Box flex={1} style={{ gap: 2 }}>
-        <Text variant="label" style={{ fontSize: 15 }} color="inkStrong" numberOfLines={1}>
+        <Text variant="labelLg" color="inkStrong" numberOfLines={1}>
           {name}
         </Text>
         <Text variant="bodySm" color="inkMuted">
-          {booking.status.replace('_', ' ').toLowerCase()}
+          {booking.status.replaceAll('_', ' ').toLowerCase()}
         </Text>
       </Box>
       {paid ? (
         <Button label="Rate" variant="secondary" size="md" fullWidth={false} onPress={() => onRate(booking.id)} />
       ) : checkedIn ? (
-        <Button label={complete.isPending ? '…' : 'Release'} size="md" fullWidth={false} onPress={done} disabled={complete.isPending} />
+        <Button label="Release" size="md" fullWidth={false} onPress={() => setConfirming(true)} />
       ) : (
         <Box flexDirection="row" style={{ gap: 8 }}>
           <Button label={generate.isPending ? '…' : 'Code'} variant="secondary" size="md" fullWidth={false} onPress={gen} disabled={generate.isPending} />

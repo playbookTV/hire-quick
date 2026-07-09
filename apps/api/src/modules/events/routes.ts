@@ -467,14 +467,19 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
       const { status } = z.object({ status: z.enum(['ACCEPTED', 'DECLINED']) }).parse(req.body);
       const inv = await prisma.invitation.findUniqueOrThrow({ where: { id: String(req.params.id) } });
       if (inv.usherId !== usherId) throw new ApiError(403, 'FORBIDDEN', 'not your invitation');
-      await prisma.invitation.update({ where: { id: inv.id }, data: { status } });
-      if (status === 'ACCEPTED') {
-        await prisma.application.upsert({
-          where: { eventId_usherId: { eventId: inv.eventId, usherId } },
-          update: { status: 'ACCEPTED' },
-          create: { eventId: inv.eventId, usherId, status: 'ACCEPTED' },
-        });
-      }
+      // RC-M2: Invitation status update and application creation must be atomic.
+      // A crash between the two leaves the invitation ACCEPTED with no application
+      // record, making this usher invisible to the client's applications list.
+      await prisma.$transaction(async (tx) => {
+        await tx.invitation.update({ where: { id: inv.id }, data: { status } });
+        if (status === 'ACCEPTED') {
+          await tx.application.upsert({
+            where: { eventId_usherId: { eventId: inv.eventId, usherId } },
+            update: { status: 'ACCEPTED' },
+            create: { eventId: inv.eventId, usherId, status: 'ACCEPTED' },
+          });
+        }
+      });
       res.json({ status });
     }),
   );

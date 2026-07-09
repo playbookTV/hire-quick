@@ -84,10 +84,11 @@ const EnvSchema = z.object({
     .transform((v) => v === 'true'),
 }).superRefine((cfg, ctx) => {
   // Fail fast: the JWT secrets carry dev-friendly defaults so tests/dev boot with
-  // zero config, but in production a forgotten env var would mean signing tokens
-  // with a publicly-known secret — anyone could forge an ADMIN token. Require
-  // both to be explicitly set to a strong value before a production process runs.
-  if (cfg.NODE_ENV !== 'production') return;
+  // zero config, but in production or staging a forgotten env var would mean
+  // signing tokens with a publicly-known secret — anyone could forge an ADMIN
+  // token. Require both to be explicitly set to a strong value for any deployed
+  // environment. Only 'development' and 'test' are exempt.
+  if (cfg.NODE_ENV === 'development' || cfg.NODE_ENV === 'test') return;
   const weak = (s: string): boolean => s.length < 32 || s.startsWith('dev-');
   for (const name of ['JWT_ACCESS_SECRET', 'JWT_REFRESH_SECRET'] as const) {
     if (weak(cfg[name])) {

@@ -187,6 +187,13 @@ export async function generateCheckin(
   if (booking.event.client.userId !== clientUserId) throw new ApiError(403, 'FORBIDDEN', 'not your booking');
   if (booking.status !== 'CONFIRMED') throw new ApiError(400, 'NOT_CONFIRMED', 'booking is not confirmed');
 
+  // SEC-M2: Expire any previously-issued active codes for this booking so that
+  // re-tapping "Code" on the event-day screen doesn't leave multiple valid codes
+  // in circulation simultaneously. The usher must enter the LATEST code only.
+  await prisma.verificationCode.updateMany({
+    where: { purpose: 'ATTENDANCE', subjectRef: bookingId, consumedAt: null },
+    data: { expiresAt: new Date() },
+  });
   const code = generateOtp();
   await prisma.verificationCode.create({
     data: {
@@ -357,6 +364,15 @@ export async function openDispute(
   if (userId !== clientUserId && userId !== usherUserId) {
     throw new ApiError(403, 'FORBIDDEN', 'not a party to this booking');
   }
+  // SEC-H1: An usher may only raise a dispute after they have checked in.
+  // Allowing a dispute on a CONFIRMED (pre-event) booking would freeze escrow
+  // before arrival, blocking the automated no-show sweep that would otherwise
+  // refund the client 100%. The check is `checkedInAt != null` rather than
+  // `status === 'CHECKED_IN'` so the window stays open even after the status
+  // advances to COMPLETED during admin resolution.
+  if (userId === usherUserId && !booking.checkedInAt) {
+    throw new ApiError(403, 'FORBIDDEN', 'you can only raise a dispute after checking in at the event');
+  }
   // Enforce the 72-hour dispute window (PRD §13 / TRD §20): disputes are only
   // accepted up to 72h after the event ends. (freezeBooking separately requires
   // funds still HELD, so once a payout completes the window is effectively shorter
@@ -497,26 +513,35 @@ export async function cancelBookingByUsher(
   const gross = booking.payment?.grossAmount ?? booking.amount;
   await refundBookingToClient(deps, { bookingId, amountKobo: gross, precursor: 'CANCEL' });
 
-  // Reputation hit + audit (the audit entry is also the attribution signal for
-  // repeat-offender detection below).
+  // RC-M1: Wrap reputation penalty + suspension check in a single transaction.
+  // Previously these were three separate writes; a crash between them could
+  // leave the score decremented without the usher being suspended, or suspend
+  // without the prior audit entry existing for the count. The audit write
+  // (writeAudit) maintains a hash-chain with its own serialization lock, so it
+  // cannot be nested inside another $transaction — it runs after the core tx.
   const penalty = REPUTATION_PENALTY[outcome.usherReputation];
-  if (penalty > 0) {
-    await prisma.usher.update({ where: { id: booking.usherId }, data: { reliabilityScore: { decrement: penalty } } });
-  }
+  await prisma.$transaction(async (tx) => {
+    if (penalty > 0) {
+      await tx.usher.update({ where: { id: booking.usherId }, data: { reliabilityScore: { decrement: penalty } } });
+    }
+    if (outcome.suspendIfRepeat) {
+      // Count prior late-cancel entries already committed (committed data visible
+      // within this tx because READ COMMITTED is the default isolation level).
+      const priorUsherCancels = await tx.auditLog.count({
+        where: { actorId: usherUserId, action: 'booking.cancel.usher', target: { not: bookingId } },
+      });
+      if (priorUsherCancels > 0) {
+        await tx.user.update({ where: { id: usherUserId }, data: { status: 'SUSPENDED' } });
+      }
+    }
+  }, TX);
+  // Audit write has its own hash-chain transaction and cannot nest.
   await writeAudit({
     actorId: usherUserId,
     action: 'booking.cancel.usher',
     target: bookingId,
     metadata: { window, reputation: outcome.usherReputation },
   });
-  if (outcome.suspendIfRepeat) {
-    const priorUsherCancels = await prisma.auditLog.count({
-      where: { actorId: usherUserId, action: 'booking.cancel.usher', target: { not: bookingId } },
-    });
-    if (priorUsherCancels > 0) {
-      await prisma.user.update({ where: { id: usherUserId }, data: { status: 'SUSPENDED' } });
-    }
-  }
 
   emitBooking(
     realtime,

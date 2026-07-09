@@ -94,16 +94,19 @@ export function paymentsRouter(deps: Deps): Router {
     '/wallet/activity',
     wrap(async (req, res) => {
       const { usherId, walletId } = await usherWalletFor((req as AuthedRequest).auth.userId);
+      // REL-M1: Each source is capped at 25 so the combined list never exceeds
+      // 50 items before slicing. Previously both were take: 50, which meant an
+      // usher with many held payments could crowd out completed ledger entries.
       const ledger = await prisma.walletLedger.findMany({
         where: { walletId },
         orderBy: { createdAt: 'desc' },
-        take: 50,
+        take: 25,
         include: { booking: { include: { event: { select: { title: true } } } } },
       });
       const held = await prisma.payment.findMany({
         where: { escrowStatus: 'HELD', booking: { usherId } },
         orderBy: { createdAt: 'desc' },
-        take: 50,
+        take: 25,
         include: { booking: { include: { event: { select: { title: true } } } } },
       });
       // Resolve bank last-4 for debit rows (WalletLedger has no withdrawal relation).

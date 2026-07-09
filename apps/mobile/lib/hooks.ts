@@ -176,13 +176,19 @@ export function useVerifyCheckin(bookingId: string) {
 
 export function useCompleteBooking(bookingId: string) {
   const qc = useQueryClient();
+  // REL-H1: Idempotency key keeps the route consistent with all other
+  // money-mutating endpoints; stable across retries within the same session.
+  const idemKey = useRef(newIdempotencyKey());
   return useMutation({
-    mutationFn: () => api.post<{ status: string }>(`/api/bookings/${bookingId}/complete`),
-    onSuccess: () =>
-      Promise.all([
+    mutationFn: () =>
+      api.post<{ status: string }>(`/api/bookings/${bookingId}/complete`, undefined, { idempotencyKey: idemKey.current }),
+    onSuccess: () => {
+      idemKey.current = newIdempotencyKey();
+      return Promise.all([
         qc.invalidateQueries({ queryKey: queryKeys.booking(bookingId) }),
         qc.invalidateQueries({ queryKey: queryKeys.bookings }),
-      ]),
+      ]);
+    },
   });
 }
 
