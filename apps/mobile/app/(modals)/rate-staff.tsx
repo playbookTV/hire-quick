@@ -14,6 +14,7 @@ import { Button } from '../../components/Button.js';
 import { Icon } from '../../components/Icon.js';
 import { useCreateReview } from '../../lib/hooks.js';
 import { useToast } from '../../lib/toast.js';
+import { fonts } from '../../theme/fonts.js';
 
 const LABELS = ['', 'Poor', 'Fair', 'Good', 'Great', 'Excellent'];
 const TAGS = ['Punctual', 'Professional', 'Great presentation', 'Friendly'];
@@ -62,7 +63,7 @@ export default function RateStaff(): React.JSX.Element {
           <Box
             style={{ width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandEmeraldTint }}
           >
-            <Text style={{ fontFamily: 'Fraunces_600SemiBold', fontSize: 22, lineHeight: 28, color: theme.colors.brandEmerald }}>{initials(name)}</Text>
+            <Text style={{ fontFamily: fonts.displaySemibold, fontSize: 22, lineHeight: 28, color: theme.colors.brandEmerald }}>{initials(name)}</Text>
           </Box>
 
           <Text variant="h2" style={{ textAlign: 'center' }}>
@@ -84,7 +85,7 @@ export default function RateStaff(): React.JSX.Element {
             ))}
           </Box>
 
-          <Text variant="label" style={{ fontSize: 15 }} color="accentGoldStrong">
+          <Text variant="labelLg" color="accentGoldStrong">
             {LABELS[rating]}
           </Text>
 
@@ -111,7 +112,7 @@ export default function RateStaff(): React.JSX.Element {
                     }}
                   >
                     <Text
-                      style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 13, lineHeight: 16, letterSpacing: 0.2 }}
+                      style={{ fontFamily: fonts.sansSemibold, fontSize: 13, lineHeight: 16, letterSpacing: 0.2 }}
                       color={on ? 'inverseInk' : 'inkDefault'}
                     >
                       {t}

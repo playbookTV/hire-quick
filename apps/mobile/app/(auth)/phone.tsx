@@ -12,6 +12,7 @@ import { AppBar } from '../../components/AppBar.js';
 import { Button } from '../../components/Button.js';
 import { StepIndicator } from '../../components/StepIndicator.js';
 import { Box, Text, useTheme } from '../../theme/restyle.js';
+import { fonts } from '../../theme/fonts.js';
 import { useRequestOtp } from '../../lib/hooks.js';
 import { userMessage } from '../../lib/api-error.js';
 
@@ -65,7 +66,7 @@ export default function Phone(): React.JSX.Element {
             borderRadius="md"
             style={{ height: 56, paddingHorizontal: 16, gap: 12, borderWidth: 1.5, borderColor: theme.colors.borderStrong }}
           >
-            <Text variant="label" style={{ fontSize: 15 }} color="inkStrong">
+            <Text variant="labelLg" color="inkStrong">
               🇳🇬 +234
             </Text>
             <Box style={{ width: 1, height: 24, backgroundColor: theme.colors.borderStrong }} />
@@ -84,7 +85,7 @@ export default function Phone(): React.JSX.Element {
               }}
               autoFocus
               maxLength={15}
-              style={{ flex: 1, fontFamily: 'PlusJakartaSans_400Regular', fontSize: 16, color: theme.colors.inkStrong, paddingVertical: 0 }}
+              style={{ flex: 1, fontFamily: fonts.sansRegular, fontSize: 16, color: theme.colors.inkStrong, paddingVertical: 0 }}
             />
           </Box>
 

@@ -2,6 +2,7 @@
  * React Query hooks over the API. Auth mutations skip the bearer token; the
  * verify screen feeds the result into `useAuth().login`.
  */
+import { useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CreateEventInput, UpdateEventInput, UserRole } from '@hq/shared';
 import { api, request, newIdempotencyKey } from './client.js';
@@ -201,14 +202,17 @@ export function useCreateReview(bookingId: string) {
 
 export function useCancelBooking(bookingId: string) {
   const qc = useQueryClient();
+  const idemKey = useRef(newIdempotencyKey());
   return useMutation({
     mutationFn: (reason?: string) =>
-      api.post<{ status: string }>(`/api/bookings/${bookingId}/cancel`, { reason }, { idempotencyKey: newIdempotencyKey() }),
-    onSuccess: () =>
-      Promise.all([
+      api.post<{ status: string }>(`/api/bookings/${bookingId}/cancel`, { reason }, { idempotencyKey: idemKey.current }),
+    onSuccess: () => {
+      idemKey.current = newIdempotencyKey();
+      return Promise.all([
         qc.invalidateQueries({ queryKey: queryKeys.booking(bookingId) }),
         qc.invalidateQueries({ queryKey: queryKeys.bookings }),
-      ]),
+      ]);
+    },
   });
 }
 
@@ -278,14 +282,21 @@ export function usePatchApplication(eventId: string) {
 
 export function useConfirmEvent(eventId: string) {
   const qc = useQueryClient();
+  // Stable across retries: the key is generated once per user intent (screen mount)
+  // and rotated only after the server confirms success. Regenerating on every mutate()
+  // call would defeat idempotency if the first attempt succeeded but the response
+  // was lost — the server would see a new key and create a duplicate order.
+  const idemKey = useRef(newIdempotencyKey());
   return useMutation({
     mutationFn: (vars: { applicationIds: string[]; email: string }) =>
-      api.post<ConfirmResult>(`/api/events/${eventId}/confirm`, vars, { idempotencyKey: newIdempotencyKey() }),
-    onSuccess: () =>
-      Promise.all([
+      api.post<ConfirmResult>(`/api/events/${eventId}/confirm`, vars, { idempotencyKey: idemKey.current }),
+    onSuccess: () => {
+      idemKey.current = newIdempotencyKey(); // rotate after confirmed success
+      return Promise.all([
         qc.invalidateQueries({ queryKey: queryKeys.event(eventId) }),
         qc.invalidateQueries({ queryKey: queryKeys.bookings }),
-      ]),
+      ]);
+    },
   });
 }
 
@@ -368,15 +379,18 @@ export function useAddBankAccount() {
 
 export function useWithdraw() {
   const qc = useQueryClient();
+  const idemKey = useRef(newIdempotencyKey());
   return useMutation({
     mutationFn: (vars: { bankAccountId: string; amountKobo: number }) =>
-      api.post<{ id: string; status: string }>('/api/payments/withdrawals', vars, { idempotencyKey: newIdempotencyKey() }),
-    onSuccess: () =>
-      Promise.all([
+      api.post<{ id: string; status: string }>('/api/payments/withdrawals', vars, { idempotencyKey: idemKey.current }),
+    onSuccess: () => {
+      idemKey.current = newIdempotencyKey();
+      return Promise.all([
         qc.invalidateQueries({ queryKey: queryKeys.wallet }),
         qc.invalidateQueries({ queryKey: queryKeys.walletActivity }),
         qc.invalidateQueries({ queryKey: queryKeys.me }),
-      ]),
+      ]);
+    },
   });
 }
 

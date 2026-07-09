@@ -14,6 +14,7 @@ import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, Box, Text } from '../../theme/restyle.js';
+import { fonts } from '../../theme/fonts.js';
 import { Chip } from '../../components/Chip.js';
 import { StaffCard } from '../../components/StaffCard.js';
 import { Icon } from '../../components/Icon.js';
@@ -104,7 +105,7 @@ export default function Discover(): React.JSX.Element {
           onChangeText={setQuery}
           placeholder="Search ushers, roles…"
           placeholderTextColor={theme.colors.inkFaint}
-          style={{ flex: 1, fontFamily: 'PlusJakartaSans_400Regular', fontSize: 15, color: theme.colors.inkStrong, paddingVertical: 0 }}
+          style={{ flex: 1, fontFamily: fonts.sansRegular, fontSize: 15, color: theme.colors.inkStrong, paddingVertical: 0 }}
         />
         <Pressable
           onPress={() => router.push('/(modals)/filters')}
@@ -129,7 +130,7 @@ export default function Discover(): React.JSX.Element {
                   justifyContent: 'center',
                 }}
               >
-                <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 10, lineHeight: 12, color: theme.colors.inverseInk }}>
+                <Text style={{ fontFamily: fonts.sansBold, fontSize: 10, lineHeight: 12, color: theme.colors.inverseInk }}>
                   {filterCount}
                 </Text>
               </Box>

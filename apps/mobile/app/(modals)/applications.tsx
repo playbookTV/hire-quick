@@ -19,6 +19,7 @@ import { Icon } from '../../components/Icon.js';
 import { SkeletonCard } from '../../components/Skeleton.js';
 import { EmptyState } from '../../components/EmptyState.js';
 import { shadowSm } from '../../theme/shadows.js';
+import { fonts } from '../../theme/fonts.js';
 import { useApplications, usePatchApplication, useEvent } from '../../lib/hooks.js';
 import { useToast } from '../../lib/toast.js';
 import { money, formatEventDate } from '../../lib/format.js';
@@ -112,14 +113,14 @@ export default function Applications(): React.JSX.Element {
                 {isTop && !shortlisted ? (
                   <Box flexDirection="row" alignItems="center" style={{ gap: 3, backgroundColor: theme.colors.brandEmeraldTint, paddingHorizontal: 8, paddingVertical: 2, borderRadius: theme.borderRadii.pill }}>
                     <Icon name="award" size={11} color="brandEmeraldStrong" />
-                    <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 11, lineHeight: 14, letterSpacing: 0.6 }} color="brandEmeraldStrong">
+                    <Text style={{ fontFamily: fonts.sansBold, fontSize: 11, lineHeight: 14, letterSpacing: 0.6 }} color="brandEmeraldStrong">
                       Top rated
                     </Text>
                   </Box>
                 ) : null}
                 {shortlisted ? (
                   <Box style={{ backgroundColor: theme.colors.accentGoldTint, paddingHorizontal: 8, paddingVertical: 2, borderRadius: theme.borderRadii.pill }}>
-                    <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 11, lineHeight: 14, letterSpacing: 1 }} color="accentGoldStrong">
+                    <Text style={{ fontFamily: fonts.sansBold, fontSize: 11, lineHeight: 14, letterSpacing: 1 }} color="accentGoldStrong">
                       Shortlisted
                     </Text>
                   </Box>
@@ -200,7 +201,7 @@ export default function Applications(): React.JSX.Element {
         >
           <Box flexDirection="row" alignItems="center" style={{ gap: 8 }}>
             <Icon name="check" size={18} color="brandEmerald" />
-            <Text variant="label" style={{ fontSize: 15 }} color="brandEmerald">
+          <Text variant="labelLg" color="brandEmerald">
               {count} of {slots} open slots selected
             </Text>
           </Box>

@@ -14,6 +14,7 @@ import { EmptyState } from '../../components/EmptyState.js';
 import { Avatar } from '../../components/Avatar.js';
 import { Icon } from '../../components/Icon.js';
 import { Box, Text, useTheme } from '../../theme/restyle.js';
+import { fonts } from '../../theme/fonts.js';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../lib/auth-context.js';
 import { useEvents, useUshers, useNotifications } from '../../lib/hooks.js';
@@ -63,7 +64,7 @@ export default function ClientHome(): React.JSX.Element {
                   <Icon name="bell" size={20} color="inkStrong" />
                   {unread > 0 ? (
                     <Box style={{ position: 'absolute', top: -3, right: -3, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, backgroundColor: theme.colors.statusDanger, alignItems: 'center', justifyContent: 'center' }}>
-                      <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 10, lineHeight: 12, color: theme.colors.inverseInk }}>
+                        <Text style={{ fontFamily: fonts.sansBold, fontSize: 10, lineHeight: 12, color: theme.colors.inverseInk }}>
                         {unread > 9 ? '9+' : unread}
                       </Text>
                     </Box>

@@ -6,6 +6,7 @@
  */
 import { useTheme, Box, Text } from '../theme/restyle.js';
 import type { Theme } from '../theme/theme.js';
+import { fonts } from '../theme/fonts.js';
 
 type C = keyof Theme['colors'];
 interface Entry {
@@ -59,7 +60,7 @@ export function StatusPill({ status, label }: StatusPillProps): React.JSX.Elemen
     >
       <Text
         style={{
-          fontFamily: 'PlusJakartaSans_600SemiBold',
+          fontFamily: fonts.sansSemibold,
           fontSize: 13,
           lineHeight: 16,
           letterSpacing: 0.2,

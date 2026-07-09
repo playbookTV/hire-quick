@@ -27,6 +27,7 @@ import { OptionCard } from '../../components/OptionCard.js';
 import { Loading } from '../../components/Loading.js';
 import { BankSelectModal } from '../../components/BankSelectModal.js';
 import { shadowMd } from '../../theme/shadows.js';
+import { fonts } from '../../theme/fonts.js';
 import { useWallet, useBankAccounts, useAddBankAccount, useWithdraw, useResolveAccount } from '../../lib/hooks.js';
 import { hapticSuccess } from '../../lib/haptics.js';
 import { money } from '../../lib/format.js';
@@ -91,11 +92,17 @@ export default function Withdraw(): React.JSX.Element {
     const key = `${bank.code}:${accountNumber}`;
     if (lastResolved.current === key) return;
     lastResolved.current = key;
+    // Capture `key` so that if the user changes bank/number while this resolve is
+    // in-flight, the stale onSuccess can't overwrite the display with the wrong name.
+    const resolvedKey = key;
     resolve.mutate(
       { bankCode: bank.code, accountNumber },
       {
-        onSuccess: (r) => setResolvedName(r.accountName),
-        onError: () => setResolveError('Couldn’t verify this account. Check the number and bank.'),
+        onSuccess: (r) => {
+          if (lastResolved.current !== resolvedKey) return; // stale response — discard
+          setResolvedName(r.accountName);
+        },
+        onError: () => setResolveError("Couldn't verify this account. Check the number and bank."),
       },
     );
     // `resolve` is a stable mutation object, so it is intentionally not a dep.
@@ -185,7 +192,7 @@ export default function Withdraw(): React.JSX.Element {
             {/* the amount, owned by the emerald hero so it reads as "real money" */}
             <Box borderRadius="lg" style={[{ backgroundColor: theme.colors.brandEmerald, padding: 20, gap: 6 }, shadowMd]}>
               <Text variant="overline" color="accentGold">YOU’RE WITHDRAWING</Text>
-              <Text style={{ fontFamily: 'Fraunces_900Black', fontSize: 40, lineHeight: 44, letterSpacing: -1.5 }} color="inverseInk">
+            <Text style={{ fontFamily: fonts.displayBlack, fontSize: 40, lineHeight: 44, letterSpacing: -1.5 }} color="inverseInk">
                 {money(amountKobo)}
               </Text>
             </Box>

@@ -11,6 +11,7 @@ import { useTheme, Text } from '../theme/restyle.js';
 import { Icon, type IconName } from './Icon.js';
 import { AnimatedPressable } from './Pressable.js';
 import type { Theme } from '../theme/theme.js';
+import { fonts } from '../theme/fonts.js';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 export type ButtonSize = 'lg' | 'md';
@@ -88,7 +89,7 @@ export function Button({
       {leftIcon ? <Icon name={leftIcon} size={size === 'lg' ? 18 : 16} color={fg} /> : null}
       <Text
         style={{
-          fontFamily: 'PlusJakartaSans_600SemiBold',
+          fontFamily: fonts.sansSemibold,
           fontSize: s.fontSize,
           lineHeight: s.lineHeight,
           letterSpacing: s.ls,

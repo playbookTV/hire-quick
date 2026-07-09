@@ -8,6 +8,7 @@ import { useState, forwardRef } from 'react';
 import { TextInput, View, Text, type TextInputProps } from 'react-native';
 import { useTheme } from '../theme/restyle.js';
 import { Icon, type IconName } from './Icon.js';
+import { fonts } from '../theme/fonts.js';
 
 export interface InputProps extends Omit<TextInputProps, 'style'> {
   leftIcon?: IconName;
@@ -51,7 +52,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
       {prefix ? (
         <Text
           style={{
-            fontFamily: 'PlusJakartaSans_400Regular',
+            fontFamily: fonts.sansRegular,
             fontSize: 15,
             lineHeight: 22,
             color: theme.colors.inkMuted,
@@ -73,7 +74,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
         }}
         style={{
           flex: 1,
-          fontFamily: 'PlusJakartaSans_400Regular',
+          fontFamily: fonts.sansRegular,
           fontSize: 15,
           lineHeight: 22,
           color: theme.colors.inkStrong,

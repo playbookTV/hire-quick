@@ -17,6 +17,7 @@ import { CategoryBadge } from '../../components/CategoryBadge.js';
 import { AnimatedPressable } from '../../components/Pressable.js';
 import { shadowSm } from '../../theme/shadows.js';
 import { primitives } from '../../theme/primitives.js';
+import { fonts } from '../../theme/fonts.js';
 import { useAuth } from '../../lib/auth-context.js';
 import { useWallet, useWalletActivity, useBookings, useNotifications } from '../../lib/hooks.js';
 import { money, dateTime } from '../../lib/format.js';
@@ -66,7 +67,7 @@ function JobRow({ booking, onPress }: Readonly<{ booking: Booking; onPress: () =
         <Box flexDirection="row" alignItems="center" justifyContent="space-between">
           <Text variant="titleM" style={{ flex: 1 }} numberOfLines={1}>{booking.event?.title ?? 'Booking'}</Text>
           <Box style={{ paddingHorizontal: 12, paddingVertical: 4, borderRadius: theme.borderRadii.pill, backgroundColor: success ? theme.colors.statusSuccessTint : theme.colors.accentGoldTint }}>
-            <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 13, lineHeight: 16, letterSpacing: 0.2 }} color={success ? 'statusSuccess' : 'accentGoldStrong'}>
+            <Text style={{ fontFamily: fonts.sansSemibold, fontSize: 13, lineHeight: 16, letterSpacing: 0.2 }} color={success ? 'statusSuccess' : 'accentGoldStrong'}>
               {meta.label}
             </Text>
           </Box>
@@ -148,7 +149,7 @@ export default function UsherHome(): React.JSX.Element {
                 <Icon name="bell" size={20} color="inkStrong" />
                 {unread > 0 ? (
                   <Box style={{ position: 'absolute', top: -3, right: -3, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, backgroundColor: theme.colors.statusDanger, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 10, lineHeight: 12, color: theme.colors.inverseInk }}>
+                    <Text style={{ fontFamily: fonts.sansBold, fontSize: 10, lineHeight: 12, color: theme.colors.inverseInk }}>
                       {unread > 9 ? '9+' : unread}
                     </Text>
                   </Box>
@@ -156,7 +157,7 @@ export default function UsherHome(): React.JSX.Element {
               </Box>
             </Pressable>
             <Box style={{ width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandEmeraldTint }}>
-              <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 15, color: theme.colors.brandEmerald }}>{initial}</Text>
+              <Text style={{ fontFamily: fonts.sansSemibold, fontSize: 15, color: theme.colors.brandEmerald }}>{initial}</Text>
             </Box>
           </Box>
         </Box>
@@ -183,7 +184,7 @@ export default function UsherHome(): React.JSX.Element {
             >
               <Box flexDirection="row" alignItems="center" style={{ gap: 4 }}>
                 <Icon name="shield" size={16} color="inverseInk" />
-                <Text style={{ fontFamily: 'PlusJakartaSans_400Regular', fontSize: 13, lineHeight: 18, color: primitives.emerald[100] }}>
+                <Text style={{ fontFamily: fonts.sansRegular, fontSize: 13, lineHeight: 18, color: primitives.emerald[100] }}>
                   {money(wallet.data?.pendingEscrow ?? 0)} held · released after each event
                 </Text>
               </Box>

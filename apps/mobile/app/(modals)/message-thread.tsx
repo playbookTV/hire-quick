@@ -9,6 +9,7 @@ import { KeyboardAvoidingView, Platform, ScrollView, TextInput } from 'react-nat
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, Box, Text } from '../../theme/restyle.js';
+import { fonts } from '../../theme/fonts.js';
 import { Avatar } from '../../components/Avatar.js';
 import { Banner } from '../../components/Banner.js';
 import { Icon } from '../../components/Icon.js';
@@ -166,7 +167,7 @@ export default function MessageThread(): React.JSX.Element {
               onChangeText={setText}
               placeholder="Message…"
               placeholderTextColor={theme.colors.inkFaint}
-              style={{ fontFamily: 'PlusJakartaSans_400Regular', fontSize: 15, color: theme.colors.inkStrong, paddingVertical: 8 }}
+              style={{ fontFamily: fonts.sansRegular, fontSize: 15, color: theme.colors.inkStrong, paddingVertical: 8 }}
               onSubmitEditing={onSend}
               returnKeyType="send"
               multiline

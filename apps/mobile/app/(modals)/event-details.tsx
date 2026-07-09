@@ -6,6 +6,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, Box, Text } from '../../theme/restyle.js';
+import { fonts } from '../../theme/fonts.js';
 import { Screen } from '../../components/Screen.js';
 import { AppBar } from '../../components/AppBar.js';
 import { EmptyState } from '../../components/EmptyState.js';
@@ -27,7 +28,7 @@ function DetailRow({ icon, label, value, valueColor = 'inkStrong' }: { icon: Ico
           {label}
         </Text>
       </Box>
-      <Text variant="label" style={{ fontSize: 15 }} color={valueColor}>
+      <Text variant="labelLg" color={valueColor}>
         {value}
       </Text>
     </Box>
@@ -107,7 +108,7 @@ export default function EventDetails(): React.JSX.Element {
           <Box style={{ gap: 4 }}>
             <Text variant="h1">{e.title}</Text>
             <Box flexDirection="row" alignItems="baseline" style={{ gap: 4 }}>
-              <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 22, lineHeight: 28, letterSpacing: -0.3 }} color="brandEmerald">
+      <Text style={{ fontFamily: fonts.sansBold, fontSize: 22, lineHeight: 28, letterSpacing: -0.3 }} color="brandEmerald">
                 {money(e.budgetPerHead)}
               </Text>
               <Text variant="body" color="inkMuted">/ head</Text>

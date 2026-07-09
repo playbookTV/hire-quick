@@ -17,6 +17,7 @@ import { Button } from '../../components/Button.js';
 import { Loading } from '../../components/Loading.js';
 import { shadowMd, shadowSm } from '../../theme/shadows.js';
 import { primitives } from '../../theme/primitives.js';
+import { fonts } from '../../theme/fonts.js';
 import { useEvent, useBookings, useGenerateCheckin, useCompleteBooking } from '../../lib/hooks.js';
 import { useToast } from '../../lib/toast.js';
 import type { Booking } from '../../lib/types.js';
@@ -113,14 +114,14 @@ export default function EventDay(): React.JSX.Element {
           {/* check-in code card */}
           <Box alignItems="center" borderRadius="lg" style={[{ backgroundColor: theme.colors.brandEmerald, padding: 24, gap: 8 }, shadowMd]}>
             <Box style={{ backgroundColor: theme.colors.brandEmeraldStrong, paddingHorizontal: 8, paddingVertical: 4, borderRadius: theme.borderRadii.xs }}>
-              <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 11, lineHeight: 14, letterSpacing: 1.2, color: primitives.gold[500] }}>
+              <Text style={{ fontFamily: fonts.sansBold, fontSize: 11, lineHeight: 14, letterSpacing: 1.2, color: primitives.gold[500] }}>
                 CHECK-IN CODE
               </Text>
             </Box>
-            <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 44, letterSpacing: 4, color: '#FBF7F0' }}>
+            <Text style={{ fontFamily: fonts.sansBold, fontSize: 44, letterSpacing: 4, color: primitives.neutral[50] }}>
               {lastCode ?? '— — —'}
             </Text>
-            <Text style={{ fontFamily: 'PlusJakartaSans_400Regular', fontSize: 13, lineHeight: 18, color: primitives.emerald[100], textAlign: 'center' }}>
+            <Text style={{ fontFamily: fonts.sansRegular, fontSize: 13, lineHeight: 18, color: primitives.emerald[100], textAlign: 'center' }}>
               {lastCode ? 'The usher enters this on arrival' : 'Tap “Code” by a usher to generate their code'}
             </Text>
           </Box>

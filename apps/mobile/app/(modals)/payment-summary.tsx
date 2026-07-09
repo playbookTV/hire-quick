@@ -21,6 +21,7 @@ import { useEvent, useApplications, useConfirmEvent } from '../../lib/hooks.js';
 import { useAuth } from '../../lib/auth-context.js';
 import { useToast } from '../../lib/toast.js';
 import { CategoryBadge } from '../../components/CategoryBadge.js';
+import { fonts } from '../../theme/fonts.js';
 import { money, formatEventDate, formatTimeRange } from '../../lib/format.js';
 
 export default function PaymentSummary(): React.JSX.Element {
@@ -124,7 +125,7 @@ export default function PaymentSummary(): React.JSX.Element {
                   <Text variant="bodyLg" color="inkDefault" style={{ flex: 1 }} numberOfLines={1}>
                     {name}
                   </Text>
-                  <Text variant="label" style={{ fontSize: 15 }} color="inkStrong">
+                  <Text variant="labelLg" color="inkStrong">
                     {money(perHead)}
                   </Text>
                 </Box>
@@ -138,7 +139,7 @@ export default function PaymentSummary(): React.JSX.Element {
               <Text variant="body" color="inkMuted">
                 Subtotal · {count} × {money(perHead)}
               </Text>
-              <Text variant="label" style={{ fontSize: 15 }} color="inkStrong">
+              <Text variant="labelLg" color="inkStrong">
                 {money(total)}
               </Text>
             </Box>
@@ -146,14 +147,14 @@ export default function PaymentSummary(): React.JSX.Element {
               <Text variant="body" color="inkMuted">
                 Platform fee (15%)
               </Text>
-              <Text variant="label" style={{ fontSize: 15 }} color="inkStrong">
+              <Text variant="labelLg" color="inkStrong">
                 Paid by staff
               </Text>
             </Box>
             <Box style={{ width: 100, height: 1 }} backgroundColor="borderDefault" />
             <Box flexDirection="row" alignItems="center" justifyContent="space-between">
               <Text variant="titleM">You pay</Text>
-              <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 22, lineHeight: 28, letterSpacing: -0.3 }} color="brandEmerald">
+              <Text style={{ fontFamily: fonts.sansBold, fontSize: 22, lineHeight: 28, letterSpacing: -0.3 }} color="brandEmerald">
                 {money(total)}
               </Text>
             </Box>

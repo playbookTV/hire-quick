@@ -6,6 +6,7 @@
 import { useTheme, Box, Text } from '../theme/restyle.js';
 import { Icon, type IconName } from './Icon.js';
 import { primitives as p } from '../theme/primitives.js';
+import { fonts } from '../theme/fonts.js';
 import type { Theme } from '../theme/theme.js';
 
 export type BannerTone = 'info' | 'warning' | 'success' | 'brand';
@@ -42,11 +43,11 @@ export function Banner({ tone = 'info', title, message }: BannerProps): React.JS
       <Icon name={t.icon} size={18} color={t.fg} />
       <Box flex={1}>
         {title ? (
-          <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 13, lineHeight: 18, color: theme.colors[t.fg] }}>
+          <Text style={{ fontFamily: fonts.sansSemibold, fontSize: 13, lineHeight: 18, color: theme.colors[t.fg] }}>
             {title}
           </Text>
         ) : null}
-        <Text style={{ fontFamily: 'PlusJakartaSans_400Regular', fontSize: 13, lineHeight: 18, color: theme.colors[t.fg] }}>
+        <Text style={{ fontFamily: fonts.sansRegular, fontSize: 13, lineHeight: 18, color: theme.colors[t.fg] }}>
           {message}
         </Text>
       </Box>

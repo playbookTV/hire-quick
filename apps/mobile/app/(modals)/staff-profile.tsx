@@ -10,6 +10,7 @@ import { ScrollView } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, Box, Text } from '../../theme/restyle.js';
+import { fonts } from '../../theme/fonts.js';
 import { AppBar } from '../../components/AppBar.js';
 import { Avatar } from '../../components/Avatar.js';
 import { Badge } from '../../components/Badge.js';
@@ -27,7 +28,7 @@ function Pill({ label }: { label: string }) {
   const theme = useTheme();
   return (
     <Box style={{ backgroundColor: theme.colors.bgSubtle, paddingHorizontal: 12, paddingVertical: 6, borderRadius: theme.borderRadii.pill }}>
-      <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 13, lineHeight: 16, letterSpacing: 0.2 }} color="inkDefault">
+      <Text style={{ fontFamily: fonts.sansSemibold, fontSize: 13, lineHeight: 16, letterSpacing: 0.2 }} color="inkDefault">
         {label}
       </Text>
     </Box>
@@ -191,7 +192,7 @@ export default function StaffProfile(): React.JSX.Element {
           </Box>
           <Box flexDirection="row" alignItems="center" style={{ gap: 6 }}>
             <Icon name="star" size={16} color="accentGold" />
-            <Text variant="label" style={{ fontSize: 15 }} color="inkStrong">
+            <Text variant="labelLg" color="inkStrong">
               {u.ratingAvg.toFixed(1)}
             </Text>
             <Text variant="bodyLg" color="inkFaint">·</Text>

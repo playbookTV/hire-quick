@@ -22,6 +22,7 @@ import { Dot } from '../../../components/Dot.js';
 import { EmptyState } from '../../../components/EmptyState.js';
 import { Loading } from '../../../components/Loading.js';
 import { useTheme, Box, Text } from '../../../theme/restyle.js';
+import { fonts } from '../../../theme/fonts.js';
 import { useEvent, useBookings } from '../../../lib/hooks.js';
 import { formatEventDate, formatTimeRange } from '../../../lib/format.js';
 import { ApiError } from '../../../lib/api-error.js';
@@ -40,7 +41,7 @@ function ActionChip({ label, danger, onPress }: { label: string; danger?: boolea
       }}
     >
       <Text
-        style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 13, lineHeight: 16, letterSpacing: 0.2 }}
+        style={{ fontFamily: fonts.sansSemibold, fontSize: 13, lineHeight: 16, letterSpacing: 0.2 }}
         color={danger ? 'statusDanger' : 'inkDefault'}
       >
         {label}

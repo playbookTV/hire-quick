@@ -13,6 +13,11 @@ import { Loading } from '../../components/Loading.js';
 import { useAuth } from '../../lib/auth-context.js';
 import { shadowMd } from '../../theme/shadows.js';
 import { primitives } from '../../theme/primitives.js';
+import { fonts } from '../../theme/fonts.js';
+
+// Figma hero gradient stop — intentionally sits outside the primitives emerald ramp
+// (it maps to the gradient's lower bound in the design file, not a standalone colour).
+const HERO_GRADIENT_TINT = '#15D1A2';
 
 const CHIPS = ['Verified IDs', 'Money held safe', 'Check-in payout'];
 
@@ -28,7 +33,7 @@ export default function Welcome(): React.JSX.Element {
     <Box flex={1} backgroundColor="bgCanvas" style={{ paddingTop: insets.top }}>
       <Box flex={1} style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: insets.bottom + 16, gap: 24 }}>
         <LinearGradient
-          colors={['#0B6B53', '#0B6B53', '#15D1A2']}
+          colors={[primitives.emerald[600], primitives.emerald[600], HERO_GRADIENT_TINT]}
           locations={[0, 0.62, 1]}
           start={{ x: 0.5, y: 0 }}
           end={{ x: 0.5, y: 1 }}
@@ -36,7 +41,7 @@ export default function Welcome(): React.JSX.Element {
         >
           <Text
             style={{
-              fontFamily: 'PlusJakartaSans_700Bold',
+              fontFamily: fonts.sansBold,
               fontSize: 11,
               lineHeight: 14,
               letterSpacing: 1.2,
@@ -45,16 +50,16 @@ export default function Welcome(): React.JSX.Element {
           >
             TRUSTED EVENT STAFFING
           </Text>
-          <Text style={{ fontFamily: 'Fraunces_600SemiBold', fontSize: 26, lineHeight: 32, letterSpacing: -0.5, color: '#FBF7F0' }}>
+          <Text style={{ fontFamily: fonts.displaySemibold, fontSize: 26, lineHeight: 32, letterSpacing: -0.5, color: primitives.neutral[50] }}>
             Hire vetted ushers. Money held safe.
           </Text>
-          <Text style={{ fontFamily: 'PlusJakartaSans_400Regular', fontSize: 15, lineHeight: 22, color: primitives.emerald[100] }}>
+          <Text style={{ fontFamily: fonts.sansRegular, fontSize: 15, lineHeight: 22, color: primitives.emerald[100] }}>
             Book staff, pay upfront, and we hold the money safely — released only when they check in on the day.
           </Text>
           <Box flexDirection="row" flexWrap="wrap" style={{ gap: 8 }}>
             {CHIPS.map((c) => (
               <Box key={c} style={{ backgroundColor: primitives.emerald[700], paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 }}>
-                <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 13, lineHeight: 16, letterSpacing: 0.2, color: '#FBF7F0' }}>
+                <Text style={{ fontFamily: fonts.sansSemibold, fontSize: 13, lineHeight: 16, letterSpacing: 0.2, color: primitives.neutral[50] }}>
                   {c}
                 </Text>
               </Box>

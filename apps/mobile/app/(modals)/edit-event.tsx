@@ -23,7 +23,8 @@ import { Banner } from '../../components/Banner.js';
 import { Button } from '../../components/Button.js';
 import { Loading } from '../../components/Loading.js';
 import { Box, Text } from '../../theme/restyle.js';
-import { useEvent, useUpdateEvent } from '../../lib/hooks.js';
+import { useUpdateEvent, useEvent } from '../../lib/hooks.js';
+import { fonts } from '../../theme/fonts.js';
 import { ApiError } from '../../lib/api-error.js';
 import { formatEventDate } from '../../lib/format.js';
 import { EVENT_CATEGORIES, HAIRSTYLE_OPTIONS, TIME_OPTIONS, STATE_OPTIONS } from '../../lib/event-options.js';
@@ -226,8 +227,8 @@ function EditEventForm({ event }: { event: EventResource }): React.JSX.Element {
 
         <Box backgroundColor="brandEmeraldTintWeak" borderRadius="lg" borderWidth={1} borderColor="brandEmeraldTint" padding="400" marginBottom="400" style={{ gap: 4 }}>
           <Box flexDirection="row" alignItems="center" justifyContent="space-between">
-            <Text variant="label" style={{ fontSize: 15 }} color="inkDefault">Estimated total</Text>
-            <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 22, lineHeight: 28, letterSpacing: -0.3 }} color="brandEmerald">{formatNaira(total)}</Text>
+            <Text variant="labelLg" color="inkDefault">Estimated total</Text>
+            <Text style={{ fontFamily: fonts.sansBold, fontSize: 22, lineHeight: 28, letterSpacing: -0.3 }} color="brandEmerald">{formatNaira(total)}</Text>
           </Box>
           <Text variant="bodySm" color="inkMuted">{values.headcount} staff × {formatNaira(kobo(values.budgetPerHeadKobo || 0))}</Text>
         </Box>

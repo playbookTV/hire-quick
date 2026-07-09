@@ -20,6 +20,7 @@ import { Icon } from '../../components/Icon.js';
 import { IconCircle } from '../../components/IconCircle.js';
 import { Loading } from '../../components/Loading.js';
 import { shadowMd } from '../../theme/shadows.js';
+import { fonts } from '../../theme/fonts.js';
 import { useBooking, useVerifyCheckin } from '../../lib/hooks.js';
 import { hapticSuccess } from '../../lib/haptics.js';
 import { money, formatEventDate, formatTimeRange } from '../../lib/format.js';
@@ -170,7 +171,7 @@ function CodeField({ value, onChange }: Readonly<{ value: string; onChange: (v: 
         accessibilityLabel="6-digit check-in code"
         maxLength={6}
         style={{
-          fontFamily: 'PlusJakartaSans_700Bold',
+          fontFamily: fonts.sansBold,
           fontSize: 36,
           letterSpacing: 10,
           textAlign: 'center',
@@ -203,7 +204,7 @@ function ResultState({ tone, icon, title, body, amountLabel, amount, primary }: 
       {amount && amountLabel ? (
         <Box alignSelf="stretch" alignItems="center" borderRadius="lg" style={[{ backgroundColor: theme.colors.brandEmerald, paddingVertical: 20, paddingHorizontal: 24, gap: 4 }, shadowMd]}>
           <Text variant="overline" color="accentGold">{amountLabel}</Text>
-          <Text style={{ fontFamily: 'Fraunces_900Black', fontSize: 40, lineHeight: 44, letterSpacing: -1.5 }} color="inverseInk">{amount}</Text>
+      <Text style={{ fontFamily: fonts.displayBlack, fontSize: 40, lineHeight: 44, letterSpacing: -1.5 }} color="inverseInk">{amount}</Text>
         </Box>
       ) : null}
 

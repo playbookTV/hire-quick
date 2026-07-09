@@ -16,6 +16,7 @@ import { ProgressBar } from '../../components/ProgressBar.js';
 import { ReviewCard } from '../../components/ReviewCard.js';
 import { Button } from '../../components/Button.js';
 import { shadowSm } from '../../theme/shadows.js';
+import { fonts } from '../../theme/fonts.js';
 import { useAuth } from '../../lib/auth-context.js';
 import { useUsherReviews, useBookings } from '../../lib/hooks.js';
 import { upcomingBookings } from '../../lib/bookings.js';
@@ -42,7 +43,7 @@ const STATUS_LABEL: Record<string, string> = { VERIFIED: 'Verified', PENDING: 'P
 function Stat({ value, label, color }: { value: string; label: string; color: keyof Theme['colors'] }) {
   return (
     <Box flex={1} alignItems="center" style={{ gap: 2 }}>
-      <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 22, lineHeight: 28, letterSpacing: -0.066 }} color={color}>
+      <Text style={{ fontFamily: fonts.sansBold, fontSize: 22, lineHeight: 28, letterSpacing: -0.066 }} color={color}>
         {value}
       </Text>
       <Text variant="bodySm" color="inkMuted">
@@ -189,7 +190,7 @@ export default function UsherProfile(): React.JSX.Element {
 
         {/* protect standing */}
         <Box backgroundColor="brandEmeraldTintWeak" borderRadius="md" padding="400" style={{ gap: 4 }}>
-          <Text variant="label" style={{ fontSize: 15 }} color="brandEmerald">
+          <Text variant="labelLg" color="brandEmerald">
             Protect your standing
           </Text>
           <Text variant="bodySm" color="inkDefault">

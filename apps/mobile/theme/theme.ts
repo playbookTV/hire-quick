@@ -102,6 +102,14 @@ const theme = createTheme({
       lineHeight: 18,
       color: 'inkDefault',
     },
+    // Figma Label/L — 15px semibold, one step above `label` (14px). Used wherever
+    // the Figma file pairs a label with a larger number or form value.
+    labelLg: {
+      fontFamily: fonts.sansSemibold,
+      fontSize: 15,
+      lineHeight: 20,
+      color: 'inkDefault',
+    },
     labelSm: {
       fontFamily: fonts.sansSemibold,
       fontSize: 12,

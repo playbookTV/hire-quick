@@ -32,6 +32,7 @@ import { Banner } from '../../components/Banner.js';
 import { Button } from '../../components/Button.js';
 import { Box, Text } from '../../theme/restyle.js';
 import { useCreateEvent } from '../../lib/hooks.js';
+import { fonts } from '../../theme/fonts.js';
 import { ApiError } from '../../lib/api-error.js';
 import { formatEventDate, formatTimeRange } from '../../lib/format.js';
 import { EVENT_CATEGORIES, HAIRSTYLE_OPTIONS, TIME_OPTIONS, STATE_OPTIONS } from '../../lib/event-options.js';
@@ -290,10 +291,10 @@ export default function CreateEvent(): React.JSX.Element {
               style={{ gap: 8 }}
             >
               <Box flexDirection="row" alignItems="center" justifyContent="space-between">
-                <Text variant="label" style={{ fontSize: 15 }} color="inkDefault">
+                <Text variant="labelLg" color="inkDefault">
                   Estimated total
                 </Text>
-                <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 22, lineHeight: 28, letterSpacing: -0.3 }} color="brandEmerald">
+                <Text style={{ fontFamily: fonts.sansBold, fontSize: 22, lineHeight: 28, letterSpacing: -0.3 }} color="brandEmerald">
                   {formatNaira(total)}
                 </Text>
               </Box>

@@ -12,6 +12,7 @@ import { useTheme, Box, Text } from '../theme/restyle.js';
 import { Icon, type IconName } from './Icon.js';
 import { shadowMd } from '../theme/shadows.js';
 import { primitives as p } from '../theme/primitives.js';
+import { fonts } from '../theme/fonts.js';
 import type { Theme } from '../theme/theme.js';
 
 export type ToastTone = 'success' | 'error' | 'info';
@@ -60,12 +61,12 @@ export function ToastHost({ toast, onDismiss }: ToastHostProps): React.JSX.Eleme
             >
               <Icon name={t.icon} size={20} color={t.fg} />
               <Box flex={1}>
-                {toast.title ? (
-                  <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 13, lineHeight: 18, color: theme.colors[t.fg] }}>
+              {toast.title ? (
+                  <Text style={{ fontFamily: fonts.sansSemibold, fontSize: 13, lineHeight: 18, color: theme.colors[t.fg] }}>
                     {toast.title}
                   </Text>
                 ) : null}
-                <Text style={{ fontFamily: 'PlusJakartaSans_400Regular', fontSize: 13, lineHeight: 18, color: theme.colors[t.fg] }}>
+                <Text style={{ fontFamily: fonts.sansRegular, fontSize: 13, lineHeight: 18, color: theme.colors[t.fg] }}>
                   {toast.message}
                 </Text>
               </Box>
