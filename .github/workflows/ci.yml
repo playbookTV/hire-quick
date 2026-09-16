@@ -37,6 +37,8 @@ jobs:
       - run: pnpm --filter @hq/database exec prisma generate
       - run: pnpm typecheck
       - run: pnpm lint
+      - run: pnpm typecheck:tests
+      - run: pnpm lint:tests
       # Apply tracked migrations (production-equivalent), not `db push`, so CI
       # exercises the same path prod deploys use and a missing migration fails here.
       - run: pnpm --filter @hq/database exec prisma migrate deploy

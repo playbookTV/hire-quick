@@ -5,7 +5,9 @@
  */
 import { prisma, type MessageContentType } from '@hq/database';
 import { ApiError } from '../app.js';
+import { ownsChatMediaKey, authorizedChatMediaKey } from '../modules/storage/chat-media.js';
 import { notifyNewMessage } from '../modules/notifications/service.js';
+import { serviceMessageInput, seenMessageInput } from './validation.js';
 
 const MESSAGEABLE = new Set(['CONFIRMED', 'CHECKED_IN', 'COMPLETED', 'PAID', 'DISPUTED']);
 
@@ -52,6 +54,16 @@ export async function assertParty(bookingId: string, userId: string): Promise<vo
   if (!isParty(p, userId)) throw new ApiError(403, 'FORBIDDEN', 'not a party to this booking');
 }
 
+export async function assertMessageableParty(bookingId: string, userId: string) {
+  const parties = await loadBookingParties(bookingId);
+  if (!isParty(parties, userId))
+    throw new ApiError(403, 'FORBIDDEN', 'not a party to this booking');
+  if (!MESSAGEABLE.has(parties.status)) {
+    throw new ApiError(409, 'MESSAGING_LOCKED', 'messaging unlocks once the booking is confirmed');
+  }
+  return parties;
+}
+
 export interface SentMessage {
   id: string;
   bookingId: string;
@@ -69,39 +81,42 @@ export async function sendMessage(params: {
   content: string;
   contentType?: MessageContentType;
 }): Promise<SentMessage> {
-  const p = await loadBookingParties(params.bookingId);
-  if (!isParty(p, params.senderId)) throw new ApiError(403, 'FORBIDDEN', 'not a party to this booking');
-  if (!MESSAGEABLE.has(p.status)) {
-    throw new ApiError(409, 'MESSAGING_LOCKED', 'messaging unlocks once the booking is confirmed');
+  const input = serviceMessageInput.parse(params);
+  const p = await assertMessageableParty(input.bookingId, input.senderId);
+  const contentType: MessageContentType = input.contentType ?? 'TEXT';
+  if (
+    contentType !== 'TEXT' &&
+    !ownsChatMediaKey(input.bookingId, input.senderId, contentType, input.content)
+  ) {
+    throw new ApiError(400, 'INVALID_MEDIA_KEY', 'media must belong to this sender and booking');
   }
 
   const conversation = await prisma.conversation.upsert({
-    where: { bookingId: params.bookingId },
+    where: { bookingId: input.bookingId },
     update: {},
-    create: { bookingId: params.bookingId, clientId: p.clientId, usherId: p.usherId },
+    create: { bookingId: input.bookingId, clientId: p.clientId, usherId: p.usherId },
   });
 
-  const contentType: MessageContentType = params.contentType ?? 'TEXT';
-  const flagged = contentType === 'TEXT' && flagsContact(params.content);
+  const flagged = contentType === 'TEXT' && flagsContact(input.content);
   const msg = await prisma.message.create({
     data: {
       conversationId: conversation.id,
-      senderId: params.senderId,
+      senderId: input.senderId,
       contentType,
-      content: params.content,
+      content: input.content,
       flagged,
     },
   });
 
-  const recipientUserId = params.senderId === p.clientUserId ? p.usherUserId : p.clientUserId;
+  const recipientUserId = input.senderId === p.clientUserId ? p.usherUserId : p.clientUserId;
   notifyNewMessage(recipientUserId);
 
   return {
     id: msg.id,
-    bookingId: params.bookingId,
-    senderId: params.senderId,
+    bookingId: input.bookingId,
+    senderId: input.senderId,
     contentType,
-    content: params.content,
+    content: input.content,
     flagged,
     createdAt: msg.createdAt,
     recipientUserId,
@@ -109,13 +124,21 @@ export async function sendMessage(params: {
 }
 
 export async function listMessages(bookingId: string, userId: string) {
-  await assertParty(bookingId, userId);
+  const parties = await loadBookingParties(bookingId);
+  if (!isParty(parties, userId))
+    throw new ApiError(403, 'FORBIDDEN', 'not a party to this booking');
   const conversation = await prisma.conversation.findUnique({ where: { bookingId } });
   if (!conversation) return [];
-  return prisma.message.findMany({
+  const messages = await prisma.message.findMany({
     where: { conversationId: conversation.id },
     orderBy: { createdAt: 'asc' },
   });
+  // Legacy arbitrary media references cannot become usable through history.
+  return messages.map((message) =>
+    message.contentType === 'TEXT' || authorizedChatMediaKey(message, { bookingId, ...parties })
+      ? message
+      : { ...message, content: '' },
+  );
 }
 
 /**
@@ -123,7 +146,12 @@ export async function listMessages(bookingId: string, userId: string) {
  * unseen inbound message, or only those up to `upToMessageId` when given. Returns
  * how many rows were updated. `seenAt` already exists on Message — no migration.
  */
-export async function markSeen(bookingId: string, userId: string, upToMessageId?: string): Promise<number> {
+export async function markSeen(
+  bookingId: string,
+  userId: string,
+  upToMessageId?: string,
+): Promise<number> {
+  seenMessageInput.parse({ bookingId, ...(upToMessageId === undefined ? {} : { upToMessageId }) });
   await assertParty(bookingId, userId);
   const conversation = await prisma.conversation.findUnique({ where: { bookingId } });
   if (!conversation) return 0;

@@ -9,9 +9,12 @@ import { reconcile } from '../payments/ledger/reconciliation.js';
 import { runCommissionSweep, type Deps } from '../payments/service.js';
 import { resumePaymentOperation, reconcileStuckWithdrawals } from '../payments/recovery.js';
 import { noopGateway, type RealtimeGateway } from '../../realtime/gateway.js';
+import { authorizedChatMediaKey } from '../storage/chat-media.js';
 import { type StoragePort } from '../storage/storage.js';
+import { claimOperation } from '../payments/ledger/operations.js';
 import { writeAudit, verifyAuditChain } from '../audit.js';
 import { env } from '../../env.js';
+import { reconcileCheckouts } from '../payments/checkout.js';
 
 const DAY_MS = 86_400_000;
 
@@ -74,11 +77,37 @@ export async function jobCommissionSweep(deps: Deps): Promise<void> {
  * it re-drives PENDING/PROVIDER_OK operations and reconciles stuck withdrawals
  * against Paystack's authoritative transfer status.
  */
-export async function jobResumePaymentOps(deps: Deps, realtime: RealtimeGateway = noopGateway): Promise<void> {
+export async function jobResumePaymentOps(
+  deps: Deps,
+  realtime: RealtimeGateway = noopGateway,
+): Promise<void> {
+  // Backfill approvals created by the former EXECUTED-before-intent sequence.
+  // Page by immutable ID so existing/blocked records cannot hide later orphans.
+  let after: string | undefined;
+  for (;;) {
+    const approvals = await deps.prisma.approval.findMany({
+      where: { status: { in: ['APPROVED', 'EXECUTED'] }, checkerId: { not: null } },
+      orderBy: { id: 'asc' },
+      take: 100,
+      ...(after ? { cursor: { id: after }, skip: 1 } : {}),
+    });
+    for (const approval of approvals) {
+      const dedupeKey = `APPROVAL_EXECUTE:${approval.id}`;
+      if (!(await deps.prisma.paymentOperation.findUnique({ where: { dedupeKey } }))) {
+        await claimOperation(deps.prisma, {
+          kind: 'APPROVAL_EXECUTE',
+          dedupeKey,
+          payload: { approvalId: approval.id },
+        });
+      }
+    }
+    if (approvals.length < 100) break;
+    after = approvals.at(-1)?.id;
+  }
   const cutoff = new Date(Date.now() - 5 * 60_000); // let the synchronous path finish first
-  const ops = await prisma.paymentOperation.findMany({
-    where: { status: { in: ['PENDING', 'PROVIDER_OK'] }, createdAt: { lt: cutoff } },
-    orderBy: { createdAt: 'asc' },
+  const ops = await deps.prisma.paymentOperation.findMany({
+    where: { status: { in: ['PENDING', 'PROVIDER_OK'] }, updatedAt: { lt: cutoff } },
+    orderBy: [{ updatedAt: 'asc' }, { id: 'asc' }],
     take: 100,
   });
   let recorded = 0;
@@ -102,6 +131,11 @@ export async function jobResumePaymentOps(deps: Deps, realtime: RealtimeGateway 
         `withdrawals reconciled +${String(wd.completed)}/-${String(wd.failed)} (${String(wd.pending)} pending)`,
     );
   }
+}
+
+/** Recover checkouts and expire only reservations supported by conclusive unpaid evidence. */
+export async function jobCheckouts(deps: Deps): Promise<void> {
+  await reconcileCheckouts(deps);
 }
 
 /**
@@ -164,9 +198,32 @@ export async function jobRetentionPurge(storage?: StoragePort): Promise<void> {
     if (storage) {
       const media = await prisma.message.findMany({
         where: { conversationId: { in: convoIds }, contentType: { in: ['IMAGE', 'VOICE'] } },
-        select: { content: true },
+        select: {
+          content: true, contentType: true, senderId: true,
+          conversation: { select: {
+            bookingId: true, clientId: true, usherId: true,
+            booking: { select: {
+              usherId: true, usher: { select: { userId: true } },
+              event: { select: { clientId: true, client: { select: { userId: true } } } },
+            } },
+          } },
+        },
       });
-      await Promise.allSettled(media.map((m) => storage.deleteObject(m.content)));
+      const authorizedKeys: string[] = [];
+      for (const message of media) {
+        const { conversation } = message;
+        const { booking } = conversation;
+        if (conversation.clientId !== booking.event.clientId || conversation.usherId !== booking.usherId) continue;
+        const key = authorizedChatMediaKey(message, {
+          bookingId: conversation.bookingId,
+          clientUserId: booking.event.client.userId,
+          usherUserId: booking.usher.userId,
+        });
+        if (key) authorizedKeys.push(key);
+      }
+      const skipped = media.length - authorizedKeys.length;
+      if (skipped) log(`retention skipped ${String(skipped)} unauthorized chat media reference(s)`);
+      await Promise.allSettled([...new Set(authorizedKeys)].map((key) => storage.deleteObject(key)));
     }
     chatDeleted = (await prisma.message.deleteMany({ where: { conversationId: { in: convoIds } } })).count;
   }

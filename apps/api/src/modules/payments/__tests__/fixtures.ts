@@ -100,6 +100,7 @@ export async function teardown(s: Scenario): Promise<void> {
         in: [
           ...s.bookingIds.map((id) => `BOOKING_REFUND:${id}`),
           ...wds.map((w) => `WITHDRAWAL_TRANSFER:${w.id}`),
+          ...wds.map((w) => `WITHDRAWAL_REVERSAL:${w.id}`),
         ],
       },
     },

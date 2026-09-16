@@ -6,6 +6,7 @@ import { ApiError } from '../../../app.js';
 import { requireIdempotencyKey } from './middleware.js';
 import { requireAuth, type AuthedRequest } from '../../auth/middleware.js';
 import { writeAudit } from '../../audit.js';
+import { getCheckout, resumeCheckout } from '../checkout.js';
 import { RT, withdrawalEvent } from '../../../realtime/events.js';
 import {
   initChargeForOrder,
@@ -67,6 +68,13 @@ export function paymentsRouter(deps: Deps): Router {
       res.status(201).json(out);
     }),
   );
+
+  r.get('/orders/:orderId/checkout', wrap(async (req, res) => {
+    res.json(await getCheckout(deps, String(req.params.orderId), (req as AuthedRequest).auth.userId));
+  }));
+  r.post('/orders/:orderId/checkout/resume', wrap(async (req, res) => {
+    res.json(await resumeCheckout(deps, { orderId: String(req.params.orderId), clientUserId: (req as AuthedRequest).auth.userId }));
+  }));
 
   // wallet summary — available (withdrawable) + pending-in-escrow + lifetime earned
   r.get(
@@ -229,7 +237,7 @@ export function paymentsRouter(deps: Deps): Router {
         deps.realtime?.emitToUser(
           (req as AuthedRequest).auth.userId,
           RT.WITHDRAWAL_REQUESTED,
-          withdrawalEvent(out.withdrawalId, 'PROCESSING', body.amountKobo),
+          withdrawalEvent(out.withdrawalId, out.status, out.amountKobo),
         );
       }
       res.status(out.duplicate ? 200 : 201).json(out);

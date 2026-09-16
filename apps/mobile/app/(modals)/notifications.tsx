@@ -81,7 +81,9 @@ export default function Notifications(): React.JSX.Element {
 
   const open = (n: Notification): void => {
     if (!n.readAt) markRead.mutate(n.id);
-    if (n.targetType === 'invitation' && n.targetId) {
+    if (n.targetType === 'checkout' && n.targetId) {
+      router.push({ pathname: '/(modals)/funds-held', params: { order: n.targetId } });
+    } else if (n.targetType === 'invitation' && n.targetId) {
       router.push({ pathname: '/(modals)/invitation', params: { id: n.targetId } });
     } else if (n.targetType === 'event' && n.targetId) {
       // New-application notifications deep-link the client to the event (review applications).

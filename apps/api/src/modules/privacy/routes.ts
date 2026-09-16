@@ -11,6 +11,7 @@ import { requireIdempotencyKey } from '../payments/http/middleware.js';
 import { writeAudit } from '../audit.js';
 import type { StoragePort } from '../storage/storage.js';
 import { buildExport, eraseUser } from './service.js';
+import { setConsent } from './consent.js';
 
 type Handler = (req: AuthedRequest, res: Response) => Promise<void>;
 const wrap =
@@ -88,21 +89,7 @@ export function privacyRouter(storage?: StoragePort): Router {
     wrap(async (req, res) => {
       const { purpose, granted } = consentSchema.parse(req.body);
       const userId = req.auth.userId;
-      const consent = await prisma.consentRecord.upsert({
-        where: { userId_purpose: { userId, purpose } },
-        update: {
-          granted,
-          source: 'EXPLICIT',
-          withdrawnAt: granted ? null : new Date(),
-          ...(granted ? { grantedAt: new Date() } : {}),
-        },
-        create: { userId, purpose, granted, source: 'EXPLICIT' },
-      });
-      if (purpose === 'PUSH_NOTIFICATIONS' && !granted) {
-        await prisma.deviceToken.deleteMany({ where: { userId } });
-      }
-      await writeAudit({ actorId: userId, action: granted ? 'consent.grant' : 'consent.withdraw', target: purpose });
-      res.json({ purpose: consent.purpose, granted: consent.granted });
+      res.json(await setConsent(userId, purpose, granted));
     }),
   );
 

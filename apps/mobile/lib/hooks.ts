@@ -1,10 +1,14 @@
+import { useRef } from 'react';
 /**
  * React Query hooks over the API. Auth mutations skip the bearer token; the
  * verify screen feeds the result into `useAuth().login`.
  */
-import { useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CreateEventInput, UpdateEventInput, UserRole } from '@hq/shared';
+import { checkoutStore } from './checkout-store.js';
+import type { WithdrawalInput } from './withdrawal.js';
+import { withdrawalStore } from './withdrawal-store.js';
+import { useAuth } from './auth-context.js';
 import { api, request, newIdempotencyKey } from './client.js';
 import { queryKeys } from './query.js';
 import type {
@@ -21,7 +25,6 @@ import type {
   BankAccount,
   Bank,
   Availability,
-  ConfirmResult,
   NotificationFeed,
   Invitation,
 } from './types.js';
@@ -286,23 +289,26 @@ export function usePatchApplication(eventId: string) {
   });
 }
 
+export function useSavedCheckout(eventId: string) {
+  const { user } = useAuth();
+  return useQuery({ queryKey: ['savedCheckout', user?.id, eventId], enabled: !!user?.id && !!eventId,
+    queryFn: () => checkoutStore.load(user!.id, eventId), staleTime: 0,
+  });
+}
+
 export function useConfirmEvent(eventId: string) {
   const qc = useQueryClient();
-  // Stable across retries: the key is generated once per user intent (screen mount)
-  // and rotated only after the server confirms success. Regenerating on every mutate()
-  // call would defeat idempotency if the first attempt succeeded but the response
-  // was lost — the server would see a new key and create a duplicate order.
-  const idemKey = useRef(newIdempotencyKey());
+  const { user } = useAuth();
   return useMutation({
-    mutationFn: (vars: { applicationIds: string[]; email: string }) =>
-      api.post<ConfirmResult>(`/api/events/${eventId}/confirm`, vars, { idempotencyKey: idemKey.current }),
-    onSuccess: () => {
-      idemKey.current = newIdempotencyKey(); // rotate after confirmed success
-      return Promise.all([
-        qc.invalidateQueries({ queryKey: queryKeys.event(eventId) }),
-        qc.invalidateQueries({ queryKey: queryKeys.bookings }),
-      ]);
+    mutationFn: (vars: { applicationIds: string[]; email: string }) => {
+      if (!user) throw new Error('Sign in to resume checkout.');
+      return checkoutStore.submit(user.id, eventId, vars);
     },
+    onSettled: () => Promise.all([
+      qc.invalidateQueries({ queryKey: ['savedCheckout'] }),
+      qc.invalidateQueries({ queryKey: queryKeys.event(eventId) }),
+      qc.invalidateQueries({ queryKey: queryKeys.bookings }),
+    ]),
   });
 }
 
@@ -385,19 +391,40 @@ export function useAddBankAccount() {
 
 export function useWithdraw() {
   const qc = useQueryClient();
-  const idemKey = useRef(newIdempotencyKey());
-  return useMutation({
-    mutationFn: (vars: { bankAccountId: string; amountKobo: number }) =>
-      api.post<{ id: string; status: string }>('/api/payments/withdrawals', vars, { idempotencyKey: idemKey.current }),
+  const { user } = useAuth();
+  const userId = user?.id;
+  const pendingKey = ['withdrawal-attempt', userId] as const;
+  const saved = useQuery({
+    queryKey: pendingKey,
+    queryFn: () => withdrawalStore.load(userId!),
+    enabled: !!userId,
+    staleTime: 0,
+  });
+  const mutation = useMutation({
+    mutationFn: async (vars: WithdrawalInput) => {
+      if (!userId) throw new Error('Sign in to check your withdrawal.');
+      return withdrawalStore.submit(userId, vars);
+    },
     onSuccess: () => {
-      idemKey.current = newIdempotencyKey();
       return Promise.all([
+        qc.invalidateQueries({ queryKey: pendingKey }),
         qc.invalidateQueries({ queryKey: queryKeys.wallet }),
         qc.invalidateQueries({ queryKey: queryKeys.walletActivity }),
         qc.invalidateQueries({ queryKey: queryKeys.me }),
       ]);
     },
+    onError: () => qc.invalidateQueries({ queryKey: pendingKey }),
   });
+  const acknowledgment = useMutation({
+    mutationFn: async (withdrawalId: string) => {
+      if (!userId) throw new Error('Sign in to acknowledge this withdrawal.');
+      await withdrawalStore.acknowledge(userId, withdrawalId);
+    },
+    onSuccess: () => { qc.setQueryData(pendingKey, null); },
+  });
+  return { ...mutation, savedAttempt: saved.data, isRestoring: saved.isPending || saved.isFetching,
+    restoreError: saved.error, retryRestore: saved.refetch,
+    acknowledge: acknowledgment.mutateAsync, isAcknowledging: acknowledgment.isPending };
 }
 
 // --------------------------------------------------------- verification / availability

@@ -6,7 +6,7 @@ import { io as ioClient, type Socket as ClientSocket } from 'socket.io-client';
 import { prisma } from '@hq/database';
 import { createApp } from '../../app.js';
 import { createSocketGateway, type SocketGateway } from '../gateway.js';
-import { signAccessToken } from '../../modules/auth/tokens.js';
+import { socketToken } from './session-fixture.js';
 import { holdOrder } from '../../modules/payments/ledger/ledger.js';
 import { InMemoryPaystack } from '../../modules/payments/port/paystack-port.js';
 import { createScenario, teardown, type Scenario } from '../../modules/payments/__tests__/fixtures.js';
@@ -55,8 +55,8 @@ describe('realtime gateway pushes (TRD §4)', () => {
   it('emitToUser reaches only the targeted user room', async () => {
     const aliceId = await activeUserId('USHER');
     const bobId = await activeUserId('USHER');
-    const alice = await connect(await signAccessToken(aliceId, 'USHER'));
-    const bob = await connect(await signAccessToken(bobId, 'USHER'));
+    const alice = await connect(await socketToken(aliceId, 'USHER'));
+    const bob = await connect(await socketToken(bobId, 'USHER'));
     await settle(); // let the auto-join to user:<id> settle
     try {
       const got = once<{ status: string }>(alice, 'booking.confirmed');
@@ -74,8 +74,8 @@ describe('realtime gateway pushes (TRD §4)', () => {
   });
 
   it('emitToAdmins reaches ADMINs only (the check-in feed)', async () => {
-    const admin = await connect(await signAccessToken(await activeUserId('ADMIN'), 'ADMIN'));
-    const usher = await connect(await signAccessToken(await activeUserId('USHER'), 'USHER'));
+    const admin = await connect(await socketToken(await activeUserId('ADMIN'), 'ADMIN'));
+    const usher = await connect(await socketToken(await activeUserId('USHER'), 'USHER'));
     await settle();
     try {
       const got = once<{ bookingId: string }>(admin, 'booking.checked_in');
@@ -110,8 +110,8 @@ describe('realtime chat upgrade — typing + read receipts (UXRD §6)', () => {
     await prisma.$transaction((tx) => holdOrder(tx, scenario!.orderId, 'chg_rt')); // → CONFIRMED unlocks chat
     const bookingId = scenario.bookingIds[0]!;
 
-    const client = await connect(await signAccessToken(scenario.clientUserId, 'CLIENT'));
-    const usher = await connect(await signAccessToken(scenario.usherUserId, 'USHER'));
+    const client = await connect(await socketToken(scenario.clientUserId, 'CLIENT'));
+    const usher = await connect(await socketToken(scenario.usherUserId, 'USHER'));
     try {
       await emitAck(client, 'room:join', { bookingId });
       await emitAck(usher, 'room:join', { bookingId });

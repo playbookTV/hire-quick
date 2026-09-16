@@ -1,74 +1,92 @@
-/**
- * Dojah (dojah.io) implementation of KycPort. The device runs the Dojah KYC
- * widget; results arrive server-to-server on the `kyc.widget` webhook, which we
- * parse here from the documented `government_data` payload. getResult re-fetches
- * by reference id as a backup when a webhook is missed.
- *
- * NOTE: requires a Dojah account (App ID + Secret Key) and a published EasyOnboard
- * flow (→ Widget ID). Without keys the app uses NoopKyc instead. The precise
- * fetch-by-reference endpoint depends on the account's flow config; getResult is
- * written defensively and the webhook payload is the primary authoritative path.
- */
+/** Dojah's documented raw-body signature and reference-bound verification API. */
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { z } from 'zod';
 import { logger } from '../../../logger.js';
-import type { KycDecision, KycPort, KycResult, KycStartResult } from './kyc-port.js';
+import type { KycPort, KycResult, KycStartResult } from './kyc-port.js';
 
 export interface DojahConfig {
   appId: string;
   secretKey: string;
   widgetId: string;
-  baseUrl?: string; // defaults to production
+  baseUrl?: string;
 }
 
-/** Decide a verdict from the provider's biometric + lookup signals. */
-function decide(signals: { livenessPassed?: boolean | undefined; faceMatch?: boolean | undefined; idFound?: boolean | undefined; watchListed?: boolean | undefined }): {
-  decision: KycDecision;
-  reasonCode?: string;
-} {
-  if (signals.watchListed) return { decision: 'rejected', reasonCode: 'WATCHLISTED' };
-  if (signals.idFound === false) return { decision: 'rejected', reasonCode: 'ID_NOT_FOUND' };
-  if (signals.livenessPassed === false) return { decision: 'rejected', reasonCode: 'LIVENESS_FAILED' };
-  if (signals.faceMatch === false) return { decision: 'rejected', reasonCode: 'SELFIE_MISMATCH' };
-  // Strong pass requires positive liveness + face-match + an ID hit.
-  if (signals.livenessPassed && signals.faceMatch && signals.idFound) return { decision: 'verified' };
-  return { decision: 'pending' };
+const object = z.record(z.unknown());
+function record(value: unknown): Record<string, unknown> {
+  const parsed = object.safeParse(value);
+  return parsed.success ? parsed.data : {};
+}
+function nonempty(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value : undefined;
+}
+function score(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 100
+    ? value
+    : undefined;
 }
 
-/** Pull a KycResult out of a Dojah `kyc.widget` payload (`data.government_data` etc.). */
-function parseDojahPayload(body: Record<string, unknown>): { referenceId: string; result: KycResult } | null {
-  const data = (body.data ?? body) as Record<string, unknown>;
-  const referenceId =
-    (typeof data.reference_id === 'string' && data.reference_id) ||
-    (typeof data.referenceId === 'string' && data.referenceId) ||
-    (typeof body.reference_id === 'string' && body.reference_id) ||
-    null;
+/** Completed means finished, not passed: require successful checks and explicit face evidence. */
+function parseDojahPayload(value: unknown): { referenceId: string; result: KycResult } | null {
+  const body = record(value);
+  const referenceId = nonempty(body.reference_id);
   if (!referenceId) return null;
-
-  const gov = (data.government_data ?? {}) as Record<string, unknown>;
-  const entity = (gov.entity ?? gov.data ?? gov) as Record<string, unknown>;
-  const selfie = (data.selfie ?? data.selfie_verification ?? {}) as Record<string, unknown>;
-
-  const nin = typeof entity.nin === 'string' ? entity.nin : undefined;
-  const bvn = typeof entity.bvn === 'string' ? entity.bvn : undefined;
-  const watchListed = typeof entity.watch_listed === 'boolean' ? entity.watch_listed : entity.watch_listed === 'true' || undefined;
-  const livenessPassed = typeof selfie.liveness_check === 'boolean' ? selfie.liveness_check : typeof data.liveness === 'boolean' ? data.liveness : undefined;
-  const faceMatchScore = typeof selfie.confidence_value === 'number' ? selfie.confidence_value : typeof selfie.match_score === 'number' ? selfie.match_score : undefined;
-  const faceMatch = typeof selfie.match === 'boolean' ? selfie.match : faceMatchScore !== undefined ? faceMatchScore >= 60 : undefined;
-  const idFound = nin !== undefined || bvn !== undefined ? true : undefined;
-  const govPhotoBase64 = typeof entity.image === 'string' ? entity.image : typeof entity.photo === 'string' ? entity.photo : undefined;
-
-  const { decision, reasonCode } = decide({ livenessPassed, faceMatch, idFound, watchListed: watchListed === true });
-
-  return {
-    referenceId,
-    result: { decision, reasonCode, nin, bvn, livenessPassed, faceMatchScore, watchListed: watchListed === true ? true : undefined, govPhotoBase64, raw: body },
+  const data = record(body.data);
+  const gov = record(data.government_data);
+  const govData = record(gov.data);
+  const ninEntity = record(record(govData.nin).entity);
+  const bvnEntity = record(record(govData.bvn).entity);
+  const nin = nonempty(ninEntity.nin);
+  const bvn = nonempty(bvnEntity.bvn);
+  const selfie = record(data.selfie);
+  const selfieData = record(selfie.data);
+  const faceMatchScore = score(selfieData.match_score);
+  const watchListed = ninEntity.watch_listed === true || bvnEntity.watch_listed === true;
+  const result: KycResult = {
+    decision: 'pending',
+    nin,
+    bvn,
+    watchListed,
+    livenessPassed: typeof selfie.status === 'boolean' ? selfie.status : undefined,
+    faceMatchScore,
   };
+  const finish = (decision: KycResult['decision'], reasonCode?: string) => ({
+    referenceId,
+    result: { ...result, decision, ...(reasonCode ? { reasonCode } : {}) },
+  });
+  // Partial/out-of-order progress is never sufficient to approve or reject.
+  if (body.verification_status === 'Failed') return finish('rejected', 'OTHER');
+  if (body.verification_status !== 'Completed') return finish('pending');
+  if (watchListed) return finish('rejected', 'WATCHLISTED');
+  if (gov.status === false) return finish('rejected', 'ID_NOT_FOUND');
+  if (selfie.status === false) return finish('rejected', 'LIVENESS_FAILED');
+  if (faceMatchScore !== undefined && faceMatchScore < 60)
+    return finish('rejected', 'SELFIE_MISMATCH');
+  // A failed optional step still prevents an automatic pass. Do not infer a
+  // watchlist match from a generic AML failure/error.
+  if (
+    body.status === false ||
+    record(body.aml).status === false ||
+    Object.values(data).some((step) => record(step).status === false)
+  )
+    return finish('rejected', 'OTHER');
+  if (
+    body.status === true &&
+    gov.status === true &&
+    selfie.status === true &&
+    (nin || bvn) &&
+    faceMatchScore !== undefined &&
+    faceMatchScore >= 60
+  )
+    return finish('verified');
+  return finish('pending');
 }
 
 export class DojahKyc implements KycPort {
   private readonly base: string;
-
-  constructor(private readonly cfg: DojahConfig) {
+  constructor(
+    private readonly cfg: DojahConfig,
+    private readonly fetchImpl: typeof fetch = fetch,
+  ) {
     this.base = (cfg.baseUrl ?? 'https://api.dojah.io').replace(/\/$/, '');
   }
 
@@ -78,34 +96,39 @@ export class DojahKyc implements KycPort {
 
   async getResult(referenceId: string): Promise<KycResult> {
     try {
-      const res = await fetch(`${this.base}/api/v1/kyc/widget/data?reference_id=${encodeURIComponent(referenceId)}`, {
-        headers: { Authorization: this.cfg.secretKey, AppId: this.cfg.appId },
-      });
+      // https://docs.dojah.io/api-reference/verifications/get-verification
+      const res = await this.fetchImpl(
+        `${this.base}/api/v1/kyc/verification?reference_id=${encodeURIComponent(referenceId)}`,
+        {
+          headers: { Authorization: this.cfg.secretKey, AppId: this.cfg.appId },
+          signal: AbortSignal.timeout(15_000),
+        },
+      );
       if (!res.ok) return { decision: 'pending' };
-      const body = (await res.json()) as Record<string, unknown>;
-      const parsed = parseDojahPayload(body);
-      return parsed?.result ?? { decision: 'pending' };
-    } catch (e) {
-      logger.warn({ err: e, referenceId }, 'dojah getResult failed');
+      const parsed = parseDojahPayload(await res.json());
+      return parsed?.referenceId === referenceId ? parsed.result : { decision: 'pending' };
+    } catch {
+      // Provider errors may include sensitive identity bodies; log no raw error.
+      logger.warn({ referenceId }, 'dojah getResult unavailable');
       return { decision: 'pending' };
     }
   }
 
-  verifyWebhook(rawBody: Buffer, headers: Record<string, string | string[] | undefined>): { referenceId: string; result: KycResult } | null {
-    // Optional HMAC check when a signature header is configured on the Dojah side.
-    const sigHeader = headers['x-dojah-signature'] ?? headers['x-dojah-hmac'];
-    const sig = Array.isArray(sigHeader) ? sigHeader[0] : sigHeader;
-    if (sig) {
-      const expected = createHmac('sha256', this.cfg.secretKey).update(rawBody).digest('hex');
-      const a = Buffer.from(expected);
-      const b = Buffer.from(sig);
-      if (a.length !== b.length || !timingSafeEqual(a, b)) {
-        logger.warn('dojah webhook signature mismatch');
-        return null;
-      }
-    }
+  verifyWebhook(rawBody: Buffer, headers: Record<string, string | string[] | undefined>) {
+    // https://docs.dojah.io/api-reference/core-concepts/webhooks-signatures
+    // Every delivery supplies this HMAC header. The secret-only v2 signature
+    // and undocumented aliases are not substitutes for authenticating the body.
+    const signature = headers['x-dojah-signature'];
+    if (
+      !this.cfg.secretKey ||
+      typeof signature !== 'string' ||
+      !/^[a-fA-F0-9]{64}$/.test(signature)
+    )
+      return null;
+    const expected = createHmac('sha256', this.cfg.secretKey).update(rawBody).digest();
+    if (!timingSafeEqual(expected, Buffer.from(signature, 'hex'))) return null;
     try {
-      return parseDojahPayload(JSON.parse(rawBody.toString('utf8')) as Record<string, unknown>);
+      return parseDojahPayload(JSON.parse(rawBody.toString('utf8')));
     } catch {
       return null;
     }

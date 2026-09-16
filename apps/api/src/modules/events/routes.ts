@@ -5,18 +5,17 @@
  */
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { z } from 'zod';
-import { prisma, Prisma } from '@hq/database';
+import { prisma, type Prisma } from '@hq/database';
 import {
   createEventSchema,
-  updateEventSchema,
-  type UpdateEventInput,
-  accommodationDisclosed,
 } from '@hq/shared';
 import { ApiError } from '../../app.js';
 import { requireAuth, type AuthedRequest } from '../auth/middleware.js';
 import { requireIdempotencyKey } from '../payments/http/middleware.js';
 import { confirmBatch } from '../bookings/service.js';
-import { writeAudit } from '../audit.js';
+import { editEvent } from './edit.js';
+import { applyToEvent, selectApplication, inviteToEvent, replyToInvitation } from './recruitment.js';
+import { serializeEventVenue, venueUnlockedEventIds } from './venue.js';
 import { notifyInvitationReceived, notifyApplicationReceived } from '../notifications/service.js';
 import { RT } from '../../realtime/events.js';
 import type { Deps } from '../payments/service.js';
@@ -38,21 +37,6 @@ const wrap =
     h(req as AuthedRequest, res).catch(next);
   };
 
-/** Placeholder shown for an event's precise venue until escrow is held (PRD §7/§13). */
-const VENUE_MASKED = 'Exact venue is shared once your booking is confirmed';
-
-/** Booking states in which escrow is held for the usher, unlocking the precise venue. */
-const ESCROW_HELD_STATUSES = ['CONFIRMED', 'CHECKED_IN', 'COMPLETED', 'PAID', 'DISPUTED'] as const;
-
-/**
- * Withhold the precise venue from an usher until escrow is held for them (PRD
- * §7/§13). Single source of the masking rule so list and detail endpoints stay
- * consistent — a leak on any discovery surface defeats contact-masking.
- */
-function maskVenue<T extends { venue: string }>(event: T, escrowHeld: boolean): T {
-  return escrowHeld ? event : { ...event, venue: VENUE_MASKED };
-}
-
 async function clientFor(userId: string): Promise<string> {
   const c = await prisma.client.findFirst({ where: { userId } });
   if (!c) throw new ApiError(403, 'NOT_A_CLIENT', 'only clients do this');
@@ -71,45 +55,12 @@ async function usherFor(userId: string): Promise<string> {
   return u.id;
 }
 
-/**
- * Of the given event ids, the set for which this usher has an escrow-held
- * booking — i.e. the events whose precise venue they may see. One batched query
- * so list endpoints don't N+1 or leak the venue (PRD §7/§13).
- */
-async function escrowHeldEventIds(usherId: string, eventIds: string[]): Promise<Set<string>> {
-  if (eventIds.length === 0) return new Set();
-  const rows = await prisma.booking.findMany({
-    where: { usherId, eventId: { in: eventIds }, status: { in: [...ESCROW_HELD_STATUSES] } },
-    select: { eventId: true },
-  });
-  return new Set(rows.map((b) => b.eventId));
-}
-
 /** Free-text staff preferences live in the `preferences` JSON blob (no column per field). */
 function eventPreferences(b: { requirements?: string | undefined; hairstyle?: string | undefined }): Record<string, string> | undefined {
   const p: Record<string, string> = {};
   if (b.requirements) p.requirements = b.requirements;
   if (b.hairstyle) p.hairstyle = b.hairstyle;
   return Object.keys(p).length > 0 ? p : undefined;
-}
-
-/** Map a validated partial-event payload to a Prisma update (only provided keys). */
-function eventUpdateData(b: UpdateEventInput): Prisma.EventUpdateInput {
-  const data: Prisma.EventUpdateInput = {};
-  if (b.title !== undefined) data.title = b.title;
-  if (b.venue !== undefined) data.venue = b.venue;
-  if (b.state !== undefined) data.state = b.state ?? null;
-  if (b.category !== undefined) data.category = b.category;
-  if (b.eventDate !== undefined) data.eventDate = b.eventDate;
-  if (b.startTime !== undefined) data.startTime = b.startTime;
-  if (b.endTime !== undefined) data.endTime = b.endTime;
-  if (b.headcount !== undefined) data.headcount = b.headcount;
-  if (b.budgetPerHeadKobo !== undefined) data.budgetPerHead = b.budgetPerHeadKobo;
-  if (b.dressCode !== undefined) data.dressCode = b.dressCode ?? null;
-  if (b.accommodation !== undefined) data.accommodation = b.accommodation ?? null;
-  if (b.requirements !== undefined || b.hairstyle !== undefined)
-    data.preferences = eventPreferences(b) ?? Prisma.JsonNull;
-  return data;
 }
 
 export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
@@ -163,15 +114,16 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
         });
         // Mask the precise venue per event unless this usher already has escrow
         // held for it (PRD §7/§13) — the detail endpoint does the same.
-        const unlocked = await escrowHeldEventIds(
+        const unlocked = await venueUnlockedEventIds(
           usherId,
           events.map((e) => e.id),
         );
-        res.json(events.map((e) => maskVenue(e, unlocked.has(e.id))));
+        res.json(events.map((e) => serializeEventVenue(e, { role: 'USHER', hasConfirmedBooking: unlocked.has(e.id) })));
         return;
       }
       const clientId = await clientFor(req.auth.userId);
-      res.json(await prisma.event.findMany({ where: { clientId }, orderBy: { createdAt: 'desc' } }));
+      const events = await prisma.event.findMany({ where: { clientId }, orderBy: { createdAt: 'desc' } });
+      res.json(events.map((event) => serializeEventVenue(event, { role: 'CLIENT' })));
     }),
   );
 
@@ -184,7 +136,7 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
       });
       const auth = req.auth;
       if (auth.role === 'ADMIN') {
-        res.json(event);
+        res.json(serializeEventVenue(event, { role: auth.role }));
         return;
       }
       if (auth.role === 'CLIENT') {
@@ -192,7 +144,7 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
         if (event.clientId !== (await clientFor(auth.userId))) {
           throw new ApiError(404, 'NOT_FOUND', 'event not found');
         }
-        res.json(event);
+        res.json(serializeEventVenue(event, { role: auth.role }));
         return;
       }
       // USHER: readable only if the event is discoverable (OPEN/PARTIALLY_STAFFED)
@@ -214,8 +166,8 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
       // Withhold the precise venue until escrow is held for this usher — i.e. a
       // CONFIRMED+ booking. Until then they see a masked placeholder (PRD §7/§13:
       // contact-masking + withholding precise venue until escrow is held).
-      const escrowHeld = booking != null && (ESCROW_HELD_STATUSES as readonly string[]).includes(booking.status);
-      res.json(maskVenue(event, escrowHeld));
+      const unlocked = await venueUnlockedEventIds(usherId, [event.id]);
+      res.json(serializeEventVenue(event, { role: 'USHER', hasConfirmedBooking: unlocked.has(event.id) }));
     }),
   );
 
@@ -225,34 +177,7 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
     wrap(async (req, res) => {
       const clientId = await clientFor(req.auth.userId);
       const eventId = String(req.params.id);
-      const existing = await prisma.event.findUniqueOrThrow({
-        where: { id: eventId },
-        include: { _count: { select: { bookings: true } } },
-      });
-      if (existing.clientId !== clientId) throw new ApiError(403, 'FORBIDDEN', 'not your event');
-      const locked =
-        (existing.status !== 'OPEN' && existing.status !== 'PARTIALLY_STAFFED') ||
-        existing._count.bookings > 0;
-      if (locked) throw new ApiError(409, 'EVENT_LOCKED', 'this event can no longer be edited');
-
-      const b = updateEventSchema.parse(req.body);
-
-      // Accommodation invariant, checked on the merged record (PRD late-night rule).
-      const mergedEnd = b.endTime ?? existing.endTime;
-      const mergedAccommodation =
-        b.accommodation !== undefined ? b.accommodation : existing.accommodation;
-      if (!accommodationDisclosed(mergedEnd, mergedAccommodation)) {
-        throw new ApiError(400, 'VALIDATION', 'accommodation is required for events ending at or after 22:00');
-      }
-
-      const data = eventUpdateData(b);
-      const updated = await prisma.event.update({ where: { id: eventId }, data });
-      await writeAudit({
-        actorId: req.auth.userId,
-        action: 'EVENT_UPDATED',
-        target: eventId,
-        metadata: { fields: Object.keys(data) },
-      });
+      const updated = await editEvent(deps.prisma, clientId, req.auth.userId, eventId, req.body);
       res.json(updated);
     }),
   );
@@ -263,21 +188,10 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
     wrap(async (req, res) => {
       const usherId = await verifiedUsherFor(req.auth.userId);
       const eventId = String(req.params.id);
-      // Was this usher already an active applicant? Drives whether we notify (no
-      // re-notify on a duplicate apply).
-      const prior = await prisma.application.findUnique({
-        where: { eventId_usherId: { eventId, usherId } },
-        select: { status: true },
-      });
-      const app = await prisma.application.upsert({
-        where: { eventId_usherId: { eventId, usherId } },
-        update: { status: 'APPLIED' },
-        create: { eventId, usherId, status: 'APPLIED' },
-      });
+      const { application: app, notify } = await applyToEvent(deps.prisma, eventId, usherId);
       res.status(201).json(app);
 
-      // Tell the client a new usher applied (feedback: "notify me when someone applies").
-      if (!prior || prior.status !== 'APPLIED') {
+      if (notify) {
         const event = await prisma.event.findUnique({
           where: { id: eventId },
           select: { title: true, client: { select: { userId: true } } },
@@ -303,11 +217,11 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
       });
       // Applying does not unlock the precise venue — only an escrow-held booking
       // does (PRD §7/§13), same rule as discovery.
-      const unlocked = await escrowHeldEventIds(
+      const unlocked = await venueUnlockedEventIds(
         usherId,
         apps.map((a) => a.eventId),
       );
-      res.json(apps.map((a) => ({ ...a, event: maskVenue(a.event, unlocked.has(a.eventId)) })));
+      res.json(apps.map((a) => ({ ...a, event: serializeEventVenue(a.event, { role: 'USHER', hasConfirmedBooking: unlocked.has(a.eventId) }) })));
     }),
   );
 
@@ -343,11 +257,11 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
         orderBy: { createdAt: 'desc' },
         include: { event: true },
       });
-      const unlocked = await escrowHeldEventIds(
+      const unlocked = await venueUnlockedEventIds(
         usherId,
         rows.map((s) => s.event.id),
       );
-      res.json(rows.map((s) => maskVenue(s.event, unlocked.has(s.event.id))));
+      res.json(rows.map((s) => serializeEventVenue(s.event, { role: 'USHER', hasConfirmedBooking: unlocked.has(s.event.id) })));
     }),
   );
 
@@ -392,12 +306,7 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
       const { status } = z
         .object({ status: z.enum(['SHORTLISTED', 'ACCEPTED', 'REJECTED']) })
         .parse(req.body);
-      const app = await prisma.application.findUniqueOrThrow({
-        where: { id: String(req.params.id) },
-        include: { event: true },
-      });
-      if (app.event.clientId !== clientId) throw new ApiError(403, 'FORBIDDEN', 'not your event');
-      const updated = await prisma.application.update({ where: { id: app.id }, data: { status } });
+      const updated = await selectApplication(deps.prisma, String(req.params.id), clientId, status);
       res.json(updated);
     }),
   );
@@ -409,17 +318,9 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
       const clientId = await clientFor(req.auth.userId);
       const eventId = String(req.params.id);
       const { usherId } = z.object({ usherId: z.string().uuid() }).parse(req.body);
-      const event = await prisma.event.findUniqueOrThrow({ where: { id: eventId } });
-      if (event.clientId !== clientId) throw new ApiError(403, 'FORBIDDEN', 'not your event');
-      const inv = await prisma.invitation.upsert({
-        where: { eventId_usherId: { eventId, usherId } },
-        update: { status: 'SENT' },
-        create: { eventId, usherId, status: 'SENT' },
-      });
-      // Notify the invited usher: a persisted inbox row (+ push) and a live socket
-      // nudge so an open app surfaces the invite immediately and can deep-link to it.
+      const { invitation: inv, event, notify } = await inviteToEvent(deps.prisma, eventId, clientId, usherId);
       const usher = await prisma.usher.findUnique({ where: { id: usherId }, select: { userId: true } });
-      if (usher) {
+      if (notify && usher) {
         notifyInvitationReceived(usher.userId, event.title, inv.id);
         deps.realtime?.emitToUser(usher.userId, RT.INVITATION_RECEIVED, {
           invitationId: inv.id,
@@ -441,7 +342,8 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
         orderBy: { createdAt: 'desc' },
         include: { event: { include: { client: { select: { displayName: true, businessName: true } } } } },
       });
-      res.json(invites);
+      const unlocked = await venueUnlockedEventIds(usherId, invites.map((inv) => inv.eventId));
+      res.json(invites.map((inv) => ({ ...inv, event: serializeEventVenue(inv.event, { role: 'USHER', hasConfirmedBooking: unlocked.has(inv.eventId) }) })));
     }),
   );
 
@@ -455,7 +357,8 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
         include: { event: { include: { client: { select: { displayName: true, businessName: true } } } } },
       });
       if (inv.usherId !== usherId) throw new ApiError(404, 'NOT_FOUND', 'invitation not found');
-      res.json(inv);
+      const unlocked = await venueUnlockedEventIds(usherId, [inv.eventId]);
+      res.json({ ...inv, event: serializeEventVenue(inv.event, { role: 'USHER', hasConfirmedBooking: unlocked.has(inv.eventId) }) });
     }),
   );
 
@@ -465,21 +368,7 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
     wrap(async (req, res) => {
       const usherId = await verifiedUsherFor(req.auth.userId);
       const { status } = z.object({ status: z.enum(['ACCEPTED', 'DECLINED']) }).parse(req.body);
-      const inv = await prisma.invitation.findUniqueOrThrow({ where: { id: String(req.params.id) } });
-      if (inv.usherId !== usherId) throw new ApiError(403, 'FORBIDDEN', 'not your invitation');
-      // RC-M2: Invitation status update and application creation must be atomic.
-      // A crash between the two leaves the invitation ACCEPTED with no application
-      // record, making this usher invisible to the client's applications list.
-      await prisma.$transaction(async (tx) => {
-        await tx.invitation.update({ where: { id: inv.id }, data: { status } });
-        if (status === 'ACCEPTED') {
-          await tx.application.upsert({
-            where: { eventId_usherId: { eventId: inv.eventId, usherId } },
-            update: { status: 'ACCEPTED' },
-            create: { eventId: inv.eventId, usherId, status: 'ACCEPTED' },
-          });
-        }
-      });
+      await replyToInvitation(deps.prisma, String(req.params.id), usherId, status);
       res.json({ status });
     }),
   );

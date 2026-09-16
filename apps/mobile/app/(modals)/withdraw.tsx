@@ -7,7 +7,7 @@
  * Three steps — this is the usher's money leaving escrow, so it is NOT
  * fire-and-forget (critique P0):
  *   form → review (confirm amount + destination, no surprise fee) → done
- *          (a designed success state, not a transient OS Alert).
+ *          (a receipt that reflects the persisted withdrawal outcome).
  * The full amount is transferred with no fee (api payments/service initWithdrawal),
  * so the review states that plainly rather than inventing a fee/ETA.
  */
@@ -32,14 +32,14 @@ import { useWallet, useBankAccounts, useAddBankAccount, useWithdraw, useResolveA
 import { hapticSuccess } from '../../lib/haptics.js';
 import { money } from '../../lib/format.js';
 import type { Bank, BankAccount } from '../../lib/types.js';
+import type { WithdrawalResponse } from '@hq/shared';
+import { withdrawalReceipt, WithdrawalAttemptError } from '../../lib/withdrawal.js';
 
 type Step = 'form' | 'review' | 'done';
 
 /** A frozen snapshot of what was sent, so `done` stays accurate after refetch. */
-interface Sent {
-  amountKobo: number;
+interface Sent extends WithdrawalResponse {
   account: BankAccount;
-  balanceBefore: number; // wallet balance at confirm time; `done` derives `remaining` from this, not the refetched (already-decremented) balance
 }
 
 export default function Withdraw(): React.JSX.Element {
@@ -67,6 +67,8 @@ export default function Withdraw(): React.JSX.Element {
   }, [wallet.data, available]);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [sent, setSent] = useState<Sent | null>(null);
+  const [receiptError, setReceiptError] = useState<string | null>(null);
+  const [pendingIntent, setPendingIntent] = useState<{ amountKobo: number; account: BankAccount } | null>(null);
 
   // add-account form
   const [bank, setBank] = useState<Bank | null>(null);
@@ -79,6 +81,25 @@ export default function Withdraw(): React.JSX.Element {
   const list = accounts.data ?? [];
   const activeId = selected ?? list[0]?.id ?? null;
   const activeAccount = list.find((a) => a.id === activeId) ?? null;
+
+  useEffect(() => {
+    if (!withdraw.savedAttempt || withdraw.isRestoring || step === 'done') return;
+    amountSeeded.current = true;
+    const { input, outcome } = withdraw.savedAttempt;
+    const account = list.find((a) => a.id === input.bankAccountId) ?? {
+      id: input.bankAccountId, accountName: 'Saved bank account', bankCode: '', accountNumber: '', verified: false,
+    };
+    if (outcome) {
+      setSent({ ...outcome, account });
+      setPendingIntent(null);
+      setStep('done');
+      return;
+    }
+    setPendingIntent({ amountKobo: input.amountKobo, account });
+    setSelected(input.bankAccountId);
+    setAmount(String(input.amountKobo / 100));
+    setStep('review');
+  }, [withdraw.savedAttempt, withdraw.isRestoring, accounts.data, step]);
 
   const amountKobo = Math.round(Number(amount) * 100);
   const amountValid = Number.isFinite(amountKobo) && amountKobo > 0 && amountKobo <= available;
@@ -128,51 +149,64 @@ export default function Withdraw(): React.JSX.Element {
   const addHint = addAccountHint(bank, accountNumber);
 
   const onConfirm = (): void => {
-    if (!activeAccount || !amountValid) return;
+    if (withdraw.isPending || (!pendingIntent && (!activeAccount || !amountValid))) return;
+    const intent = pendingIntent ?? { amountKobo, account: activeAccount! };
+    setPendingIntent(intent);
     setSubmitError(null);
     withdraw.mutate(
-      { bankAccountId: activeAccount.id, amountKobo },
+      { bankAccountId: intent.account.id, amountKobo: intent.amountKobo },
       {
-        onSuccess: () => {
-          hapticSuccess();
-          setSent({ amountKobo, account: activeAccount, balanceBefore: available });
+        onSuccess: (outcome) => {
+          if (outcome.status === 'PAID') hapticSuccess();
+          setSent({ ...outcome, account: intent.account });
+          setPendingIntent(null);
           setStep('done');
         },
-        onError: (e: unknown) =>
-          setSubmitError(e instanceof Error ? e.message : 'We couldn’t start this transfer. Please try again.'),
+        onError: (e: unknown) => {
+          if (e instanceof WithdrawalAttemptError && !e.retryRequired) {
+            setPendingIntent(null);
+            setSubmitError(e instanceof Error ? e.message : 'Check the withdrawal details.');
+          } else {
+            setSubmitError('We couldn’t confirm the outcome. Tap Check withdrawal to safely retry the same request.');
+          }
+        },
       },
     );
   };
 
   // ---------------------------------------------------------------- done
   if (step === 'done' && sent) {
-    // Derive from the snapshot, NOT live `available` — the wallet query is invalidated on
-    // withdraw success and refetches to the already-decremented balance (U1 double-subtract).
-    const remaining = Math.max(0, sent.balanceBefore - sent.amountKobo);
+    const receipt = withdrawalReceipt[sent.status];
     return (
       <Box flex={1} backgroundColor="bgCanvas">
         <AppBar title="" inset />
         <Screen scroll>
           <Box alignItems="center" style={{ gap: 16, maxWidth: 360, alignSelf: 'center', paddingTop: 24 }}>
-            <IconCircle icon="check" tone="success" size={96} iconColor="statusSuccess" />
+            <IconCircle icon={receipt.icon} tone={receipt.tone} size={96} />
             <Text variant="h2" style={{ textAlign: 'center' }}>
-              Your money is on its way
+              {receipt.title}
             </Text>
             <Text variant="bodyLg" color="inkMuted" style={{ textAlign: 'center' }}>
-              {money(sent.amountKobo)} is being transferred to {sent.account.accountName}. Transfers usually arrive
-              within minutes — we’ll notify you the moment it lands.
+              {receipt.description}
             </Text>
 
             {/* receipt */}
             <Box alignSelf="stretch" backgroundColor="bgSurface" borderWidth={1} borderColor="borderDefault" borderRadius="lg" padding="400" style={{ gap: 12 }}>
-              <ReceiptRow label="Amount sent" value={money(sent.amountKobo)} strong />
-              <ReceiptRow label="To" value={`${sent.account.accountName} · ${sent.account.bankCode} ••${sent.account.accountNumber.slice(-4)}`} />
+              <ReceiptRow label={receipt.amountLabel} value={money(sent.amountKobo)} strong />
+              <ReceiptRow label="To" value={accountLabel(sent.account)} />
               <Box height={1} backgroundColor="borderDefault" />
-              <ReceiptRow label="Available balance" value={money(remaining)} />
+              <ReceiptRow label="Balance after withdrawal" value={money(sent.availableBalance)} />
             </Box>
 
             <Box alignSelf="stretch" style={{ paddingTop: 4 }}>
-              <Button label="Done" onPress={() => router.back()} />
+              {receiptError ? <Text variant="bodySm" color="statusDanger">{receiptError}</Text> : null}
+              <Button label="Done" loading={withdraw.isAcknowledging} disabled={withdraw.isAcknowledging}
+                onPress={() => {
+                  setReceiptError(null);
+                  void withdraw.acknowledge(sent.withdrawalId).then(() => router.back()).catch(() => {
+                    setReceiptError('We couldn’t close this saved receipt. Try Done again.');
+                  });
+                }} />
             </Box>
           </Box>
         </Screen>
@@ -182,11 +216,12 @@ export default function Withdraw(): React.JSX.Element {
   }
 
   // ---------------------------------------------------------------- review
-  if (step === 'review' && activeAccount) {
+  const reviewAccount = pendingIntent?.account ?? activeAccount;
+  if (step === 'review' && reviewAccount) {
     const remaining = Math.max(0, available - amountKobo);
     return (
       <Box flex={1} backgroundColor="bgCanvas">
-        <AppBar title="Confirm withdrawal" showBack inset onBack={() => setStep('form')} />
+        <AppBar title="Confirm withdrawal" showBack={!pendingIntent} inset onBack={() => setStep('form')} />
         <Screen scroll>
           <Box style={{ gap: 20 }}>
             {/* the amount, owned by the emerald hero so it reads as "real money" */}
@@ -198,14 +233,14 @@ export default function Withdraw(): React.JSX.Element {
             </Box>
 
             <Box backgroundColor="bgSurface" borderWidth={1} borderColor="borderDefault" borderRadius="lg" padding="400" style={{ gap: 12 }}>
-              <ReceiptRow label="To" value={`${activeAccount.accountName}`} strong />
-              <ReceiptRow label="Account" value={`${activeAccount.bankCode} ••${activeAccount.accountNumber.slice(-4)}`} />
+              <ReceiptRow label="To" value={reviewAccount.accountName} strong />
+              {reviewAccount.accountNumber ? <ReceiptRow label="Account" value={`${reviewAccount.bankCode} ••${reviewAccount.accountNumber.slice(-4)}`} /> : null}
               <Box height={1} backgroundColor="borderDefault" />
               <Box flexDirection="row" alignItems="center" style={{ gap: 8 }}>
                 <Icon name="check-circle" size={16} color="statusSuccess" />
                 <Text variant="bodySm" color="inkDefault" style={{ flex: 1 }}>No fee — you receive the full amount.</Text>
               </Box>
-              <ReceiptRow label="Balance after" value={money(remaining)} />
+              {!pendingIntent ? <ReceiptRow label="Balance after" value={money(remaining)} /> : null}
             </Box>
 
             {submitError ? (
@@ -217,12 +252,12 @@ export default function Withdraw(): React.JSX.Element {
 
             <Box style={{ gap: 8 }}>
               <Button
-                label={withdraw.isPending ? 'Sending…' : `Withdraw ${money(amountKobo)}`}
+                label={withdraw.isPending ? 'Checking…' : pendingIntent ? 'Check withdrawal' : `Withdraw ${money(amountKobo)}`}
                 onPress={onConfirm}
                 loading={withdraw.isPending}
                 disabled={withdraw.isPending}
               />
-              <Button label="Edit" variant="ghost" onPress={() => setStep('form')} disabled={withdraw.isPending} />
+              <Button label="Edit" variant="ghost" onPress={() => setStep('form')} disabled={withdraw.isPending || !!pendingIntent} />
             </Box>
           </Box>
         </Screen>
@@ -232,7 +267,14 @@ export default function Withdraw(): React.JSX.Element {
   }
 
   // ---------------------------------------------------------------- form
-  if (wallet.isLoading) {
+  if (withdraw.restoreError) {
+    return <Box flex={1} backgroundColor="bgCanvas">
+      <AppBar title="Withdraw" showBack inset />
+      <Screen><Text variant="body">We couldn’t check for a saved withdrawal. Try again before starting a new one.</Text>
+        <Button label="Try again" onPress={() => { void withdraw.retryRestore(); }} /></Screen>
+    </Box>;
+  }
+  if (wallet.isLoading || withdraw.isRestoring || withdraw.savedAttempt) {
     return (
       <Box flex={1} backgroundColor="bgCanvas">
         <AppBar title="Withdraw" showBack inset />
@@ -378,6 +420,12 @@ export default function Withdraw(): React.JSX.Element {
       <Box style={{ paddingBottom: insets.bottom }} />
     </Box>
   );
+}
+
+function accountLabel(account: BankAccount): string {
+  return account.accountNumber
+    ? `${account.accountName} · ${account.bankCode} ••${account.accountNumber.slice(-4)}`
+    : account.accountName;
 }
 
 /** Inline validation for the amount field (no nested ternary, no blocking Alert). */

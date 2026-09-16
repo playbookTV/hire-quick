@@ -1,0 +1,20 @@
+# Ledger conservation and integer limits
+
+Money remains integer kobo (PRD §12; TRD §§10/25). The current PostgreSQL `Int` columns support a maximum positive value of **2,147,483,647 kobo (₦21,474,836.47)**. The ledger now applies that explicit ceiling to every individual amount and to accumulated available wallet balances and booking escrow balances. Signed entries use the symmetric range ±2,147,483,647 so a compensating reversal can also fit. Values are never rounded, clamped, truncated, or silently wrapped.
+
+`holdOrder` locks the event, order and all booking allocations before validating the complete charge allocation. The order must have positive allocations whose exact sum equals its gross; all bookings must belong to the order's event, have legal states and no prior escrow history. Any pre-existing payment must match the booking's gross, fee, payout, state and charge reference. Every allocation passes before the first HOLD is attempted. Release and dispute-release also verify payment conservation and the held balance before moving money. Legacy zero-value refunds with no payment/captured charge remain supported; new zero-value holds are rejected.
+
+All balance checks run inside the locked caller transaction. Repeated or concurrent credits can reach the exact ceiling; the next kobo raises `LedgerError` with code `BALANCE_LIMIT`. The transaction rolls back every release, fee, wallet entry, status change and reward effect. The booking remains held and retryable. Invalid individual amounts use `BAD_AMOUNT` or `AMOUNT_LIMIT`; inconsistent allocations use `ALLOCATION_MISMATCH`. These failures require investigation rather than editing append-only ledger history or assuming a provider charge did not happen.
+
+An operator responding to a balance-limit failure should:
+
+1. Inspect the affected booking, wallet or durable payment operation and its error evidence. Reconcile provider outcomes before deciding what remains outstanding.
+2. Leave the original intent and liability intact. Do not mark a booking paid, mark a reversal complete, erase a debit, retry a provider transfer under a new reference, or post manual ledger entries to bypass the ceiling.
+3. Restore capacity through the usher's authorized normal withdrawal flow, or implement a reviewed coherent wider-integer migration if the business needs larger balances. A provider transfer must never be initiated merely to silence an alarm without the usual authorization.
+4. Retry the existing local settlement or durable reversal intent, then verify that the wallet equals its signed ledger sum and provider reconciliation is clean.
+
+A provider reversal arriving after newer credits fill the wallet can also hit the ceiling. The transfer webhook/recovery path records a separate `WITHDRAWAL_REVERSAL:<withdrawalId>` operation. Its local compensation remains retryable with operator-visible error evidence; it must never dispatch another provider transfer. The original transfer history remains intact. Until that compensation succeeds, the earlier withdrawal state may still reflect payment and reconciliation can report drift: do not suppress that signal.
+
+Platform `COMMISSION_SWEEP` rows have no booking and retain their existing per-movement signed `balanceAfter` semantics. This change does not invent a cumulative platform account or alter the reconciliation equation. New commission reservations cap a single dispatch at the supported integer amount; unswept fees remain available for a later period. This per-wallet/per-allocation ceiling is not a cap on the sum of every customer's provider-held funds.
+
+Checkout expiry shares these preflight guards. Expiring an unpaid reservation changes only booking staffing states after durable checkout expiry and a no-payment/no-ledger check. A late captured charge creates fully conserved refundable HOLD liabilities while keeping the expired bookings cancelled; checkout orchestration creates refund intents in the same transaction. It never re-confirms an expired roster.

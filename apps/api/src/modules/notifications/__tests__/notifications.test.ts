@@ -27,13 +27,13 @@ afterEach(async () => {
   clearSentNotifications();
 });
 
-describe('notifications (Brevo transport, dev stub)', () => {
-  it('requestOtp delivers via Brevo SMS (recorded) and echoes in staging/dev', async () => {
+describe('notifications (isolated test transport)', () => {
+  it('requestOtp records SMS intent and echoes only in isolated tests', async () => {
     clearSentNotifications();
     const p = phone();
     cleanupPhones.push(p);
     const r = await requestOtp(p);
-    expect(r.devCode).toBeTruthy(); // no BREVO_API_KEY + not production → echoed
+    expect(r.devCode).toBeTruthy(); // NODE_ENV=test explicitly enables the isolated code echo
     expect(sentNotifications().some((s) => s.kind === 'sms' && s.to === p)).toBe(true);
   });
 

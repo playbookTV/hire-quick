@@ -1,7 +1,7 @@
 /**
  * Brevo transactional transport — SMS (OTP delivery) + email (notifications),
- * via plain fetch. When BREVO_API_KEY is unset it logs (dev stub). Every send is
- * recorded so tests can assert intent without network.
+ * via plain fetch. Isolated tests use a bounded in-memory recorder and never
+ * send externally. Other runtimes never retain or log message payloads.
  */
 import { SignJWT, importPKCS8 } from 'jose';
 import { env } from '../../env.js';
@@ -12,36 +12,52 @@ export interface SentRecord {
   summary: string;
 }
 
-// Test-only intent log. NEVER record in production: this is a module-level array
-// that would otherwise retain every phone/email/push token/OTP forever (PII +
-// unbounded memory growth).
-const RECORDING = env.NODE_ENV !== 'production';
+const IS_TEST = env.NODE_ENV === 'test';
+const MAX_TEST_RECORDS = 100;
 const sent: SentRecord[] = [];
 function record(r: SentRecord): void {
-  if (RECORDING) sent.push(r);
+  if (!IS_TEST) return;
+  if (sent.length >= MAX_TEST_RECORDS) sent.shift();
+  sent.push({ ...r });
 }
 export function sentNotifications(): readonly SentRecord[] {
-  return sent;
+  return sent.map((entry) => ({ ...entry }));
 }
 export function clearSentNotifications(): void {
   sent.length = 0;
 }
 
 function log(message: string): void {
-   
+  // Only fixed channel labels / HTTP status codes; never destinations or bodies.
   console.log(`[brevo] ${message}`);
 }
 
-/** Returns whether the message was accepted by the provider (true on dev stub). */
+async function providerFetch(url: string, init: RequestInit): Promise<Response | null> {
+  try {
+    return await fetch(url, { ...init, signal: AbortSignal.timeout(15_000) });
+  } catch {
+    // Fetch/SDK errors can embed headers, tokens or message bodies. Do not pass
+    // their message/cause to callers or loggers.
+    log('transport request failed');
+    return null;
+  }
+}
+
+/** Returns provider acceptance, or local acceptance in isolated test mode. */
 export async function sendSms(to: string, text: string): Promise<boolean> {
   record({ kind: 'sms', to, summary: text });
+  if (IS_TEST) return true;
   if (!env.BREVO_API_KEY) {
-    log(`(stub) SMS → ${to}: ${text}`);
-    return true;
+    log('SMS transport unavailable');
+    return false;
   }
-  const res = await fetch('https://api.brevo.com/v3/transactionalSMS/send', {
+  const res = await providerFetch('https://api.brevo.com/v3/transactionalSMS/send', {
     method: 'POST',
-    headers: { 'api-key': env.BREVO_API_KEY, 'content-type': 'application/json', accept: 'application/json' },
+    headers: {
+      'api-key': env.BREVO_API_KEY,
+      'content-type': 'application/json',
+      accept: 'application/json',
+    },
     body: JSON.stringify({
       type: 'transactional',
       unicodeEnabled: true,
@@ -50,8 +66,9 @@ export async function sendSms(to: string, text: string): Promise<boolean> {
       content: text,
     }),
   });
+  if (!res) return false;
   if (!res.ok) {
-    log(`SMS to ${to} failed: ${String(res.status)}`);
+    log(`SMS failed: ${String(res.status)}`);
     return false;
   }
   return true;
@@ -59,13 +76,18 @@ export async function sendSms(to: string, text: string): Promise<boolean> {
 
 export async function sendEmail(to: string, subject: string, html: string): Promise<void> {
   record({ kind: 'email', to, summary: subject });
+  if (IS_TEST) return;
   if (!env.BREVO_API_KEY) {
-    log(`(stub) email → ${to}: ${subject}`);
+    log('email transport unavailable');
     return;
   }
-  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+  const res = await providerFetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
-    headers: { 'api-key': env.BREVO_API_KEY, 'content-type': 'application/json', accept: 'application/json' },
+    headers: {
+      'api-key': env.BREVO_API_KEY,
+      'content-type': 'application/json',
+      accept: 'application/json',
+    },
     body: JSON.stringify({
       sender: { name: 'HireQuick', email: 'no-reply@hirequick.app' },
       to: [{ email: to }],
@@ -73,7 +95,7 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
       htmlContent: html,
     }),
   });
-  if (!res.ok) log(`email to ${to} failed: ${String(res.status)}`);
+  if (res && !res.ok) log(`email failed: ${String(res.status)}`);
 }
 
 /**
@@ -81,7 +103,7 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
  * connected WhatsApp Business Account + an approved authentication template
  * (Meta rule: the first/transactional message must be a template). The code is
  * injected into the template variable named by BREVO_WHATSAPP_OTP_PARAM. Until
- * the WABA + template are configured it logs a dev stub.
+ * the WABA + template are configured it reports unavailable outside tests.
  *
  * NOTE: Brevo does not publicly document the WhatsApp `params` shape; this sends
  * `params: { <BREVO_WHATSAPP_OTP_PARAM>: code }`. Confirm against the approved
@@ -90,16 +112,21 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
  */
 export async function sendWhatsAppOtp(to: string, code: string): Promise<boolean> {
   record({ kind: 'whatsapp', to, summary: `OTP ${code}` });
+  if (IS_TEST) return true;
   const configured =
     !!env.BREVO_API_KEY && !!env.BREVO_WHATSAPP_SENDER && env.BREVO_WHATSAPP_OTP_TEMPLATE_ID > 0;
   if (!configured) {
-    log(`(stub) whatsapp → ${to}: OTP ${code}`);
-    return true;
+    log('WhatsApp transport unavailable');
+    return false;
   }
   const recipient = to.replace(/\D/g, ''); // Brevo wants digits only, incl. country code
-  const res = await fetch('https://api.brevo.com/v3/whatsapp/sendMessage', {
+  const res = await providerFetch('https://api.brevo.com/v3/whatsapp/sendMessage', {
     method: 'POST',
-    headers: { 'api-key': env.BREVO_API_KEY, 'content-type': 'application/json', accept: 'application/json' },
+    headers: {
+      'api-key': env.BREVO_API_KEY,
+      'content-type': 'application/json',
+      accept: 'application/json',
+    },
     body: JSON.stringify({
       senderNumber: env.BREVO_WHATSAPP_SENDER,
       contactNumbers: [recipient],
@@ -107,8 +134,9 @@ export async function sendWhatsAppOtp(to: string, code: string): Promise<boolean
       params: { [env.BREVO_WHATSAPP_OTP_PARAM]: code },
     }),
   });
+  if (!res) return false;
   if (!res.ok) {
-    log(`whatsapp OTP to ${to} failed: ${String(res.status)}`);
+    log(`WhatsApp failed: ${String(res.status)}`);
     return false;
   }
   return true;
@@ -127,7 +155,9 @@ async function fcmAccessToken(): Promise<string> {
   if (fcmAuth && fcmAuth.expSec - 60 > nowSec) return fcmAuth.token;
   // Service-account JWT-bearer grant → short-lived access token (Google OAuth2).
   const key = await importPKCS8(env.FCM_PRIVATE_KEY.replace(/\\n/g, '\n'), 'RS256');
-  const assertion = await new SignJWT({ scope: 'https://www.googleapis.com/auth/firebase.messaging' })
+  const assertion = await new SignJWT({
+    scope: 'https://www.googleapis.com/auth/firebase.messaging',
+  })
     .setProtectedHeader({ alg: 'RS256' })
     .setIssuer(env.FCM_CLIENT_EMAIL)
     .setSubject(env.FCM_CLIENT_EMAIL)
@@ -135,11 +165,15 @@ async function fcmAccessToken(): Promise<string> {
     .setIssuedAt(nowSec)
     .setExpirationTime(nowSec + 3600)
     .sign(key);
-  const res = await fetch('https://oauth2.googleapis.com/token', {
+  const res = await providerFetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion }),
+    body: new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion,
+    }),
   });
+  if (!res) throw new Error('FCM token exchange unavailable');
   if (!res.ok) throw new Error(`FCM token exchange failed: ${String(res.status)}`);
   const json = (await res.json()) as { access_token: string; expires_in: number };
   fcmAuth = { token: json.access_token, expSec: nowSec + json.expires_in };
@@ -148,26 +182,32 @@ async function fcmAccessToken(): Promise<string> {
 
 async function sendFcm(to: string, summary: string): Promise<void> {
   const token = await fcmAccessToken();
-  const res = await fetch(`https://fcm.googleapis.com/v1/projects/${env.FCM_PROJECT_ID}/messages:send`, {
-    method: 'POST',
-    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ message: { token: to, notification: { title: 'HireQuick', body: summary } } }),
-  });
-  if (!res.ok) log(`push to ${to} failed: ${String(res.status)}`);
+  const res = await providerFetch(
+    `https://fcm.googleapis.com/v1/projects/${env.FCM_PROJECT_ID}/messages:send`,
+    {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        message: { token: to, notification: { title: 'HireQuick', body: summary } },
+      }),
+    },
+  );
+  if (res && !res.ok) log(`push failed: ${String(res.status)}`);
 }
 
 /**
- * FCM push. Always records intent (so lifecycle wiring stays testable); when FCM
- * creds are configured it also sends via the FCM HTTP v1 API. Fire-and-forget —
+ * FCM push. Records intent only in isolated tests; otherwise configured FCM
+ * credentials enable delivery via the FCM HTTP v1 API. Fire-and-forget —
  * a push failure must never block the action that triggered it — so the real
- * send is not awaited. Falls back to a log stub when creds are unset (the
+ * send is not awaited. Reports an unavailable transport when creds are unset (the
  * credentials themselves remain an external gap).
  */
 export function recordPush(to: string, summary: string): void {
   record({ kind: 'push', to, summary });
+  if (IS_TEST) return;
   if (!fcmConfigured()) {
-    log(`(stub) push → ${to}: ${summary}`);
+    log('push transport unavailable');
     return;
   }
-  void sendFcm(to, summary).catch((e: unknown) => log(`push to ${to} failed: ${String(e)}`));
+  void sendFcm(to, summary).catch(() => log('push delivery failed'));
 }

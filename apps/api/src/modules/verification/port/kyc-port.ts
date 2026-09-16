@@ -30,7 +30,7 @@ export interface KycResult {
   watchListed?: boolean | undefined;
   /** Government photo as base64, when the provider returns one. */
   govPhotoBase64?: string | undefined;
-  /** Raw provider payload, persisted (PII-scoped) for audit/review. */
+  /** Optional transient provider payload. Never persist raw identity data without an approved storage policy. */
   raw?: unknown;
 }
 
@@ -43,5 +43,8 @@ export interface KycPort {
    * Validate + parse a provider webhook. Returns the reconciled referenceId +
    * result, or null when the payload is unauthentic/unparseable.
    */
-  verifyWebhook(rawBody: Buffer, headers: Record<string, string | string[] | undefined>): { referenceId: string; result: KycResult } | null;
+  verifyWebhook(
+    rawBody: Buffer,
+    headers: Record<string, string | string[] | undefined>,
+  ): { referenceId: string; result: KycResult } | null;
 }

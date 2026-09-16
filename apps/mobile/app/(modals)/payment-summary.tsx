@@ -5,6 +5,8 @@
  * completes on the Paystack webhook, so locally we land on Funds Held in a
  * "payment opened" state. Line items come from the accepted applications.
  */
+import { useEffect, useRef } from 'react';
+import { createCheckoutScopeFence } from '../../lib/checkout.js';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,7 +19,7 @@ import { ListItem } from '../../components/ListItem.js';
 import { Button } from '../../components/Button.js';
 import { Loading } from '../../components/Loading.js';
 import { EmptyState } from '../../components/EmptyState.js';
-import { useEvent, useApplications, useConfirmEvent } from '../../lib/hooks.js';
+import { useEvent, useApplications, useConfirmEvent, useSavedCheckout } from '../../lib/hooks.js';
 import { useAuth } from '../../lib/auth-context.js';
 import { useToast } from '../../lib/toast.js';
 import { CategoryBadge } from '../../components/CategoryBadge.js';
@@ -29,45 +31,50 @@ export default function PaymentSummary(): React.JSX.Element {
   const insets = useSafeAreaInsets();
   const { id, apps } = useLocalSearchParams<{ id: string; apps: string }>();
   const eventId = id ?? '';
-  const appIds = (apps ?? '').split(',').filter(Boolean);
+  const saved = useSavedCheckout(eventId);
+  const appIds = saved.data?.input.applicationIds ?? (apps ?? '').split(',').filter(Boolean);
   const event = useEvent(eventId);
   const applications = useApplications(eventId);
   const confirm = useConfirmEvent(eventId);
   const { user } = useAuth();
   const toast = useToast();
+  const fence = useRef(createCheckoutScopeFence()).current;
+  const scope = `${user?.id ?? ''}:${eventId}`;
+  fence.activate(scope);
+  useEffect(() => { fence.activate(scope); return () => fence.invalidate(); }, [fence, scope]);
   const ev = event.data;
 
-  const perHead = event.data?.budgetPerHead ?? 0;
+  const perHead = saved.data?.outcome ? saved.data.outcome.amountKobo / appIds.length : event.data?.budgetPerHead ?? 0;
   const chosen = (applications.data ?? []).filter((a) => appIds.includes(a.id));
   const count = appIds.length;
   const total = perHead * count;
-  const email = user?.email ?? `${(user?.phone ?? 'client').replace(/\D/g, '')}@hirequick.ng`;
+  const email = saved.data?.input.email ?? user?.email ?? `${(user?.phone ?? 'client').replace(/\D/g, '')}@hirequick.ng`;
 
   const pay = (): void => {
+    const current = fence.capture();
     confirm.mutate(
       { applicationIds: appIds, email },
       {
         onSuccess: (res) => {
-          const bookingId = res.bookingIds[0];
-          if (!bookingId) {
-            toast.error('We couldn’t confirm your booking. Please try again.', 'Payment couldn’t start');
-            return;
-          }
+          if (!current()) return;
           void (async () => {
-            if (res.authorizationUrl) {
-              await WebBrowser.openBrowserAsync(res.authorizationUrl);
+            try {
+              if (res.state === 'READY' && res.authorizationUrl) await WebBrowser.openBrowserAsync(res.authorizationUrl);
+            } catch (error) {
+              if (current()) toast.error(error instanceof Error ? error.message : 'Could not open Paystack.', 'Checkout saved');
+            } finally {
+              if (current()) router.replace({ pathname: '/(modals)/funds-held', params: { event: eventId } });
             }
-            router.replace({ pathname: '/(modals)/funds-held', params: { booking: bookingId } });
           })();
         },
-        onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Please try again.', 'Payment couldn’t start'),
+        onError: (e: unknown) => { if (current()) toast.error(e instanceof Error ? e.message : 'Please try again.', 'Payment couldn’t start'); },
       },
     );
   };
 
   // Don't render the pay screen until the event AND the chosen ushers have loaded —
   // otherwise the line-items list is empty while the total still shows the full price (C7).
-  if (event.isLoading || applications.isLoading) {
+  if (event.isLoading || applications.isLoading || saved.isLoading) {
     return (
       <Box flex={1} backgroundColor="bgCanvas">
         <AppBar title="Confirm & pay" showBack inset />
@@ -75,7 +82,7 @@ export default function PaymentSummary(): React.JSX.Element {
       </Box>
     );
   }
-  if (event.isError || !ev || chosen.length !== count) {
+  if (saved.isError || event.isError || !ev || (!saved.data?.outcome && chosen.length !== count)) {
     return (
       <Box flex={1} backgroundColor="bgCanvas">
         <AppBar title="Confirm & pay" showBack inset />
@@ -86,6 +93,7 @@ export default function PaymentSummary(): React.JSX.Element {
             subtitle="We couldn’t confirm the staff and price for this order. Check your connection and try again."
             actionLabel="Try again"
             onAction={() => {
+              void saved.refetch();
               void event.refetch();
               void applications.refetch();
             }}
@@ -170,7 +178,7 @@ export default function PaymentSummary(): React.JSX.Element {
 
         <Box style={{ flex: 1, minHeight: 24 }} />
         <Box style={{ gap: 8, paddingBottom: insets.bottom }}>
-          <Button label={confirm.isPending ? 'Starting…' : `Pay ${money(total)}`} disabled={confirm.isPending || count === 0} onPress={pay} />
+          <Button label={confirm.isPending ? 'Checking…' : saved.data ? 'Resume saved checkout' : `Pay ${money(total)}`}  disabled={confirm.isPending || count === 0} onPress={pay} />
           <Text variant="bodySm" color="inkFaint" style={{ textAlign: 'center' }}>
             Secured by Paystack
           </Text>

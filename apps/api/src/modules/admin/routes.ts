@@ -13,6 +13,7 @@ import { createMilestoneTierSchema, updateMilestoneTierSchema } from '@hq/shared
 import type { RealtimeGateway } from '../../realtime/gateway.js';
 import type { PaystackPort } from '../payments/port/paystack-port.js';
 import { type StoragePort, presignDoc } from '../storage/storage.js';
+import { reviewVerification } from '../verification/service.js';
 
 type Handler = (req: AuthedRequest, res: Response) => Promise<void>;
 const wrap =
@@ -94,16 +95,8 @@ export function adminRouter(deps: {
     '/verifications/:id/approve',
     wrap(async (req, res) => {
       const id = String(req.params.id);
-      const v = await prisma.usherVerification.findUnique({ where: { id } });
-      if (!v) throw new ApiError(404, 'NOT_FOUND', 'verification not found');
-      await prisma.$transaction([
-        prisma.usherVerification.update({
-          where: { id },
-          data: { status: 'APPROVED', reviewedById: req.auth.userId, reviewedAt: new Date() },
-        }),
-        prisma.usher.update({ where: { id: v.usherId }, data: { verificationStatus: 'VERIFIED' } }),
-      ]);
-      await writeAudit({ actorId: req.auth.userId, action: 'verification.approve', target: id });
+      const result = await reviewVerification(prisma, { verificationId: id, adminId: req.auth.userId, decision: 'APPROVED' });
+      if (result.changed) await writeAudit({ actorId: req.auth.userId, action: 'verification.approve', target: id });
       res.json({ id, status: 'APPROVED' });
     }),
   );
@@ -113,16 +106,8 @@ export function adminRouter(deps: {
     wrap(async (req, res) => {
       const id = String(req.params.id);
       const { reason, reasonCode } = rejectSchema.parse(req.body);
-      const v = await prisma.usherVerification.findUnique({ where: { id } });
-      if (!v) throw new ApiError(404, 'NOT_FOUND', 'verification not found');
-      await prisma.$transaction([
-        prisma.usherVerification.update({
-          where: { id },
-          data: { status: 'REJECTED', reviewedById: req.auth.userId, reason, reasonCode: reasonCode ?? 'OTHER', reviewedAt: new Date() },
-        }),
-        prisma.usher.update({ where: { id: v.usherId }, data: { verificationStatus: 'REJECTED' } }),
-      ]);
-      await writeAudit({ actorId: req.auth.userId, action: 'verification.reject', target: id, metadata: { reason, reasonCode: reasonCode ?? 'OTHER' } });
+      const result = await reviewVerification(prisma, { verificationId: id, adminId: req.auth.userId, decision: 'REJECTED', reason, reasonCode: reasonCode ?? 'OTHER' });
+      if (result.changed) await writeAudit({ actorId: req.auth.userId, action: 'verification.reject', target: id, metadata: { reason, reasonCode: reasonCode ?? 'OTHER' } });
       res.json({ id, status: 'REJECTED' });
     }),
   );

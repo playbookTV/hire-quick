@@ -19,6 +19,8 @@ import { listMessages, sendMessage, unreadCount, markSeen } from '../../realtime
 import type { RealtimeGateway } from '../../realtime/gateway.js';
 import type { PaystackPort } from '../payments/port/paystack-port.js';
 import { RT } from '../../realtime/events.js';
+import { serializeEventVenue, venueUnlockedEventIds } from '../events/venue.js';
+import { chatMessageBody, seenMessageBody } from '../../realtime/validation.js';
 
 type Handler = (req: AuthedRequest, res: Response) => Promise<void>;
 const wrap =
@@ -45,17 +47,18 @@ export function bookingsRouter(deps: { realtime: RealtimeGateway; paystack?: Pay
       } as const;
       if (req.auth.role === 'USHER') {
         const usher = await prisma.usher.findFirstOrThrow({ where: { userId: req.auth.userId } });
-        res.json(await prisma.booking.findMany({ where: { usherId: usher.id }, orderBy: { createdAt: 'desc' }, include }));
+        const bookings = await prisma.booking.findMany({ where: { usherId: usher.id }, orderBy: { createdAt: 'desc' }, include });
+        const unlocked = await venueUnlockedEventIds(usher.id, bookings.map((booking) => booking.eventId));
+        res.json(bookings.map((booking) => ({ ...booking, event: serializeEventVenue(booking.event, { role: 'USHER', hasConfirmedBooking: unlocked.has(booking.eventId) }) })));
         return;
       }
       const client = await prisma.client.findFirstOrThrow({ where: { userId: req.auth.userId } });
-      res.json(
-        await prisma.booking.findMany({
-          where: { event: { clientId: client.id } },
-          orderBy: { createdAt: 'desc' },
-          include,
-        }),
-      );
+      const bookings = await prisma.booking.findMany({
+        where: { event: { clientId: client.id } },
+        orderBy: { createdAt: 'desc' },
+        include,
+      });
+      res.json(bookings.map((booking) => ({ ...booking, event: serializeEventVenue(booking.event, { role: 'CLIENT' }) })));
     }),
   );
 
@@ -70,7 +73,14 @@ export function bookingsRouter(deps: { realtime: RealtimeGateway; paystack?: Pay
       if (booking.event.client.userId !== uid && booking.usher.userId !== uid) {
         throw new ApiError(403, 'FORBIDDEN', 'not your booking');
       }
-      res.json(booking);
+      if (booking.event.client.userId === uid) {
+        res.json({ ...booking, event: serializeEventVenue(booking.event, { role: 'CLIENT' }) });
+        return;
+      }
+      const unlocked = await venueUnlockedEventIds(booking.usherId, [booking.eventId]);
+      res.json({ ...booking, event: serializeEventVenue(booking.event, {
+        role: 'USHER', hasConfirmedBooking: unlocked.has(booking.eventId),
+      }) });
     }),
   );
 
@@ -164,12 +174,7 @@ export function bookingsRouter(deps: { realtime: RealtimeGateway; paystack?: Pay
   r.post(
     '/bookings/:id/messages',
     wrap(async (req, res) => {
-      const { content, contentType } = z
-        .object({
-          content: z.string().min(1).max(4000),
-          contentType: z.enum(['TEXT', 'IMAGE', 'VOICE']).optional(),
-        })
-        .parse(req.body);
+      const { content, contentType } = chatMessageBody.parse(req.body);
       const msg = await sendMessage({
         bookingId: String(req.params.id),
         senderId: req.auth.userId,
@@ -198,7 +203,7 @@ export function bookingsRouter(deps: { realtime: RealtimeGateway; paystack?: Pay
   r.post(
     '/bookings/:id/messages/seen',
     wrap(async (req, res) => {
-      const { upToMessageId } = z.object({ upToMessageId: z.string().uuid().optional() }).parse(req.body ?? {});
+      const { upToMessageId } = seenMessageBody.parse(req.body ?? {});
       const seen = await markSeen(String(req.params.id), req.auth.userId, upToMessageId);
       deps.realtime.emitToBooking(String(req.params.id), RT.MESSAGE_SEEN, {
         bookingId: String(req.params.id),

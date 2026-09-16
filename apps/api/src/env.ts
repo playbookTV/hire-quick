@@ -15,6 +15,10 @@ const EnvSchema = z.object({
   DIRECT_URL: z.string().min(1).optional(),
   JWT_ACCESS_SECRET: z.string().min(1).default('dev-access-secret'),
   JWT_REFRESH_SECRET: z.string().min(1).default('dev-refresh-secret'),
+  OTP_VERIFIER_SECRET: z.string().default(''),
+  OTP_VERIFIER_KEY_ID: z.string().regex(/^[a-zA-Z0-9_-]{1,32}$/).default('v1'),
+  OTP_VERIFIER_PREVIOUS_SECRET: z.string().default(''),
+  OTP_VERIFIER_PREVIOUS_KEY_ID: z.string().regex(/^[a-zA-Z0-9_-]{0,32}$/).default(''),
   JWT_ACCESS_TTL: z.coerce.number().int().positive().default(900),
   JWT_REFRESH_TTL: z.coerce.number().int().positive().default(2_592_000),
   PAYSTACK_SECRET_KEY: z.string().default(''),
@@ -83,6 +87,17 @@ const EnvSchema = z.object({
     .default('false')
     .transform((v) => v === 'true'),
 }).superRefine((cfg, ctx) => {
+  if (!!cfg.OTP_VERIFIER_PREVIOUS_SECRET !== !!cfg.OTP_VERIFIER_PREVIOUS_KEY_ID) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['OTP_VERIFIER_PREVIOUS_SECRET'], message: 'previous OTP key ID and secret must be configured together' });
+  }
+  if (cfg.OTP_VERIFIER_PREVIOUS_KEY_ID === cfg.OTP_VERIFIER_KEY_ID) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['OTP_VERIFIER_PREVIOUS_KEY_ID'], message: 'current and previous OTP key IDs must differ' });
+  }
+  for (const name of ['OTP_VERIFIER_SECRET', 'OTP_VERIFIER_PREVIOUS_SECRET'] as const) {
+    if (cfg[name] && (cfg[name].length < 32 || cfg[name].startsWith('dev-'))) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: [name], message: 'OTP secret must contain at least 32 characters and must not be a development default' });
+    }
+  }
   // Fail fast: the JWT secrets carry dev-friendly defaults so tests/dev boot with
   // zero config, but in production or staging a forgotten env var would mean
   // signing tokens with a publicly-known secret — anyone could forge an ADMIN
@@ -90,7 +105,7 @@ const EnvSchema = z.object({
   // environment. Only 'development' and 'test' are exempt.
   if (cfg.NODE_ENV === 'development' || cfg.NODE_ENV === 'test') return;
   const weak = (s: string): boolean => s.length < 32 || s.startsWith('dev-');
-  for (const name of ['JWT_ACCESS_SECRET', 'JWT_REFRESH_SECRET'] as const) {
+  for (const name of ['JWT_ACCESS_SECRET', 'JWT_REFRESH_SECRET', 'OTP_VERIFIER_SECRET'] as const) {
     if (weak(cfg[name])) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

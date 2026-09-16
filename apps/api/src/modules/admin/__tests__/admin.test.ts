@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { prisma } from '@hq/database';
 import { holdOrder, freezeBooking } from '../../payments/ledger/ledger.js';
 import { resolveDispute, decideApproval } from '../service.js';
+import { InMemoryPaystack } from '../../payments/port/paystack-port.js';
 import { createScenario, teardown, type Scenario } from '../../payments/__tests__/fixtures.js';
 
 let scenario: Scenario | null = null;
@@ -42,7 +43,7 @@ describe('admin dispute resolution + maker-checker (TRD §15)', () => {
     const { bookingId, disputeId, usherUserId } = await setupDisputed(2_000_000); // ₦20k < ₦50k
     const admin = await makeAdmin();
 
-    const out = await resolveDispute(admin, disputeId, 'RELEASE', 'usher attended');
+    const out = await resolveDispute(admin, disputeId, 'RELEASE', 'usher attended', new InMemoryPaystack());
     expect(out.executed).toBe(true);
 
     const booking = await prisma.booking.findUniqueOrThrow({ where: { id: bookingId } });
@@ -57,16 +58,17 @@ describe('admin dispute resolution + maker-checker (TRD §15)', () => {
     const { bookingId, disputeId } = await setupDisputed(6_000_000); // ₦60k > ₦50k
     const maker = await makeAdmin();
 
-    const out = await resolveDispute(maker, disputeId, 'RELEASE', 'usher attended');
+    const paystack = new InMemoryPaystack();
+    const out = await resolveDispute(maker, disputeId, 'RELEASE', 'usher attended', paystack);
     expect(out.executed).toBe(false);
     expect(out.approvalId).toBeTruthy();
 
     // maker cannot self-approve
-    await expect(decideApproval(maker, out.approvalId!, 'approve')).rejects.toThrow(/checker must differ/i);
+    await expect(decideApproval(maker, out.approvalId!, 'approve', paystack)).rejects.toThrow(/checker must differ/i);
 
     // a different admin approves → executes
     const checker = await makeAdmin();
-    await decideApproval(checker, out.approvalId!, 'approve');
+    await decideApproval(checker, out.approvalId!, 'approve', paystack);
 
     const booking = await prisma.booking.findUniqueOrThrow({ where: { id: bookingId } });
     expect(booking.status).toBe('PAID');

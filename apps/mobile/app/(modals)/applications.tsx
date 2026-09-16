@@ -20,7 +20,7 @@ import { SkeletonCard } from '../../components/Skeleton.js';
 import { EmptyState } from '../../components/EmptyState.js';
 import { shadowSm } from '../../theme/shadows.js';
 import { fonts } from '../../theme/fonts.js';
-import { useApplications, usePatchApplication, useEvent } from '../../lib/hooks.js';
+import { useApplications, usePatchApplication, useEvent, useSavedCheckout } from '../../lib/hooks.js';
 import { useToast } from '../../lib/toast.js';
 import { money, formatEventDate } from '../../lib/format.js';
 import type { Application } from '../../lib/types.js';
@@ -34,6 +34,7 @@ export default function Applications(): React.JSX.Element {
   const apps = useApplications(eventId);
   const event = useEvent(eventId);
   const patch = usePatchApplication(eventId);
+  const savedCheckout = useSavedCheckout(eventId);
   const toast = useToast();
 
   const [selected, setSelected] = useState<Record<string, boolean>>({});
@@ -63,6 +64,10 @@ export default function Applications(): React.JSX.Element {
   };
 
   const confirm = async (): Promise<void> => {
+    if (savedCheckout.data) {
+      router.push({ pathname: '/(modals)/payment-summary', params: { id: eventId } });
+      return;
+    }
     if (count === 0) return;
     setBusy(true);
     try {
@@ -241,8 +246,8 @@ export default function Applications(): React.JSX.Element {
         <Box style={{ flex: 1, minHeight: 16 }} />
         <Box style={{ gap: 8, paddingBottom: insets.bottom }}>
           <Button
-            label={busy ? 'Confirming…' : `Pay & confirm · ${money(perHead * count)}`}
-            disabled={count === 0 || busy}
+            label={busy ? 'Confirming…' : savedCheckout.data ? 'Resume saved checkout' : `Pay & confirm · ${money(perHead * count)}`}
+            disabled={busy || savedCheckout.isLoading || savedCheckout.isError || (!savedCheckout.data && count === 0)}
             onPress={() => { void confirm(); }}
           />
           <Text variant="bodySm" color="inkFaint" style={{ textAlign: 'center' }}>

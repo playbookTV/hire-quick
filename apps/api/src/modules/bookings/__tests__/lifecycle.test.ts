@@ -22,19 +22,21 @@ function newPhone(): string {
 
 async function login(role: 'CLIENT' | 'USHER'): Promise<{ token: string; userId: string; phone: string }> {
   const phone = newPhone();
-  const r1 = await request(app).post('/auth/otp/request').send({ phone });
-  const r2 = await request(app).post('/auth/otp/verify').send({ phone, code: r1.body.devCode, role });
+  const r1 = await request(app).post('/auth/otp/request').send({ phone }).timeout({ response: 30000, deadline: 45000 });
+  const r2 = await request(app).post('/auth/otp/verify').send({ phone, code: r1.body.devCode, role }).timeout({ response: 30000, deadline: 45000 });
   userIds.push(r2.body.user.id);
   return { token: r2.body.accessToken, userId: r2.body.user.id, phone };
 }
 
 async function chargeWebhook(orderId: string): Promise<void> {
+  const order = await prisma.order.findUniqueOrThrow({ where: { id: orderId } });
+  expect(order.paystackChargeRef).toBeTruthy();
   const payload = JSON.stringify({
     event: 'charge.success',
-    data: { id: 1, reference: `hq_${orderId}`, status: 'success' },
+    data: { id: 1, reference: order.paystackChargeRef, status: 'success' },
   });
   const res = await request(app)
-    .post('/webhooks/paystack')
+    .post('/webhooks/paystack').timeout({ response: 30000, deadline: 45000 })
     .set('Content-Type', 'application/json')
     .set('x-paystack-signature', sign(payload))
     .send(payload);
@@ -74,13 +76,14 @@ async function setupConfirmedBooking(opts: { eventDate: string; startTime: strin
   await prisma.usher.update({ where: { id: usherRow.id }, data: { verificationStatus: 'VERIFIED' } });
 
   const ev = await request(app)
-    .post('/api/events')
+    .post('/api/events').timeout({ response: 30000, deadline: 45000 })
     .set('Authorization', `Bearer ${client.token}`)
     .send({
       title: 'Gala Ushers',
       venue: 'Eko Hotel',
       category: 'Gala',
-      eventDate: opts.eventDate,
+      // Recruit before the event starts; move the clock fixture only after payment.
+      eventDate: new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10),
       startTime: opts.startTime,
       endTime: opts.endTime,
       headcount: 1,
@@ -90,18 +93,18 @@ async function setupConfirmedBooking(opts: { eventDate: string; startTime: strin
   const eventId = ev.body.id as string;
   eventIds.push(eventId);
 
-  const apply = await request(app).post(`/api/events/${eventId}/apply`).set('Authorization', `Bearer ${usher.token}`).send({});
+  const apply = await request(app).post(`/api/events/${eventId}/apply`).set('Authorization', `Bearer ${usher.token}`).send({}).timeout({ response: 30000, deadline: 45000 });
   expect(apply.status).toBe(201);
   const applicationId = apply.body.id as string;
 
   const accept = await request(app)
-    .patch(`/api/applications/${applicationId}`)
+    .patch(`/api/applications/${applicationId}`).timeout({ response: 30000, deadline: 45000 })
     .set('Authorization', `Bearer ${client.token}`)
     .send({ status: 'ACCEPTED' });
   expect(accept.status).toBe(200);
 
   const confirm = await request(app)
-    .post(`/api/events/${eventId}/confirm`)
+    .post(`/api/events/${eventId}/confirm`).timeout({ response: 30000, deadline: 45000 })
     .set('Authorization', `Bearer ${client.token}`)
     .set('Idempotency-Key', randomUUID())
     .send({ applicationIds: [applicationId], email: 'client@hq.dev' });
@@ -110,6 +113,7 @@ async function setupConfirmedBooking(opts: { eventDate: string; startTime: strin
   const bookingId = confirm.body.bookingIds[0] as string;
 
   await chargeWebhook(orderId);
+  await prisma.event.update({ where: { id: eventId }, data: { eventDate: new Date(opts.eventDate) } });
   const held = await prisma.booking.findUniqueOrThrow({ where: { id: bookingId } });
   expect(held.status).toBe('CONFIRMED');
 
@@ -121,21 +125,22 @@ describe('full booking lifecycle (TRD §7/§8/§12)', () => {
     const s = await setupConfirmedBooking({ eventDate: '2026-09-01', startTime: '10:00', endTime: '18:00' });
 
     const gen = await request(app)
-      .post(`/api/bookings/${s.bookingId}/checkin/generate`)
+      .post(`/api/bookings/${s.bookingId}/checkin/generate`).timeout({ response: 30000, deadline: 45000 })
       .set('Authorization', `Bearer ${s.clientToken}`);
     expect(gen.status).toBe(200);
     const code = gen.body.code as string;
     expect(code).toMatch(/^\d{4,}$/); // returned in every env so the client can relay it
 
     const verify = await request(app)
-      .post(`/api/bookings/${s.bookingId}/checkin/verify`)
+      .post(`/api/bookings/${s.bookingId}/checkin/verify`).timeout({ response: 30000, deadline: 45000 })
       .set('Authorization', `Bearer ${s.usherToken}`)
       .send({ code });
     expect(verify.status).toBe(200);
 
     const complete = await request(app)
-      .post(`/api/bookings/${s.bookingId}/complete`)
-      .set('Authorization', `Bearer ${s.clientToken}`);
+      .post(`/api/bookings/${s.bookingId}/complete`).timeout({ response: 30000, deadline: 45000 })
+      .set('Authorization', `Bearer ${s.clientToken}`)
+      .set('Idempotency-Key', randomUUID());
     expect(complete.status).toBe(200);
 
     const booking = await prisma.booking.findUniqueOrThrow({ where: { id: s.bookingId } });
@@ -149,7 +154,7 @@ describe('full booking lifecycle (TRD §7/§8/§12)', () => {
     const s = await setupConfirmedBooking({ eventDate: '2020-01-01', startTime: '10:00', endTime: '18:00' });
 
     const arrived = await request(app)
-      .post(`/api/bookings/${s.bookingId}/arrived`)
+      .post(`/api/bookings/${s.bookingId}/arrived`).timeout({ response: 30000, deadline: 45000 })
       .set('Authorization', `Bearer ${s.usherToken}`);
     expect(arrived.status).toBe(200);
 
@@ -164,10 +169,12 @@ describe('full booking lifecycle (TRD §7/§8/§12)', () => {
   });
 
   it('opening a dispute freezes the escrow', async () => {
-    const s = await setupConfirmedBooking({ eventDate: '2026-09-01', startTime: '10:00', endTime: '18:00' });
+    // Keep this fixture inside the existing 72-hour dispute window.
+    const yesterday = new Date(Date.now() - 24 * 3_600_000).toISOString().slice(0, 10);
+    const s = await setupConfirmedBooking({ eventDate: yesterday, startTime: '10:00', endTime: '18:00' });
 
     const dispute = await request(app)
-      .post(`/api/bookings/${s.bookingId}/disputes`)
+      .post(`/api/bookings/${s.bookingId}/disputes`).timeout({ response: 30000, deadline: 45000 })
       .set('Authorization', `Bearer ${s.clientToken}`)
       .send({ reason: 'no-show claim', note: 'usher did not appear' });
     expect(dispute.status).toBe(201);

@@ -9,6 +9,8 @@
   "scripts": {
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
+    "typecheck:tests": "turbo run typecheck:tests",
+    "lint:tests": "eslint --config eslint.tests.config.mjs apps/api/src packages/shared/src",
     "lint": "turbo run lint",
     "test": "turbo run test",
     "dev": "pnpm --filter @hq/api dev",

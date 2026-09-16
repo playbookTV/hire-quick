@@ -16,6 +16,7 @@ import { writeAudit } from '../audit.js';
 import { noopGateway, type RealtimeGateway } from '../../realtime/gateway.js';
 import { RT, bookingEvent } from '../../realtime/events.js';
 import { loadBookingParties } from '../../realtime/messages.js';
+import { lockBookingLifecycle } from '../events/staffing.js';
 
 const TX = { timeout: 30_000, maxWait: 30_000 };
 export const APPROVAL_THRESHOLD_KOBO = 5_000_000; // ₦50,000
@@ -32,9 +33,30 @@ async function executeDisputeResolution(
   },
   paystack: PaystackPort,
   realtime: RealtimeGateway,
-): Promise<void> {
+): Promise<boolean> {
   if (p.outcome === 'RELEASE') {
-    const unlocked = await prisma.$transaction((tx) => resolveDisputeRelease(tx, p.bookingId), TX);
+    const unlocked = await prisma.$transaction(async (tx) => {
+      await lockBookingLifecycle(tx, p.bookingId);
+      const dispute = await tx.dispute.findUniqueOrThrow({ where: { id: p.disputeId } });
+      if (dispute.status === 'RESOLVED') return [];
+      const booking = await tx.booking.findUniqueOrThrow({
+        where: { id: p.bookingId },
+        include: { payment: true },
+      });
+      // Repair the old release-committed/dispute-not-resolved crash boundary.
+      const released =
+        booking.status === 'PAID' &&
+        booking.payment?.escrowStatus === 'RELEASED' &&
+        (await tx.escrowLedger.findFirst({
+          where: { bookingId: p.bookingId, entryType: 'RELEASE' },
+        }));
+      const tiers = released ? [] : await resolveDisputeRelease(tx, p.bookingId);
+      await tx.dispute.update({
+        where: { id: p.disputeId },
+        data: { status: 'RESOLVED', resolution: p.resolution, resolvedById: p.adminId },
+      });
+      return tiers;
+    }, TX);
     const b = await prisma.booking.findUnique({
       where: { id: p.bookingId },
       include: { usher: true, payment: true },
@@ -45,35 +67,63 @@ async function executeDisputeResolution(
     // Refund the client — the booking is DISPUTED (frozen), already a legal
     // precursor to REFUNDED, so no status step is needed.
     const payment = await prisma.payment.findUnique({ where: { bookingId: p.bookingId } });
-    await refundBookingToClient({ prisma, paystack }, { bookingId: p.bookingId, amountKobo: payment?.grossAmount ?? 0 });
+    const refund = await refundBookingToClient(
+      { prisma, paystack },
+      {
+        bookingId: p.bookingId,
+        amountKobo: payment?.grossAmount ?? 0,
+        disputeResolution: { disputeId: p.disputeId, resolution: p.resolution, adminId: p.adminId },
+      },
+    );
+    if (refund.status !== 'RECORDED') return false;
+    // Older refund intents did not persist dispute metadata. Repair an already
+    // settled refund on retry; new intents resolve both in the ledger transaction.
+    await prisma.$transaction(async (tx) => {
+      await lockBookingLifecycle(tx, p.bookingId);
+      const booking = await tx.booking.findUniqueOrThrow({ where: { id: p.bookingId } });
+      if (booking.status !== 'REFUNDED')
+        throw new ApiError(409, 'REFUND_PENDING', 'refund has not settled');
+      await tx.dispute.updateMany({
+        where: { id: p.disputeId, bookingId: p.bookingId, status: { not: 'RESOLVED' } },
+        data: { status: 'RESOLVED', resolution: p.resolution, resolvedById: p.adminId },
+      });
+    }, TX);
   }
-  await prisma.dispute.update({
-    where: { id: p.disputeId },
-    data: { status: 'RESOLVED', resolution: p.resolution, resolvedById: p.adminId },
-  });
   const parties = await loadBookingParties(p.bookingId);
   const payload = bookingEvent(p.bookingId, p.outcome === 'RELEASE' ? 'COMPLETED' : 'REFUNDED');
   realtime.emitToUser(parties.clientUserId, RT.BOOKING_DISPUTE_RESOLVED, payload);
   realtime.emitToUser(parties.usherUserId, RT.BOOKING_DISPUTE_RESOLVED, payload);
   realtime.emitToAdmins(RT.BOOKING_DISPUTE_RESOLVED, payload);
+  return true;
 }
 
-async function executeRefund(p: { bookingId: string; amountKobo: number }, paystack: PaystackPort): Promise<void> {
+async function executeRefund(
+  p: { bookingId: string; amountKobo: number },
+  paystack: PaystackPort,
+): Promise<boolean> {
   const booking = await prisma.booking.findUniqueOrThrow({
     where: { id: p.bookingId },
     include: { payment: true },
   });
   // Refunds are all-or-nothing per booking. Validate the amount BEFORE the
-  // orchestrator (which calls Paystack first) so a partial amount can never fire
+  // orchestrator (which reserves escrow before calling Paystack) so a partial amount can never fire
   // an external refund that the ledger then rejects.
   const held = booking.payment?.grossAmount ?? 0;
   if (p.amountKobo !== held) {
-    throw new ApiError(400, 'REFUND_MUST_BE_FULL', `refund must equal the booking's held amount (${held})`);
+    throw new ApiError(
+      400,
+      'REFUND_MUST_BE_FULL',
+      `refund must equal the booking's held amount (${held})`,
+    );
   }
   // A still-CONFIRMED booking is cancelled first; one already CANCELLED/NO_SHOW/
   // DISPUTED goes straight to refund. The orchestrator issues the Paystack refund.
   const precursor = booking.status === 'CONFIRMED' ? ('CANCEL' as const) : undefined;
-  await refundBookingToClient({ prisma, paystack }, { bookingId: p.bookingId, amountKobo: p.amountKobo, precursor });
+  const refund = await refundBookingToClient(
+    { prisma, paystack },
+    { bookingId: p.bookingId, amountKobo: p.amountKobo, precursor },
+  );
+  return refund.status === 'RECORDED';
 }
 
 export async function resolveDispute(
@@ -88,7 +138,8 @@ export async function resolveDispute(
     where: { id: disputeId },
     include: { booking: { include: { payment: true } } },
   });
-  if (dispute.status === 'RESOLVED') throw new ApiError(409, 'ALREADY_RESOLVED', 'dispute already resolved');
+  if (dispute.status === 'RESOLVED')
+    throw new ApiError(409, 'ALREADY_RESOLVED', 'dispute already resolved');
   const amount = dispute.booking.payment?.grossAmount ?? 0;
 
   if (amount > APPROVAL_THRESHOLD_KOBO) {
@@ -101,13 +152,27 @@ export async function resolveDispute(
       },
     });
     await prisma.dispute.update({ where: { id: disputeId }, data: { status: 'UNDER_REVIEW' } });
-    await writeAudit({ actorId: adminId, action: 'dispute.resolve.proposed', target: disputeId, metadata: { outcome, amount } });
+    await writeAudit({
+      actorId: adminId,
+      action: 'dispute.resolve.proposed',
+      target: disputeId,
+      metadata: { outcome, amount },
+    });
     return { executed: false, approvalId: approval.id };
   }
 
-  await executeDisputeResolution({ bookingId: dispute.bookingId, outcome, disputeId, resolution, adminId }, paystack, realtime);
-  await writeAudit({ actorId: adminId, action: 'dispute.resolve', target: disputeId, metadata: { outcome } });
-  return { executed: true };
+  const executed = await executeDisputeResolution(
+    { bookingId: dispute.bookingId, outcome, disputeId, resolution, adminId },
+    paystack,
+    realtime,
+  );
+  await writeAudit({
+    actorId: adminId,
+    action: 'dispute.resolve',
+    target: disputeId,
+    metadata: { outcome },
+  });
+  return { executed };
 }
 
 export async function createRefund(
@@ -126,12 +191,22 @@ export async function createRefund(
         payload: { bookingId, amountKobo, reason },
       },
     });
-    await writeAudit({ actorId: adminId, action: 'refund.proposed', target: bookingId, metadata: { amountKobo } });
+    await writeAudit({
+      actorId: adminId,
+      action: 'refund.proposed',
+      target: bookingId,
+      metadata: { amountKobo },
+    });
     return { executed: false, approvalId: approval.id };
   }
-  await executeRefund({ bookingId, amountKobo }, paystack);
-  await writeAudit({ actorId: adminId, action: 'refund', target: bookingId, metadata: { amountKobo, reason } });
-  return { executed: true };
+  const executed = await executeRefund({ bookingId, amountKobo }, paystack);
+  await writeAudit({
+    actorId: adminId,
+    action: 'refund',
+    target: bookingId,
+    metadata: { amountKobo, reason },
+  });
+  return { executed };
 }
 
 export async function decideApproval(
@@ -143,7 +218,8 @@ export async function decideApproval(
 ): Promise<void> {
   const a = await prisma.approval.findUniqueOrThrow({ where: { id: approvalId } });
   if (a.status !== 'PENDING') throw new ApiError(409, 'NOT_PENDING', 'approval already decided');
-  if (a.makerId === checkerId) throw new ApiError(403, 'SAME_ADMIN', 'checker must differ from maker');
+  if (a.makerId === checkerId)
+    throw new ApiError(403, 'SAME_ADMIN', 'checker must differ from maker');
 
   if (decision === 'reject') {
     // Atomic claim: only the first checker flips PENDING → REJECTED.
@@ -156,54 +232,70 @@ export async function decideApproval(
     return;
   }
 
-  // Atomic claim BEFORE executing: two checkers reading PENDING concurrently
-  // would otherwise both run the external refund. The conditional update is the
-  // serialization point — exactly one wins (count === 1); the loser gets 409 and
-  // never touches Paystack.
-  const claimed = await prisma.approval.updateMany({
-    where: { id: approvalId, status: 'PENDING' },
-    data: { status: 'EXECUTED', checkerId },
-  });
-  if (claimed.count === 0) throw new ApiError(409, 'NOT_PENDING', 'approval already decided');
+  // The checker decision and its recovery intent commit together. EXECUTED is
+  // reserved for completion of the actual money operation.
+  await prisma.$transaction(async (tx) => {
+    const claimed = await tx.approval.updateMany({
+      where: { id: approvalId, status: 'PENDING' },
+      data: { status: 'APPROVED', checkerId },
+    });
+    if (claimed.count === 0) throw new ApiError(409, 'NOT_PENDING', 'approval already decided');
+    await tx.paymentOperation.create({
+      data: {
+        kind: 'APPROVAL_EXECUTE',
+        dedupeKey: `APPROVAL_EXECUTE:${approvalId}`,
+        payload: { approvalId },
+      },
+    });
+  }, TX);
 
   await executeApprovalOp(a, paystack, realtime);
-  // Status was already claimed EXECUTED above; just record the audit trail.
+  // Audit the checker decision; the durable operation records execution state.
   await writeAudit({ actorId: checkerId, action: 'approval.execute', target: approvalId });
 }
 
-/**
- * Run a claimed approval's money move through a durable APPROVAL_EXECUTE op.
- * Shared by decideApproval (first run) and the recovery job (resume after a
- * crash between the EXECUTED claim and the money move). Idempotent: refunds flow
- * through the durable BOOKING_REFUND op and dispute release is status-guarded, so
- * a resumed re-run never double-pays.
- */
+/** Resume an approved action; local execution and nested refunds are independently idempotent. */
 export async function executeApprovalOp(
   a: { id: string; kind: ApprovalKind; makerId: string; payload: unknown },
   paystack: PaystackPort,
   realtime: RealtimeGateway = noopGateway,
-): Promise<void> {
-  const payload = a.payload as Record<string, unknown>;
+) {
+  const current = await prisma.approval.findUniqueOrThrow({ where: { id: a.id } });
+  if (!['APPROVED', 'EXECUTED'].includes(current.status) || !current.checkerId) {
+    throw new ApiError(409, 'NOT_APPROVED', 'approval has not been authorized by a checker');
+  }
+  const payload = current.payload as Record<string, unknown>;
   const { op } = await claimOperation(prisma, {
     kind: 'APPROVAL_EXECUTE',
     dedupeKey: `APPROVAL_EXECUTE:${a.id}`,
     payload: { approvalId: a.id },
   });
-  await runOperation(prisma, op, {
-    provider: async () => {
-      if (a.kind === 'DISPUTE_RESOLVE') {
-        await executeDisputeResolution({
-          bookingId: String(payload.bookingId),
-          outcome: payload.outcome as DisputeOutcome,
-          disputeId: String(payload.disputeId),
-          resolution: typeof payload.resolution === 'string' ? payload.resolution : '',
-          adminId: a.makerId,
-        }, paystack, realtime);
-      } else {
-        await executeRefund({ bookingId: String(payload.bookingId), amountKobo: Number(payload.amountKobo) }, paystack);
-      }
-      return { ok: true };
+  const execute = async () => {
+    const done =
+      current.kind === 'DISPUTE_RESOLVE'
+        ? await executeDisputeResolution(
+            {
+              bookingId: String(payload.bookingId),
+              outcome: payload.outcome as DisputeOutcome,
+              disputeId: String(payload.disputeId),
+              resolution: typeof payload.resolution === 'string' ? payload.resolution : '',
+              adminId: current.checkerId ?? current.makerId,
+            },
+            paystack,
+            realtime,
+          )
+        : await executeRefund(
+            { bookingId: String(payload.bookingId), amountKobo: Number(payload.amountKobo) },
+            paystack,
+          );
+    return { status: done ? ('success' as const) : ('pending' as const) };
+  };
+  return runOperation(prisma, op, {
+    provider: execute,
+    reconcile: execute,
+    onSuccess: async (tx) => {
+      await tx.approval.update({ where: { id: a.id }, data: { status: 'EXECUTED' } });
+      return true;
     },
-    onSuccess: () => Promise.resolve(true),
   });
 }

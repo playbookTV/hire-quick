@@ -1,218 +1,210 @@
 /**
- * Realtime gateway (TRD §4, UXRD §6). One Socket.IO surface for booking chat AND
- * server→client lifecycle pushes (booking status, admin check-in feed, withdrawal
- * status). Business code stays transport-agnostic by depending on the
- * `RealtimeGateway` interface (hexagonal, mirrors PaystackPort), so it is testable
- * with a no-op and swappable across processes:
- *
- *  - API process  → `createSocketGateway()` wraps the live `io` (+ Redis adapter
- *    for cross-replica fan-out on Railway).
- *  - worker process → `createEmitterGateway()` publishes to the same Redis channels
- *    via @socket.io/redis-emitter, since scheduled jobs (auto-complete, no-show)
- *    run there and hold no sockets of their own.
- *
- * Rooms: `user:<userId>` (per-user pushes), `booking:<id>` (chat + booking events),
- * `admin:feed` (ADMIN-only operational feed).
+ * Authorized realtime delivery (TRD §4/§14, UXRD §6).
+ * Incoming actions and outgoing private packets revalidate account, JWT/session
+ * and audience. Redis transports envelopes to each node; it never broadcasts
+ * directly to sockets. Signals remain best-effort, with DB state authoritative.
  */
 import type { Server as HttpServer } from 'node:http';
 import { Server, type Socket } from 'socket.io';
-import { createAdapter } from '@socket.io/redis-adapter';
-import { Emitter } from '@socket.io/redis-emitter';
-import { Redis } from 'ioredis';
-import { prisma, type MessageContentType } from '@hq/database';
-import { verifyAccessToken } from '../modules/auth/tokens.js';
-import { assertParty, sendMessage, markSeen } from './messages.js';
-import { RT, type ConversationUnreadPayload } from './events.js';
+import { ZodError } from 'zod';
+import { ApiError } from '../app.js';
+import { assertParty, assertMessageableParty, sendMessage, markSeen } from './messages.js';
+import { RT } from './events.js';
+import { bookingChatScope, socketMessageInput, seenMessageInput } from './validation.js';
+import { authorizeSocketToken } from './socket-auth.js';
+import { createSocketRateLimiter } from './rate-limit.js';
+import { createPrivateFanout, decodePrivateEvent, encodePrivateEvent, type PrivateEvent } from './fanout.js';
 
-/** The transport-agnostic port that lifecycle code emits through. */
 export interface RealtimeGateway {
   emitToUser(userId: string, event: string, payload: unknown): void;
   emitToBooking(bookingId: string, event: string, payload: unknown): void;
   emitToAdmins(event: string, payload: unknown): void;
 }
-
-/** A live `io` gateway also exposes attach() and the raw server for tests. */
 export interface SocketGateway extends RealtimeGateway {
   attach(server: HttpServer): Server;
+  ready(): boolean;
   readonly io: Server | null;
 }
-
-/** Default implementation: drops everything. Used in tests and when realtime is absent. */
 export const noopGateway: RealtimeGateway = {
-  emitToUser() {},
-  emitToBooking() {},
-  emitToAdmins() {},
+  emitToUser() {}, emitToBooking() {}, emitToAdmins() {},
 };
+type Ack = (response: unknown) => void;
+type Principal = Awaited<ReturnType<typeof authorizeSocketToken>>;
+const CHAT_EVENTS = new Set<string>([RT.MESSAGE_NEW, RT.MESSAGE_SEEN, RT.TYPING, RT.CONVERSATION_UNREAD]);
+const MAX_PENDING_ACTIONS = 8;
+const MAX_PENDING_DELIVERIES = 16;
 
-/** Minimal structural view of the bits of `io`/`Emitter` we use. */
-interface Broadcastable {
-  to(room: string): { emit(event: string, ...args: unknown[]): unknown };
-}
-
-function emitMethods(target: () => Broadcastable | null): RealtimeGateway {
+function emitMethods(publish: (event: PrivateEvent) => void): RealtimeGateway {
   return {
-    emitToUser(userId, event, payload) {
-      target()?.to(`user:${userId}`).emit(event, payload);
-    },
-    emitToBooking(bookingId, event, payload) {
-      target()?.to(`booking:${bookingId}`).emit(event, payload);
-    },
-    emitToAdmins(event, payload) {
-      target()?.to('admin:feed').emit(event, payload);
-    },
+    emitToUser(id, event, payload) { publish({ version: 1, target: { kind: 'user', id }, event, payload }); },
+    emitToBooking(id, event, payload) { publish({ version: 1, target: { kind: 'booking', id }, event, payload }); },
+    emitToAdmins(event, payload) { publish({ version: 1, target: { kind: 'admins' }, event, payload }); },
   };
 }
-
-// ---- Socket connection handling (chat + presence rooms) ---------------------
-
-type Ack = (response: unknown) => void;
-interface JoinPayload {
-  bookingId: string;
-}
-interface SendPayload {
-  bookingId: string;
-  content: string;
-  contentType?: MessageContentType;
-}
-interface SeenPayload {
-  bookingId: string;
-  upToMessageId?: string;
-}
-interface TypingPayload {
-  bookingId: string;
+function reject(ack: unknown, error: unknown): void {
+  if (typeof ack !== 'function') return;
+  const code = error instanceof ZodError ? 'VALIDATION'
+    : error instanceof ApiError ? error.code : 'UNAVAILABLE';
+  (ack as Ack)({ ok: false, code, error: code === 'VALIDATION' ? 'Invalid chat request' : 'Chat request unavailable' });
 }
 
-function userIdOf(socket: Socket): string {
-  return (socket.data as { userId?: string }).userId ?? '';
-}
-function roleOf(socket: Socket): string {
-  return (socket.data as { role?: string }).role ?? '';
-}
-
-async function handleJoin(socket: Socket, payload: JoinPayload, ack?: Ack): Promise<void> {
-  try {
-    await assertParty(payload.bookingId, userIdOf(socket));
-    await socket.join(`booking:${payload.bookingId}`);
-    ack?.({ ok: true });
-  } catch {
-    ack?.({ ok: false, error: 'forbidden' });
-  }
-}
-
-async function handleSend(io: Server, socket: Socket, payload: SendPayload, ack?: Ack): Promise<void> {
-  try {
-    const msg = await sendMessage({
-      bookingId: payload.bookingId,
-      senderId: userIdOf(socket),
-      content: payload.content,
-      ...(payload.contentType ? { contentType: payload.contentType } : {}),
-    });
-    io.to(`booking:${payload.bookingId}`).emit(RT.MESSAGE_NEW, msg);
-    // Nudge the recipient's inbox badge even if they aren't in the booking room.
-    const unread: ConversationUnreadPayload = { bookingId: payload.bookingId, from: msg.senderId };
-    io.to(`user:${msg.recipientUserId}`).emit(RT.CONVERSATION_UNREAD, unread);
-    ack?.({ ok: true, message: msg });
-  } catch (e) {
-    ack?.({ ok: false, error: e instanceof Error ? e.message : 'send failed' });
-  }
-}
-
-async function handleSeen(io: Server, socket: Socket, payload: SeenPayload, ack?: Ack): Promise<void> {
-  try {
-    const count = await markSeen(payload.bookingId, userIdOf(socket), payload.upToMessageId);
-    io.to(`booking:${payload.bookingId}`).emit(RT.MESSAGE_SEEN, {
-      bookingId: payload.bookingId,
-      userId: userIdOf(socket),
-      at: new Date().toISOString(),
-    });
-    ack?.({ ok: true, seen: count });
-  } catch (e) {
-    ack?.({ ok: false, error: e instanceof Error ? e.message : 'seen failed' });
-  }
-}
-
-/** Typing is ephemeral (not persisted). Only relay for rooms the socket actually joined. */
-function relayTyping(socket: Socket, payload: TypingPayload, typing: boolean): void {
-  const room = `booking:${payload?.bookingId}`;
-  if (!payload?.bookingId || !socket.rooms.has(room)) return;
-  socket.to(room).emit(RT.TYPING, { bookingId: payload.bookingId, userId: userIdOf(socket), typing });
-}
-
-function onConnection(io: Server, socket: Socket): void {
-  void socket.join(`user:${userIdOf(socket)}`);
-  if (roleOf(socket) === 'ADMIN') void socket.join('admin:feed');
-
-  socket.on('room:join', (p: JoinPayload, ack?: Ack) => void handleJoin(socket, p, ack));
-  socket.on('message:send', (p: SendPayload, ack?: Ack) => void handleSend(io, socket, p, ack));
-  socket.on('message:seen', (p: SeenPayload, ack?: Ack) => void handleSeen(io, socket, p, ack));
-  socket.on('typing:start', (p: TypingPayload) => relayTyping(socket, p, true));
-  socket.on('typing:stop', (p: TypingPayload) => relayTyping(socket, p, false));
-}
-
-// ---- Gateway factories ------------------------------------------------------
-
-/**
- * Build the API-process gateway. Pass `redisUrl` to enable cross-replica fan-out
- * via the Redis adapter; omit it (tests, single-node dev) to use the in-memory
- * adapter so no Redis connection is opened.
- */
 export function createSocketGateway(opts: { redisUrl?: string } = {}): SocketGateway {
   let io: Server | null = null;
-  const base = emitMethods(() => io);
+  let fanout: ReturnType<typeof createPrivateFanout> | null = null;
+  const sessions = new WeakMap<Socket, { token: string; principal: Principal }>();
+  const outboxes = new WeakMap<Socket, { pending: number; chain: Promise<void> }>();
 
-  function attach(server: HttpServer): Server {
-    const server_io = new Server(server, { cors: { origin: false }, serveClient: false });
-
-    if (opts.redisUrl) {
-      const pub = new Redis(opts.redisUrl, { maxRetriesPerRequest: null });
-      const sub = pub.duplicate();
-      server_io.adapter(createAdapter(pub, sub));
+  async function current(socket: Socket): Promise<Principal> {
+    const session = sessions.get(socket);
+    if (!session || !socket.connected) throw new Error('socket disconnected');
+    try {
+      const principal = await authorizeSocketToken(session.token);
+      if (!socket.connected) throw new Error('socket disconnected');
+      return principal;
+    } catch {
+      socket.disconnect(true);
+      throw new Error('socket session unavailable');
     }
-
-    server_io.use((socket, next) => {
-      const token = (socket.handshake.auth as { token?: string } | undefined)?.token;
-      if (!token) {
-        next(new Error('unauthenticated'));
-        return;
-      }
-      verifyAccessToken(token)
-        .then(async (a) => {
-          // Reject sockets for suspended/erased accounts, even with a valid token.
-          const user = await prisma.user.findUnique({ where: { id: a.userId }, select: { status: true } });
-          if (!user || user.status !== 'ACTIVE') {
-            next(new Error('unauthenticated'));
-            return;
-          }
-          (socket.data as { userId: string; role: string }).userId = a.userId;
-          (socket.data as { userId: string; role: string }).role = a.role;
-          next();
-        })
-        .catch(() => next(new Error('unauthenticated')));
-    });
-
-    server_io.on('connection', (socket) => onConnection(server_io, socket));
-    io = server_io;
-    return server_io;
   }
 
-  return { ...base, attach, get io() { return io; } };
+  async function deliver(socket: Socket, event: PrivateEvent): Promise<void> {
+    const principal = await current(socket);
+    const target = event.target;
+    if (target.kind === 'user' && target.id !== principal.userId) return;
+    if (target.kind === 'admins' && principal.role !== 'ADMIN') return;
+    if (target.kind === 'booking') {
+      if (CHAT_EVENTS.has(event.event)) await assertMessageableParty(target.id, principal.userId);
+      else await assertParty(target.id, principal.userId);
+    } else if (CHAT_EVENTS.has(event.event)) {
+      // User-room inbox signals also disclose a booking relationship.
+      const { bookingId } = bookingChatScope.parse({ bookingId: (event.payload as { bookingId?: unknown } | null)?.bookingId });
+      await assertMessageableParty(bookingId, principal.userId);
+    }
+    // Audience lookup may await I/O: check current session again before emission.
+    await current(socket);
+    if (socket.connected) socket.emit(event.event, event.payload);
+  }
+
+  function receive(event: PrivateEvent): void {
+    if (!io) return;
+    const target = event.target;
+    const room = target.kind === 'admins' ? 'admin:feed' : `${target.kind}:${target.id}`;
+    const ids = io.of('/').adapter.rooms.get(room);
+    if (!ids) return;
+    for (const id of ids) {
+      if (id === event.excludeSocketId) continue;
+      const socket = io.of('/').sockets.get(id);
+      if (!socket) continue;
+      let box = outboxes.get(socket);
+      if (!box) { box = { pending: 0, chain: Promise.resolve() }; outboxes.set(socket, box); }
+      if (box.pending >= MAX_PENDING_DELIVERIES) { socket.disconnect(true); continue; }
+      box.pending += 1;
+      const active = box;
+      active.chain = active.chain.then(() => deliver(socket, event)).catch(() => {
+        // No private packet on missing authorization or a DB failure.
+      }).finally(() => { active.pending -= 1; });
+    }
+  }
+
+  function publish(event: PrivateEvent): void {
+    if (!io) return;
+    if (fanout) { fanout.publish(event); return; }
+    // The Redis-free dev/test path still passes through the same audience checks.
+    const encoded = encodePrivateEvent(event);
+    const parsed = encoded && decodePrivateEvent(encoded);
+    if (parsed) receive(parsed);
+  }
+  const base = emitMethods(publish);
+
+  function attach(server: HttpServer): Server {
+    if (io) throw new Error('socket gateway already attached');
+    const live = new Server(server, { cors: { origin: false }, serveClient: false, maxHttpBufferSize: 16 * 1024 });
+    io = live;
+    if (opts.redisUrl) fanout = createPrivateFanout(opts.redisUrl, receive);
+    const limiter = createSocketRateLimiter(fanout?.redis);
+    server.once('close', () => { fanout?.close(); io = null; });
+    live.use((socket, next) => {
+      const token = (socket.handshake.auth as { token?: unknown } | undefined)?.token;
+      if (typeof token !== 'string' || token.length > 8192 || (fanout && !fanout.ready())) {
+        next(new Error('unauthenticated')); return;
+      }
+      void authorizeSocketToken(token).then((principal) => {
+        sessions.set(socket, { token, principal });
+        socket.data = { userId: principal.userId, role: principal.role };
+        next();
+      }).catch(() => next(new Error('unauthenticated')));
+    });
+    live.on('connection', (socket) => {
+      const initial = sessions.get(socket)!.principal;
+      void socket.join(`user:${initial.userId}`);
+      if (initial.role === 'ADMIN') void socket.join('admin:feed');
+      const expiry = setTimeout(() => socket.disconnect(true), Math.min(2_147_483_647, Math.max(0, initial.expiresAt - Date.now())));
+      expiry.unref();
+      socket.once('disconnect', () => { clearTimeout(expiry); sessions.delete(socket); });
+      let pending = 0;
+      let chain = Promise.resolve();
+      const action = (name: string, run: (payload: unknown, principal: Principal) => Promise<unknown>): void => {
+        socket.on(name, (payload: unknown, ack?: Ack) => {
+          if (pending >= MAX_PENDING_ACTIONS) { reject(ack, new ApiError(429, 'RATE_LIMITED', 'slow down')); return; }
+          pending += 1;
+          chain = chain.then(async () => {
+            if (!socket.connected) return;
+            if (fanout && !fanout.ready()) throw new Error('socket transport unavailable');
+            if (!(await limiter.take(initial.userId))) throw new ApiError(429, 'RATE_LIMITED', 'slow down');
+            const principal = await current(socket);
+            const response = await run(payload, principal);
+            // Acknowledgments can contain private message bodies too.
+            await current(socket);
+            if (typeof ack === 'function') ack(response);
+          }).catch((error: unknown) => reject(ack, error)).finally(() => { pending -= 1; });
+        });
+      };
+      action('room:join', async (payload, principal) => {
+        const { bookingId } = bookingChatScope.parse(payload);
+        await assertMessageableParty(bookingId, principal.userId);
+        await socket.join(`booking:${bookingId}`);
+        return { ok: true };
+      });
+      action('message:send', async (payload, principal) => {
+        const input = socketMessageInput.parse(payload);
+        const message = await sendMessage({
+          bookingId: input.bookingId, content: input.content, senderId: principal.userId,
+          ...(input.contentType === undefined ? {} : { contentType: input.contentType }),
+        });
+        base.emitToBooking(input.bookingId, RT.MESSAGE_NEW, message);
+        base.emitToUser(message.recipientUserId, RT.CONVERSATION_UNREAD, { bookingId: input.bookingId, from: principal.userId });
+        await assertMessageableParty(input.bookingId, principal.userId);
+        return { ok: true, message };
+      });
+      action('message:seen', async (payload, principal) => {
+        const { bookingId, upToMessageId } = seenMessageInput.parse(payload);
+        await assertMessageableParty(bookingId, principal.userId);
+        const seen = await markSeen(bookingId, principal.userId, upToMessageId);
+        base.emitToBooking(bookingId, RT.MESSAGE_SEEN, { bookingId, userId: principal.userId, at: new Date().toISOString() });
+        await assertMessageableParty(bookingId, principal.userId);
+        return { ok: true, seen };
+      });
+      for (const [name, typing] of [['typing:start', true], ['typing:stop', false]] as const) {
+        action(name, async (payload, principal) => {
+          const { bookingId } = bookingChatScope.parse(payload);
+          await assertMessageableParty(bookingId, principal.userId);
+          if (!socket.rooms.has(`booking:${bookingId}`)) throw new ApiError(403, 'FORBIDDEN', 'join first');
+          publish({ version: 1, target: { kind: 'booking', id: bookingId }, event: RT.TYPING,
+            payload: { bookingId, userId: principal.userId, typing }, excludeSocketId: socket.id });
+          return { ok: true };
+        });
+      }
+    });
+    return live;
+  }
+  return { ...base, attach, ready: () => io !== null && (!fanout || fanout.ready()), get io() { return io; } };
 }
 
-/**
- * Worker-process gateway: no Socket.IO server, just publishes to the same Redis
- * channels the API-process adapter listens on, so emits from scheduled jobs reach
- * connected clients. Requires Redis.
- */
-export function createEmitterGateway(redisUrl: string): RealtimeGateway {
-  const redis = new Redis(redisUrl, { maxRetriesPerRequest: null });
-  const emitter = new Emitter(redis);
-  return emitMethods(() => emitter);
+/** Worker publishes to the same guarded receiving path; close releases its Redis connection. */
+export function createEmitterGateway(redisUrl: string): RealtimeGateway & { ready(): boolean; close(): void } {
+  const fanout = createPrivateFanout(redisUrl);
+  return { ...emitMethods((event) => fanout.publish(event)), ready: fanout.ready, close: () => fanout.close() };
 }
-
-/**
- * Back-compat convenience: attach a fresh socket gateway to an HTTP server and
- * return the `io`. Prefer `createSocketGateway()` when you also need to emit.
- */
 export function attachRealtime(server: HttpServer, opts: { redisUrl?: string } = {}): Server {
   return createSocketGateway(opts).attach(server);
 }

@@ -45,7 +45,29 @@ export async function buildExport(userId: string): Promise<Record<string, unknow
     : null;
 
   const clientData = client
-    ? { client, orders: await prisma.order.findMany({ where: { clientId: client.id } }) }
+    ? {
+        client,
+        orders: await prisma.order.findMany({
+          where: { clientId: client.id },
+          include: {
+            checkout: {
+              select: {
+                orderId: true,
+                email: true,
+                state: true,
+                reference: true,
+                attemptedAt: true,
+                expiresAt: true,
+                lastCheckedAt: true,
+                createdAt: true,
+                updatedAt: true,
+                // Hosted checkout URLs grant access; the export needs the payment
+                // reference and state, not a reusable bearer URL.
+              },
+            },
+          },
+        }),
+      }
     : null;
 
   return {
@@ -98,6 +120,12 @@ export async function eraseUser(
 
   if (client) {
     await tx.client.update({ where: { id: client.id }, data: { displayName: 'Deleted user' } });
+    // Keep order/reference/state intact for delayed charges and refund recovery.
+    // Checkout writers fence anonymization before storing contact details/URLs.
+    await tx.checkout.updateMany({
+      where: { order: { clientId: client.id } },
+      data: { email: '', authorizationUrl: null },
+    });
   }
   if (usher) {
     // Collect the storage object keys BEFORE clearing the references, so the

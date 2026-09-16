@@ -1,9 +1,8 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { z } from 'zod';
-import { prisma } from '@hq/database';
-import { ApiError } from '../../app.js';
 import { requestOtp, verifyOtp } from './otp.js';
-import { signAccessToken, signRefreshToken, verifyRefreshToken, revokeRefreshToken } from './tokens.js';
+import { revokeRefreshToken } from './tokens.js';
+import { rotateRefreshToken } from './rotation.js';
 import { writeAudit } from '../audit.js';
 
 type Handler = (req: Request, res: Response) => Promise<void>;
@@ -48,37 +47,7 @@ export function authRouter(): Router {
     '/refresh',
     wrap(async (req, res) => {
       const { refreshToken } = refreshSchema.parse(req.body);
-      let userId: string;
-      let jti: string;
-      try {
-        ({ userId, jti } = await verifyRefreshToken(refreshToken));
-      } catch {
-        throw new ApiError(401, 'INVALID_REFRESH', 'invalid or expired refresh token');
-      }
-      // Denylist check: a token revoked on logout, or already consumed by an
-      // earlier rotation, must not mint a new pair.
-      if (await prisma.revokedToken.findUnique({ where: { jti } })) {
-        throw new ApiError(401, 'INVALID_REFRESH', 'refresh token has been revoked');
-      }
-      const user = await prisma.user.findUnique({ where: { id: userId } });
-      // Any non-ACTIVE state (SUSPENDED, ANONYMIZED, PENDING) must not mint tokens.
-      if (!user || user.status !== 'ACTIVE') {
-        throw new ApiError(401, 'INVALID_REFRESH', 'user not active');
-      }
-      // Rotation: sign the new pair FIRST, then burn the presented token.
-      // Running revocation concurrently with signing (Promise.all) risks the old
-      // token being revoked but no new tokens delivered when signing fails —
-      // locking the user out. Sequencing guarantees: if signing fails, nothing
-      // is revoked (user retries with the old token); if revocation fails, the
-      // new tokens were already minted so we log the error and still return them
-      // (the token expires naturally; the user is not locked out).
-      const [accessToken, newRefresh] = await Promise.all([
-        signAccessToken(user.id, user.role),
-        signRefreshToken(user.id),
-      ]);
-      await revokeRefreshToken(refreshToken);
-      await writeAudit({ actorId: user.id, action: 'auth.refresh', target: user.id });
-      res.status(200).json({ accessToken, refreshToken: newRefresh });
+      res.status(200).json(await rotateRefreshToken(refreshToken));
     }),
   );
 
@@ -90,7 +59,12 @@ export function authRouter(): Router {
       const parsed = refreshSchema.safeParse(req.body);
       if (parsed.success) {
         const revoked = await revokeRefreshToken(parsed.data.refreshToken);
-        if (revoked) await writeAudit({ actorId: revoked.userId, action: 'auth.logout', target: revoked.userId });
+        if (revoked)
+          await writeAudit({
+            actorId: revoked.userId,
+            action: 'auth.logout',
+            target: revoked.userId,
+          });
       }
       res.status(204).end();
     }),

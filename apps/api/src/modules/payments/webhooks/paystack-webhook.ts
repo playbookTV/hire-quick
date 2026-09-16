@@ -1,7 +1,7 @@
 /**
  * Paystack webhook pipeline (TRD §10, payment-integration skill: webhooks are
  * the source of truth). Steps: verify the HMAC-SHA512 signature over the RAW
- * body → dedupe by event id (idempotency_keys) → dispatch to the ledger.
+ * body → dedupe charges by reference and lock transfer operations → ledger.
  * Returns 200 on success/duplicate, 401 on bad signature, 500 on handler error
  * (so Paystack retries with backoff).
  */
@@ -9,12 +9,15 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { Router, type Request, type Response } from 'express';
 import { type PrismaClient } from '@hq/database';
 import { runIdempotent } from '../ledger/idempotency.js';
-import { holdOrder, completeWithdrawal, failWithdrawal } from '../ledger/ledger.js';
-import { notifyBookingConfirmed } from '../../notifications/service.js';
+import { recordCheckoutCharge, notifyCheckoutHeld } from '../checkout.js';
+import { completeWithdrawal, failWithdrawal, commissionSweep, reverseCommissionSweep } from '../ledger/ledger.js';
+import { driveRefund, type TransferPayload } from '../service.js';
+import { z } from 'zod';
 import { writeAudit } from '../../audit.js';
 import { noopGateway, type RealtimeGateway } from '../../../realtime/gateway.js';
 import type { PaystackPort } from '../port/paystack-port.js';
-import { RT, bookingEvent, withdrawalEvent } from '../../../realtime/events.js';
+import { RT, withdrawalEvent } from '../../../realtime/events.js';
+import { driveWithdrawalReversal, recordWithdrawalReversal } from '../withdrawal-reversal.js';
 
 /**
  * Audit is secondary to money safety: a failed audit write must never reject
@@ -36,10 +39,23 @@ export function verifyPaystackSignature(rawBody: Buffer, signature: string, secr
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-interface PaystackEvent {
-  event: string;
-  data: { id?: number | string; reference?: string; status?: string };
-}
+const paystackEventSchema = z.object({
+  event: z.string().min(1),
+  data: z.object({
+    id: z.union([z.number(), z.string()]).optional(),
+    reference: z.string().optional(),
+    status: z.string().optional(),
+    amount: z.union([z.number(), z.string().regex(/^\d+$/).transform(Number)])
+      .pipe(z.number().int().safe().nonnegative()).optional(),
+    currency: z.string().optional(),
+    merchant_note: z.string().nullable().optional(),
+    transaction: z.union([
+      z.number(), z.string(), z.object({ reference: z.string().optional() }).passthrough(),
+    ]).nullable().optional(),
+    transaction_reference: z.string().optional(),
+  }).passthrough(),
+});
+type PaystackEvent = z.infer<typeof paystackEventSchema>;
 
 async function handleChargeSuccess(
   prisma: PrismaClient,
@@ -64,29 +80,15 @@ async function handleChargeSuccess(
       return; // ack 200 so Paystack stops retrying a tampered/under-paid event; no HOLD
     }
   }
-  const result = await runIdempotent(prisma, key, 'paystack_event_id', (tx) => holdOrder(tx, order.id, ref));
-  if (result.duplicate) return;
+  const result = await runIdempotent(prisma, key, 'paystack_event_id', (tx) => recordCheckoutCharge(tx, order.id, ref));
+  if (result.duplicate || result.result !== 'held') return;
   await safeAudit({
     actorId: null,
     action: 'payment.charge.hold',
     target: order.id,
     metadata: { ref, grossAmount: order.grossAmount },
   });
-  const bookings = await prisma.booking.findMany({
-    where: { orderId: order.id },
-    include: { usher: true, event: { include: { client: true } } },
-  });
-  let clientUserId = '';
-  for (const b of bookings) {
-    notifyBookingConfirmed(b.usher.userId);
-    clientUserId = b.event.client.userId;
-    const payload = bookingEvent(b.id, 'CONFIRMED');
-    realtime.emitToUser(b.usher.userId, RT.BOOKING_CONFIRMED, payload);
-    realtime.emitToUser(clientUserId, RT.BOOKING_CONFIRMED, payload);
-  }
-  if (clientUserId) {
-    realtime.emitToUser(clientUserId, RT.ORDER_PAID, { orderId: order.id, at: new Date().toISOString() });
-  }
+  await notifyCheckoutHeld(prisma, order.id, realtime);
 }
 
 /**
@@ -99,51 +101,138 @@ async function findWithdrawalByTransferRef(prisma: PrismaClient, ref: string) {
   const include = { wallet: { include: { usher: true } } };
   const byRef = await prisma.withdrawal.findFirst({ where: { paystackTransferRef: ref }, include });
   if (byRef) return byRef;
-  const id = /^wd_(.+)$/.exec(ref)?.[1];
+  const id = /^wd_([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i.exec(ref)?.[1];
   if (!id) return null;
   return prisma.withdrawal.findUnique({ where: { id }, include });
 }
 
-async function handleTransferSuccess(
+/** The operation and its financial result share one commit with the runner. */
+async function handleTransferTerminal(
   prisma: PrismaClient,
-  key: string,
   ref: string,
+  evt: PaystackEvent,
   realtime: RealtimeGateway,
 ): Promise<void> {
+  const op = await prisma.paymentOperation.findFirst({
+    where: {
+      kind: { in: ['WITHDRAWAL_TRANSFER', 'COMMISSION_SWEEP'] },
+      payload: { path: ['reference'], equals: ref },
+    },
+  });
   const w = await findWithdrawalByTransferRef(prisma, ref);
-  if (!w) return;
-  // completeWithdrawal locks the row and no-ops if already terminal, so a
-  // duplicate success or one racing a failure never double-settles.
-  const done = await runIdempotent(prisma, key, 'paystack_event_id', (tx) => completeWithdrawal(tx, w.id, ref));
-  if (done.duplicate || done.result === false) {
-    if (done.result === false) {
-      await safeAudit({ actorId: null, action: 'withdrawal.complete.ignored', target: w.id, metadata: { ref } });
+  if (!op && !w) return;
+  const success = evt.event === 'transfer.success';
+  if (w && !success) {
+    const payload = op?.payload as unknown as TransferPayload | undefined;
+    if ((evt.data.amount !== undefined && evt.data.amount !== w.amount) ||
+        (evt.data.currency !== undefined && evt.data.currency !== 'NGN') ||
+        (op && (op.kind !== 'WITHDRAWAL_TRANSFER' || payload?.withdrawalId !== w.id || payload.amountKobo !== w.amount)))
+      throw new Error('Transfer event does not match the stored withdrawal');
+    const intent = await recordWithdrawalReversal(prisma, w.id, ref);
+    const result = await driveWithdrawalReversal(prisma, intent);
+    if (result.result) {
+      await safeAudit({ actorId: null, action: 'withdrawal.failed', target: w.id, metadata: { ref, event: evt.event } });
+      realtime.emitToUser(w.wallet.usher.userId, RT.WITHDRAWAL_FAILED, withdrawalEvent(w.id, 'FAILED', w.amount));
     }
     return;
   }
-  await safeAudit({ actorId: null, action: 'withdrawal.complete', target: w.id, metadata: { ref, amount: w.amount } });
-  realtime.emitToUser(w.wallet.usher.userId, RT.WITHDRAWAL_COMPLETED, withdrawalEvent(w.id, 'PAID', w.amount));
+  const applied = await prisma.$transaction(async (tx) => {
+    let current = op;
+    if (op) {
+      await tx.$queryRaw`SELECT id FROM payment_operations WHERE id = ${op.id}::uuid FOR UPDATE`;
+      current = await tx.paymentOperation.findUniqueOrThrow({ where: { id: op.id } });
+    }
+    const payload = current?.payload as unknown as TransferPayload | undefined;
+    const amount = payload?.amountKobo ?? w!.amount;
+    if ((evt.data.amount !== undefined && evt.data.amount !== amount) ||
+        (evt.data.currency !== undefined && evt.data.currency !== 'NGN'))
+      throw new Error('Transfer event does not match the stored payment');
+    if (current?.kind === 'WITHDRAWAL_TRANSFER' &&
+        (!w || payload?.withdrawalId !== w.id || payload.amountKobo !== w.amount))
+      throw new Error('Transfer intent does not match the withdrawal');
+    if (current?.status === 'FAILED') return false;
+    let changed = false;
+    if (w) {
+      changed = success
+        ? await completeWithdrawal(tx, w.id, ref)
+        : await failWithdrawal(tx, w.id);
+      // A legacy failure may have settled before the operation was repaired.
+      const settled = await tx.withdrawal.findUniqueOrThrow({ where: { id: w.id } });
+      if (current) await tx.paymentOperation.update({
+        where: { id: current.id },
+        data: {
+          status: settled.status === 'FAILED' ? 'FAILED' : 'RECORDED',
+          providerRef: ref,
+          lastError: settled.status === 'FAILED' ? 'Provider confirmed transfer failure or reversal' : null,
+        },
+      });
+      return changed;
+    }
+    if (!current || current.kind !== 'COMMISSION_SWEEP') return false;
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(74011001)::text`;
+    if (success) {
+      if (current.status === 'RECORDED') return false;
+      await commissionSweep(tx, amount);
+    } else if (current.status === 'RECORDED') {
+      await reverseCommissionSweep(tx, amount);
+    }
+    await tx.paymentOperation.update({
+      where: { id: current.id },
+      data: {
+        status: success ? 'RECORDED' : 'FAILED',
+        providerRef: ref,
+        lastError: success ? null : 'Provider confirmed transfer failure or reversal',
+      },
+    });
+    return true;
+  }, { timeout: 30_000, maxWait: 30_000 });
+  if (!applied) return;
+  await safeAudit({
+    actorId: null,
+    action: w ? (success ? 'withdrawal.complete' : 'withdrawal.failed') : 'commission.transfer.settled',
+    target: w?.id ?? op!.id,
+    metadata: { ref, event: evt.event },
+  });
+  if (w) realtime.emitToUser(
+    w.wallet.usher.userId,
+    success ? RT.WITHDRAWAL_COMPLETED : RT.WITHDRAWAL_FAILED,
+    withdrawalEvent(w.id, success ? 'PAID' : 'FAILED', w.amount),
+  );
 }
 
-async function handleTransferFailed(
+/** A callback only wakes read-only reconciliation; it never authorizes a POST. */
+async function handleRefundEvent(
   prisma: PrismaClient,
-  key: string,
-  ref: string,
-  event: string,
-  realtime: RealtimeGateway,
+  evt: PaystackEvent,
+  paystack?: PaystackPort,
 ): Promise<void> {
-  const w = await findWithdrawalByTransferRef(prisma, ref);
-  if (!w) return;
-  // failWithdrawal locks the row, re-credits the wallet at most once, and no-ops
-  // if already FAILED — so racing/duplicate failed+reversed events can't apply
-  // multiple reversals or restore funds on an already-settled withdrawal.
-  const failed = await runIdempotent(prisma, key, 'paystack_event_id', (tx) => failWithdrawal(tx, w.id));
-  if (failed.duplicate || failed.result === false) return;
-  await safeAudit({ actorId: null, action: 'withdrawal.failed', target: w.id, metadata: { ref, event } });
-  realtime.emitToUser(w.wallet.usher.userId, RT.WITHDRAWAL_FAILED, withdrawalEvent(w.id, 'FAILED', w.amount));
+  const note = evt.data.merchant_note;
+  const transaction = evt.data.transaction;
+  const chargeRef = evt.data.transaction_reference ??
+    (typeof transaction === 'string' ? transaction :
+      typeof transaction === 'object' && transaction ? transaction.reference : undefined);
+  if (!note && !chargeRef) return;
+  const operations = await prisma.paymentOperation.findMany({
+    where: {
+      kind: 'BOOKING_REFUND',
+      // Do not steal attempt 1 from an intent committed just before a different
+      // booking's callback. Only the request runner can initiate that refund.
+      OR: [{ status: 'PENDING', attempts: { gt: 0 } }, { status: 'PROVIDER_OK' }],
+      ...(note ? { dedupeKey: note } : { payload: { path: ['chargeReference'], equals: chargeRef! } }),
+    },
+  });
+  if (!operations.length) return;
+  if (!paystack) throw new Error('Refund reconciliation requires the payment provider');
+  for (const operation of operations) {
+    const result = await driveRefund({ prisma, paystack }, operation, true);
+    // Preserve provider retries when the read side has not caught up with the
+    // terminal event, or verification failed. Scheduled recovery also remains.
+    if (result.status === 'PENDING' && ['refund.processed', 'refund.failed'].includes(evt.event))
+      throw new Error('Terminal refund evidence is not yet available');
+  }
 }
 
-/** Dispatch a verified event into the ledger. Idempotency is keyed per event. */
+/** Dispatch a verified event; repeated financial effects are guarded in the DB. */
 export async function dispatchPaystackEvent(
   prisma: PrismaClient,
   evt: PaystackEvent,
@@ -157,13 +246,18 @@ export async function dispatchPaystackEvent(
     case 'charge.success':
       return handleChargeSuccess(prisma, key, ref, realtime, paystack);
     case 'transfer.success':
-      return handleTransferSuccess(prisma, key, ref, realtime);
+      return handleTransferTerminal(prisma, ref, evt, realtime);
     case 'transfer.failed':
     case 'transfer.reversed':
-      return handleTransferFailed(prisma, key, ref, evt.event, realtime);
+      return handleTransferTerminal(prisma, ref, evt, realtime);
+    case 'refund.processed':
+    case 'refund.failed':
+    case 'refund.pending':
+    case 'refund.processing':
+    case 'refund.needs-attention':
+      return handleRefundEvent(prisma, evt, paystack);
     default:
-      // refund.processed and others: acknowledged; ledger already reflects the
-      // refund we initiated. Extend per event as needed.
+      // Unhandled provider events do not mutate the ledger.
       return;
   }
 }
@@ -186,9 +280,9 @@ export function paystackWebhookRouter(deps: {
     }
     let evt: PaystackEvent;
     try {
-      evt = JSON.parse(raw.toString('utf8')) as PaystackEvent;
+      evt = paystackEventSchema.parse(JSON.parse(raw.toString('utf8')));
     } catch {
-      res.status(400).json({ error: { code: 'BAD_PAYLOAD', message: 'invalid json' } });
+      res.status(400).json({ error: { code: 'BAD_PAYLOAD', message: 'invalid event payload' } });
       return;
     }
     dispatchPaystackEvent(deps.prisma, evt, deps.realtime ?? noopGateway, deps.paystack).then(

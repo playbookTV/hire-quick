@@ -222,6 +222,7 @@ enum MilestoneStatus {
 }
 
 enum NotificationType {
+  CHECKOUT_UPDATED
   INVITATION_RECEIVED
   APPLICATION_RECEIVED
   BOOKING_CONFIRMED
@@ -445,6 +446,34 @@ model SavedJob {
 }
 
 // ---------- orders / bookings / payments ----------
+enum CheckoutState {
+  CREATED
+  INITIALIZING
+  READY
+  REVIEW
+  EXPIRED
+  PAID
+  REFUND_PENDING
+  REFUNDED
+}
+
+model Checkout {
+  orderId          String        @id @db.Uuid
+  order            Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  reference        String        @unique
+  email            String
+  authorizationUrl String?
+  state            CheckoutState @default(CREATED)
+  attemptedAt      DateTime?      @db.Timestamptz(6)
+  expiresAt        DateTime       @db.Timestamptz(6)
+  lastCheckedAt    DateTime?      @db.Timestamptz(6)
+  createdAt        DateTime       @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime       @updatedAt @db.Timestamptz(6)
+
+  @@index([state, expiresAt])
+  @@map("checkouts")
+}
+
 model Order {
   id                String      @id @default(uuid()) @db.Uuid
   clientId          String      @db.Uuid
@@ -458,6 +487,7 @@ model Order {
   updatedAt         DateTime    @updatedAt @db.Timestamptz(6)
 
   bookings Booking[]
+  checkout Checkout?
 
   @@index([clientId])
   @@index([eventId])

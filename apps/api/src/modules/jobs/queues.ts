@@ -17,6 +17,7 @@ import {
   jobResumePaymentOps,
   jobRetentionPurge,
   jobAuditVerify,
+  jobCheckouts,
 } from './jobs.js';
 
 export const QUEUE_NAME = 'hirequick-jobs';
@@ -26,6 +27,7 @@ export const SCHEDULES: ReadonlyArray<{ name: string; pattern: string }> = [
   { name: 'noshow', pattern: '3-59/10 * * * *' }, // offset 3 min
   { name: 'reconcile', pattern: '17 3 * * *' }, // daily 03:17 — the §17 alarm
   { name: 'commission', pattern: '23 4 * * *' }, // daily 04:23 (D3)
+  { name: 'checkouts', pattern: '2-59/5 * * * *' },
   { name: 'resumeOps', pattern: '*/15 * * * *' }, // resume durable payment ops + reconcile stuck withdrawals (§10/§17)
   { name: 'retentionPurge', pattern: '41 2 * * *' }, // daily 02:41 — NDPR purge (§14)
   { name: 'auditVerify', pattern: '47 2 * * *' }, // daily 02:47 — audit chain integrity
@@ -44,7 +46,7 @@ export async function scheduleAll(queue: Queue): Promise<void> {
 
 export function createWorker(): Worker {
   const deps = { prisma, paystack: new HttpPaystack(env.PAYSTACK_SECRET_KEY) };
-  // Worker holds no sockets — publish to the same Redis channels the API adapter reads.
+  // Worker holds no sockets — publish to the same guarded Redis channels the API subscribes to.
   const realtime = createEmitterGateway(env.REDIS_URL);
   const storage = createStorageFromEnv(env);
   const processor: Processor = async (job) => {
@@ -57,6 +59,8 @@ export function createWorker(): Worker {
         return jobReconcile(deps, realtime);
       case 'commission':
         return jobCommissionSweep(deps);
+      case 'checkouts':
+        return jobCheckouts(deps);
       case 'resumeOps':
         return jobResumePaymentOps(deps, realtime);
       case 'retentionPurge':
@@ -67,5 +71,7 @@ export function createWorker(): Worker {
         return undefined;
     }
   };
-  return new Worker(QUEUE_NAME, processor, { connection: redisConnection() });
+  const worker = new Worker(QUEUE_NAME, processor, { connection: redisConnection() });
+  worker.once('closed', () => realtime.close());
+  return worker;
 }

@@ -118,6 +118,7 @@ Ledger functions (all in `payments/ledger/ledger.ts`):
 | `freezeBooking(tx, bookingId)` | Dispute: booking → DISPUTED, escrow → FROZEN. |
 | `requestWithdrawal / completeWithdrawal / failWithdrawal` | Wallet → bank lifecycle (see §7). |
 | `commissionSweep(tx, amount)` | COMMISSION_SWEEP platform-level entry (D3). |
+| `reverseCommissionSweep(tx, amount)` | Positive COMMISSION_SWEEP compensating a returned transfer, guarded by the original operation lock. |
 
 ---
 
@@ -142,7 +143,19 @@ The wallet is debited **before** the transfer fires, and a failed transfer
 reverses the debit — so a failure never loses the usher's money, and there is no
 window where the same balance can be withdrawn twice (the row lock guarantees
 exactly one of two racing withdrawals succeeds). `WITHDRAWAL_TRANSITIONS` makes
-`PAID` and `FAILED` terminal; a retry creates a fresh withdrawal.
+`FAILED` terminal. A confirmed reversal can move `PAID` to `FAILED` and restore
+the balance once. A timeout, lost response, or pending provider result leaves
+the withdrawal `PROCESSING` with its debit intact until authoritative settlement.
+
+The API receipt returns the persisted status, amount, destination ID, and current
+wallet balance. Mobile renders requested/pending/completed/failed separately.
+An unresolved request's key and payload are saved in per-user SecureStore before
+dispatch and reused after screen close or restart. A rejection on a later retry
+cannot erase evidence that the first request may have been accepted.
+Validated receipts also remain saved until the user presses Done. Receipt
+acknowledgment and new submission are coordinated per user so closing a receipt
+cannot erase a newer request. Response-contract failures after dispatch return
+500 and preserve the original retry key.
 
 ---
 
@@ -155,9 +168,13 @@ All Paystack access goes through one interface — `PaystackPort`
 interface PaystackPort {
   initializeCharge(...)        // hosted checkout URL + reference
   verifyChargeKobo(reference)  // confirm a charge
+  listBanks()                 // complete Nigerian bank directory
+  resolveAccount(...)         // registered destination name
   createTransferRecipient(...) // register an usher bank account
   transfer(...)                // pay out / commission sweep
+  verifyTransfer(reference)    // read authoritative transfer status
   refund(...)                  // refund a charge
+  verifyRefund(...)            // read-only reconciliation of a refund intent
   getBalanceKobo()             // current Balance — reconciled daily
 }
 ```
@@ -171,6 +188,11 @@ Two implementations:
 - **`HttpPaystack`** — the real client against the Paystack REST API, used in
   **TEST mode** (never live keys in dev/CI). Money is kobo end-to-end, matching
   the ledger.
+
+The HTTP implementation validates response references, NGN currency and integer
+amounts, imposes deadlines, and bounds bank/refund pagination. Unknown provider
+statuses throw rather than being mistaken for a missing transfer. New charge
+references use `hq-<order-id>`; existing stored references are retained on retry.
 
 The app receives the port via dependency injection: `createApp({ paystack,
 paystackSecret })`. The payments router and webhook mount only when a port is
@@ -191,18 +213,22 @@ POST /webhooks/paystack
    │
 [1] verify HMAC-SHA512 signature over the RAW body
    │     bad signature → 401 BAD_SIGNATURE
-[2] parse JSON  (bad → 400 BAD_PAYLOAD)
-[3] dedupe by event id/reference (idempotency_keys)   ← replay-safe
+[2] validate event shape  (bad → 400 BAD_PAYLOAD)
+[3] dedupe charge references; lock transfer operation and financial target
 [4] dispatch into the ledger:
         charge.success    → holdOrder()
-        transfer.success  → completeWithdrawal()
-        transfer.failed   → failWithdrawal()
+        transfer.success  → completeWithdrawal() or commissionSweep()
+        transfer.failed / transfer.reversed → compensation and FAILED operation
+        refund.*          → read-only reconciliation of dispatched refund intents
    │
    └─ success or duplicate → 200   |   handler error → 500 (Paystack retries with backoff)
 ```
 
 Signature verification uses `timingSafeEqual` over the raw buffer. A 500 on a
 handler error is intentional: nothing is dropped silently — Paystack retries.
+Transfer callbacks commit operation state and ledger effects together. Refund
+callbacks cannot consume an undispatched intent's first attempt or create a new
+refund. A terminal refund callback with unavailable read evidence returns 500.
 
 ---
 
@@ -213,7 +239,7 @@ It recomputes the **expected** Paystack Balance from ledger aggregates and
 compares it against the **real** balance:
 
 ```
-expected = Σ HOLD  +  Σ REFUND(neg)  +  Σ COMMISSION_SWEEP(neg)  −  Σ withdrawalsPaid
+expected = Σ HOLD  +  Σ REFUND(neg)  +  Σ COMMISSION_SWEEP(signed)  −  Σ withdrawalsPaid
 
 drift = actual (Paystack.getBalanceKobo()) − expected
 ok    = drift === 0
@@ -244,8 +270,52 @@ Money operations must be safe to retry.
 - **Webhooks:** dedupe by Paystack event id/reference, so an at-least-once
   webhook delivery produces exactly one ledger effect.
 
+Withdrawal keys additionally bind the caller and request fingerprint. Concurrent
+replays serialize before lookup; a changed amount or bank under the same key
+returns a conflict. Legacy results are adopted only after ownership and payload
+checks. Other HTTP scopes retain their existing unbound format pending OVA-147.
+
 Replaying a hold, a confirm, or a withdrawal therefore produces **exactly one**
 effect.
+
+### Durable external operations
+
+`PaymentOperation` bridges database commits and provider calls. The request and
+recovery worker use the same runner:
+
+1. Commit the intent and its immutable amount/reference. Withdrawal intent shares
+   the wallet-debit transaction; approval intent shares the checker decision.
+   Refund intent reserves the booking under its row lock after checking the
+   escrow balance and legal transitions. Release and attendance reject reserved
+   bookings. Pending commission intents reserve fees across sweep periods.
+2. Commit the dispatch attempt before contacting Paystack. Provider calls run
+   outside database transactions. Later attempts reconcile the original intent.
+3. Persist authoritative success as `PROVIDER_OK` in a separate transaction.
+4. Lock and reread the operation, then commit its ledger effects and `RECORDED`
+   together. A recording failure retains `PROVIDER_OK`; competing workers cannot
+   append the same effects twice. Confirmed failure and wallet compensation also
+   commit together.
+
+Paystack transfer retries reuse the original reference after verification.
+Refunds have a stricter boundary: once dispatch may have happened, recovery only
+reads provider evidence. It resolves the charge to a transaction ID, pages refund
+results, and validates the matching reference, amount, currency, and status.
+A missing record after an ambiguous attempt remains pending for operator
+reconciliation; it does **not** authorize another refund POST. This also means a
+crash after the dispatch marker but before the POST needs operator review. Queued
+refunds and pending transfers do not produce completed ledger entries. See the
+[Paystack refund API](https://paystack.com/docs/api/refund/) and
+[transfer lifecycle](https://paystack.com/docs/transfers/single-transfers/).
+
+Approvals remain `APPROVED` until their action completes, then become `EXECUTED`.
+Dispute release commits its payout and resolution together; refund intents carry
+the resolution metadata into settlement. Recovery also reconstructs older
+missing withdrawal/approval intents and repairs completed payouts/refunds whose
+dispute metadata was stranded. Older uncertain refunds are reconciled without
+blind reissue. A returned recorded sweep appends one positive COMMISSION_SWEEP
+entry and marks its original operation FAILED; duplicate callbacks cannot repeat
+the compensation. Durable notification delivery and operator triage remain
+separate follow-up work.
 
 ---
 
@@ -258,6 +328,13 @@ concurrent mutations of the same booking/order/wallet.
 The canonical test (`payments/__tests__/concurrency.test.ts`) fires two parallel
 withdrawals of the same balance from separate connections and asserts **exactly
 one succeeds** — proving the `FOR UPDATE` lock holds.
+
+When validating in an alternate schema, verify that raw SQL and Prisma queries
+both target it. In the live database validation, `schema=<name>` alone did not
+reliably route raw queries. Use the direct endpoint and an explicit connection
+option `options=-c%20search_path%3D<name>`, then check `current_schema()` across
+concurrent connections before running fixtures. Do not use the pooled endpoint
+for migrations: session advisory locks can outlive the migration client.
 
 ---
 
@@ -307,7 +384,8 @@ REFUNDED        → (terminal)
 ```
 
 **Order:** `PENDING → PAID → PARTIALLY_REFUNDED → REFUNDED` (partial can loop).
-**Withdrawal:** `REQUESTED → PROCESSING → PAID`; `FAILED` from either; `PAID`/`FAILED` terminal.
+**Withdrawal:** `REQUESTED → PROCESSING → PAID`; failure can enter `FAILED`,
+including `PAID → FAILED` for a confirmed reversal. `FAILED` is terminal.
 
 The tables are exported as data so tests can exhaustively check every
 `(from, to)` pair.

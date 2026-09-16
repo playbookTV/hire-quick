@@ -8,10 +8,14 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '@hq/database';
+import { registerDevice } from '../privacy/consent.js';
 import { setAvailabilitySchema, MAX_PORTFOLIO_PHOTOS } from '@hq/shared';
 import { ApiError } from '../../app.js';
 import { requireAuth, type AuthedRequest } from '../auth/middleware.js';
 import { writeAudit } from '../audit.js';
+import { submitDocumentVerification } from '../verification/service.js';
+import { lockUsherSchedules } from '../events/eligibility.js';
+import { VACATED_BOOKING_STATUSES } from '../events/staffing.js';
 import {
   type StoragePort,
   verificationKey,
@@ -199,9 +203,7 @@ export function profileRouter(storage?: StoragePort): Router {
       if (storage && (!ownsVerificationKey(usher.id, body.idDocumentUrl) || !ownsVerificationKey(usher.id, body.selfieUrl))) {
         throw new ApiError(400, 'INVALID_DOCUMENT_KEY', 'documents must be uploaded via /verification/upload-url');
       }
-      const v = await prisma.usherVerification.create({
-        data: { usherId: usher.id, idDocumentUrl: body.idDocumentUrl, selfieUrl: body.selfieUrl, status: 'PENDING' },
-      });
+      const v = await submitDocumentVerification(prisma, usher.id, body);
       res.status(201).json({ id: v.id, status: v.status });
     }),
   );
@@ -310,20 +312,7 @@ export function profileRouter(storage?: StoragePort): Router {
       const { fcmToken, platform } = z
         .object({ fcmToken: z.string().min(8), platform: z.enum(['IOS', 'ANDROID']) })
         .parse(req.body);
-      await prisma.deviceToken.upsert({
-        where: { fcmToken },
-        update: { userId: req.auth.userId, platform, lastSeenAt: new Date() },
-        create: { userId: req.auth.userId, fcmToken, platform },
-      });
-      // Registering a device is the consent signal for push (NDPR). Record it
-      // explicitly, but don't clobber a prior withdrawal — re-registering only
-      // (re)grants when not already on record as granted.
-      await prisma.consentRecord.upsert({
-        where: { userId_purpose: { userId: req.auth.userId, purpose: 'PUSH_NOTIFICATIONS' } },
-        update: { granted: true, withdrawnAt: null, grantedAt: new Date() },
-        create: { userId: req.auth.userId, purpose: 'PUSH_NOTIFICATIONS', granted: true, source: 'EXPLICIT' },
-      });
-      res.status(201).json({ registered: true });
+      res.status(201).json(await registerDevice(req.auth.userId, fcmToken, platform));
     }),
   );
 
@@ -354,11 +343,26 @@ export function profileRouter(storage?: StoragePort): Router {
       if (!usher) throw new ApiError(403, 'NOT_AN_USHER', 'only ushers set availability');
       const body = setAvailabilitySchema.parse(req.body);
       const date = new Date(body.date);
-      const row = await prisma.availability.upsert({
-        where: { usherId_date: { usherId: usher.id, date } },
-        update: { status: body.status },
-        create: { usherId: usher.id, date, status: body.status },
-      });
+      const row = await prisma.$transaction(async (tx) => {
+        // Serialize with confirmation even when this availability row does not yet exist.
+        await lockUsherSchedules(tx, [usher.id]);
+        if (body.status !== 'AVAILABLE') {
+          const booked = await tx.booking.findFirst({
+            where: {
+              usherId: usher.id,
+              status: { notIn: VACATED_BOOKING_STATUSES },
+              event: { eventDate: date },
+            },
+            select: { id: true },
+          });
+          if (booked) throw new ApiError(409, 'SCHEDULE_CONFLICT', 'this date already has a booking; manage the booking before changing availability');
+        }
+        return tx.availability.upsert({
+          where: { usherId_date: { usherId: usher.id, date } },
+          update: { status: body.status },
+          create: { usherId: usher.id, date, status: body.status },
+        });
+      }, { timeout: 30_000, maxWait: 30_000 });
       res.json(row);
     }),
   );

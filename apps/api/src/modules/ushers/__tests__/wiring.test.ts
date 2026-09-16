@@ -115,6 +115,12 @@ describe('review after payout', () => {
 describe('client cancels confirmed booking', () => {
   it('full-refund window → REFUNDED', async () => {
     scenario = await createScenario({ headcount: 1, amountKobo: 1_000_000 });
+    // This case requires more than 48 hours before the event, regardless of
+    // the calendar date on which the suite is run.
+    await prisma.event.update({
+      where: { id: scenario.eventId },
+      data: { eventDate: new Date(Date.now() + 7 * 24 * 3_600_000) },
+    });
     await prisma.$transaction((tx) => holdOrder(tx, scenario!.orderId, 'chg_cancel'));
     const token = await signAccessToken(scenario.clientUserId, 'CLIENT');
     const res = await request(app)
@@ -123,7 +129,7 @@ describe('client cancels confirmed booking', () => {
       .send({ reason: 'change of plans' });
     expect(res.status).toBe(200);
     expect(res.body.status).toBe('REFUNDED');
-    const booking = await prisma.booking.findUniqueOrThrow({ where: { id: scenario.bookingIds[0] } });
+    const booking = await prisma.booking.findUniqueOrThrow({ where: { id: scenario.bookingIds[0]! } });
     expect(booking.status).toBe('REFUNDED');
   });
 });

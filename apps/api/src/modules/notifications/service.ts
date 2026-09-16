@@ -16,22 +16,27 @@ interface Target {
 }
 
 async function deliver(userId: string, title: string, body: string): Promise<void> {
-  const [user, tokens] = await Promise.all([
-    prisma.user.findUnique({ where: { id: userId }, select: { email: true } }),
-    prisma.deviceToken.findMany({ where: { userId }, select: { fcmToken: true } }),
-  ]);
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
   if (user?.email) await sendEmail(user.email, title, `<p>${body}</p>`);
-  if (tokens.length === 0) return; // nothing to push → skip the consent lookup
-  // Push unless consent was explicitly withdrawn. Absence of a record means
-  // implicit consent (registering a device is the signal), so existing tokens
-  // keep working; an explicit withdraw (granted=false) suppresses push.
-  const pushConsent = await prisma.consentRecord.findUnique({
-    where: { userId_purpose: { userId, purpose: 'PUSH_NOTIFICATIONS' } },
-    select: { granted: true },
-  });
-  if (pushConsent?.granted !== false) {
-    for (const t of tokens) recordPush(t.fcmToken, `${title}: ${body}`);
-  }
+  await deliverPush(userId, `${title}: ${body}`);
+}
+
+/** Both chat and lifecycle pushes honor the same explicit permission. */
+export async function deliverPush(userId: string, summary: string): Promise<void> {
+  // Device registration does not grant permission. Only an explicit grant
+  // permits push, including for legacy tokens without a consent record.
+  await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId}::uuid FOR SHARE`;
+    const consent = await tx.consentRecord.findUnique({
+      where: { userId_purpose: { userId, purpose: 'PUSH_NOTIFICATIONS' } },
+      select: { granted: true },
+    });
+    if (consent?.granted !== true) return;
+    const tokens = await tx.deviceToken.findMany({ where: { userId }, select: { fcmToken: true } });
+    // Only scheduling the transport happens under the lock; no provider request
+    // is awaited. A withdrawal prevents subsequent dispatch, not in-flight sends.
+    for (const token of tokens) recordPush(token.fcmToken, summary);
+  }, { timeout: 30_000, maxWait: 30_000 });
 }
 
 /**
@@ -122,13 +127,5 @@ export function notifyMilestoneUnlocked(usherUserId: string, rewardName: string)
 
 export function notifyNewMessage(recipientUserId: string): void {
   // Push-only (per-message email would be spam).
-  safe(
-    (async () => {
-      const tokens = await prisma.deviceToken.findMany({
-        where: { userId: recipientUserId },
-        select: { fcmToken: true },
-      });
-      for (const t of tokens) recordPush(t.fcmToken, 'New message on a booking');
-    })(),
-  );
+  safe(deliverPush(recipientUserId, 'New message on a booking'));
 }

@@ -35,12 +35,14 @@ describe('compliance (NDPR §14)', () => {
     const original = row!.action;
 
     await prisma.auditLog.update({ where: { id: row!.id }, data: { action: `${original}-TAMPERED` } });
-    const broken = await verifyAuditChain();
-    expect(broken.ok).toBe(false);
-    expect(broken.brokenAt?.reason).toContain('entryHash');
-
-    // Restore so the global chain is valid for any later suite.
-    await prisma.auditLog.update({ where: { id: row!.id }, data: { action: original } });
+    try {
+      const broken = await verifyAuditChain();
+      expect(broken.ok).toBe(false);
+      expect(broken.brokenAt?.reason).toContain('entryHash');
+    } finally {
+      // Restore even when an assertion fails, preserving later suites' chain.
+      await prisma.auditLog.update({ where: { id: row!.id }, data: { action: original } });
+    }
     expect((await verifyAuditChain()).ok).toBe(true);
   });
 

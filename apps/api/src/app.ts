@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { createRateLimiters } from './middleware/rate-limit.js';
 import { logger } from './logger.js';
 import type { StoragePort } from './modules/storage/storage.js';
+import { chatMediaRouter } from './modules/storage/chat-media-routes.js';
 import { ZodError } from 'zod';
 import { prisma } from '@hq/database';
 import { paystackWebhookRouter } from './modules/payments/webhooks/paystack-webhook.js';
@@ -123,6 +124,7 @@ export function createApp(config: AppConfig = {}): Express {
   app.use('/api/legal', legalRouter());
   app.use('/api/admin', adminRouter({ realtime, storage: config.storage, paystack: config.paystack }));
   app.use('/api', bookingsRouter({ realtime, paystack: config.paystack }));
+  app.use('/api', chatMediaRouter(config.storage));
   app.use('/api', ushersRouter(config.storage));
 
   // Events (incl. read-only applications/saved-jobs) are independent of payments;
@@ -138,6 +140,18 @@ export function createApp(config: AppConfig = {}): Express {
   });
 
   app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
+    // Parser errors precede route validation and can carry the raw request body.
+    // Keep them out of unexpected-error logs and the public response envelope.
+    if (typeof err === 'object' && err !== null && 'type' in err) {
+      if (err.type === 'entity.parse.failed') {
+        res.status(400).json({ error: { code: 'VALIDATION', message: 'Invalid JSON request' } });
+        return;
+      }
+      if (err.type === 'entity.too.large') {
+        res.status(413).json({ error: { code: 'PAYLOAD_TOO_LARGE', message: 'Request body is too large' } });
+        return;
+      }
+    }
     if (err instanceof ZodError) {
       res.status(400).json({ error: { code: 'VALIDATION', message: 'Invalid request', issues: err.issues } });
       return;
