@@ -8,7 +8,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, Box, Text } from '../theme/restyle.js';
 import { AnimatedPressable } from './Pressable.js';
 
-export function BottomNav({ state, descriptors, navigation }: BottomTabBarProps): React.JSX.Element {
+export function BottomNav({
+  state,
+  descriptors,
+  navigation,
+}: BottomTabBarProps): React.JSX.Element {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -31,7 +35,11 @@ export function BottomNav({ state, descriptors, navigation }: BottomTabBarProps)
         const label = typeof options.title === 'string' ? options.title : route.name;
 
         const onPress = () => {
-          const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+          const event = navigation.emit({
+            type: 'tabPress',
+            target: route.key,
+            canPreventDefault: true,
+          });
           if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
         };
 
@@ -43,7 +51,13 @@ export function BottomNav({ state, descriptors, navigation }: BottomTabBarProps)
             accessibilityRole="tab"
             accessibilityState={{ selected: focused }}
             accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
-            style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 4 }}
+            style={{
+              flex: 1,
+              minHeight: 44,
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 4,
+            }}
           >
             {options.tabBarIcon?.({ focused, color, size: 24 })}
             <Text

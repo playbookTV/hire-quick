@@ -61,22 +61,36 @@ function CheckInBody({ booking }: Readonly<{ booking: Booking }>): React.JSX.Ele
     verify.mutate(code, {
       onSuccess: () => hapticSuccess(),
       onError: (e: unknown) =>
-        setError(e instanceof Error ? e.message : 'That code didn’t match. Ask the host to read it again.'),
+        setError(
+          e instanceof Error ? e.message : 'That code didn’t match. Ask the host to read it again.',
+        ),
     });
   };
 
   const ev = booking.event;
   const host = ev?.client?.displayName;
-  const pay = money(booking.amount);
+  const pay = booking.payment ? money(booking.payment.usherPayout) : null;
+  const released = booking.payment?.escrowStatus === 'RELEASED';
 
   return (
     <Box style={{ gap: 20 }}>
       {/* event context — recognition, not recall */}
       {ev ? (
-        <Box backgroundColor="bgSurface" borderWidth={1} borderColor="borderDefault" borderRadius="lg" padding="400" style={{ gap: 8 }}>
-          <Text variant="titleM" numberOfLines={2}>{ev.title}</Text>
+        <Box
+          backgroundColor="bgSurface"
+          borderWidth={1}
+          borderColor="borderDefault"
+          borderRadius="lg"
+          padding="400"
+          style={{ gap: 8 }}
+        >
+          <Text variant="titleM" numberOfLines={2}>
+            {ev.title}
+          </Text>
           <ContextRow icon="calendar" text={formatEventDate(ev.eventDate)} />
-          {ev.startTime && ev.endTime ? <ContextRow icon="clock" text={formatTimeRange(ev.startTime, ev.endTime)} /> : null}
+          {ev.startTime && ev.endTime ? (
+            <ContextRow icon="clock" text={formatTimeRange(ev.startTime, ev.endTime)} />
+          ) : null}
           {ev.venue ? <ContextRow icon="map-pin" text={ev.venue} /> : null}
           {host ? <ContextRow icon="user" text={`Hosted by ${host}`} /> : null}
         </Box>
@@ -87,16 +101,26 @@ function CheckInBody({ booking }: Readonly<{ booking: Booking }>): React.JSX.Ele
           <Box style={{ gap: 4 }}>
             <Text variant="h2">You’re booked — check in on arrival</Text>
             <Text variant="body" color="inkMuted">
-              Ask the event host for your 6-digit check-in code, then enter it below to confirm you’ve arrived.
+              Ask the event host for your 6-digit check-in code, then enter it below to confirm
+              you’ve arrived.
             </Text>
           </Box>
 
           <CodeField value={code} onChange={setCode} />
 
           {error ? (
-            <Box flexDirection="row" alignItems="center" backgroundColor="statusDangerTint" borderRadius="md" padding="300" style={{ gap: 8 }}>
+            <Box
+              flexDirection="row"
+              alignItems="center"
+              backgroundColor="statusDangerTint"
+              borderRadius="md"
+              padding="300"
+              style={{ gap: 8 }}
+            >
               <Icon name="alert-circle" size={16} color="statusDanger" />
-              <Text variant="bodySm" color="statusDanger" style={{ flex: 1 }}>{error}</Text>
+              <Text variant="bodySm" color="statusDanger" style={{ flex: 1 }}>
+                {error}
+              </Text>
             </Box>
           ) : null}
 
@@ -108,10 +132,18 @@ function CheckInBody({ booking }: Readonly<{ booking: Booking }>): React.JSX.Ele
           />
 
           {/* the payment-confidence reassurance — the whole point of checking in */}
-          <Box flexDirection="row" alignItems="center" backgroundColor="brandEmeraldTintWeak" borderRadius="md" padding="300" style={{ gap: 8 }}>
+          <Box
+            flexDirection="row"
+            alignItems="center"
+            backgroundColor="brandEmeraldTintWeak"
+            borderRadius="md"
+            padding="300"
+            style={{ gap: 8 }}
+          >
             <Icon name="shield" size={18} color="brandEmerald" />
             <Text variant="bodySm" color="brandEmerald" style={{ flex: 1 }}>
-              Your {pay} is held safely. It’s released to your wallet once the host confirms the event is done.
+              {pay ? `Your payout after the platform fee is ${pay}. ` : ''}Funds stay held until
+              attendance is recorded and the booking is completed.
             </Text>
           </Box>
         </Box>
@@ -120,19 +152,27 @@ function CheckInBody({ booking }: Readonly<{ booking: Booking }>): React.JSX.Ele
           tone="success"
           icon="check"
           title="You’re checked in"
-          body={`Nice one. Your ${pay} is locked in and will be released to your wallet after the event ends — we’ll let you know the moment it lands.`}
+          body={
+            pay
+              ? `Your payout after the platform fee is ${pay}. It will be released when the booking is completed after the event.`
+              : 'Your attendance is recorded. Check your wallet for your payout once the booking is completed.'
+          }
           amountLabel="YOUR PAY"
-          amount={pay}
+          amount={pay ?? undefined}
           primary={{ label: 'Done', onPress: () => router.back() }}
         />
       ) : booking.status === 'PAID' || booking.status === 'COMPLETED' ? (
         <ResultState
           tone="success"
           icon="check-circle"
-          title="Paid"
-          body={`Your ${pay} for this event has been released to your wallet.`}
-          amountLabel="EARNED"
-          amount={pay}
+          title={released ? 'Released to your wallet' : 'Booking completed'}
+          body={
+            released && pay
+              ? `Your ${pay} payout after the platform fee has been released to your wallet.`
+              : 'Check your wallet for the latest payout status.'
+          }
+          amountLabel={released ? 'EARNED' : 'EXPECTED PAYOUT'}
+          amount={pay ?? undefined}
           primary={{ label: 'View wallet', onPress: () => router.replace('/(usher)/wallet') }}
         />
       ) : (
@@ -148,20 +188,34 @@ function CheckInBody({ booking }: Readonly<{ booking: Booking }>): React.JSX.Ele
   );
 }
 
-function ContextRow({ icon, text }: Readonly<{ icon: React.ComponentProps<typeof Icon>['name']; text: string }>): React.JSX.Element {
+function ContextRow({
+  icon,
+  text,
+}: Readonly<{ icon: React.ComponentProps<typeof Icon>['name']; text: string }>): React.JSX.Element {
   return (
     <Box flexDirection="row" alignItems="center" style={{ gap: 8 }}>
       <Icon name={icon} size={16} color="inkMuted" />
-      <Text variant="bodySm" color="inkMuted" style={{ flex: 1 }} numberOfLines={1}>{text}</Text>
+      <Text variant="bodySm" color="inkMuted" style={{ flex: 1 }} numberOfLines={1}>
+        {text}
+      </Text>
     </Box>
   );
 }
 
 /** Big, centred 6-digit field — mirrors the host's code card so the two read as one object. */
-function CodeField({ value, onChange }: Readonly<{ value: string; onChange: (v: string) => void }>): React.JSX.Element {
+function CodeField({
+  value,
+  onChange,
+}: Readonly<{ value: string; onChange: (v: string) => void }>): React.JSX.Element {
   const theme = useTheme();
   return (
-    <Box backgroundColor="bgSurface" borderWidth={1} borderColor="borderStrong" borderRadius="lg" style={{ paddingVertical: 20, paddingHorizontal: 16 }}>
+    <Box
+      backgroundColor="bgSurface"
+      borderWidth={1}
+      borderColor="borderStrong"
+      borderRadius="lg"
+      style={{ paddingVertical: 20, paddingHorizontal: 16 }}
+    >
       <TextInput
         value={value}
         onChangeText={(t) => onChange(t.replace(/\D/g, '').slice(0, 6))}
@@ -193,18 +247,60 @@ interface ResultProps {
   primary: { label: string; onPress: () => void };
 }
 
-function ResultState({ tone, icon, title, body, amountLabel, amount, primary }: Readonly<ResultProps>): React.JSX.Element {
+function ResultState({
+  tone,
+  icon,
+  title,
+  body,
+  amountLabel,
+  amount,
+  primary,
+}: Readonly<ResultProps>): React.JSX.Element {
   const theme = useTheme();
   return (
     <Box alignItems="center" style={{ gap: 16, paddingTop: 8 }}>
-      <IconCircle icon={icon} tone={tone} size={96} iconColor={tone === 'success' ? 'statusSuccess' : 'inkMuted'} />
-      <Text variant="h2" style={{ textAlign: 'center' }}>{title}</Text>
-      <Text variant="bodyLg" color="inkMuted" style={{ textAlign: 'center' }}>{body}</Text>
+      <IconCircle
+        icon={icon}
+        tone={tone}
+        size={96}
+        iconColor={tone === 'success' ? 'statusSuccess' : 'inkMuted'}
+      />
+      <Text variant="h2" style={{ textAlign: 'center' }}>
+        {title}
+      </Text>
+      <Text variant="bodyLg" color="inkMuted" style={{ textAlign: 'center' }}>
+        {body}
+      </Text>
 
       {amount && amountLabel ? (
-        <Box alignSelf="stretch" alignItems="center" borderRadius="lg" style={[{ backgroundColor: theme.colors.brandEmerald, paddingVertical: 20, paddingHorizontal: 24, gap: 4 }, shadowMd]}>
-          <Text variant="overline" color="accentGold">{amountLabel}</Text>
-      <Text style={{ fontFamily: fonts.displayBlack, fontSize: 40, lineHeight: 44, letterSpacing: -1.5 }} color="inverseInk">{amount}</Text>
+        <Box
+          alignSelf="stretch"
+          alignItems="center"
+          borderRadius="lg"
+          style={[
+            {
+              backgroundColor: theme.colors.brandSurface,
+              paddingVertical: 20,
+              paddingHorizontal: 24,
+              gap: 4,
+            },
+            shadowMd,
+          ]}
+        >
+          <Text variant="overline" color="onBrandAccent">
+            {amountLabel}
+          </Text>
+          <Text
+            style={{
+              fontFamily: fonts.displayBlack,
+              fontSize: 40,
+              lineHeight: 44,
+              letterSpacing: -1.5,
+            }}
+            color="inverseInk"
+          >
+            {amount}
+          </Text>
         </Box>
       ) : null}
 
@@ -217,10 +313,17 @@ function ResultState({ tone, icon, title, body, amountLabel, amount, primary }: 
 
 function ErrorState({ onRetry }: Readonly<{ onRetry: () => void }>): React.JSX.Element {
   return (
-    <Box alignItems="center" style={{ gap: 16, paddingTop: 48, maxWidth: 360, alignSelf: 'center' }}>
+    <Box
+      alignItems="center"
+      style={{ gap: 16, paddingTop: 48, maxWidth: 360, alignSelf: 'center' }}
+    >
       <IconCircle icon="wifi-off" tone="neutral" size={96} iconColor="inkMuted" />
-      <Text variant="h2" style={{ textAlign: 'center' }}>Couldn’t load this booking</Text>
-      <Text variant="bodyLg" color="inkMuted" style={{ textAlign: 'center' }}>Check your connection and try again.</Text>
+      <Text variant="h2" style={{ textAlign: 'center' }}>
+        Couldn’t load this booking
+      </Text>
+      <Text variant="bodyLg" color="inkMuted" style={{ textAlign: 'center' }}>
+        Check your connection and try again.
+      </Text>
       <Box alignSelf="stretch" style={{ paddingTop: 4 }}>
         <Button label="Try again" onPress={onRetry} />
       </Box>

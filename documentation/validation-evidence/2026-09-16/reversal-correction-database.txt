@@ -1,0 +1,116 @@
+Completed correction run:21 passed,1 failed (concurrent transfer dispatch). Reference collision fixed; see subsequent dispatch correction. Schema cleanup verified.
+{"check":"direct_connection","schema":"public","version":"PostgreSQL 18.6 (2078fcb)","pooled":false,"logPath":"/private/tmp/hq_validation_20260916101018_64a39ace.log"}
+Created disposable schema hq_validation_20260916101018_64a39ace
+PASS raw SQL isolation on eight distinct concurrent direct connections
+START Prisma generation
+warn The configuration property `package.json#prisma` is deprecated and will be removed in Prisma 7. Please migrate to a Prisma config file (e.g., `prisma.config.ts`).
+For more information, see: https://pris.ly/prisma-config
+
+Prisma schema loaded from prisma/schema.prisma
+
+✔ Generated Prisma Client (v6.19.3) to ./../../node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client in 122ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Want to turn off tips and other hints? https://pris.ly/tip-4-nohints
+
+PASS Prisma generation
+START Tracked migrations
+warn The configuration property `package.json#prisma` is deprecated and will be removed in Prisma 7. Please migrate to a Prisma config file (e.g., `prisma.config.ts`).
+For more information, see: https://pris.ly/prisma-config
+
+Prisma schema loaded from prisma/schema.prisma
+Datasource "db": PostgreSQL database "neondb", schema "hq_validation_20260916101018_64a39ace" at "[REDACTED]"
+
+7 migrations found in prisma/migrations
+
+Applying migration `0_init`
+Applying migration `20260625145005_add_usher_discovery_client_business_notifications`
+Applying migration `20260627121512_drop_audit_actor_fk`
+Applying migration `20260628120000_compliance_remediation_consent_denylist_bvn`
+Applying migration `20260701000000_client_feedback_round1`
+Applying migration `20260914190000_checkout_recovery`
+Applying migration `20260914193000_checkout_notifications`
+
+The following migration(s) have been applied:
+
+migrations/
+  └─ 0_init/
+    └─ migration.sql
+  └─ 20260625145005_add_usher_discovery_client_business_notifications/
+    └─ migration.sql
+  └─ 20260627121512_drop_audit_actor_fk/
+    └─ migration.sql
+  └─ 20260628120000_compliance_remediation_consent_denylist_bvn/
+    └─ migration.sql
+  └─ 20260701000000_client_feedback_round1/
+    └─ migration.sql
+  └─ 20260914190000_checkout_recovery/
+    └─ migration.sql
+  └─ 20260914193000_checkout_notifications/
+    └─ migration.sql
+      
+All migrations have been successfully applied.
+PASS Tracked migrations
+START Migration drift
+warn The configuration property `package.json#prisma` is deprecated and will be removed in Prisma 7. Please migrate to a Prisma config file (e.g., `prisma.config.ts`).
+For more information, see: https://pris.ly/prisma-config
+
+No difference detected.
+
+PASS Migration drift
+START Final affected API tests
+
+ RUN  v2.1.9 /Users/leslieisah/app-dev/hire-quick/apps/api
+
+ ✓ src/modules/payments/__tests__/terminal-operations.test.ts (9 tests) 145343ms
+   ✓ terminal payment callbacks > records success atomically with a pending withdrawal and recovery never reissues it 31572ms
+   ✓ terminal payment callbacks > reverses a recorded withdrawal once and ignores later success 31700ms
+   ✓ terminal payment callbacks > rejects mismatched callback evidence without changing the operation or wallet 21631ms
+   ✓ terminal payment callbacks > records a commission callback racing recovery once and appends one reversal 5885ms
+   ✓ terminal payment callbacks > fails an unrecorded sweep without inventing ledger money 1859ms
+   ✓ terminal payment callbacks > reconciles refund.processed with GET evidence and no second POST 18594ms
+   ✓ terminal payment callbacks > reconciles refund.failed with GET evidence and no second POST 13471ms
+   ✓ terminal payment callbacks > does not consume the first dispatch of an unattempted refund from a callback 9755ms
+   ✓ charge initialization reference > preserves a legacy reference without blindly initializing its uncertain checkout 10875ms
+ ❯ src/modules/payments/__tests__/withdrawal-outcomes.test.ts (11 tests | 1 failed) 261737ms
+   ✓ withdrawal request binding and persisted outcomes > HTTP success returns PAID and the actual wallet balance 23149ms
+   ✓ withdrawal request binding and persisted outcomes > HTTP pending returns PROCESSING and the actual wallet balance 20163ms
+   ✓ withdrawal request binding and persisted outcomes > HTTP unknown returns PROCESSING and the actual wallet balance 20491ms
+   ✓ withdrawal request binding and persisted outcomes > HTTP failed returns FAILED and the actual wallet balance 22275ms
+   × withdrawal request binding and persisted outcomes > replays concurrent requests with one debit and one provider transfer 20708ms
+     → expected "transfer" to be called 1 times, but got 2 times
+   ✓ withdrawal request binding and persisted outcomes > rejects changed amount and changed destination on the same key 21842ms
+   ✓ withdrawal request binding and persisted outcomes > isolates identical keys across two callers 34964ms
+   ✓ withdrawal request binding and persisted outcomes > replays matching legacy requests, rejects owner changes, and ignores foreign legacy results 50300ms
+   ✓ withdrawal request binding and persisted outcomes > returns the persisted failure when a callback beats a successful dispatch response 22145ms
+   ✓ withdrawal request binding and persisted outcomes > refreshes replayed terminal status after a completed transfer is reversed 22989ms
+   ✓ withdrawal request binding and persisted outcomes > preserves unbound callers and serializes their concurrent first use 2711ms
+ ✓ src/modules/payments/__tests__/withdrawal-reversal.test.ts (2 tests) 81754ms
+   ✓ durable capacity-blocked withdrawal reversals > keeps a late reversal retryable and credits exactly once after capacity becomes available 66549ms
+   ✓ durable capacity-blocked withdrawal reversals > rejects mismatched terminal evidence before creating a reversal intent 14578ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/modules/payments/__tests__/withdrawal-outcomes.test.ts > withdrawal request binding and persisted outcomes > replays concurrent requests with one debit and one provider transfer
+AssertionError: expected "transfer" to be called 1 times, but got 2 times
+ ❯ src/modules/payments/__tests__/withdrawal-outcomes.test.ts:73:18
+     71|     expect(new Set(responses.map((r) => r.withdrawalId)).size).toBe(1);
+     72|     expect(responses.filter((r) => !r.duplicate)).toHaveLength(1);
+     73|     expect(send).toHaveBeenCalledTimes(1);
+       |                  ^
+     74|     expect(await prisma.walletLedger.count({ where: { walletId: s.wall…
+     75|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed | 2 passed (3)
+      Tests  1 failed | 21 passed (22)
+   Start at  11:10:43
+   Duration  490.48s (transform 252ms, setup 0ms, collect 1.50s, tests 488.83s, environment 0ms, prepare 39ms)
+
+undefined
+/Users/leslieisah/app-dev/hire-quick/apps/api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/modules/payments/__tests__/terminal-operations.test.ts src/modules/payments/__tests__/withdrawal-reversal.test.ts src/modules/payments/__tests__/withdrawal-outcomes.test.ts
+FAIL Final affected API tests exited 1
+PASS removed disposable schema hq_validation_20260916101018_64a39ace

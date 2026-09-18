@@ -27,7 +27,10 @@ interface ButtonProps {
   leftIcon?: IconName;
 }
 
-const SIZE: Record<ButtonSize, { ph: number; pv: number; radius: number; fontSize: number; lineHeight: number; ls: number }> = {
+const SIZE: Record<
+  ButtonSize,
+  { ph: number; pv: number; radius: number; fontSize: number; lineHeight: number; ls: number }
+> = {
   lg: { ph: 24, pv: 16, radius: 16, fontSize: 15, lineHeight: 20, ls: 0 },
   md: { ph: 20, pv: 12, radius: 12, fontSize: 13, lineHeight: 16, ls: 0.2 },
 };
@@ -46,8 +49,13 @@ const GRADIENT: Record<
 > = {
   // Figma stops: #15D1A2 @ -123.08%, #0B6B53 @ 76.92%. Mapped into the visible
   // 0–100% band the top resolves to ~#0F9271, then holds flat #0B6B53 past 77%.
-  primary: { colors: ['#0F9271', '#0B6B53', '#0B6B53'], locations: [0, 0.7692, 1], border: '#15D1A2', ring: '#0B6B53' },
-  danger: { colors: ['#EA4426', '#C2381F'], border: '#FFAB9C', ring: '#C2381F' },
+  primary: {
+    colors: ['#0B6B53', '#08553F', '#08553F'],
+    locations: [0, 0.7692, 1],
+    border: '#15D1A2',
+    ring: '#0B6B53',
+  },
+  danger: { colors: ['#C2381F', '#A22D17'], border: '#FFAB9C', ring: '#C2381F' },
 };
 
 // box-shadow: 0 1px 2px rgba(14,18,27,.24) drop + 0 0 0 1px <ring> outer ring.
@@ -73,6 +81,8 @@ export function Button({
   const textShadow = variant === 'primary' || variant === 'danger';
 
   const inner: ViewStyle = {
+    minHeight: 44,
+    minWidth: 44,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -95,7 +105,11 @@ export function Button({
           letterSpacing: s.ls,
           color: theme.colors[fg],
           ...(textShadow
-            ? { textShadowColor: 'rgba(0,0,0,0.27)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 0 }
+            ? {
+                textShadowColor: 'rgba(0,0,0,0.27)',
+                textShadowOffset: { width: 0, height: 1 },
+                textShadowRadius: 0,
+              }
             : null),
         }}
       >
@@ -111,7 +125,14 @@ export function Button({
         locations={GRADIENT[variant].locations}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={[inner, { borderWidth: 1, borderColor: GRADIENT[variant].border, boxShadow: ringShadow(GRADIENT[variant].ring) }]}
+        style={[
+          inner,
+          {
+            borderWidth: 1,
+            borderColor: GRADIENT[variant].border,
+            boxShadow: ringShadow(GRADIENT[variant].ring),
+          },
+        ]}
       >
         {content}
       </LinearGradient>
@@ -120,7 +141,11 @@ export function Button({
         style={[
           inner,
           styles.softShadow,
-          { backgroundColor: theme.colors.bgSurface, borderWidth: 1, borderColor: theme.colors.borderDefault },
+          {
+            backgroundColor: theme.colors.bgSurface,
+            borderWidth: 1,
+            borderColor: theme.colors.borderDefault,
+          },
         ]}
       >
         {content}

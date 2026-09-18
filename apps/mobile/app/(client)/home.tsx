@@ -29,7 +29,10 @@ export default function ClientHome(): React.JSX.Element {
   const notif = useNotifications();
   const unread = notif.data?.unreadCount ?? 0;
 
-  const fullName = user?.client?.displayName && user.client.displayName !== user.phone ? user.client.displayName : null;
+  const fullName =
+    user?.client?.displayName && user.client.displayName !== user.phone
+      ? user.client.displayName
+      : null;
   const firstName = fullName ? fullName.split(' ')[0] : 'there';
   const recent = (events.data ?? []).slice(0, 3);
 
@@ -58,13 +61,46 @@ export default function ClientHome(): React.JSX.Element {
                 onPress={() => router.push('/(modals)/notifications')}
                 hitSlop={8}
                 accessibilityRole="button"
-                accessibilityLabel={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
+                accessibilityLabel={
+                  unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'
+                }
               >
-                <Box style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.bgSurface, borderWidth: 1, borderColor: theme.colors.borderDefault }}>
+                <Box
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 22,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: theme.colors.bgSurface,
+                    borderWidth: 1,
+                    borderColor: theme.colors.borderDefault,
+                  }}
+                >
                   <Icon name="bell" size={20} color="inkStrong" />
                   {unread > 0 ? (
-                    <Box style={{ position: 'absolute', top: -3, right: -3, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, backgroundColor: theme.colors.statusDanger, alignItems: 'center', justifyContent: 'center' }}>
-                        <Text style={{ fontFamily: fonts.sansBold, fontSize: 10, lineHeight: 12, color: theme.colors.inverseInk }}>
+                    <Box
+                      style={{
+                        position: 'absolute',
+                        top: -3,
+                        right: -3,
+                        minWidth: 18,
+                        height: 18,
+                        borderRadius: 9,
+                        paddingHorizontal: 4,
+                        backgroundColor: theme.colors.dangerSurface,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontFamily: fonts.sansBold,
+                          fontSize: 10,
+                          lineHeight: 12,
+                          color: theme.colors.inverseInk,
+                        }}
+                      >
                         {unread > 9 ? '9+' : unread}
                       </Text>
                     </Box>
@@ -124,7 +160,11 @@ export default function ClientHome(): React.JSX.Element {
             ) : (
               <Box style={{ gap: 12 }}>
                 {recent.map((e) => (
-                  <EventCard key={e.id} event={e} onPress={() => router.push(`/(client)/events/${e.id}`)} />
+                  <EventCard
+                    key={e.id}
+                    event={e}
+                    onPress={() => router.push(`/(client)/events/${e.id}`)}
+                  />
                 ))}
               </Box>
             )}
@@ -133,7 +173,11 @@ export default function ClientHome(): React.JSX.Element {
           {/* suggested staff */}
           {(suggested.data ?? []).length > 0 ? (
             <Box>
-              <SectionHeader title="Suggested staff" actionLabel="See all" onAction={() => router.push('/(client)/discover')} />
+              <SectionHeader
+                title="Suggested staff"
+                actionLabel="See all"
+                onAction={() => router.push('/(client)/discover')}
+              />
               <Box flexDirection="row" flexWrap="wrap" style={{ gap: 16 }}>
                 {(suggested.data ?? []).slice(0, 2).map((u) => (
                   <StaffCardCompact
@@ -143,7 +187,9 @@ export default function ClientHome(): React.JSX.Element {
                     rating={`${u.ratingAvg.toFixed(1)} · ${u.completedJobsCount} jobs`}
                     price={u.verificationStatus === 'VERIFIED' ? 'Verified' : ''}
                     verified={u.verificationStatus === 'VERIFIED'}
-                    onPress={() => router.push({ pathname: '/(modals)/staff-profile', params: { id: u.id } })}
+                    onPress={() =>
+                      router.push({ pathname: '/(modals)/staff-profile', params: { id: u.id } })
+                    }
                   />
                 ))}
               </Box>

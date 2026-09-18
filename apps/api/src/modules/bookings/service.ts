@@ -151,7 +151,7 @@ export async function confirmBatch(
 export async function generateCheckin(
   bookingId: string,
   clientUserId: string,
-): Promise<{ code: string }> {
+): Promise<{ code: string; expiresAt: string }> {
   return prisma.$transaction(async (tx) => {
     await lockBookingLifecycle(tx, bookingId);
     const booking = await tx.booking.findUniqueOrThrow({
@@ -165,12 +165,13 @@ export async function generateCheckin(
       data: { expiresAt: now },
     });
     const code = generateOtp();
+    const expiresAt = new Date(now.getTime() + OTP_TTL_MS);
     const binding = { purpose: 'ATTENDANCE' as const, subjectRef: bookingId, id: randomUUID() };
     await tx.verificationCode.create({
-      data: { ...binding, codeHash: hashOtp(code, binding), createdAt: now, expiresAt: new Date(now.getTime() + OTP_TTL_MS) },
+      data: { ...binding, codeHash: hashOtp(code, binding), createdAt: now, expiresAt },
     });
     // The owning client displays this booking-bound code to the arriving usher.
-    return { code };
+    return { code, expiresAt: expiresAt.toISOString() };
   }, TX);
 }
 

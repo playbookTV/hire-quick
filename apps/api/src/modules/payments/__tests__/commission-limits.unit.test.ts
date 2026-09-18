@@ -4,6 +4,13 @@ import { MAX_INT32_KOBO } from '@hq/shared';
 import { driveTransfer, runCommissionSweep } from '../service.js';
 import { InMemoryPaystack } from '../port/paystack-port.js';
 
+const { dispatchOperations } = vi.hoisted(() => ({ dispatchOperations: new Map<string, PaymentOperation>() }));
+vi.mock('../transfer-dispatch.js', () => ({
+  claimTransferDispatch: (_db: unknown, id: string) => ({ state: 'claimed', owner: 'test-owner', op: dispatchOperations.get(id) }),
+  ownsTransferDispatch: () => true,
+  releaseTransferDispatch: () => undefined,
+}));
+
 vi.mock('../ledger/operations.js', () => ({
   runOperation: async (_db: unknown, op: PaymentOperation, handlers: { provider: () => Promise<unknown> }) => {
     await handlers.provider();
@@ -12,7 +19,11 @@ vi.mock('../ledger/operations.js', () => ({
 }));
 
 function fixture(available: number) {
-  const create = vi.fn(({ data }: { data: object }) => ({ id: 'op', status: 'PENDING', ...data }));
+  const create = vi.fn(({ data }: { data: object }) => {
+    const op = { id: 'op', status: 'PENDING', ...data } as PaymentOperation;
+    dispatchOperations.set(op.id, op);
+    return op;
+  });
   const tx = {
     $queryRaw: vi.fn(),
     escrowLedger: { aggregate: vi.fn(({ where }: { where: { entryType: string } }) => ({

@@ -1,3 +1,4 @@
+import { EmptyState } from '../../components/EmptyState.js';
 /**
  * Discover — matches Figma `Client / 10 Discover` (27:214): title + subtitle, a
  * search field with a filter affordance, filter chips, and a list of StaffCards.
@@ -97,7 +98,13 @@ export default function Discover(): React.JSX.Element {
         alignItems="center"
         backgroundColor="bgSurface"
         borderRadius="md"
-        style={{ height: 48, paddingHorizontal: 16, gap: 8, borderWidth: 1.5, borderColor: theme.colors.borderDefault }}
+        style={{
+          height: 48,
+          paddingHorizontal: 16,
+          gap: 8,
+          borderWidth: 1.5,
+          borderColor: theme.colors.borderDefault,
+        }}
       >
         <Icon name="search" size={18} color="inkFaint" />
         <TextInput
@@ -105,7 +112,13 @@ export default function Discover(): React.JSX.Element {
           onChangeText={setQuery}
           placeholder="Search ushers, roles…"
           placeholderTextColor={theme.colors.inkFaint}
-          style={{ flex: 1, fontFamily: fonts.sansRegular, fontSize: 15, color: theme.colors.inkStrong, paddingVertical: 0 }}
+          style={{
+            flex: 1,
+            fontFamily: fonts.sansRegular,
+            fontSize: 15,
+            color: theme.colors.inkStrong,
+            paddingVertical: 0,
+          }}
         />
         <Pressable
           onPress={() => router.push('/(modals)/filters')}
@@ -125,12 +138,19 @@ export default function Discover(): React.JSX.Element {
                   height: 16,
                   borderRadius: 8,
                   paddingHorizontal: 4,
-                  backgroundColor: theme.colors.brandEmerald,
+                  backgroundColor: theme.colors.brandSurface,
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <Text style={{ fontFamily: fonts.sansBold, fontSize: 10, lineHeight: 12, color: theme.colors.inverseInk }}>
+                <Text
+                  style={{
+                    fontFamily: fonts.sansBold,
+                    fontSize: 10,
+                    lineHeight: 12,
+                    color: theme.colors.inverseInk,
+                  }}
+                >
                   {filterCount}
                 </Text>
               </Box>
@@ -149,20 +169,39 @@ export default function Discover(): React.JSX.Element {
       >
         <Box style={{ width: 20 }} />
         {filters.availableOn ? (
-          <Chip label="Today ✕" selected onPress={() => setDiscoverFilters({ ...filters, availableOn: undefined })} />
+          <Chip
+            label="Today ✕"
+            selected
+            onPress={() => setDiscoverFilters({ ...filters, availableOn: undefined })}
+          />
         ) : (
-          <Chip label="Available today" onPress={() => setDiscoverFilters({ ...filters, availableOn: todayIso() })} />
+          <Chip
+            label="Available today"
+            onPress={() => setDiscoverFilters({ ...filters, availableOn: todayIso() })}
+          />
         )}
         {filters.minRating ? (
-          <Chip label={`${filters.minRating}★+ ✕`} selected onPress={() => setDiscoverFilters({ ...filters, minRating: undefined })} />
+          <Chip
+            label={`${filters.minRating}★+ ✕`}
+            selected
+            onPress={() => setDiscoverFilters({ ...filters, minRating: undefined })}
+          />
         ) : (
           <Chip label="4★+" onPress={() => setDiscoverFilters({ ...filters, minRating: 4 })} />
         )}
         {filters.location ? (
-          <Chip label={`${filters.location} ✕`} selected onPress={() => setDiscoverFilters({ ...filters, location: undefined })} />
+          <Chip
+            label={`${filters.location} ✕`}
+            selected
+            onPress={() => setDiscoverFilters({ ...filters, location: undefined })}
+          />
         ) : null}
         {filters.maxRate ? (
-          <Chip label={`≤ ${money(filters.maxRate)} ✕`} selected onPress={() => setDiscoverFilters({ ...filters, maxRate: undefined })} />
+          <Chip
+            label={`≤ ${money(filters.maxRate)} ✕`}
+            selected
+            onPress={() => setDiscoverFilters({ ...filters, maxRate: undefined })}
+          />
         ) : null}
         <Box style={{ width: 20 }} />
       </ScrollView>
@@ -175,9 +214,30 @@ export default function Discover(): React.JSX.Element {
         data={data}
         keyExtractor={(u) => u.id}
         renderItem={renderItem}
-        ListHeaderComponent={header}
+        ListHeaderComponent={
+          <>
+            {header}
+            {ushers.isError && data.length > 0 ? (
+              <EmptyState
+                icon="alert-circle"
+                title="Results may be out of date"
+                actionLabel="Refresh results"
+                onAction={() => {
+                  void ushers.refetch();
+                }}
+              />
+            ) : null}
+          </>
+        }
         ItemSeparatorComponent={Separator}
-        refreshControl={<RefreshControl refreshing={ushers.isFetching} onRefresh={() => { void ushers.refetch(); }} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={ushers.isFetching}
+            onRefresh={() => {
+              void ushers.refetch();
+            }}
+          />
+        }
         ListEmptyComponent={
           ushers.isLoading ? (
             <Box style={{ gap: 12 }}>
@@ -185,6 +245,15 @@ export default function Discover(): React.JSX.Element {
                 <SkeletonRow key={i} />
               ))}
             </Box>
+          ) : ushers.isError ? (
+            <EmptyState
+              icon="alert-circle"
+              title="Couldn’t load ushers"
+              actionLabel="Try again"
+              onAction={() => {
+                void ushers.refetch();
+              }}
+            />
           ) : (
             <Text variant="bodySm" color="inkMuted">
               No ushers match your search yet.

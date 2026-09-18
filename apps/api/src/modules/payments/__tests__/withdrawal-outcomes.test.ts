@@ -66,8 +66,31 @@ describe('withdrawal request binding and persisted outcomes', () => {
   it('replays concurrent requests with one debit and one provider transfer', async () => {
     const { s, params } = await fundedWallet();
     const paystack = new InMemoryPaystack();
-    const send = vi.spyOn(paystack, 'transfer');
-    const responses = await Promise.all(Array.from({ length: 3 }, () => initWithdrawal({ prisma, paystack }, params)));
+    let release!: () => void;
+    let entered!: () => void;
+    const held = new Promise<void>(resolve => { release = resolve; });
+    const started = new Promise<void>(resolve => { entered = resolve; });
+    const originalTransfer = paystack.transfer.bind(paystack);
+    const send = vi.spyOn(paystack, 'transfer').mockImplementation(async input => {
+      entered();
+      await held;
+      return originalTransfer(input);
+    });
+    const first = initWithdrawal({ prisma, paystack }, params);
+    let concurrent: Promise<Awaited<typeof first>[]> | undefined;
+    let responses: Awaited<typeof first>[];
+    try {
+      await Promise.race([started, first.then(() => { throw new Error('First request finished before dispatch barrier'); })]);
+      concurrent = Promise.all(Array.from({ length: 2 }, () => initWithdrawal({ prisma, paystack }, params)));
+      const waiting = await concurrent;
+      expect(waiting.every(response => response.status === 'PROCESSING')).toBe(true);
+      expect(send).toHaveBeenCalledTimes(1);
+      release();
+      responses = [await first, ...waiting];
+    } finally {
+      release();
+      await Promise.allSettled([first, ...(concurrent ? [concurrent] : [])]);
+    }
     expect(new Set(responses.map((r) => r.withdrawalId)).size).toBe(1);
     expect(responses.filter((r) => !r.duplicate)).toHaveLength(1);
     expect(send).toHaveBeenCalledTimes(1);

@@ -11,19 +11,36 @@ interface SegmentedProps<T extends string> {
   onChange: (value: T) => void;
 }
 
-export function Segmented<T extends string>({ options, value, onChange }: SegmentedProps<T>): React.JSX.Element {
+export function Segmented<T extends string>({
+  options,
+  value,
+  onChange,
+}: SegmentedProps<T>): React.JSX.Element {
   const theme = useTheme();
   return (
-    <Box flexDirection="row" backgroundColor="bgSubtle" borderRadius="pill" style={{ padding: 4, gap: 4 }}>
+    <Box
+      flexDirection="row"
+      backgroundColor="bgSubtle"
+      borderRadius="pill"
+      style={{ padding: 4, gap: 4 }}
+    >
       {options.map((o) => {
         const on = o.value === value;
         return (
-          <Pressable key={o.value} onPress={() => onChange(o.value)} style={{ flex: 1 }}>
+          <Pressable
+            key={o.value}
+            onPress={() => onChange(o.value)}
+            accessibilityRole="tab"
+            accessibilityLabel={o.label}
+            accessibilityState={{ selected: on }}
+            style={{ flex: 1, minHeight: 44 }}
+          >
             <Box
               alignItems="center"
               justifyContent="center"
               borderRadius="pill"
               style={{
+                minHeight: 44,
                 paddingVertical: 8,
                 backgroundColor: on ? theme.colors.bgSurface : 'transparent',
                 shadowColor: '#0A0D14',

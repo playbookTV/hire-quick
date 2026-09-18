@@ -30,9 +30,21 @@ export function ConversationList(): React.JSX.Element {
   return (
     <Box flex={1} backgroundColor="bgCanvas" style={{ paddingTop: insets.top }}>
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24, gap: 16 }}
+        contentContainerStyle={{
+          paddingHorizontal: 20,
+          paddingTop: 16,
+          paddingBottom: 24,
+          gap: 16,
+        }}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={bookings.isFetching} onRefresh={() => { void bookings.refetch(); }} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={bookings.isFetching}
+            onRefresh={() => {
+              void bookings.refetch();
+            }}
+          />
+        }
       >
         <Text variant="h2">Messages</Text>
         {bookings.isLoading ? (
@@ -41,6 +53,15 @@ export function ConversationList(): React.JSX.Element {
               <SkeletonRow key={i} />
             ))}
           </Box>
+        ) : bookings.isError ? (
+          <EmptyState
+            icon="alert-circle"
+            title="Couldn’t load conversations"
+            actionLabel="Try again"
+            onAction={() => {
+              void bookings.refetch();
+            }}
+          />
         ) : threads.length === 0 ? (
           <Box style={{ paddingTop: 48 }}>
             <EmptyState
@@ -52,19 +73,28 @@ export function ConversationList(): React.JSX.Element {
         ) : (
           <Box>
             {threads.map((b, i) => {
-              const counterparty = isUsher ? b.event?.client?.displayName : b.usher?.displayName ?? b.usher?.user.phone;
+              const counterparty = isUsher
+                ? b.event?.client?.displayName
+                : (b.usher?.displayName ?? b.usher?.user.phone);
               const title = counterparty ?? b.event?.title ?? `Booking · ${b.id.slice(0, 6)}`;
               return (
                 <AnimatedPressable
                   key={b.id}
-                  onPress={() => router.push({ pathname: '/(modals)/message-thread', params: { booking: b.id } })}
+                  onPress={() =>
+                    router.push({ pathname: '/(modals)/message-thread', params: { booking: b.id } })
+                  }
                   accessibilityRole="button"
                   accessibilityLabel={`Open chat with ${title}`}
                 >
                   <Box
                     flexDirection="row"
                     alignItems="center"
-                    style={{ gap: 12, paddingVertical: 14, borderTopWidth: i === 0 ? 0 : 1, borderTopColor: theme.colors.borderDefault }}
+                    style={{
+                      gap: 12,
+                      paddingVertical: 14,
+                      borderTopWidth: i === 0 ? 0 : 1,
+                      borderTopColor: theme.colors.borderDefault,
+                    }}
                   >
                     <Avatar name={title} size={48} />
                     <Box flex={1} style={{ gap: 4 }}>

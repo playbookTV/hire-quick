@@ -1,36 +1,80 @@
-import { api, naira, shortDate } from '../lib/api';
-import { useAsync } from '../lib/useAsync';
-import { Page, State, Table, Badge } from '../components/ui';
-
+import { useState } from 'react';
+import { naira, shortDate } from '../lib/api';
+import { useRecords } from '../lib/useRecords';
+import { Page, State, Table, Badge, Btn, EmptyRow, Pagination } from '../components/ui';
 interface Entry {
   id: string;
   entryType: string;
   amount: number;
   balanceAfter: number;
   createdAt: string;
-  booking: { event: { title: string } } | null;
+  booking: { id: string; event: { title: string } } | null;
 }
-
 export function Ledger() {
-  const { data, loading, error } = useAsync<Entry[]>(() => api('/api/admin/ledger?limit=100'));
+  const [booking, setBooking] = useState('');
+  const [filters, setFilters] = useState('');
   return (
     <Page title="Escrow ledger">
-      <State loading={loading} error={error} />
+      <p className="muted mb-5">
+        Every entry is a permanent record. Amounts below include their credit or debit sign.
+      </p>
+      <form
+        className="filters"
+        onSubmit={(e) => {
+          e.preventDefault();
+          setFilters(
+            booking.trim() ? new URLSearchParams({ bookingId: booking.trim() }).toString() : '',
+          );
+        }}
+      >
+        <label>
+          Booking ID
+          <input
+            value={booking}
+            onChange={(e) => setBooking(e.target.value)}
+            placeholder="All bookings"
+          />
+        </label>
+        <Btn type="submit">Filter ledger</Btn>
+      </form>
+      <LedgerRecords key={filters} filters={filters} />
+    </Page>
+  );
+}
+function LedgerRecords({ filters }: { filters: string }) {
+  const q = useRecords<Entry>('/api/admin/ledger', filters);
+  return (
+    <>
+      <State loading={q.loading} error={q.error} onRetry={q.reload} />
       <Table head={['When', 'Type', 'Amount', 'Balance after', 'Booking']}>
-        {(data ?? []).map((e) => (
+        {q.data?.items.map((e) => (
           <tr key={e.id}>
-            <td className="px-4 py-2">{shortDate(e.createdAt)}</td>
-            <td className="px-4 py-2">
+            <td>{shortDate(e.createdAt)}</td>
+            <td>
               <Badge>{e.entryType}</Badge>
             </td>
-            <td className={`px-4 py-2 ${e.amount < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+            <td className="whitespace-nowrap">
+              {e.amount > 0 ? '+' : ''}
               {naira(e.amount)}
             </td>
-            <td className="px-4 py-2">{naira(e.balanceAfter)}</td>
-            <td className="px-4 py-2">{e.booking?.event.title ?? '—'}</td>
+            <td className="whitespace-nowrap">{naira(e.balanceAfter)}</td>
+            <td>
+              {e.booking?.event.title ?? 'Platform'}
+              {e.booking && <small className="block muted">{e.booking.id}</small>}
+            </td>
           </tr>
         ))}
+        {q.data?.items.length === 0 && (
+          <EmptyRow columns={5}>No ledger entries match this booking.</EmptyRow>
+        )}
       </Table>
-    </Page>
+      <Pagination
+        hasNext={!!q.data?.nextCursor && !q.error}
+        hasPrevious={q.hasPrevious}
+        loading={q.loading}
+        onNext={q.next}
+        onPrevious={q.previous}
+      />
+    </>
   );
 }

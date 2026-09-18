@@ -1,3 +1,4 @@
+import { QueryState } from '../../components/QueryState.js';
 /**
  * Wallet — matches Figma `Usher / 05 Wallet` (44:44). Live: balance + pending +
  * lifetime from `useWallet`; the recent-activity feed from `useWalletActivity`.
@@ -18,9 +19,21 @@ import { EarningsCard } from '../../components/EarningsCard.js';
 import { useWallet, useWalletActivity, useBookings } from '../../lib/hooks.js';
 import { money, signedMoney, formatEventDate } from '../../lib/format.js';
 
-function StatCard({ label, value, gold }: Readonly<{ label: string; value: string; gold?: boolean }>) {
+function StatCard({
+  label,
+  value,
+  gold,
+}: Readonly<{ label: string; value: string; gold?: boolean }>) {
   return (
-    <Box flex={1} backgroundColor="bgSurface" borderWidth={1} borderColor="borderDefault" borderRadius="md" padding="400" style={{ gap: 4 }}>
+    <Box
+      flex={1}
+      backgroundColor="bgSurface"
+      borderWidth={1}
+      borderColor="borderDefault"
+      borderRadius="md"
+      padding="400"
+      style={{ gap: 4 }}
+    >
       <Text variant="bodySm" color="inkMuted">
         {label}
       </Text>
@@ -37,22 +50,40 @@ function StatCard({ label, value, gold }: Readonly<{ label: string; value: strin
  * The next-release date is derived from the usher's soonest unfinished booking.
  */
 function escrowCopy(pending: number, nextReleaseDate?: string): string {
-  if (pending <= 0) return 'When you’re booked, your pay is held safely here until the event is verified.';
-  if (nextReleaseDate) return `Released to your wallet after each event is verified. Next: after ${formatEventDate(nextReleaseDate)}.`;
+  if (pending <= 0)
+    return 'When you’re booked, your pay is held safely here until the event is verified.';
+  if (nextReleaseDate)
+    return `Released to your wallet after each event is verified. Next: after ${formatEventDate(nextReleaseDate)}.`;
   return 'Held safely until each event is verified, then released to your wallet.';
 }
 
-function EscrowPanel({ pending, nextReleaseDate }: Readonly<{ pending: number; nextReleaseDate?: string }>) {
+function EscrowPanel({
+  pending,
+  nextReleaseDate,
+}: Readonly<{ pending: number; nextReleaseDate?: string }>) {
   return (
-    <Box backgroundColor="bgSurface" borderWidth={1} borderColor="borderDefault" borderRadius="md" padding="400" style={{ gap: 8 }}>
+    <Box
+      backgroundColor="bgSurface"
+      borderWidth={1}
+      borderColor="borderDefault"
+      borderRadius="md"
+      padding="400"
+      style={{ gap: 8 }}
+    >
       <Box flexDirection="row" alignItems="center" justifyContent="space-between">
         <Box flexDirection="row" alignItems="center" style={{ gap: 8 }}>
           <Icon name="shield" size={16} color="accentGoldStrong" />
-          <Text variant="bodySm" color="inkMuted">Held safely</Text>
+          <Text variant="bodySm" color="inkMuted">
+            Held safely
+          </Text>
         </Box>
-        <Text variant="amountM" color="accentGoldStrong">{money(pending)}</Text>
+        <Text variant="amountM" color="accentGoldStrong">
+          {money(pending)}
+        </Text>
       </Box>
-      <Text variant="bodySm" color="inkMuted">{escrowCopy(pending, nextReleaseDate)}</Text>
+      <Text variant="bodySm" color="inkMuted">
+        {escrowCopy(pending, nextReleaseDate)}
+      </Text>
     </Box>
   );
 }
@@ -80,30 +111,39 @@ export default function Wallet(): React.JSX.Element {
   return (
     <Box flex={1} backgroundColor="bgCanvas" style={{ paddingTop: insets.top }}>
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24, gap: 16 }}
+        contentContainerStyle={{
+          paddingHorizontal: 20,
+          paddingTop: 16,
+          paddingBottom: 24,
+          gap: 16,
+        }}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}
       >
         <Text variant="h2">Wallet</Text>
 
-        {wallet.isError ? (
-          <Box flexDirection="row" alignItems="center" backgroundColor="statusDangerTint" borderRadius="md" padding="300" style={{ gap: 8 }}>
-            <Icon name="wifi-off" size={16} color="statusDanger" />
-            <Text variant="bodySm" color="statusDanger" style={{ flex: 1 }}>Couldn’t load your balance. Pull down to retry.</Text>
-          </Box>
-        ) : null}
+        <QueryState query={wallet} errorTitle="Couldn’t load your balance">
+          {(balance) => (
+            <>
+              {/* balance */}
+              <EarningsCard
+                amount={balance.availableBalance}
+                size="lg"
+                footer={
+                  <Button
+                    label="Withdraw to bank"
+                    variant="secondary"
+                    onPress={() => router.push('/(modals)/withdraw')}
+                  />
+                }
+              />
 
-        {/* balance */}
-        <EarningsCard
-          amount={wallet.data?.availableBalance ?? 0}
-          size="lg"
-          footer={<Button label="Withdraw to bank" variant="secondary" onPress={() => router.push('/(modals)/withdraw')} />}
-        />
-
-        {/* escrow (what's held + when it releases) + lifetime */}
-        <EscrowPanel pending={wallet.data?.pendingEscrow ?? 0} nextReleaseDate={nextRelease} />
-        <StatCard label="Lifetime earned" value={money(wallet.data?.lifetimeEarned ?? 0)} />
-
+              {/* escrow (what's held + when it releases) + lifetime */}
+              <EscrowPanel pending={balance.pendingEscrow} nextReleaseDate={nextRelease} />
+              <StatCard label="Lifetime earned" value={money(balance.lifetimeEarned)} />
+            </>
+          )}
+        </QueryState>
         <SectionHeader title="Recent activity" />
         {activity.isLoading ? (
           <Box style={{ gap: 8 }}>
@@ -114,14 +154,31 @@ export default function Wallet(): React.JSX.Element {
         ) : activity.isError ? (
           <Box style={{ gap: 12 }}>
             <Banner tone="warning" message="Couldn’t load your recent activity." />
-            <Button label="Retry" variant="secondary" size="md" onPress={() => { void activity.refetch(); }} />
+            <Button
+              label="Retry"
+              variant="secondary"
+              size="md"
+              onPress={() => {
+                void activity.refetch();
+              }}
+            />
           </Box>
         ) : (activity.data ?? []).length === 0 ? (
-          <EmptyState icon="inbox" title="No activity yet" subtitle="Your payouts and withdrawals will show up here." />
+          <EmptyState
+            icon="inbox"
+            title="No activity yet"
+            subtitle="Your payouts and withdrawals will show up here."
+          />
         ) : (
           <Box style={{ gap: 8 }}>
             {(activity.data ?? []).map((a) => (
-              <ActivityRow key={a.id} type={a.type} title={a.title} subtitle={a.subtitle} amount={signedMoney(a.amount, a.type)} />
+              <ActivityRow
+                key={a.id}
+                type={a.type}
+                title={a.title}
+                subtitle={a.subtitle}
+                amount={signedMoney(a.amount, a.type)}
+              />
             ))}
           </Box>
         )}

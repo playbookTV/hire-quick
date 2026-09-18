@@ -27,7 +27,8 @@ export async function recordWithdrawalReversal(
   await prisma.paymentOperation.createMany({
     data: [{
       kind: 'WITHDRAWAL_TRANSFER', dedupeKey, status: 'PROVIDER_OK', attempts: 1,
-      providerRef: reference,
+      // The unique providerRef belongs to the original dispatch. This local-only
+      // intent binds its evidence through payload.reversalReference instead.
       lastError: 'Provider confirmed transfer failure or reversal; local wallet credit pending',
       // Deliberately distinct from normal payload.reference: transfer callbacks
       // must continue to locate the original dispatch intent.

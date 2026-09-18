@@ -28,7 +28,10 @@ export function QuickActionCard({
   const primary = variant === 'primary';
 
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => ({ flex: 1, opacity: pressed ? 0.92 : 1 })}>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({ flex: 1, opacity: pressed ? 0.92 : 1 })}
+    >
       <Box
         padding="400"
         borderRadius="lg"
@@ -36,7 +39,7 @@ export function QuickActionCard({
         style={[
           {
             gap: 12,
-            backgroundColor: primary ? theme.colors.brandEmerald : theme.colors.bgSurface,
+            backgroundColor: primary ? theme.colors.brandSurface : theme.colors.bgSurface,
             borderColor: theme.colors.borderDefault,
           },
           shadowSm,
@@ -49,7 +52,9 @@ export function QuickActionCard({
             borderRadius: theme.borderRadii.md,
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: primary ? theme.colors.brandEmeraldStrong : theme.colors.brandEmeraldTint,
+            backgroundColor: primary
+              ? theme.colors.brandEmeraldStrong
+              : theme.colors.brandEmeraldTint,
           }}
         >
           <Icon name={icon} size={22} color={primary ? 'inverseInk' : 'brandEmerald'} />

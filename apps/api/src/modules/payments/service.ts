@@ -7,6 +7,7 @@ import { type PrismaClient, type PaymentOperation } from '@hq/database';
 import { MAX_INT32_KOBO, withdrawalResponseSchema, type WithdrawalResponse, type CheckoutResponse } from '@hq/shared';
 import { ApiError } from '../../app.js';
 import { env } from '../../env.js';
+import { logger } from '../../logger.js';
 import { resumeCheckout } from './checkout.js';
 import { runIdempotent } from './ledger/idempotency.js';
 import { runOperation } from './ledger/operations.js';
@@ -24,6 +25,7 @@ import {
 import type { PaystackPort } from './port/paystack-port.js';
 import type { RealtimeGateway } from '../../realtime/gateway.js';
 import { driveWithdrawalReversal, isWithdrawalReversal, recordWithdrawalReversal } from './withdrawal-reversal.js';
+import { claimTransferDispatch, ownsTransferDispatch, releaseTransferDispatch } from './transfer-dispatch.js';
 
 const TX = { timeout: 30_000, maxWait: 30_000 };
 
@@ -156,13 +158,19 @@ export interface TransferPayload {
   reference: string;
 }
 
+class PendingTransferReversal extends Error {
+  constructor(readonly operation: PaymentOperation) {
+    super('Transfer reversal must settle before success');
+  }
+}
+
 /** Same protocol for synchronous requests and recovery. Reissue only the original reference. */
 export async function driveTransfer(deps: Deps, op: PaymentOperation) {
   if (isWithdrawalReversal(op)) {
     const reversed = await driveWithdrawalReversal(deps.prisma, op);
     return { status: reversed.status, result: reversed.result ? (op.payload as unknown as TransferPayload).amountKobo : null };
   }
-  const p = op.payload as unknown as TransferPayload;
+  let p = op.payload as unknown as TransferPayload;
   const knownReversal = async () => p.withdrawalId ? deps.prisma.paymentOperation.findUnique({
     where: { dedupeKey: `WITHDRAWAL_REVERSAL:${p.withdrawalId}` },
   }) : null;
@@ -173,48 +181,88 @@ export async function driveTransfer(deps: Deps, op: PaymentOperation) {
   }
   if (!Number.isSafeInteger(p.amountKobo) || p.amountKobo <= 0 || p.amountKobo > MAX_INT32_KOBO)
     throw new ApiError(409, 'AMOUNT_LIMIT', 'transfer amount cannot be recorded safely; operator review required');
-  const persistFailure = async (status: string) => {
-    if (status === 'failed' && p.withdrawalId)
-      await recordWithdrawalReversal(deps.prisma, p.withdrawalId, p.reference);
-  };
-  const send = async () => {
-    if (await knownReversal()) return { status: 'failed' as const, providerRef: p.reference };
-    const verified = await deps.paystack.verifyTransfer(p.reference);
-    if (verified.status !== 'unknown') {
-      await persistFailure(verified.status);
-      return { ...verified, providerRef: p.reference };
+  const claim = await claimTransferDispatch(deps.prisma, op.id);
+  if (claim.state === 'busy') return { status: 'PENDING' as const, result: null };
+  op = claim.op;
+  p = op.payload as unknown as TransferPayload;
+  const owner = claim.state === 'claimed' ? claim.owner : null;
+  try {
+    if (!Number.isSafeInteger(p.amountKobo) || p.amountKobo <= 0 || p.amountKobo > MAX_INT32_KOBO)
+      throw new ApiError(409, 'AMOUNT_LIMIT', 'transfer amount cannot be recorded safely; operator review required');
+    const persistFailure = async (status: string) => {
+      if (status === 'failed' && p.withdrawalId)
+        await recordWithdrawalReversal(deps.prisma, p.withdrawalId, p.reference);
+    };
+    const send = async () => {
+      if (await knownReversal()) return { status: 'failed' as const, providerRef: p.reference };
+      if (!owner || !await ownsTransferDispatch(deps.prisma, op.id, owner)) return { status: 'pending' as const };
+      const verified = await deps.paystack.verifyTransfer(p.reference);
+      if (await knownReversal()) return { status: 'failed' as const, providerRef: p.reference };
+      if (verified.status !== 'unknown') {
+        await persistFailure(verified.status);
+        return { ...verified, providerRef: p.reference };
+      }
+      // A callback can record terminal failure while verification is in flight.
+      if (await knownReversal()) return { status: 'failed' as const, providerRef: p.reference };
+      if (!await ownsTransferDispatch(deps.prisma, op.id, owner)) return { status: 'pending' as const };
+      const issued = await deps.paystack.transfer({
+        amountKobo: p.amountKobo,
+        recipientCode: p.recipientCode,
+        reference: p.reference,
+        reason: p.withdrawalId ? 'HireQuick payout' : 'HireQuick commission sweep',
+      });
+      if (await knownReversal()) return { status: 'failed' as const, providerRef: p.reference };
+      await persistFailure(issued.status);
+      return { status: issued.status, providerRef: p.reference };
+    };
+    return await runOperation(
+      deps.prisma,
+      op,
+      {
+        provider: send,
+        reconcile: send,
+        onSuccess: async (tx) => {
+          if (p.withdrawalId) {
+            const reversal = await tx.paymentOperation.findUnique({
+              where: { dedupeKey: `WITHDRAWAL_REVERSAL:${p.withdrawalId}` },
+            });
+            if (reversal) throw new PendingTransferReversal(reversal);
+            await completeWithdrawal(tx, p.withdrawalId, p.reference);
+          }
+          else {
+            await tx.$queryRaw`SELECT pg_advisory_xact_lock(74011001)::text`;
+            await commissionSweep(tx, p.amountKobo);
+          }
+          return p.amountKobo;
+        },
+        onFailure: async (tx) => {
+          if (p.withdrawalId) {
+            const reversal = await tx.paymentOperation.findUnique({
+              where: { dedupeKey: `WITHDRAWAL_REVERSAL:${p.withdrawalId}` },
+            });
+            if (reversal) throw new PendingTransferReversal(reversal);
+            await failWithdrawal(tx, p.withdrawalId);
+          }
+        },
+      },
+      TX,
+    );
+  } catch (error) {
+    if (!(error instanceof PendingTransferReversal)) throw error;
+    // The original transaction has rolled back: take reversal then original
+    // locks in the normal order, and retain capacity-blocked retry evidence.
+    const reversed = await driveWithdrawalReversal(deps.prisma, error.operation);
+    return { status: reversed.status, result: reversed.result ? p.amountKobo : null };
+  } finally {
+    if (owner) {
+      try { await releaseTransferDispatch(deps.prisma, op.id, owner); }
+      catch {
+        // An expired lease is reclaimable; cleanup must not obscure a committed
+        // payment outcome or initiate compensation after provider success.
+        logger.warn({ operationId: op.id }, 'Transfer dispatch lease cleanup failed; expiry will permit recovery');
+      }
     }
-    // A callback can record terminal failure while verification is in flight.
-    if (await knownReversal()) return { status: 'failed' as const, providerRef: p.reference };
-    const issued = await deps.paystack.transfer({
-      amountKobo: p.amountKobo,
-      recipientCode: p.recipientCode,
-      reference: p.reference,
-      reason: p.withdrawalId ? 'HireQuick payout' : 'HireQuick commission sweep',
-    });
-    await persistFailure(issued.status);
-    return { status: issued.status, providerRef: p.reference };
-  };
-  return runOperation(
-    deps.prisma,
-    op,
-    {
-      provider: send,
-      reconcile: send,
-      onSuccess: async (tx) => {
-        if (p.withdrawalId) await completeWithdrawal(tx, p.withdrawalId, p.reference);
-        else {
-          await tx.$queryRaw`SELECT pg_advisory_xact_lock(74011001)::text`;
-          await commissionSweep(tx, p.amountKobo);
-        }
-        return p.amountKobo;
-      },
-      onFailure: async (tx) => {
-        if (p.withdrawalId) await failWithdrawal(tx, p.withdrawalId);
-      },
-    },
-    TX,
-  );
+  }
 }
 
 /** Initialize the Paystack charge for a PENDING order; HOLD happens on webhook. */

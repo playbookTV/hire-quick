@@ -35,6 +35,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @hq/database exec prisma generate
+      - run: pnpm docs:check
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm typecheck:tests

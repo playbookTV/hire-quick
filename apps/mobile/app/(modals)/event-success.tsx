@@ -17,7 +17,13 @@ export default function EventSuccess(): React.JSX.Element {
 
   return (
     <Box flex={1} backgroundColor="bgCanvas" style={{ paddingTop: insets.top }}>
-      <Box flex={1} alignItems="center" justifyContent="center" paddingHorizontal="700" style={{ gap: 20 }}>
+      <Box
+        flex={1}
+        alignItems="center"
+        justifyContent="center"
+        paddingHorizontal="700"
+        style={{ gap: 20 }}
+      >
         <Box
           style={{
             width: 96,
@@ -25,7 +31,7 @@ export default function EventSuccess(): React.JSX.Element {
             borderRadius: 48,
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: theme.colors.brandEmerald,
+            backgroundColor: theme.colors.brandSurface,
           }}
         >
           <Icon name="check" size={48} color="inverseInk" />
@@ -47,7 +53,14 @@ export default function EventSuccess(): React.JSX.Element {
         </Box>
       </Box>
 
-      <Box style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: insets.bottom + 16, gap: 12 }}>
+      <Box
+        style={{
+          paddingHorizontal: 20,
+          paddingTop: 16,
+          paddingBottom: insets.bottom + 16,
+          gap: 12,
+        }}
+      >
         <Button
           label="View event"
           onPress={() => {

@@ -1,3 +1,4 @@
+import { QueryState } from '../../components/QueryState.js';
 /**
  * Usher Dashboard — matches Figma `Usher / 01 Dashboard` (43:2): greeting, an
  * emerald "available to withdraw" card (Display/XL figure), and Upcoming jobs.
@@ -62,17 +63,49 @@ function JobRow({ booking, onPress }: Readonly<{ booking: Booking; onPress: () =
   // CONFIRMED/CHECKED_IN bookings open the check-in screen; the chevron signals it.
   const actionable = booking.status === 'CONFIRMED' || booking.status === 'CHECKED_IN';
   return (
-    <AnimatedPressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${booking.event?.title ?? 'Booking'}, ${meta.label}. ${actionable ? 'Tap to check in.' : ''}`}>
-      <Box backgroundColor="bgSurface" borderWidth={1} borderColor="borderDefault" borderRadius="lg" padding="400" style={[{ gap: 8 }, shadowSm]}>
+    <AnimatedPressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${booking.event?.title ?? 'Booking'}, ${meta.label}. ${actionable ? 'Tap to check in.' : ''}`}
+    >
+      <Box
+        backgroundColor="bgSurface"
+        borderWidth={1}
+        borderColor="borderDefault"
+        borderRadius="lg"
+        padding="400"
+        style={[{ gap: 8 }, shadowSm]}
+      >
         <Box flexDirection="row" alignItems="center" justifyContent="space-between">
-          <Text variant="titleM" style={{ flex: 1 }} numberOfLines={1}>{booking.event?.title ?? 'Booking'}</Text>
-          <Box style={{ paddingHorizontal: 12, paddingVertical: 4, borderRadius: theme.borderRadii.pill, backgroundColor: success ? theme.colors.statusSuccessTint : theme.colors.accentGoldTint }}>
-            <Text style={{ fontFamily: fonts.sansSemibold, fontSize: 13, lineHeight: 16, letterSpacing: 0.2 }} color={success ? 'statusSuccess' : 'accentGoldStrong'}>
+          <Text variant="titleM" style={{ flex: 1 }} numberOfLines={1}>
+            {booking.event?.title ?? 'Booking'}
+          </Text>
+          <Box
+            style={{
+              paddingHorizontal: 12,
+              paddingVertical: 4,
+              borderRadius: theme.borderRadii.pill,
+              backgroundColor: success
+                ? theme.colors.statusSuccessTint
+                : theme.colors.accentGoldTint,
+            }}
+          >
+            <Text
+              style={{
+                fontFamily: fonts.sansSemibold,
+                fontSize: 13,
+                lineHeight: 16,
+                letterSpacing: 0.2,
+              }}
+              color={success ? 'statusSuccess' : 'accentGoldStrong'}
+            >
               {meta.label}
             </Text>
           </Box>
         </Box>
-        {booking.event?.category ? <CategoryBadge category={booking.event.category} size="sm" /> : null}
+        {booking.event?.category ? (
+          <CategoryBadge category={booking.event.category} size="sm" />
+        ) : null}
         {booking.event ? (
           <Box flexDirection="row" alignItems="center" style={{ gap: 8 }}>
             <Icon name="calendar" size={16} color="inkMuted" />
@@ -82,13 +115,19 @@ function JobRow({ booking, onPress }: Readonly<{ booking: Booking; onPress: () =
           </Box>
         ) : null}
         <Box flexDirection="row" alignItems="center" justifyContent="space-between">
-          <Box flexDirection="row" alignItems="baseline" style={{ gap: 4 }}>
-            <Text variant="bodySm" color="inkMuted">You’ll earn</Text>
-            <Text variant="amountM" color="brandEmerald">{money(booking.amount)}</Text>
+          <Box flex={1} style={{ gap: 4 }}>
+            <Text variant="bodySm" color="inkMuted">
+              Booking fee (before commission)
+            </Text>
+            <Text variant="amountM" color="brandEmerald">
+              {money(booking.amount)}
+            </Text>
           </Box>
           {actionable ? (
             <Box flexDirection="row" alignItems="center" style={{ gap: 2 }}>
-              <Text variant="label" color="brandEmerald">{booking.status === 'CHECKED_IN' ? 'View' : 'Check in'}</Text>
+              <Text variant="label" color="brandEmerald">
+                {booking.status === 'CHECKED_IN' ? 'View' : 'Check in'}
+              </Text>
               <Icon name="chevron-right" size={18} color="brandEmerald" />
             </Box>
           ) : null}
@@ -117,7 +156,12 @@ export default function UsherHome(): React.JSX.Element {
   return (
     <Box flex={1} backgroundColor="bgCanvas" style={{ paddingTop: insets.top }}>
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24, gap: 20 }}
+        contentContainerStyle={{
+          paddingHorizontal: 20,
+          paddingTop: 16,
+          paddingBottom: 24,
+          gap: 20,
+        }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -145,64 +189,140 @@ export default function UsherHome(): React.JSX.Element {
               accessibilityRole="button"
               accessibilityLabel={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
             >
-              <Box style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.bgSurface, borderWidth: 1, borderColor: theme.colors.borderDefault }}>
+              <Box
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: theme.colors.bgSurface,
+                  borderWidth: 1,
+                  borderColor: theme.colors.borderDefault,
+                }}
+              >
                 <Icon name="bell" size={20} color="inkStrong" />
                 {unread > 0 ? (
-                  <Box style={{ position: 'absolute', top: -3, right: -3, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, backgroundColor: theme.colors.statusDanger, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontFamily: fonts.sansBold, fontSize: 10, lineHeight: 12, color: theme.colors.inverseInk }}>
+                  <Box
+                    style={{
+                      position: 'absolute',
+                      top: -3,
+                      right: -3,
+                      minWidth: 18,
+                      height: 18,
+                      borderRadius: 9,
+                      paddingHorizontal: 4,
+                      backgroundColor: theme.colors.dangerSurface,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontFamily: fonts.sansBold,
+                        fontSize: 10,
+                        lineHeight: 12,
+                        color: theme.colors.inverseInk,
+                      }}
+                    >
                       {unread > 9 ? '9+' : unread}
                     </Text>
                   </Box>
                 ) : null}
               </Box>
             </Pressable>
-            <Box style={{ width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandEmeraldTint }}>
-              <Text style={{ fontFamily: fonts.sansSemibold, fontSize: 15, color: theme.colors.brandEmerald }}>{initial}</Text>
+            <Box
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 24,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: theme.colors.brandEmeraldTint,
+              }}
+            >
+              <Text
+                style={{
+                  fontFamily: fonts.sansSemibold,
+                  fontSize: 15,
+                  color: theme.colors.brandEmerald,
+                }}
+              >
+                {initial}
+              </Text>
             </Box>
           </Box>
         </Box>
 
         {!verified ? (
           <Box style={{ gap: 12 }}>
-            <Banner tone="brand" title="Verify your identity" message="Submit your ID and a selfie to unlock job applications and payouts." />
-            <Button label="Start verification" variant="secondary" onPress={() => router.push('/(verification)/profile-setup')} />
+            <Banner
+              tone="brand"
+              title="Verify your identity"
+              message="Submit your ID and a selfie to unlock job applications and payouts."
+            />
+            <Button
+              label="Start verification"
+              variant="secondary"
+              onPress={() => router.push('/(verification)/profile-setup')}
+            />
           </Box>
         ) : null}
 
         {/* earnings */}
-        <EarningsCard
-          amount={wallet.data?.availableBalance ?? 0}
-          size="md"
-          weekly={weekly}
-          footer={
-          <Box flexDirection="row" alignItems="center" justifyContent="space-between">
-            <Pressable
-              onPress={() => router.push('/(usher)/wallet')}
-              accessibilityRole="button"
-              accessibilityLabel={`${money(wallet.data?.pendingEscrow ?? 0)} held safely. View details.`}
-              hitSlop={6}
-            >
-              <Box flexDirection="row" alignItems="center" style={{ gap: 4 }}>
-                <Icon name="shield" size={16} color="inverseInk" />
-                <Text style={{ fontFamily: fonts.sansRegular, fontSize: 13, lineHeight: 18, color: primitives.emerald[100] }}>
-                  {money(wallet.data?.pendingEscrow ?? 0)} held · released after each event
-                </Text>
-              </Box>
-            </Pressable>
-            <Pressable
-              onPress={() => router.push('/(usher)/wallet')}
-              accessibilityRole="button"
-              accessibilityLabel="Withdraw"
-            >
-              <Box backgroundColor="bgSurface" borderRadius="pill" style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
-                <Text variant="label" style={{ fontSize: 13 }} color="brandEmerald">
-                  Withdraw
-                </Text>
-              </Box>
-            </Pressable>
-          </Box>
-          }
-        />
+        <QueryState query={wallet} errorTitle="Couldn’t load your balance">
+          {(balance) => (
+            <EarningsCard
+              amount={balance.availableBalance}
+              size="md"
+              {...(activity.isSuccess ? { weekly } : {})}
+              footer={
+                <Box flexDirection="row" alignItems="center" justifyContent="space-between">
+                  <Pressable
+                    onPress={() => router.push('/(usher)/wallet')}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${money(wallet.data?.pendingEscrow ?? 0)} held safely. View details.`}
+                    hitSlop={6}
+                  >
+                    <Box flexDirection="row" alignItems="center" style={{ gap: 4 }}>
+                      <Icon name="shield" size={16} color="inverseInk" />
+                      <Text
+                        style={{
+                          fontFamily: fonts.sansRegular,
+                          fontSize: 13,
+                          lineHeight: 18,
+                          color: primitives.emerald[100],
+                        }}
+                      >
+                        {money(wallet.data?.pendingEscrow ?? 0)} held · released after each event
+                      </Text>
+                    </Box>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => router.push('/(usher)/wallet')}
+                    accessibilityRole="button"
+                    accessibilityLabel="Withdraw"
+                  >
+                    <Box
+                      backgroundColor="bgSurface"
+                      borderRadius="pill"
+                      style={{
+                        paddingHorizontal: 16,
+                        paddingVertical: 8,
+                        minHeight: 44,
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Text variant="label" style={{ fontSize: 13 }} color="brandEmerald">
+                        Withdraw
+                      </Text>
+                    </Box>
+                  </Pressable>
+                </Box>
+              }
+            />
+          )}
+        </QueryState>
 
         {/* availability shortcut (Calendar lives off the tab bar now) */}
         <Pressable onPress={() => router.push('/(usher)/calendar')}>
@@ -216,30 +336,53 @@ export default function UsherHome(): React.JSX.Element {
             padding="400"
             style={[{ gap: 12 }, shadowSm]}
           >
-            <Box style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandEmeraldTint }}>
+            <Box
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: theme.colors.brandEmeraldTint,
+              }}
+            >
               <Icon name="calendar" size={20} color="brandEmerald" />
             </Box>
             <Box flex={1} style={{ gap: 2 }}>
               <Text variant="titleM">Manage availability</Text>
-              <Text variant="bodySm" color="inkMuted">Mark the days you can work to get matched.</Text>
+              <Text variant="bodySm" color="inkMuted">
+                Mark the days you can work to get matched.
+              </Text>
             </Box>
             <Icon name="chevron-right" size={20} color="inkMuted" />
           </Box>
         </Pressable>
 
         <Box style={{ gap: 12 }}>
-          <SectionHeader title="Upcoming jobs" actionLabel="See all" onAction={() => router.push('/(usher)/jobs')} />
-          {upcoming.length === 0 ? (
-            <Text variant="bodySm" color="inkMuted">No upcoming jobs yet — apply from the Jobs tab.</Text>
-          ) : (
-            upcoming.map((b) => (
-              <JobRow
-                key={b.id}
-                booking={b}
-                onPress={() => router.push({ pathname: '/(modals)/check-in', params: { booking: b.id } })}
-              />
-            ))
-          )}
+          <SectionHeader
+            title="Upcoming jobs"
+            actionLabel="See all"
+            onAction={() => router.push('/(usher)/jobs')}
+          />
+          <QueryState query={bookings} errorTitle="Couldn’t load your jobs">
+            {() =>
+              upcoming.length === 0 ? (
+                <Text variant="bodySm" color="inkMuted">
+                  No upcoming jobs yet — apply from the Jobs tab.
+                </Text>
+              ) : (
+                upcoming.map((b) => (
+                  <JobRow
+                    key={b.id}
+                    booking={b}
+                    onPress={() =>
+                      router.push({ pathname: '/(modals)/check-in', params: { booking: b.id } })
+                    }
+                  />
+                ))
+              )
+            }
+          </QueryState>
         </Box>
       </ScrollView>
     </Box>

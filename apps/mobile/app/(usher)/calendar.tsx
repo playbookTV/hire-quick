@@ -10,6 +10,8 @@
  * a stale grid.
  */
 import { useState } from 'react';
+import { calendarWeeks } from '../../lib/ui-state.js';
+import { Screen } from '../../components/Screen.js';
 import { Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, Box, Text } from '../../theme/restyle.js';
@@ -19,7 +21,20 @@ import { useAvailability, useSetAvailability, useBookings } from '../../lib/hook
 import type { Theme } from '../../theme/theme.js';
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
 const pad = (n: number): string => String(n).padStart(2, '0');
 
 type DayState = 'default' | 'available' | 'busy' | 'job';
@@ -31,10 +46,13 @@ const STATE_META: Record<DayState, { icon: IconName | null; label: string }> = {
   job: { icon: 'lock', label: 'has a job (locked)' },
 };
 
-function cellColors(s: DayState, colors: Theme['colors']): { bg: string; fg: keyof Theme['colors'] } {
+function cellColors(
+  s: DayState,
+  colors: Theme['colors'],
+): { bg: string; fg: keyof Theme['colors'] } {
   switch (s) {
     case 'job':
-      return { bg: colors.brandEmerald, fg: 'inverseInk' };
+      return { bg: colors.brandSurface, fg: 'inverseInk' };
     case 'busy':
       return { bg: colors.accentGoldTint, fg: 'accentGoldStrong' };
     case 'available':
@@ -44,13 +62,28 @@ function cellColors(s: DayState, colors: Theme['colors']): { bg: string; fg: key
   }
 }
 
-function LegendItem({ color, icon, label }: Readonly<{ color: string; icon: IconName; label: string }>) {
+function LegendItem({
+  color,
+  icon,
+  label,
+}: Readonly<{ color: string; icon: IconName; label: string }>) {
   return (
     <Box flexDirection="row" alignItems="center" style={{ gap: 4 }}>
-      <Box style={{ width: 16, height: 16, borderRadius: 5, backgroundColor: color, alignItems: 'center', justifyContent: 'center' }}>
+      <Box
+        style={{
+          width: 16,
+          height: 16,
+          borderRadius: 5,
+          backgroundColor: color,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
         <Icon name={icon} size={10} color="inkStrong" />
       </Box>
-      <Text variant="bodySm" color="inkMuted">{label}</Text>
+      <Text variant="bodySm" color="inkMuted">
+        {label}
+      </Text>
     </Box>
   );
 }
@@ -63,7 +96,6 @@ export default function Calendar(): React.JSX.Element {
   const [view, setView] = useState({ year: now.getFullYear(), month: now.getMonth() });
   const { year, month } = view;
 
-  const firstWeekday = new Date(Date.UTC(year, month, 1)).getUTCDay();
   const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
   const from = `${year}-${pad(month + 1)}-01`;
   const to = `${year}-${pad(month + 1)}-${pad(daysInMonth)}`;
@@ -76,19 +108,17 @@ export default function Calendar(): React.JSX.Element {
   const statusByDay = new Map<number, 'AVAILABLE' | 'UNAVAILABLE'>();
   for (const row of availability.data ?? []) {
     const d = new Date(row.date);
-    if (d.getUTCFullYear() === year && d.getUTCMonth() === month) statusByDay.set(d.getUTCDate(), row.status);
+    if (d.getUTCFullYear() === year && d.getUTCMonth() === month)
+      statusByDay.set(d.getUTCDate(), row.status);
   }
   const jobDays = new Set<number>();
   for (const b of bookings.data ?? []) {
-    if (!b.event) continue;
+    if (!b.event || !['CONFIRMED', 'CHECKED_IN', 'COMPLETED', 'PAID'].includes(b.status)) continue;
     const d = new Date(b.event.eventDate);
     if (d.getUTCFullYear() === year && d.getUTCMonth() === month) jobDays.add(d.getUTCDate());
   }
 
-  const cells: (number | null)[] = [
-    ...Array.from({ length: firstWeekday }, () => null),
-    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
-  ];
+  const weeks = calendarWeeks(year, month);
 
   const stateOf = (day: number): DayState => {
     if (jobDays.has(day)) return 'job';
@@ -114,78 +144,164 @@ export default function Calendar(): React.JSX.Element {
 
   return (
     <Box flex={1} backgroundColor="bgCanvas" style={{ paddingTop: insets.top }}>
-      <Box style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16, gap: 16 }}>
-        <Box style={{ gap: 4 }}>
-          <Text variant="h2">Availability</Text>
-          <Text variant="bodySm" color="inkMuted">Tap the days you’re free to work</Text>
-        </Box>
+      <Screen scroll>
+        <Box style={{ gap: 16 }}>
+          <Box style={{ gap: 4 }}>
+            <Text variant="h2">Availability</Text>
+            <Text variant="bodySm" color="inkMuted">
+              Tap the days you’re free to work
+            </Text>
+          </Box>
 
-        {/* month nav */}
-        <Box flexDirection="row" alignItems="center" justifyContent="space-between">
-          <Pressable onPress={() => shift(-1)} accessibilityRole="button" accessibilityLabel="Previous month" hitSlop={6}>
-            <Box style={{ width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, borderColor: theme.colors.borderStrong, alignItems: 'center', justifyContent: 'center' }}>
-              <Icon name="chevron-left" size={20} color="inkStrong" />
-            </Box>
-          </Pressable>
-          <Text variant="headingS" accessibilityRole="header">{MONTHS[month]} {year}</Text>
-          <Pressable onPress={() => shift(1)} accessibilityRole="button" accessibilityLabel="Next month" hitSlop={6}>
-            <Box style={{ width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, borderColor: theme.colors.borderStrong, alignItems: 'center', justifyContent: 'center' }}>
-              <Icon name="chevron-right" size={20} color="inkStrong" />
-            </Box>
-          </Pressable>
-        </Box>
-
-        {errored ? (
-          <Box flexDirection="row" alignItems="center" backgroundColor="statusDangerTint" borderRadius="md" padding="300" style={{ gap: 8 }}>
-            <Icon name="wifi-off" size={16} color="statusDanger" />
-            <Text variant="bodySm" color="statusDanger" style={{ flex: 1 }}>Couldn’t load your calendar.</Text>
-            <Pressable onPress={() => { void availability.refetch(); void bookings.refetch(); }} accessibilityRole="button" accessibilityLabel="Retry">
-              <Text variant="label" color="statusDanger">Retry</Text>
+          {/* month nav */}
+          <Box flexDirection="row" alignItems="center" justifyContent="space-between">
+            <Pressable
+              onPress={() => shift(-1)}
+              accessibilityRole="button"
+              accessibilityLabel="Previous month"
+              hitSlop={6}
+            >
+              <Box
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  borderWidth: 1.5,
+                  borderColor: theme.colors.borderStrong,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Icon name="chevron-left" size={20} color="inkStrong" />
+              </Box>
+            </Pressable>
+            <Text variant="headingS" accessibilityRole="header">
+              {MONTHS[month]} {year}
+            </Text>
+            <Pressable
+              onPress={() => shift(1)}
+              accessibilityRole="button"
+              accessibilityLabel="Next month"
+              hitSlop={6}
+            >
+              <Box
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  borderWidth: 1.5,
+                  borderColor: theme.colors.borderStrong,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Icon name="chevron-right" size={20} color="inkStrong" />
+              </Box>
             </Pressable>
           </Box>
-        ) : null}
 
-        <Box flexDirection="row" style={{ gap: 4 }}>
-          {WEEKDAYS.map((d, i) => (
-            <Box key={`${d}-${i}`} style={{ flex: 1, alignItems: 'center' }}>
-              <Text variant="overline" color="inkFaint" style={{ letterSpacing: 0.13 }}>{d}</Text>
+          {setAvailability.isError ? (
+            <Text variant="bodySm" color="statusDanger" accessibilityRole="alert">
+              Couldn’t save that day. Your previous availability is unchanged. Tap the day to try
+              again.
+            </Text>
+          ) : null}
+          {errored ? (
+            <Box
+              flexDirection="row"
+              alignItems="center"
+              backgroundColor="statusDangerTint"
+              borderRadius="md"
+              padding="300"
+              style={{ gap: 8 }}
+            >
+              <Icon name="wifi-off" size={16} color="statusDanger" />
+              <Text variant="bodySm" color="statusDanger" style={{ flex: 1 }}>
+                Couldn’t load your calendar.
+              </Text>
+              <Pressable
+                onPress={() => {
+                  void availability.refetch();
+                  void bookings.refetch();
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Retry"
+              >
+                <Text variant="label" color="statusDanger">
+                  Retry
+                </Text>
+              </Pressable>
             </Box>
-          ))}
-        </Box>
+          ) : null}
 
-        {loading ? (
-          <Box style={{ paddingTop: 24 }}><Loading /></Box>
-        ) : (
-          <Box flexDirection="row" flexWrap="wrap" style={{ gap: 4 }}>
-            {cells.map((day, i) => {
-              if (day === null) return <Box key={`b-${i}`} style={{ width: 40, height: 44 }} />;
-              const s = stateOf(day);
-              const meta = STATE_META[s];
-              const { bg, fg } = cellColors(s, theme.colors);
-              return (
-                <Pressable
-                  key={day}
-                  onPress={() => toggle(day)}
-                  disabled={s === 'job'}
-                  accessibilityRole="button"
-                  accessibilityState={{ disabled: s === 'job' }}
-                  accessibilityLabel={`${day} ${MONTHS[month]}, ${meta.label}${s === 'job' ? '' : '. Tap to toggle.'}`}
-                  style={{ width: 40, height: 44, borderRadius: theme.borderRadii.md, alignItems: 'center', justifyContent: 'center', backgroundColor: bg, gap: 1 }}
-                >
-                  <Text variant="label" style={{ fontSize: 15 }} color={fg}>{day}</Text>
-                  {meta.icon ? <Icon name={meta.icon} size={9} color={fg} /> : <Box style={{ height: 9 }} />}
-                </Pressable>
-              );
-            })}
+          <Box flexDirection="row" style={{ marginHorizontal: -14 }}>
+            {WEEKDAYS.map((d, i) => (
+              <Box key={`${d}-${i}`} style={{ flex: 1, alignItems: 'center' }}>
+                <Text variant="overline" color="inkFaint" style={{ letterSpacing: 0.13 }}>
+                  {d}
+                </Text>
+              </Box>
+            ))}
           </Box>
-        )}
 
-        <Box flexDirection="row" alignItems="center" flexWrap="wrap" style={{ gap: 16 }}>
-          <LegendItem color={theme.colors.brandEmeraldTint} icon="check" label="Available" />
-          <LegendItem color={theme.colors.accentGoldTint} icon="x" label="Busy" />
-          <LegendItem color={theme.colors.brandEmerald} icon="lock" label="Has job" />
+          {loading ? (
+            <Box style={{ paddingTop: 24 }}>
+              <Loading />
+            </Box>
+          ) : (
+            <Box style={{ marginHorizontal: -14, gap: 4 }}>
+              {weeks.map((week, row) => (
+                <Box key={row} flexDirection="row">
+                  {week.map((day, i) => {
+                    if (day === null)
+                      return <Box key={`b-${i}`} style={{ flex: 1, minHeight: 48 }} />;
+                    const s = stateOf(day);
+                    const meta = STATE_META[s];
+                    const { bg, fg } = cellColors(s, theme.colors);
+                    return (
+                      <Pressable
+                        key={day}
+                        onPress={() => toggle(day)}
+                        disabled={s === 'job' || errored || setAvailability.isPending}
+                        accessibilityRole="button"
+                        accessibilityState={{
+                          disabled: s === 'job' || errored || setAvailability.isPending,
+                          busy: setAvailability.isPending,
+                        }}
+                        accessibilityLabel={`${day} ${MONTHS[month]}, ${meta.label}${s === 'job' ? '' : '. Tap to toggle.'}`}
+                        style={{
+                          flex: 1,
+                          minHeight: 48,
+                          borderRadius: theme.borderRadii.md,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backgroundColor: bg,
+                          gap: 1,
+                        }}
+                      >
+                        <Text variant="label" style={{ fontSize: 15 }} color={fg}>
+                          {day}
+                        </Text>
+                        {meta.icon ? (
+                          <Icon name={meta.icon} size={9} color={fg} />
+                        ) : (
+                          <Box style={{ height: 9 }} />
+                        )}
+                      </Pressable>
+                    );
+                  })}
+                </Box>
+              ))}
+            </Box>
+          )}
+
+          <Box flexDirection="row" alignItems="center" flexWrap="wrap" style={{ gap: 16 }}>
+            <LegendItem color={theme.colors.brandEmeraldTint} icon="check" label="Available" />
+            <LegendItem color={theme.colors.accentGoldTint} icon="x" label="Busy" />
+            <LegendItem color={theme.colors.brandEmerald} icon="lock" label="Has job" />
+          </Box>
         </Box>
-      </Box>
+      </Screen>
     </Box>
   );
 }

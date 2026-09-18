@@ -82,6 +82,13 @@ describe('terminal payment callbacks', () => {
       dispatchPaystackEvent(prisma, event(type, reference, 50_000))));
     await dispatchPaystackEvent(prisma, event('transfer.success', reference, 50_000));
     expect(await operationStatus(op.id)).toBe('FAILED');
+    expect(await prisma.paymentOperation.findUniqueOrThrow({ where: { providerRef: reference } }))
+      .toMatchObject({ id: op.id, status: 'FAILED' });
+    expect(await prisma.paymentOperation.findUniqueOrThrow({ where: { dedupeKey: `WITHDRAWAL_REVERSAL:${id}` } }))
+      .toMatchObject({
+        status: 'RECORDED', providerRef: null,
+        payload: { action: 'REVERSE', withdrawalId: id, amountKobo: 50_000, reversalReference: reference },
+      });
     expect((await prisma.withdrawal.findUniqueOrThrow({ where: { id } })).status).toBe('FAILED');
     expect(await prisma.walletLedger.count({ where: { withdrawalId: id, entryType: 'REVERSAL' } })).toBe(1);
     expect((await prisma.wallet.findUniqueOrThrow({ where: { id: s.walletId } })).availableBalance).toBe(85_000);

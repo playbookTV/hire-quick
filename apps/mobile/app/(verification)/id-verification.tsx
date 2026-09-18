@@ -22,7 +22,12 @@ import { Icon } from '../../components/Icon.js';
 import { useSubmitVerification } from '../../lib/hooks.js';
 import { uploadVerificationDoc, type DocKind } from '../../lib/upload.js';
 
-function tileSubtitle(isUploading: boolean, hasDoc: boolean, doneText: string, idleText: string): string {
+function tileSubtitle(
+  isUploading: boolean,
+  hasDoc: boolean,
+  doneText: string,
+  idleText: string,
+): string {
   if (isUploading) return 'Uploading…';
   if (hasDoc) return doneText;
   return idleText;
@@ -81,13 +86,26 @@ export default function IdVerification(): React.JSX.Element {
       { idDocumentUrl: keys.id, selfieUrl: keys.selfie },
       {
         onSuccess: () => router.replace('/(verification)/awaiting-approval'),
-        onError: (e: unknown) => setError(e instanceof Error ? e.message : 'Couldn’t submit your documents. Please try again.'),
+        onError: (e: unknown) =>
+          setError(
+            e instanceof Error ? e.message : 'Couldn’t submit your documents. Please try again.',
+          ),
       },
     );
   };
 
-  const idSubtitle = tileSubtitle(uploading === 'id', !!keys.id, 'ID added', 'NIN, driver’s license or passport');
-  const selfieSubtitle = tileSubtitle(uploading === 'selfie', !!keys.selfie, 'Selfie added', 'Hold your ID next to your face');
+  const idSubtitle = tileSubtitle(
+    uploading === 'id',
+    !!keys.id,
+    'ID added',
+    'NIN, driver’s license or passport',
+  );
+  const selfieSubtitle = tileSubtitle(
+    uploading === 'selfie',
+    !!keys.selfie,
+    'Selfie added',
+    'Hold your ID next to your face',
+  );
 
   return (
     <Box flex={1} backgroundColor="bgCanvas">
@@ -96,18 +114,14 @@ export default function IdVerification(): React.JSX.Element {
         <Box style={{ gap: 16 }}>
           <StepIndicator total={5} current={3} label="STEP 4 OF 5 · VERIFICATION" />
           <Text variant="body" color="inkMuted">
-            We verify every usher so clients can trust who they hire. This is required before you can apply.
+            We verify every usher so clients can trust who they hire. This is required before you
+            can apply.
           </Text>
 
-          {/* Biometric KYC (Dojah) — the fast, recommended path. Manual upload stays below as a fallback. */}
-          <Box backgroundColor="brandEmeraldTintWeak" borderRadius="lg" padding="400" style={{ gap: 10 }}>
-            <Text variant="titleM" color="brandEmerald">Verify instantly</Text>
-            <Text variant="bodySm" color="inkMuted">
-              Use your NIN or BVN and a quick selfie to get verified in about a minute.
-            </Text>
-            <Button label="Verify with NIN/BVN" onPress={() => router.push('/(verification)/kyc-consent')} />
-          </Box>
-          <Banner tone="info" message="Or upload your documents below for manual review (1–2 business days)." />
+          <Banner
+            tone="info"
+            message="Upload your ID and selfie for review. We usually respond within 1–2 business days."
+          />
 
           <AddPhoto
             variant="upload"
@@ -126,18 +140,38 @@ export default function IdVerification(): React.JSX.Element {
           <Box flexDirection="row" alignItems="center" style={{ gap: 8 }}>
             <Icon name="lock" size={16} color="inkMuted" />
             <Text variant="bodySm" color="inkMuted" style={{ flex: 1 }}>
-              Encrypted, only used for verification, and deleted after approval.
+              Used for identity verification and reviewed by authorised staff. Documents are removed
+              according to our retention policy.
             </Text>
           </Box>
         </Box>
       </Screen>
 
       {/* action */}
-      <Box backgroundColor="bgCanvas" style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: insets.bottom + 16, borderTopWidth: 1.5, borderTopColor: theme.colors.borderDefault, gap: 10 }}>
+      <Box
+        backgroundColor="bgCanvas"
+        style={{
+          paddingHorizontal: 20,
+          paddingTop: 16,
+          paddingBottom: insets.bottom + 16,
+          borderTopWidth: 1.5,
+          borderTopColor: theme.colors.borderDefault,
+          gap: 10,
+        }}
+      >
         {error ? (
-          <Box flexDirection="row" alignItems="center" backgroundColor="statusDangerTint" borderRadius="md" padding="300" style={{ gap: 8 }}>
+          <Box
+            flexDirection="row"
+            alignItems="center"
+            backgroundColor="statusDangerTint"
+            borderRadius="md"
+            padding="300"
+            style={{ gap: 8 }}
+          >
             <Icon name="alert-circle" size={16} color="statusDanger" />
-            <Text variant="bodySm" color="statusDanger" style={{ flex: 1 }}>{error}</Text>
+            <Text variant="bodySm" color="statusDanger" style={{ flex: 1 }}>
+              {error}
+            </Text>
           </Box>
         ) : null}
         <Button

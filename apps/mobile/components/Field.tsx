@@ -19,11 +19,11 @@ export function Field({ label, helper, error, required, children }: FieldProps):
   // Associate the visible label (and any error) with the control for screen readers —
   // Input/TextArea spread props onto their TextInput, so these land on the field itself (S8).
   const control =
-    isValidElement(children) && (label || error)
+    isValidElement(children) && (label || error || helper)
       ? cloneElement(children as React.ReactElement<Record<string, unknown>>, {
           accessibilityLabel:
             (children.props as { accessibilityLabel?: string }).accessibilityLabel ?? label,
-          ...(error ? { accessibilityHint: error } : {}),
+          ...(error || helper ? { accessibilityHint: error ?? helper } : {}),
         })
       : children;
   return (
@@ -42,7 +42,13 @@ export function Field({ label, helper, error, required, children }: FieldProps):
             {label}
           </Text>
           {required ? (
-            <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 13, color: theme.colors.statusDanger }}>
+            <Text
+              style={{
+                fontFamily: 'PlusJakartaSans_600SemiBold',
+                fontSize: 13,
+                color: theme.colors.statusDanger,
+              }}
+            >
               {' *'}
             </Text>
           ) : null}
@@ -50,11 +56,25 @@ export function Field({ label, helper, error, required, children }: FieldProps):
       ) : null}
       {control}
       {error ? (
-        <Text style={{ fontFamily: 'PlusJakartaSans_400Regular', fontSize: 13, lineHeight: 18, color: theme.colors.statusDanger }}>
+        <Text
+          style={{
+            fontFamily: 'PlusJakartaSans_400Regular',
+            fontSize: 13,
+            lineHeight: 18,
+            color: theme.colors.statusDanger,
+          }}
+        >
           {error}
         </Text>
       ) : helper ? (
-        <Text style={{ fontFamily: 'PlusJakartaSans_400Regular', fontSize: 13, lineHeight: 18, color: theme.colors.inkFaint }}>
+        <Text
+          style={{
+            fontFamily: 'PlusJakartaSans_400Regular',
+            fontSize: 13,
+            lineHeight: 18,
+            color: theme.colors.inkFaint,
+          }}
+        >
           {helper}
         </Text>
       ) : null}

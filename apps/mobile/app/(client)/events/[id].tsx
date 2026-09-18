@@ -27,7 +27,15 @@ import { useEvent, useBookings } from '../../../lib/hooks.js';
 import { formatEventDate, formatTimeRange } from '../../../lib/format.js';
 import { ApiError } from '../../../lib/api-error.js';
 
-function ActionChip({ label, danger, onPress }: { label: string; danger?: boolean; onPress?: () => void }) {
+function ActionChip({
+  label,
+  danger,
+  onPress,
+}: {
+  label: string;
+  danger?: boolean;
+  onPress?: () => void;
+}) {
   const theme = useTheme();
   return (
     <Pressable
@@ -78,9 +86,13 @@ export default function EventDetail(): React.JSX.Element {
             icon="alert-circle"
             tone="danger"
             title={notFound ? 'Event not found' : 'Couldn’t load this event'}
-            subtitle={notFound ? 'It may have been removed.' : 'Check your connection and try again.'}
+            subtitle={
+              notFound ? 'It may have been removed.' : 'Check your connection and try again.'
+            }
             actionLabel="Retry"
-            onAction={() => { void refetch(); }}
+            onAction={() => {
+              void refetch();
+            }}
           />
         </Box>
       </Box>
@@ -95,7 +107,8 @@ export default function EventDetail(): React.JSX.Element {
   const dots = Math.min(event.headcount, 12);
   // Editable only before any booking is confirmed (mirrors the PATCH guard).
   const editable =
-    (event.status === 'OPEN' || event.status === 'PARTIALLY_STAFFED') && (event._count?.bookings ?? 0) === 0;
+    (event.status === 'OPEN' || event.status === 'PARTIALLY_STAFFED') &&
+    (event._count?.bookings ?? 0) === 0;
 
   return (
     <Box flex={1} backgroundColor="bgCanvas">
@@ -109,19 +122,36 @@ export default function EventDetail(): React.JSX.Element {
         </Box>
 
         {/* header */}
-        <Box flexDirection="row" alignItems="center" justifyContent="space-between" style={{ gap: 12 }} marginBottom="200">
+        <Box
+          flexDirection="row"
+          alignItems="center"
+          justifyContent="space-between"
+          style={{ gap: 12 }}
+          marginBottom="200"
+        >
           <Text variant="h1" style={{ flex: 1 }} numberOfLines={2}>
             {event.title}
           </Text>
           <StatusPill status={event.status} />
         </Box>
-        <MetaRow icon="calendar" text={`${formatEventDate(event.eventDate)} · ${formatTimeRange(event.startTime, event.endTime)}`} />
-        <MetaRow icon="map-pin" text={event.state ? `${event.venue} · ${event.state}` : event.venue} />
+        <MetaRow
+          icon="calendar"
+          text={`${formatEventDate(event.eventDate)} · ${formatTimeRange(event.startTime, event.endTime)}`}
+        />
+        <MetaRow
+          icon="map-pin"
+          text={event.state ? `${event.venue} · ${event.state}` : event.venue}
+        />
 
         {/* progress */}
         <Box height={20} />
         <Card>
-          <Box flexDirection="row" alignItems="center" justifyContent="space-between" marginBottom="300">
+          <Box
+            flexDirection="row"
+            alignItems="center"
+            justifyContent="space-between"
+            marginBottom="300"
+          >
             <Text variant="titleM">
               {confirmed} of {event.headcount} confirmed
             </Text>
@@ -144,7 +174,12 @@ export default function EventDetail(): React.JSX.Element {
           <KeyValueRow label="Budget / head" value={formatNaira(kobo(event.budgetPerHead))} />
           {event.dressCode ? <KeyValueRow label="Dress code" value={event.dressCode} /> : null}
           <Box height={1} backgroundColor="borderDefault" marginVertical="200" />
-          <KeyValueRow label="Total held safely" value={formatNaira(total)} tone="brand" emphasize />
+          <KeyValueRow
+            label="Estimated staffing budget"
+            value={formatNaira(total)}
+            tone="brand"
+            emphasize
+          />
         </Card>
 
         {requirements ? (
@@ -171,18 +206,37 @@ export default function EventDetail(): React.JSX.Element {
         <Box height={16} />
         <Box flexDirection="row" flexWrap="wrap" style={{ gap: 8 }}>
           {editable ? (
-            <ActionChip label="Edit event" onPress={() => router.push({ pathname: '/(modals)/edit-event', params: { id } })} />
+            <ActionChip
+              label="Edit event"
+              onPress={() => router.push({ pathname: '/(modals)/edit-event', params: { id } })}
+            />
           ) : null}
           {eventBookings.length > 0 ? (
-            <ActionChip label="Event day" onPress={() => router.push({ pathname: '/(modals)/event-day', params: { id } })} />
+            <ActionChip
+              label="Event day"
+              onPress={() => router.push({ pathname: '/(modals)/event-day', params: { id } })}
+            />
           ) : null}
           <ActionChip label="Message all" onPress={() => router.push('/(client)/messages')} />
           {eventBookings.length === 1 && firstBooking ? (
-            <ActionChip label="Cancel booking" danger onPress={() => router.push({ pathname: '/(modals)/cancellation', params: { booking: firstBooking } })} />
+            <ActionChip
+              label="Cancel booking"
+              danger
+              onPress={() =>
+                router.push({
+                  pathname: '/(modals)/cancellation',
+                  params: { booking: firstBooking },
+                })
+              }
+            />
           ) : eventBookings.length > 1 ? (
             // Multi-usher events: cancel per-usher from the Event-Day roster, not a single
             // chip that would silently cancel only the first booking (C5).
-            <ActionChip label="Cancel a booking" danger onPress={() => router.push({ pathname: '/(modals)/event-day', params: { id } })} />
+            <ActionChip
+              label="Cancel a booking"
+              danger
+              onPress={() => router.push({ pathname: '/(modals)/event-day', params: { id } })}
+            />
           ) : null}
         </Box>
         <Box style={{ height: insets.bottom }} />

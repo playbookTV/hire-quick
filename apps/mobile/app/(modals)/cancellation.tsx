@@ -13,6 +13,7 @@ import { AppBar } from '../../components/AppBar.js';
 import { IconCircle } from '../../components/IconCircle.js';
 import { KeyValueRow } from '../../components/KeyValueRow.js';
 import { Button } from '../../components/Button.js';
+import { EmptyState } from '../../components/EmptyState.js';
 import { Loading } from '../../components/Loading.js';
 import { useBooking, useCancelBooking } from '../../lib/hooks.js';
 import { useToast } from '../../lib/toast.js';
@@ -41,7 +42,7 @@ export default function Cancellation(): React.JSX.Element {
   const cancel = useCancelBooking(bookingId ?? '');
   const toast = useToast();
 
-  if (booking.isLoading || !booking.data) {
+  if (booking.isLoading) {
     return (
       <Box flex={1} backgroundColor="bgCanvas">
         <AppBar title="Cancel booking" showBack inset />
@@ -50,6 +51,21 @@ export default function Cancellation(): React.JSX.Element {
     );
   }
 
+  if (booking.isError || !booking.data)
+    return (
+      <Box flex={1} backgroundColor="bgCanvas">
+        <AppBar title="Cancel booking" showBack inset />
+        <EmptyState
+          icon="alert-circle"
+          title="Couldn’t load this booking"
+          subtitle="Retry to see your refund before cancelling."
+          actionLabel="Try again"
+          onAction={() => {
+            void booking.refetch();
+          }}
+        />
+      </Box>
+    );
   const b = booking.data;
   const gross = b.amount;
   const ev = b.event;
@@ -71,7 +87,10 @@ export default function Cancellation(): React.JSX.Element {
         router.dismissAll();
       },
       onError: (e: unknown) =>
-        toast.error(e instanceof Error ? e.message : 'This cancellation needs support to settle.', 'Couldn’t cancel'),
+        toast.error(
+          e instanceof Error ? e.message : 'This cancellation needs support to settle.',
+          'Couldn’t cancel',
+        ),
     });
   };
 
@@ -88,8 +107,20 @@ export default function Cancellation(): React.JSX.Element {
             {ev ? ev.title : 'Review the refund before confirming.'}
           </Text>
 
-          <Box alignSelf="stretch" backgroundColor="bgSurface" borderWidth={1} borderColor="borderDefault" borderRadius="lg" padding="400" style={{ gap: 12 }}>
-            <KeyValueRow label="Refund to you" value={`${money(refund)}  (${outcome.clientRefundPct}%)`} tone="success" />
+          <Box
+            alignSelf="stretch"
+            backgroundColor="bgSurface"
+            borderWidth={1}
+            borderColor="borderDefault"
+            borderRadius="lg"
+            padding="400"
+            style={{ gap: 12 }}
+          >
+            <KeyValueRow
+              label="Refund to you"
+              value={`${money(refund)}  (${outcome.clientRefundPct}%)`}
+              tone="success"
+            />
             <KeyValueRow label="Usher compensation" value={money(usherShare)} />
             <KeyValueRow label="Processing fee" value="Non-refundable" tone="muted" />
             <Box style={{ width: 100, height: 1 }} backgroundColor="borderDefault" />
@@ -117,9 +148,18 @@ export default function Cancellation(): React.JSX.Element {
         <Box style={{ flex: 1, minHeight: 20 }} />
         <Box style={{ gap: 12, paddingBottom: insets.bottom }}>
           {selfServe ? (
-            <Button label={cancel.isPending ? 'Cancelling…' : 'Cancel booking'} variant="danger" onPress={onCancel} disabled={cancel.isPending} />
+            <Button
+              label={cancel.isPending ? 'Cancelling…' : 'Cancel booking'}
+              variant="danger"
+              onPress={onCancel}
+              disabled={cancel.isPending}
+            />
           ) : (
-            <Button label="Contact support to cancel" variant="primary" onPress={() => void openSupport(supportMessage)} />
+            <Button
+              label="Contact support to cancel"
+              variant="primary"
+              onPress={() => void openSupport(supportMessage)}
+            />
           )}
           <Button label="Keep booking" variant="ghost" onPress={() => router.back()} />
         </Box>

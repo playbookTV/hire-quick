@@ -1,0 +1,33 @@
+{
+  "verifiedAt": "2026-09-16 10:47:11 UTC",
+  "project": "HireQuick — Launch Readiness (V1)",
+  "total": 103,
+  "hasNextPage": false,
+  "counts": {
+    "In Review": 28,
+    "Todo": 36,
+    "In Progress": 4,
+    "Backlog": 11,
+    "Done": 24
+  },
+  "selected": [
+    {
+      "id": "OVA-144",
+      "title": "Enforce live socket authorization and shared message validation",
+      "status": "In Review",
+      "url": "https://linear.app/ovalaydigital/issue/OVA-144/enforce-live-socket-authorization-and-shared-message-validation"
+    },
+    {
+      "id": "OVA-175",
+      "title": "Enforce HOLD allocation conservation and accumulated integer balance limits",
+      "status": "In Review",
+      "url": "https://linear.app/ovalaydigital/issue/OVA-175/enforce-hold-allocation-conservation-and-accumulated-integer-balance"
+    },
+    {
+      "id": "OVA-135",
+      "title": "Resume abandoned checkout and expire unpaid staffing reservations safely",
+      "status": "In Review",
+      "url": "https://linear.app/ovalaydigital/issue/OVA-135/resume-abandoned-checkout-and-expire-unpaid-staffing-reservations"
+    }
+  ]
+}

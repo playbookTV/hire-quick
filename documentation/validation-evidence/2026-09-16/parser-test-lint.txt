@@ -1,0 +1,4 @@
+Date: 2026-09-16
+Command: pnpm exec eslint --config eslint.tests.config.mjs apps/api/src/realtime/__tests__/http-parser.unit.test.ts apps/api/src/realtime/__tests__/gateway-runtime.unit.test.ts
+Exit code: 0
+

@@ -1,354 +1,127 @@
-# Architecture Overview
+# Architecture
 
-This document explains how the HireQuick backend is put together: the workspace
-layout, how a request flows through the system, the key design decisions, and
-where to extend it. For the money/escrow internals, see
-[`PAYMENTS.md`](./PAYMENTS.md). For endpoints, see [`API.md`](./API.md).
+[Documentation index](README.md) · [Data model](DATA_MODEL.md) · [Payments](PAYMENTS.md)
 
----
+## System boundaries
 
-## System design
+HireQuick runs as three applications and a separate worker process. PostgreSQL is authoritative for identity, bookings, financial records, and durable recovery. Redis supports rate limiting, scheduled jobs, and realtime delivery. Provider responses can arrive after the initiating HTTP request has completed or failed.
 
-HireQuick is a **pnpm + Turbo monorepo**. There are three apps — `apps/api` (an
-Express HTTP service, plus a separate **worker** process for scheduled jobs),
-`apps/admin` (a Vite + React operations console), and `apps/mobile` (an Expo
-React Native client/usher app). All three lean on the shared packages. This
-document is about the backend (`apps/api`).
-
-```
-                         ┌─────────────────────────────────────────┐
-                         │            packages/shared (@hq/shared)   │
-                         │  pure, dependency-free domain logic:      │
-                         │  money · policy · state-machines · enums  │
-                         │  · dto (Zod)                              │
-                         └───────────────┬───────────────────────────┘
-                                         │ imported by every app
-        ┌────────────────────────────────┼────────────────────────────────┐
-        │                                 │                                 │
-┌───────▼─────────┐              ┌────────▼──────────┐            ┌─────────▼────────┐
-│ apps/api        │   uses       │ packages/database │            │ apps/admin       │
-│ @hq/api         │─────────────▶│ @hq/database      │            │ (Vite + React)   │
-│ Express service │   prisma     │ Prisma client +   │            │ apps/mobile      │
-│ + worker        │              │ schema (Postgres) │            │ (Expo RN)        │
-└───┬────────┬────┘              └───────────────────┘            │  → HTTP + Socket │
-    │ ports  │                                                     └──────────────────┘
-    │        └──────────────┬──────────────────┐
-┌───▼────────────┐  ┌───────▼────────┐  ┌───────▼────────────┐
-│ Paystack       │  │ Storage (S3 /  │  │ Realtime (Socket.IO│
-│ (HttpPaystack  │  │ R2 / B2, or    │  │ + Redis adapter,   │
-│  / InMemory)   │  │ URL passthru)  │  │ or no-op gateway)  │
-└────────────────┘  └────────────────┘  └────────────────────┘
-        + Brevo (SMS/WhatsApp/email) · Redis (rate limit + socket fan-out)
+```mermaid
+flowchart LR
+  Mobile["Expo mobile app"] -->|"HTTP"| API["Express API"]
+  Admin["React admin console"] -->|"HTTP"| API
+  API --> DB["PostgreSQL / Prisma"]
+  Worker["BullMQ worker"] --> DB
+  API <--> Redis["Redis"]
+  Worker <--> Redis
+  API --> Providers["Paystack / Brevo / Dojah / FCM / S3"]
+  Worker --> Providers
+  Providers -->|"Verified webhooks"| API
+  API --> Socket["Authorized Socket.IO delivery"]
 ```
 
-Why a monorepo with a `shared` package? The policy matrix, money math, and state
-machines must produce **identical outcomes** on every surface. The mobile and
-admin apps import the same `@hq/shared` matrices instead of re-implementing them,
-so a refund computed in the app equals the refund computed by the ledger.
+The diagram describes backend capabilities; it does not imply that every mobile/admin view has a live socket subscription. Current client dependencies and session behavior are covered in [Development](DEVELOPMENT.md).
 
-External services all sit behind **injected ports** (Paystack, storage, realtime)
-or degrade to safe fakes when unconfigured, so the backend runs and is fully
-tested with no live keys.
+## Workspace responsibilities
 
----
+| Package        | Responsibility and boundaries                                                                                                                                   |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@hq/shared`   | Pure money/policy/state logic and Zod DTOs. No database or network access. Imported by API/mobile; the current admin manifest does not declare this dependency. |
+| `@hq/database` | Prisma schema, migrations, generated types, and process-wide client singleton. Application code imports database types/client from this package.                |
+| `@hq/config`   | Shared TypeScript, ESLint, and Vitest configuration. Individual packages may override defaults.                                                                 |
+| `@hq/api`      | HTTP authorization, feature services, provider orchestration, ledger, realtime, worker jobs.                                                                    |
+| `@hq/admin`    | React 18/Vite operations UI over the admin API.                                                                                                                 |
+| `@hq/mobile`   | Expo 54, React 19.1, React Native 0.81.5, Expo Router, TanStack Query, SecureStore.                                                                             |
 
-## Workspace layout
+The root [package manifest](../package.json), [workspace definition](../pnpm-workspace.yaml), and [Turbo configuration](../turbo.json) define dependency and task behavior. TypeScript project references build shared/database outputs before their API consumer. ESM backend/shared relative imports include `.js` even in `.ts` source.
 
-### `packages/shared` (`@hq/shared`)
+## API composition
 
-Pure domain logic with **no runtime dependencies** (except Zod). Imported by
-everything.
+[createApp](../apps/api/src/app.ts) accepts injected Paystack, storage, realtime, and KYC ports plus CORS, Redis rate-limiter, and proxy configuration. Tests can supply fakes and omit infrastructure. [server.ts](../apps/api/src/server.ts) is different: it constructs real `HttpPaystack`, Redis clients, realtime transport, and configured storage/KYC implementations.
 
-| File | Responsibility |
-| --- | --- |
-| `money.ts` | `Kobo` branded type, `kobo`/`naira`/`addKobo`/`sumKobo`, `splitFee` (15% fee math with no rounding leak), `formatNaira`. `PLATFORM_FEE_BPS = 1500`. |
-| `policy.ts` | Cancellation / no-show / dispute outcome matrix (refund %, payout %, reputation effect). Single source of truth (PRD §13). |
-| `state-machines.ts` | `BOOKING_TRANSITIONS`, `ORDER_TRANSITIONS`, `WITHDRAWAL_TRANSITIONS` tables + `assert*Transition` guards that throw `IllegalTransition`. Plus the UX-label → DB-enum map. |
-| `enums.ts` | Canonical domain enums (roles, statuses, ledger entry types). Prisma mirrors these. |
-| `dto.ts` | Zod request validators for boundary validation. |
+Middleware order is intentional:
 
-### `packages/database` (`@hq/database`)
+1. Production configuration guard; proxy trust; Helmet and CORS; global rate limiting.
+2. Request correlation using `x-request-id`.
+3. Raw-body Paystack and Dojah webhooks, before JSON parsing.
+4. JSON parsing with a 1 MiB limit; `/health`; feature routers.
+5. Not-found and error serialization middleware.
 
-The Prisma schema (`prisma/schema.prisma`) and the generated client. **Always
-import `prisma`, `Prisma`, `PrismaClient` from `@hq/database`** — never from
-`@prisma/client` directly. The package exports a process-wide singleton so hot
-reloads don't exhaust the Neon connection pool.
+The global rate limiter runs before request-ID middleware, so early failures are not guaranteed a request ID. Paystack HTTP routes mount when a port is supplied; its webhook also needs a secret. Events always mount, but confirm requires a payment port. The Dojah webhook mounts with the selected KYC port.
 
-### `packages/config` (`@hq/config`)
+`env.ts` applies strong-secret and provider requirements to staging and production. `createApp` additionally rejects production without CORS origins or a rate-limit Redis client. These checks establish configuration presence, not service connectivity. See [Configuration](CONFIGURATION.md).
 
-Shared `tsconfig.base.json`, `eslint.config.mjs`, and `vitest.preset.ts` consumed
-by the other packages.
+## Feature map
 
-### `apps/api` (`@hq/api`)
+| Module                     | Responsibilities                                                                                           |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `auth`                     | OTP issuance/verification, access JWTs, refresh rotation/denylist, role middleware                         |
+| `events`                   | Event editing, applications/invitations, schedule eligibility, staffing, venue masking                     |
+| `bookings`                 | Confirmation, attendance, completion, cancellation, disputes, reviews                                      |
+| `payments`                 | Checkout recovery, durable provider operations, bank/withdrawal services, ledger, reconciliation, webhooks |
+| `profile`, `ushers`        | Profile writes, photo/availability management, discovery and public profile views                          |
+| `verification`             | Document and biometric verification, provider callbacks, admin review                                      |
+| `privacy`, `legal`         | Export/erasure, consent and versioned policy acceptance                                                    |
+| `notifications`, `rewards` | Notification inbox/delivery; milestone unlocks and fulfillment                                             |
+| `storage`, `realtime`      | Private object access, chat persistence/authorization, live signals                                        |
+| `admin`, `audit.ts`        | Operational actions, two-admin approvals, hash-chained audit records                                       |
+| `jobs`                     | BullMQ schedules and recovery/retention/reconciliation wrappers                                            |
 
-The Express (ESM) HTTP service. Feature modules live under `src/modules/*`:
-`auth`, `events`, `bookings`, `payments`, `ushers`, `profile`, `privacy`,
-`notifications`, `rewards`, `storage`, `admin`, `jobs`, plus `audit.ts`.
-Cross-cutting infrastructure sits alongside `modules/`: `middleware/` (rate
-limiting), `realtime/` (the Socket.IO gateway), and `logger.ts` (structured
-pino logging). Two entrypoints:
+See the [API reference](API.md) for links to each router.
 
-- `server.ts` — the HTTP API (`pnpm dev` / `pnpm --filter @hq/api start`). Wires
-  the real `HttpPaystack`, a Redis client (rate limiting + socket fan-out), the
-  S3 storage port, and the Socket.IO gateway.
-- `worker.ts` — the scheduled-jobs process (`pnpm --filter @hq/api worker`). Uses
-  a Redis **emitter** gateway so job-driven lifecycle pushes reach connected
-  clients even though the worker holds no sockets.
+## Confirmation and payment recovery
 
-### `apps/admin` (`@hq/admin`)
-
-A Vite + React 18 single-page operations console (verifications, disputes,
-refunds, two-person approvals, ledger, stats). Talks to `apps/api` over HTTP.
-
-### `apps/mobile` (`@hq/mobile`)
-
-An Expo React Native app using `expo-router`, with route groups for `(auth)`,
-`(client)`, `(usher)`, `(verification)`, and `(modals)`. Talks to `apps/api`
-over HTTP and the Socket.IO gateway (chat + lifecycle pushes), and imports
-`@hq/shared` for identical money/policy math. (The repo pins `@types/react` to a
-single version so RN and the shared types line up.)
-
----
-
-## Request flow
-
-### How the Express app is assembled (`apps/api/src/app.ts`)
-
-`createApp(config)` builds the app in a deliberate order:
-
-```
-0. production fail-closed check               refuse to boot in NODE_ENV=production
-                                                 without corsOrigins + rateLimitRedis
-1. trust proxy (N hops)                        so req.ip is the real client IP
-2. helmet() + cors(allowlist)                  security headers; CORS allowlist
-                                                 (reflect-all only with no list = dev)
-3. global rate limiter                         coarse Redis-backed abuse backstop
-4. x-request-id middleware                     request correlation
-5. /webhooks/paystack  (express.raw)           ← mounted BEFORE express.json,
-                                                 because HMAC verification needs
-                                                 the raw body (only with a port)
-6. express.json({ limit: '1mb' })              body parsing for everything else
-7. /health                                     liveness
-8. /auth (+auth limiter), /api/me (profile +
-   privacy), /api/admin, /api (bookings,
-   ushers, events)                             feature routers
-9. /api/payments (+money limiter)              mounted only when a Paystack port
-                                                 is provided (see DI below)
-10. 404 handler                                { error: { code, message } }
-11. error middleware                           Zod → 400 VALIDATION;
-                                                 ApiError → its status/code;
-                                                 anything else → 500 INTERNAL
-                                                 (generic, leak-free; logged)
+```mermaid
+sequenceDiagram
+  participant C as Client
+  participant A as API
+  participant D as PostgreSQL
+  participant P as Paystack
+  C->>A: Confirm accepted applications + idempotency key
+  A->>D: Lock eligibility; persist order, bookings, checkout
+  A->>D: Persist initialization attempt
+  A->>P: Initialize original charge reference
+  P-->>A: Checkout URL or uncertain result
+  A-->>C: Durable checkout state
+  P->>A: Signed charge callback
+  A->>D: Record HOLDs or late-payment refund intents
+  C->>A: Read checkout after browser return
+  A->>P: Verify original reference if needed
+  A-->>C: Authoritative checkout snapshot
 ```
 
-`createApp` takes its dependencies as config (`{ paystack, paystackSecret,
-realtime, corsOrigins, rateLimitRedis, trustProxy, storage }`), so tests can pass
-in-memory/no-op fakes and run with nothing external. `server.ts` is the
-production wiring that injects the real implementations.
+A browser return is not proof of payment. Both verified provider reads and authenticated callbacks can resolve an outcome. Initialization uncertainty is retained as `REVIEW`; it does not authorize a second charge. Expiry needs conclusive unpaid evidence or proof that dispatch never occurred. Late success for an expired checkout enters refund recovery without confirming staff.
 
-**The events router now mounts unconditionally** — discovery, applications,
-invitations, and saved jobs don't need Paystack. Only the payments router (and
-the webhook) gate on a port; `confirm-batch` itself returns `503` when no port is
-present, so the rest of the events feature stays available without payments.
+Financial external operations persist intent before dispatch and retain provider success separately from ledger recording. Network calls occur outside financial transactions. The worker resumes recoverable work using the original reference. [Payments](PAYMENTS.md) explains the invariants and retry boundaries.
 
-**Hardening is fail-closed.** `createApp` refuses to boot in `NODE_ENV=production`
-without a CORS allowlist and a Redis client (otherwise the dev-friendly
-reflect-all CORS and pass-through rate limiters would silently ship). `env.ts`
-additionally requires strong JWT secrets, Paystack keys, a Brevo key, and a
-storage bucket in production.
+## Transactions and ownership
 
-### Example: a client confirms a batch of ushers
+`payments/ledger/ledger.ts` owns ledger and wallet balance mutations. Caller-provided Prisma transactions, row locks, advisory locks where required, and state guards serialize conflicting operations. Business services must use this boundary instead of directly editing balances.
 
-```
-POST /api/events/:id/confirm   (Idempotency-Key required)
-        │
-[1] events/routes.ts        requireAuth → Zod-validate { applicationIds, email }
-        ▼
-[2] bookings/service.ts     confirmBatch():
-        │                     - verify the event belongs to this client
-        │                     - load ACCEPTED applications
-        │                     - in one DB tx: create Order (PENDING) + Bookings
-        │                       (PENDING_PAYMENT), gross = budgetPerHead × N
-        ▼
-[3] payments/service.ts     initChargeForOrder() → Paystack.initializeCharge()
-        ▼
-[4] response                { orderId, authorizationUrl, reference, bookingIds }
-        │                   (client opens authorizationUrl to pay)
-        ▼
-[5] Paystack → webhook      charge.success → holdOrder() moves the order to PAID
-                            and HOLDs each booking's amount into escrow
-```
+The [shared transition tables](../packages/shared/src/state-machines.ts) describe allowed moves. A completed booking becoming `PAID` means wallet credit, not bank receipt. Post-payout disputes are currently blocked pending a clawback model. Read [Current status](STATUS.md) before interpreting broader specification promises.
 
-The money never moves to anyone here — it lands in the platform's Paystack
-Balance and is recorded as `HOLD` ledger entries. Release happens later, on
-verified attendance. The full money lifecycle is in [`PAYMENTS.md`](./PAYMENTS.md).
+## Authentication and realtime
 
----
+OTP login returns access and refresh tokens. Refresh atomically consumes the old refresh JTI, signs a successor pair, and writes audit evidence. Logout revokes the presented refresh token. There is no family-wide refresh revocation; a lost committed refresh response requires signing in again. HTTP requests verify access credentials and current account status.
 
-## Data model (high level)
+Sockets require a session-bound access token. Incoming actions and outgoing private deliveries recheck session/account/role authorization. Booking messages additionally require current party and booking-state access. New API and worker realtime transport uses authorized application envelopes over Redis, rather than direct Redis adapter broadcasts. Mixed transport versions can lose signals; deploy API and worker together.
 
-The schema (`packages/database/prisma/schema.prisma`) groups into:
+Realtime is best effort. Redis outages do not authorize bypass delivery or provide replay. Clients recover state over HTTP. See the maintained [realtime authorization note](../apps/api/src/realtime/README.md) for limits, revocation timing, and test boundaries.
 
-- **Identity:** `User` (role CLIENT/USHER/ADMIN, phone-unique), `Client`,
-  `Usher` (+ `UsherVerification`, `Photo`, `Availability`, rating/ratingCount/
-  completedJobsCount), `BankAccount`, `DeviceToken` (push), `VerificationCode`
-  (OTP + attendance codes).
-- **Marketplace:** `Event`, `Application`, `Invitation`, `SavedJob`.
-- **Booking & money:** `Order` (a confirmed batch), `Booking` (one usher on one
-  event), `Payment` (gross/fee/payout + escrow status), `Wallet`, `Withdrawal`.
-- **Ledgers (append-only):** `EscrowLedger`, `WalletLedger` — never UPDATE/DELETE.
-- **Rewards:** `MilestoneTier` (loyalty thresholds + reward type), `UsherMilestone`
-  (per-usher unlocks).
-- **Ops & social:** `Dispute`, `Conversation`/`Message`, `Review`, `Approval`
-  (two-person admin actions), `AuditLog` + `AuditChainHead` (hash-chained),
-  `IdempotencyKey`.
+## Worker and integrations
 
-Everything monetary is `Int` (kobo). Timestamps are `Timestamptz(6)`.
+[worker.ts](../apps/api/src/worker.ts) registers schedules and starts a worker on `hirequick-jobs`. It handles SIGTERM/SIGINT by draining worker and queue. It uses the same database/provider configuration as the API and publishes guarded realtime envelopes. The full job table and incident actions are in [Operations](OPERATIONS.md).
 
----
+External adapters are implementation boundaries, not evidence of configured infrastructure:
 
-## Key design decisions
+- Paystack: real HTTP implementation in the server; in-memory implementation in tests.
+- Brevo: SMS or configured WhatsApp OTP, plus notifications. Development login requires real delivery.
+- Dojah: biometric KYC; no-op adapter when absent in development/tests.
+- Storage: S3-compatible presigned uploads/downloads. Upload-url routes fail when storage is absent; some legacy profile paths permit passthrough values.
+- FCM: enabled by a complete service-account configuration; notification records and push delivery are separate concerns.
 
-### Money is integer kobo, never floats
+## Design tradeoffs
 
-**Decision:** every amount in the DB, the code, and the ledger is an integer
-number of kobo (₦1 = 100 kobo). **Why:** floating-point drift would silently
-break the per-booking `Σ == 0` ledger invariant. **Trade-off:** all arithmetic
-goes through `@hq/shared/money` helpers; `splitFee` floors the fee and gives the
-payout the exact remainder so `fee + payout === gross` always.
+Append-only ledgers preserve financial history at the cost of explicit compensating entries. Durable payment intents tolerate crashes but can leave ambiguous provider outcomes requiring operator investigation. Shared contracts reduce drift, but some route schemas remain local and must be read alongside shared DTOs. Best-effort realtime reduces coupling to client connections, while requiring HTTP refetch and explicit client recovery.
 
-### The ledger is append-only and authoritative
-
-**Decision:** `EscrowLedger` and `WalletLedger` rows are immutable; balances are
-derived by summing them. State transitions are validated against transition
-tables. **Why:** an auditable, replayable record of every movement, and the
-ability to reconcile against the real Paystack balance. **Trade-off:** more rows
-and more discipline (you add a transition to the table before writing code that
-performs it).
-
-### Paystack behind a hexagonal port
-
-**Decision:** all Paystack calls go through the `PaystackPort` interface. Phase 1
-ships an `InMemoryPaystack` (no network, no live keys); Phase 2 adds
-`HttpPaystack` against TEST keys behind the same interface. **Why:** the ledger
-is fully testable with no external dependency, and the app receives the port via
-DI. **Trade-off:** an extra abstraction layer, justified by test isolation.
-
-### Webhooks are the source of truth for money state
-
-**Decision:** the API initiates a charge, but the **HOLD into escrow happens on
-the verified `charge.success` webhook**, not on the API response. **Why:** the
-client could abandon the hosted checkout; only the webhook proves payment.
-**Trade-off:** money state is eventually consistent with the API call, mediated
-by Paystack's at-least-once delivery (hence idempotent dedupe).
-
-### Stateless JWTs + idempotency keys
-
-Auth is phone + OTP, issuing short-lived access JWTs and rotating refresh tokens
-(`jose`, HS256). Logout is a client-side discard today (a refresh denylist is a
-documented Phase 9 item). Money-mutating endpoints require an `Idempotency-Key`
-header, threaded into the ledger's idempotency layer so retries are safe.
-
----
-
-## Concurrency & transactions
-
-Ledger mutations run inside a caller-provided Prisma transaction and take
-**row-level locks** via raw `SELECT … FOR UPDATE` (Prisma has no native row-lock
-API). This makes escrow and wallet updates atomic and safe under concurrent
-requests — e.g. two simultaneous withdrawals of the same balance: exactly one
-succeeds. See [`PAYMENTS.md`](./PAYMENTS.md#concurrency) and
-`payments/__tests__/concurrency.test.ts`.
-
----
-
-## Scheduled jobs
-
-The worker process (`worker.ts`) registers BullMQ repeatable jobs
-(`jobs/queues.ts`) on cron patterns; the job bodies (`jobs/jobs.ts`) are thin
-wrappers over already-tested service functions:
-
-| Job | Cron | What it does |
-| --- | --- | --- |
-| `autocomplete` | `*/10 * * * *` | Release payout for checked-in/arrived bookings past `eventEnd + grace` (D1). |
-| `noshow` | `3-59/10 * * * *` | Refund the client + penalize the usher for confirmed-but-absent bookings past `start + grace`. |
-| `reconcile` | `17 3 * * *` | Compare ledger-expected vs real Paystack balance; raise the alarm on drift or stale holds (§17). |
-| `commission` | `23 4 * * *` | Sweep accumulated platform fees to the operating bank account (D3). |
-| `transferRetry` | `*/30 * * * *` | Surface withdrawals stuck in `PROCESSING` >30 min for ops follow-up. |
-| `retentionPurge` | `41 2 * * *` | NDPR retention purge of transient PII past its window (TRD §14). Financial/ledger rows are never purged. |
-| `auditVerify` | `47 2 * * *` | Walk the hash-chained audit log and raise the alarm if a row's chain hash doesn't verify (tamper detection). |
-
-Cron minutes are deliberately off-zero so many deployments don't all hit
-Paystack/Neon on the same tick.
-
----
-
-## Realtime (Socket.IO)
-
-Booking chat and server→client lifecycle pushes share one Socket.IO surface
-behind a `RealtimeGateway` port (`realtime/gateway.ts`), mirroring the Paystack
-port: business code emits through the interface and is testable against a no-op
-gateway. Three implementations:
-
-- **Socket gateway** (`createSocketGateway`) — the API process. Wraps a live
-  `io` server with a Redis adapter so emits fan out across Railway replicas.
-- **Emitter gateway** (`createEmitterGateway`) — the worker process. Publishes
-  the same Redis channels via `@socket.io/redis-emitter`, so job-driven pushes
-  (auto-complete, no-show) reach clients even though the worker owns no sockets.
-- **No-op gateway** — tests / single-node dev with no Redis.
-
-Sockets authenticate with the access JWT on connect. Rooms: `user:<id>`
-(per-user pushes), `booking:<id>` (chat + booking events), `admin:feed`
-(ADMIN-only operational feed). Chat messages are persisted (`Conversation`/
-`Message`); typing is ephemeral. The event catalogue and payload shapes live in
-`realtime/events.ts` so every surface agrees on the wire format. Lifecycle pushes
-are **convenience signals only** — the ledger and DB stay the source of truth, so
-a client that missed an event simply re-fetches.
-
----
-
-## Notifications & storage
-
-- **Notifications** (`modules/notifications`) deliver OTPs and transactional
-  messages through Brevo: WhatsApp OTP is the primary channel (TRD §4), with SMS
-  and email fallbacks, plus stubbed FCM push (intent recorded). With no
-  `BREVO_API_KEY` every send logs a dev stub, so OTP login works offline.
-- **Storage** (`modules/storage`) is an S3-compatible `StoragePort` (AWS / R2 /
-  B2) that mints short-lived presigned upload/download URLs, so KYC documents and
-  photos never transit the API and live under server-owned, un-forgeable keys.
-  Unconfigured, it falls back to legacy plain-URL passthrough.
-
----
-
-## Testing strategy
-
-- **Vitest**, files named `*.test.ts` / `__tests__/**/*.test.ts`.
-- Tests are **DB-backed** — they hit a real Postgres (Neon locally via `.env`;
-  ephemeral `postgres:16` in CI), not mocks.
-- They run **serially** (`fileParallelism: false`, single fork, 60s timeout)
-  because suites share one database and the reconciliation test reads global
-  ledger aggregates — parallel runs would see each other's rows.
-- Concurrency tests open their own connections to exercise `FOR UPDATE` locks.
-- CI (`.github/workflows/ci.yml`): install → `prisma generate` → `typecheck` →
-  `lint` → `prisma migrate deploy` → migration-drift guard → `test`. Reproduce CI
-  locally by matching that order. Schema changes ship as tracked migrations under
-  `packages/database/prisma/migrations/` (baseline `0_init`); `db push` is local-dev only.
-
----
-
-## Extension points
-
-- **New endpoint:** add a module under `apps/api/src/modules/`, export a router,
-  mount it in `app.ts`. Validate input with a Zod DTO in `@hq/shared/dto`.
-- **New money movement:** add the transition to the relevant table in
-  `@hq/shared/state-machines` **first**, add a `LedgerEntryType` if needed, then
-  write the ledger function — and update the reconciliation formula if the entry
-  affects the Paystack Balance (see [`PAYMENTS.md`](./PAYMENTS.md#reconciliation)).
-- **New scheduled job:** add a function to `jobs/jobs.ts` and a `SCHEDULES` entry
-  + `case` in `jobs/queues.ts`.
-- **New realtime event:** add it to the `RT` catalogue in `realtime/events.ts`
-  (with a typed payload), then emit through the injected `RealtimeGateway`.
-- **New notification channel:** extend `modules/notifications` (the Brevo
-  transport already covers SMS / WhatsApp / email; FCM push is the open stub).
-- **New external service:** follow the port pattern — define an interface, inject
-  it via `createApp` config, and provide a fake for tests.
+The source review is not a production readiness assessment. [Status](STATUS.md), [Testing](TESTING.md), and [Deployment](DEPLOYMENT.md) identify the remaining verification boundaries.

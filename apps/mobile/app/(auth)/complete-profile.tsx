@@ -13,7 +13,8 @@ import { Field } from '../../components/Field.js';
 import { Input } from '../../components/Input.js';
 import { TextArea } from '../../components/TextArea.js';
 import { Stepper } from '../../components/Stepper.js';
-import { AddPhoto } from '../../components/AddPhoto.js';
+import { Avatar } from '../../components/Avatar.js';
+import { AvatarPicker } from '../../components/AvatarPicker.js';
 import { Button } from '../../components/Button.js';
 import { Banner } from '../../components/Banner.js';
 import { Box, Text } from '../../theme/restyle.js';
@@ -74,13 +75,15 @@ export default function CompleteProfile(): React.JSX.Element {
           <Box style={{ gap: 8 }}>
             <Text variant="h1">{isUsher ? 'Tell clients about you' : 'Set up your profile'}</Text>
             <Text variant="body" color="inkMuted">
-              {isUsher ? 'A short intro helps you stand out.' : 'This is what staff see when you hire.'}
+              {isUsher
+                ? 'A short intro helps you stand out.'
+                : 'This is what staff see when you hire.'}
             </Text>
           </Box>
 
           {error ? <Banner tone="warning" message={error} /> : null}
 
-          <AddPhoto variant="avatar" />
+          {isUsher ? <AvatarPicker size={96} /> : <Avatar name={name || user.phone} size={96} />}
 
           {isUsher ? (
             <>
@@ -104,16 +107,32 @@ export default function CompleteProfile(): React.JSX.Element {
           ) : (
             <>
               <Field label="Full name">
-                <Input placeholder="e.g. Sarah Johnson" value={name} onChangeText={setName} autoCapitalize="words" maxLength={120} />
+                <Input
+                  placeholder="e.g. Sarah Johnson"
+                  value={name}
+                  onChangeText={setName}
+                  autoCapitalize="words"
+                  maxLength={120}
+                />
               </Field>
               <Field label="Business name (optional)">
-                <Input placeholder="e.g. Lagos Events Co." value={business} onChangeText={setBusiness} maxLength={120} />
+                <Input
+                  placeholder="e.g. Lagos Events Co."
+                  value={business}
+                  onChangeText={setBusiness}
+                  maxLength={120}
+                />
               </Field>
             </>
           )}
         </Box>
 
-        <Button label="Continue" disabled={!valid} loading={update.isPending} onPress={() => void submit()} />
+        <Button
+          label="Continue"
+          disabled={!valid}
+          loading={update.isPending}
+          onPress={() => void submit()}
+        />
       </Screen>
     </Box>
   );

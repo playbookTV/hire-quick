@@ -31,13 +31,24 @@ export default function Welcome(): React.JSX.Element {
 
   return (
     <Box flex={1} backgroundColor="bgCanvas" style={{ paddingTop: insets.top }}>
-      <Box flex={1} style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: insets.bottom + 16, gap: 24 }}>
+      <Box
+        flex={1}
+        style={{
+          paddingHorizontal: 20,
+          paddingTop: 16,
+          paddingBottom: insets.bottom + 16,
+          gap: 24,
+        }}
+      >
         <LinearGradient
           colors={[primitives.emerald[600], primitives.emerald[600], HERO_GRADIENT_TINT]}
           locations={[0, 0.62, 1]}
           start={{ x: 0.5, y: 0 }}
           end={{ x: 0.5, y: 1 }}
-          style={[{ flex: 1, borderRadius: 28, padding: 24, justifyContent: 'flex-end', gap: 16 }, shadowMd]}
+          style={[
+            { flex: 1, borderRadius: 28, padding: 24, justifyContent: 'flex-end', gap: 16 },
+            shadowMd,
+          ]}
         >
           <Text
             style={{
@@ -50,16 +61,48 @@ export default function Welcome(): React.JSX.Element {
           >
             TRUSTED EVENT STAFFING
           </Text>
-          <Text style={{ fontFamily: fonts.displaySemibold, fontSize: 26, lineHeight: 32, letterSpacing: -0.5, color: primitives.neutral[50] }}>
+          <Text
+            style={{
+              fontFamily: fonts.displaySemibold,
+              fontSize: 26,
+              lineHeight: 32,
+              letterSpacing: -0.5,
+              color: primitives.neutral[50],
+            }}
+          >
             Hire vetted ushers. Money held safe.
           </Text>
-          <Text style={{ fontFamily: fonts.sansRegular, fontSize: 15, lineHeight: 22, color: primitives.emerald[100] }}>
-            Book staff, pay upfront, and we hold the money safely — released only when they check in on the day.
+          <Text
+            style={{
+              fontFamily: fonts.sansRegular,
+              fontSize: 15,
+              lineHeight: 22,
+              color: primitives.emerald[100],
+            }}
+          >
+            Book staff, pay upfront, and we hold the money safely — released after attendance is
+            recorded and the booking is completed.
           </Text>
           <Box flexDirection="row" flexWrap="wrap" style={{ gap: 8 }}>
             {CHIPS.map((c) => (
-              <Box key={c} style={{ backgroundColor: primitives.emerald[700], paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 }}>
-                <Text style={{ fontFamily: fonts.sansSemibold, fontSize: 13, lineHeight: 16, letterSpacing: 0.2, color: primitives.neutral[50] }}>
+              <Box
+                key={c}
+                style={{
+                  backgroundColor: primitives.emerald[700],
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: 999,
+                }}
+              >
+                <Text
+                  style={{
+                    fontFamily: fonts.sansSemibold,
+                    fontSize: 13,
+                    lineHeight: 16,
+                    letterSpacing: 0.2,
+                    color: primitives.neutral[50],
+                  }}
+                >
                   {c}
                 </Text>
               </Box>
@@ -69,7 +112,11 @@ export default function Welcome(): React.JSX.Element {
 
         <Box style={{ gap: 12 }}>
           <Button label="Get started" onPress={() => router.push('/(auth)/role')} />
-          <Button label="I already have an account" variant="ghost" onPress={() => router.push('/(auth)/phone')} />
+          <Button
+            label="I already have an account"
+            variant="ghost"
+            onPress={() => router.push('/(auth)/phone')}
+          />
         </Box>
 
         <DevLogin />

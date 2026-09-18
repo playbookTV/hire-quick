@@ -22,16 +22,37 @@ interface EarningsCardProps {
   footer?: ReactNode;
 }
 
-export function EarningsCard({ amount, size = 'lg', weekly, footer }: Readonly<EarningsCardProps>): React.JSX.Element {
+export function EarningsCard({
+  amount,
+  size = 'lg',
+  weekly,
+  footer,
+}: Readonly<EarningsCardProps>): React.JSX.Element {
   const theme = useTheme();
   const big = size === 'lg';
   return (
-    <Box borderRadius="lg" style={[{ backgroundColor: theme.colors.brandEmerald, padding: 20, gap: 12 }, shadowMd]}>
-      <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 11, lineHeight: 14, letterSpacing: 1.2 }} color="accentGold">
+    <Box
+      borderRadius="lg"
+      style={[{ backgroundColor: theme.colors.brandSurface, padding: 20, gap: 12 }, shadowMd]}
+    >
+      <Text
+        style={{
+          fontFamily: 'PlusJakartaSans_700Bold',
+          fontSize: 11,
+          lineHeight: 14,
+          letterSpacing: 1.2,
+        }}
+        color="onBrandAccent"
+      >
         AVAILABLE TO WITHDRAW
       </Text>
       <Text
-        style={{ fontFamily: 'Fraunces_900Black', fontSize: big ? 40 : 32, lineHeight: big ? 44 : 38, letterSpacing: big ? -1.5 : -1 }}
+        style={{
+          fontFamily: 'Fraunces_900Black',
+          fontSize: big ? 40 : 32,
+          lineHeight: big ? 44 : 38,
+          letterSpacing: big ? -1.5 : -1,
+        }}
         color="inverseInk"
       >
         {money(amount)}
@@ -39,14 +60,29 @@ export function EarningsCard({ amount, size = 'lg', weekly, footer }: Readonly<E
       {weekly && weekly.total > 0 ? (
         <Box style={{ gap: 8, paddingTop: 4 }}>
           <Box flexDirection="row" alignItems="baseline" justifyContent="space-between">
-            <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 11, lineHeight: 14, letterSpacing: 1.2 }} color="accentGold">
+            <Text
+              style={{
+                fontFamily: 'PlusJakartaSans_700Bold',
+                fontSize: 11,
+                lineHeight: 14,
+                letterSpacing: 1.2,
+              }}
+              color="onBrandAccent"
+            >
               THIS WEEK
             </Text>
-            <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, lineHeight: 20 }} color="inverseInk">
+            <Text
+              style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, lineHeight: 20 }}
+              color="inverseInk"
+            >
               {money(weekly.total)}
             </Text>
           </Box>
-          <Sparkline values={weekly.values} barColor={theme.colors.accentGold} trackColor="rgba(255,255,255,0.16)" />
+          <Sparkline
+            values={weekly.values}
+            barColor={theme.colors.accentGold}
+            trackColor="rgba(255,255,255,0.16)"
+          />
         </Box>
       ) : null}
       {footer}

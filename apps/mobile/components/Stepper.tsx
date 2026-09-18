@@ -13,9 +13,19 @@ interface StepperProps {
   min?: number;
   max?: number;
   step?: number;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
 }
 
-export function Stepper({ value, onChange, min = 0, max = 999, step = 1 }: StepperProps): React.JSX.Element {
+export function Stepper({
+  value,
+  onChange,
+  min = 0,
+  max = 999,
+  step = 1,
+  accessibilityLabel = 'Value',
+  accessibilityHint,
+}: StepperProps): React.JSX.Element {
   const theme = useTheme();
   const dec = () => onChange(Math.max(min, value - step));
   const inc = () => onChange(Math.min(max, value + step));
@@ -25,7 +35,8 @@ export function Stepper({ value, onChange, min = 0, max = 999, step = 1 }: Stepp
       onPress={onPress}
       disabled={disabled}
       accessibilityRole="button"
-      accessibilityLabel={name === 'minus' ? 'Decrease' : 'Increase'}
+      accessibilityLabel={`${name === 'minus' ? 'Decrease' : 'Increase'} ${accessibilityLabel}. Current value ${value}`}
+      accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled }}
       style={{
         width: 48,

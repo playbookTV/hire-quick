@@ -20,7 +20,7 @@ const STATUS: Record<string, Entry> = {
   CONFIRMED: { label: 'Booked', bg: 'statusSuccessTint', fg: 'statusSuccess' },
   CHECKED_IN: { label: 'Checked in', bg: 'statusInfoTint', fg: 'statusInfo' },
   COMPLETED: { label: 'Completed', bg: 'brandEmeraldTint', fg: 'brandEmerald' },
-  PAID: { label: 'Paid', bg: 'brandEmerald', fg: 'inverseInk' },
+  PAID: { label: 'Paid', bg: 'brandSurface', fg: 'inverseInk' },
   PENDING_PAYMENT: { label: 'Pending', bg: 'bgSubtle', fg: 'inkMuted' },
   CANCELLED: { label: 'Cancelled', bg: 'statusDangerTint', fg: 'statusDanger' },
   NO_SHOW: { label: 'No-show', bg: 'statusDangerTint', fg: 'statusDanger' },

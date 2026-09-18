@@ -32,7 +32,11 @@ import type {
 export function useRequestOtp() {
   return useMutation({
     mutationFn: (phone: string) =>
-      api.post<{ sent: boolean; devCode?: string }>('/auth/otp/request', { phone }, { auth: false }),
+      api.post<{ sent: boolean; devCode?: string }>(
+        '/auth/otp/request',
+        { phone },
+        { auth: false },
+      ),
   });
 }
 
@@ -133,7 +137,10 @@ export function useUpdateEvent(id: string) {
 
 // ---------------------------------------------------------------- bookings
 export function useBookings() {
-  return useQuery({ queryKey: queryKeys.bookings, queryFn: () => api.get<Booking[]>('/api/bookings') });
+  return useQuery({
+    queryKey: queryKeys.bookings,
+    queryFn: () => api.get<Booking[]>('/api/bookings'),
+  });
 }
 
 export function useBooking(id: string) {
@@ -156,7 +163,8 @@ export function useBookingMessages(id: string) {
 export function useSendMessage(bookingId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (content: string) => api.post<Message>(`/api/bookings/${bookingId}/messages`, { content }),
+    mutationFn: (content: string) =>
+      api.post<Message>(`/api/bookings/${bookingId}/messages`, { content }),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.bookingMessages(bookingId) }),
   });
 }
@@ -164,7 +172,10 @@ export function useSendMessage(bookingId: string) {
 export function useGenerateCheckin(bookingId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => api.post<{ generated: boolean; code: string }>(`/api/bookings/${bookingId}/checkin/generate`),
+    mutationFn: () =>
+      api.post<{ generated: boolean; code: string; expiresAt: string }>(
+        `/api/bookings/${bookingId}/checkin/generate`,
+      ),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.booking(bookingId) }),
   });
 }
@@ -172,7 +183,8 @@ export function useGenerateCheckin(bookingId: string) {
 export function useVerifyCheckin(bookingId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (code: string) => api.post<{ status: string }>(`/api/bookings/${bookingId}/checkin/verify`, { code }),
+    mutationFn: (code: string) =>
+      api.post<{ status: string }>(`/api/bookings/${bookingId}/checkin/verify`, { code }),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.booking(bookingId) }),
   });
 }
@@ -184,7 +196,9 @@ export function useCompleteBooking(bookingId: string) {
   const idemKey = useRef(newIdempotencyKey());
   return useMutation({
     mutationFn: () =>
-      api.post<{ status: string }>(`/api/bookings/${bookingId}/complete`, undefined, { idempotencyKey: idemKey.current }),
+      api.post<{ status: string }>(`/api/bookings/${bookingId}/complete`, undefined, {
+        idempotencyKey: idemKey.current,
+      }),
     onSuccess: () => {
       idemKey.current = newIdempotencyKey();
       return Promise.all([
@@ -198,14 +212,16 @@ export function useCompleteBooking(bookingId: string) {
 export function useCreateDispute(bookingId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (vars: { reason: string; note?: string }) => api.post<{ id: string }>(`/api/bookings/${bookingId}/disputes`, vars),
+    mutationFn: (vars: { reason: string; note?: string }) =>
+      api.post<{ id: string }>(`/api/bookings/${bookingId}/disputes`, vars),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.booking(bookingId) }),
   });
 }
 
 export function useCreateReview(bookingId: string) {
   return useMutation({
-    mutationFn: (vars: { rating: number; comment?: string }) => api.post<{ id: string }>(`/api/bookings/${bookingId}/reviews`, vars),
+    mutationFn: (vars: { rating: number; comment?: string }) =>
+      api.post<{ id: string }>(`/api/bookings/${bookingId}/reviews`, vars),
   });
 }
 
@@ -214,7 +230,11 @@ export function useCancelBooking(bookingId: string) {
   const idemKey = useRef(newIdempotencyKey());
   return useMutation({
     mutationFn: (reason?: string) =>
-      api.post<{ status: string }>(`/api/bookings/${bookingId}/cancel`, { reason }, { idempotencyKey: idemKey.current }),
+      api.post<{ status: string }>(
+        `/api/bookings/${bookingId}/cancel`,
+        { reason },
+        { idempotencyKey: idemKey.current },
+      ),
     onSuccess: () => {
       idemKey.current = newIdempotencyKey();
       return Promise.all([
@@ -229,7 +249,8 @@ export function useCancelBooking(bookingId: string) {
 export function useApplyToEvent() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (eventId: string) => api.post<{ id: string; status: string }>(`/api/events/${eventId}/apply`),
+    mutationFn: (eventId: string) =>
+      api.post<{ id: string; status: string }>(`/api/events/${eventId}/apply`),
     onSuccess: (_d, eventId) =>
       Promise.all([
         qc.invalidateQueries({ queryKey: queryKeys.event(eventId) }),
@@ -266,7 +287,8 @@ export function useSavedJobs() {
 export function useSaveJob() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (eventId: string) => api.post<{ id: string; saved: boolean }>(`/api/events/${eventId}/save`),
+    mutationFn: (eventId: string) =>
+      api.post<{ id: string; saved: boolean }>(`/api/events/${eventId}/save`),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.savedJobs }),
   });
 }
@@ -284,15 +306,20 @@ export function usePatchApplication(eventId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (vars: { id: string; status: 'SHORTLISTED' | 'ACCEPTED' | 'REJECTED' }) =>
-      api.patch<{ id: string; status: string }>(`/api/applications/${vars.id}`, { status: vars.status }),
+      api.patch<{ id: string; status: string }>(`/api/applications/${vars.id}`, {
+        status: vars.status,
+      }),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.applications(eventId) }),
   });
 }
 
 export function useSavedCheckout(eventId: string) {
   const { user } = useAuth();
-  return useQuery({ queryKey: ['savedCheckout', user?.id, eventId], enabled: !!user?.id && !!eventId,
-    queryFn: () => checkoutStore.load(user!.id, eventId), staleTime: 0,
+  return useQuery({
+    queryKey: ['savedCheckout', user?.id, eventId],
+    enabled: !!user?.id && !!eventId,
+    queryFn: () => checkoutStore.load(user!.id, eventId),
+    staleTime: 0,
   });
 }
 
@@ -304,11 +331,12 @@ export function useConfirmEvent(eventId: string) {
       if (!user) throw new Error('Sign in to resume checkout.');
       return checkoutStore.submit(user.id, eventId, vars);
     },
-    onSettled: () => Promise.all([
-      qc.invalidateQueries({ queryKey: ['savedCheckout'] }),
-      qc.invalidateQueries({ queryKey: queryKeys.event(eventId) }),
-      qc.invalidateQueries({ queryKey: queryKeys.bookings }),
-    ]),
+    onSettled: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: ['savedCheckout'] }),
+        qc.invalidateQueries({ queryKey: queryKeys.event(eventId) }),
+        qc.invalidateQueries({ queryKey: queryKeys.bookings }),
+      ]),
   });
 }
 
@@ -317,7 +345,8 @@ function qs(filters?: Record<string, unknown>): string {
   if (!filters) return '';
   const p = new URLSearchParams();
   for (const [k, v] of Object.entries(filters)) {
-    if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') p.set(k, String(v));
+    if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean')
+      p.set(k, String(v));
   }
   const s = p.toString();
   return s ? `?${s}` : '';
@@ -348,15 +377,24 @@ export function useUsherReviews(id: string) {
 
 // -------------------------------------------------------------------- wallet
 export function useWallet() {
-  return useQuery({ queryKey: queryKeys.wallet, queryFn: () => api.get<WalletSummary>('/api/payments/wallet') });
+  return useQuery({
+    queryKey: queryKeys.wallet,
+    queryFn: () => api.get<WalletSummary>('/api/payments/wallet'),
+  });
 }
 
 export function useWalletActivity() {
-  return useQuery({ queryKey: queryKeys.walletActivity, queryFn: () => api.get<WalletActivity[]>('/api/payments/wallet/activity') });
+  return useQuery({
+    queryKey: queryKeys.walletActivity,
+    queryFn: () => api.get<WalletActivity[]>('/api/payments/wallet/activity'),
+  });
 }
 
 export function useBankAccounts() {
-  return useQuery({ queryKey: queryKeys.bankAccounts, queryFn: () => api.get<BankAccount[]>('/api/payments/bank-accounts') });
+  return useQuery({
+    queryKey: queryKeys.bankAccounts,
+    queryFn: () => api.get<BankAccount[]>('/api/payments/bank-accounts'),
+  });
 }
 
 /** Nigerian banks for the withdraw picker (static — cache hard). */
@@ -420,11 +458,19 @@ export function useWithdraw() {
       if (!userId) throw new Error('Sign in to acknowledge this withdrawal.');
       await withdrawalStore.acknowledge(userId, withdrawalId);
     },
-    onSuccess: () => { qc.setQueryData(pendingKey, null); },
+    onSuccess: () => {
+      qc.setQueryData(pendingKey, null);
+    },
   });
-  return { ...mutation, savedAttempt: saved.data, isRestoring: saved.isPending || saved.isFetching,
-    restoreError: saved.error, retryRestore: saved.refetch,
-    acknowledge: acknowledgment.mutateAsync, isAcknowledging: acknowledgment.isPending };
+  return {
+    ...mutation,
+    savedAttempt: saved.data,
+    isRestoring: saved.isPending || saved.isFetching,
+    restoreError: saved.error,
+    retryRestore: saved.refetch,
+    acknowledge: acknowledgment.mutateAsync,
+    isAcknowledging: acknowledgment.isPending,
+  };
 }
 
 // --------------------------------------------------------- verification / availability
@@ -440,14 +486,26 @@ export function useSubmitVerification() {
 export function useMyVerifications() {
   return useQuery({
     queryKey: ['verification'] as const,
-    queryFn: () => api.get<{ id: string; status: string; reason: string | null; createdAt: string }[]>('/api/me/verification'),
+    queryFn: () =>
+      api.get<
+        {
+          id: string;
+          status: string;
+          reason: string | null;
+          createdAt: string;
+          idDocumentUrl: string | null;
+          selfieUrl: string | null;
+          method: string;
+        }[]
+      >('/api/me/verification'),
   });
 }
 
 /** Start a biometric KYC session (Dojah). Returns the widget id + reference id the device launches. */
 export function useKycStart() {
   return useMutation({
-    mutationFn: () => api.post<{ widgetId: string; referenceId: string }>('/api/me/verification/kyc/start'),
+    mutationFn: () =>
+      api.post<{ widgetId: string; referenceId: string }>('/api/me/verification/kyc/start'),
   });
 }
 
@@ -484,7 +542,8 @@ export function useNotifications() {
 export function useMarkNotificationRead() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => request<{ read: boolean }>(`/api/me/notifications/${id}/read`, { method: 'PATCH' }),
+    mutationFn: (id: string) =>
+      request<{ read: boolean }>(`/api/me/notifications/${id}/read`, { method: 'PATCH' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.notifications }),
   });
 }

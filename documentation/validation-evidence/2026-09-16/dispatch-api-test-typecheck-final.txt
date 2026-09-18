@@ -1,0 +1,4 @@
+
+> @hq/api@0.0.0 typecheck:tests /Users/leslieisah/app-dev/hire-quick/apps/api
+> tsc -p tsconfig.tests.json
+

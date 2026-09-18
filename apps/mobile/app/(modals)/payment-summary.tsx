@@ -41,14 +41,22 @@ export default function PaymentSummary(): React.JSX.Element {
   const fence = useRef(createCheckoutScopeFence()).current;
   const scope = `${user?.id ?? ''}:${eventId}`;
   fence.activate(scope);
-  useEffect(() => { fence.activate(scope); return () => fence.invalidate(); }, [fence, scope]);
+  useEffect(() => {
+    fence.activate(scope);
+    return () => fence.invalidate();
+  }, [fence, scope]);
   const ev = event.data;
 
-  const perHead = saved.data?.outcome ? saved.data.outcome.amountKobo / appIds.length : event.data?.budgetPerHead ?? 0;
+  const perHead = saved.data?.outcome
+    ? saved.data.outcome.amountKobo / appIds.length
+    : (event.data?.budgetPerHead ?? 0);
   const chosen = (applications.data ?? []).filter((a) => appIds.includes(a.id));
   const count = appIds.length;
   const total = perHead * count;
-  const email = saved.data?.input.email ?? user?.email ?? `${(user?.phone ?? 'client').replace(/\D/g, '')}@hirequick.ng`;
+  const email =
+    saved.data?.input.email ??
+    user?.email ??
+    `${(user?.phone ?? 'client').replace(/\D/g, '')}@hirequick.ng`;
 
   const pay = (): void => {
     const current = fence.capture();
@@ -59,15 +67,27 @@ export default function PaymentSummary(): React.JSX.Element {
           if (!current()) return;
           void (async () => {
             try {
-              if (res.state === 'READY' && res.authorizationUrl) await WebBrowser.openBrowserAsync(res.authorizationUrl);
+              if (res.state === 'READY' && res.authorizationUrl)
+                await WebBrowser.openBrowserAsync(res.authorizationUrl);
             } catch (error) {
-              if (current()) toast.error(error instanceof Error ? error.message : 'Could not open Paystack.', 'Checkout saved');
+              if (current())
+                toast.error(
+                  error instanceof Error ? error.message : 'Could not open Paystack.',
+                  'Checkout saved',
+                );
             } finally {
-              if (current()) router.replace({ pathname: '/(modals)/funds-held', params: { event: eventId } });
+              if (current())
+                router.replace({ pathname: '/(modals)/funds-held', params: { event: eventId } });
             }
           })();
         },
-        onError: (e: unknown) => { if (current()) toast.error(e instanceof Error ? e.message : 'Please try again.', 'Payment couldn’t start'); },
+        onError: (e: unknown) => {
+          if (current())
+            toast.error(
+              e instanceof Error ? e.message : 'Please try again.',
+              'Payment couldn’t start',
+            );
+        },
       },
     );
   };
@@ -110,21 +130,45 @@ export default function PaymentSummary(): React.JSX.Element {
         <Box style={{ gap: 16 }}>
           {/* event context — what you're paying for */}
           {ev ? (
-            <Box backgroundColor="bgSurface" borderWidth={1} borderColor="borderDefault" borderRadius="lg" padding="400" style={{ gap: 8 }}>
-              <Text variant="overline" color="inkMuted">PAYING FOR</Text>
-              <Text variant="titleM" numberOfLines={2}>{ev.title}</Text>
+            <Box
+              backgroundColor="bgSurface"
+              borderWidth={1}
+              borderColor="borderDefault"
+              borderRadius="lg"
+              padding="400"
+              style={{ gap: 8 }}
+            >
+              <Text variant="overline" color="inkMuted">
+                PAYING FOR
+              </Text>
+              <Text variant="titleM" numberOfLines={2}>
+                {ev.title}
+              </Text>
               {ev.category ? <CategoryBadge category={ev.category} size="sm" /> : null}
-              <Text variant="bodySm" color="inkMuted">{ev.venue}</Text>
+              <Text variant="bodySm" color="inkMuted">
+                {ev.venue}
+              </Text>
               <Text variant="bodySm" color="inkMuted">
                 {formatEventDate(ev.eventDate)}
-                {ev.startTime && ev.endTime ? ` · ${formatTimeRange(ev.startTime, ev.endTime)}` : ''}
+                {ev.startTime && ev.endTime
+                  ? ` · ${formatTimeRange(ev.startTime, ev.endTime)}`
+                  : ''}
               </Text>
             </Box>
           ) : null}
 
           {/* line items */}
-          <Box backgroundColor="bgSurface" borderWidth={1} borderColor="borderDefault" borderRadius="lg" padding="400" style={{ gap: 12 }}>
-            <Text variant="titleM">Booking {count} {count === 1 ? 'usher' : 'ushers'}</Text>
+          <Box
+            backgroundColor="bgSurface"
+            borderWidth={1}
+            borderColor="borderDefault"
+            borderRadius="lg"
+            padding="400"
+            style={{ gap: 12 }}
+          >
+            <Text variant="titleM">
+              Booking {count} {count === 1 ? 'usher' : 'ushers'}
+            </Text>
             {chosen.map((a) => {
               const name = a.usher.displayName ?? 'Usher';
               return (
@@ -142,7 +186,14 @@ export default function PaymentSummary(): React.JSX.Element {
           </Box>
 
           {/* totals */}
-          <Box backgroundColor="bgSurface" borderWidth={1} borderColor="borderDefault" borderRadius="lg" padding="400" style={{ gap: 12 }}>
+          <Box
+            backgroundColor="bgSurface"
+            borderWidth={1}
+            borderColor="borderDefault"
+            borderRadius="lg"
+            padding="400"
+            style={{ gap: 12 }}
+          >
             <Box flexDirection="row" alignItems="center" justifyContent="space-between">
               <Text variant="body" color="inkMuted">
                 Subtotal · {count} × {money(perHead)}
@@ -162,23 +213,50 @@ export default function PaymentSummary(): React.JSX.Element {
             <Box style={{ width: 100, height: 1 }} backgroundColor="borderDefault" />
             <Box flexDirection="row" alignItems="center" justifyContent="space-between">
               <Text variant="titleM">You pay</Text>
-              <Text style={{ fontFamily: fonts.sansBold, fontSize: 22, lineHeight: 28, letterSpacing: -0.3 }} color="brandEmerald">
+              <Text
+                style={{
+                  fontFamily: fonts.sansBold,
+                  fontSize: 22,
+                  lineHeight: 28,
+                  letterSpacing: -0.3,
+                }}
+                color="brandEmerald"
+              >
                 {money(total)}
               </Text>
             </Box>
             <Text variant="bodySm" color="inkMuted">
-              The 15% fee is deducted from each usher’s payout — your total is exactly {money(total)}.
+              The 15% fee is deducted from each usher’s payout — your total is exactly{' '}
+              {money(total)}.
             </Text>
           </Box>
 
-          <Banner tone="brand" message="Held safely — released to each usher only when they check in." />
+          <Banner
+            tone="brand"
+            message="Held safely until attendance is recorded and the booking is completed."
+          />
 
-          <ListItem icon="credit-card" title="Paystack" subtitle="Secure card payment" actionLabel="" />
+          <ListItem
+            icon="credit-card"
+            title="Paystack"
+            subtitle="Secure card payment"
+            actionLabel=""
+          />
         </Box>
 
         <Box style={{ flex: 1, minHeight: 24 }} />
         <Box style={{ gap: 8, paddingBottom: insets.bottom }}>
-          <Button label={confirm.isPending ? 'Checking…' : saved.data ? 'Resume saved checkout' : `Pay ${money(total)}`}  disabled={confirm.isPending || count === 0} onPress={pay} />
+          <Button
+            label={
+              confirm.isPending
+                ? 'Checking…'
+                : saved.data
+                  ? 'Resume saved checkout'
+                  : `Pay ${money(total)}`
+            }
+            disabled={confirm.isPending || count === 0}
+            onPress={pay}
+          />
           <Text variant="bodySm" color="inkFaint" style={{ textAlign: 'center' }}>
             Secured by Paystack
           </Text>

@@ -150,6 +150,14 @@ async function handleTransferTerminal(
     if (current?.kind === 'WITHDRAWAL_TRANSFER' &&
         (!w || payload?.withdrawalId !== w.id || payload.amountKobo !== w.amount))
       throw new Error('Transfer intent does not match the withdrawal');
+    if (w && success) {
+      const reversal = await tx.paymentOperation.findUnique({
+        where: { dedupeKey: `WITHDRAWAL_REVERSAL:${w.id}` },
+      });
+      // Release the original lock before driving the reversal: its lock order
+      // is reversal then original, and durable failure outranks stale success.
+      if (reversal) return { reversal };
+    }
     if (current?.status === 'FAILED') return false;
     let changed = false;
     if (w) {
@@ -186,6 +194,14 @@ async function handleTransferTerminal(
     });
     return true;
   }, { timeout: 30_000, maxWait: 30_000 });
+  if (typeof applied === 'object') {
+    const result = await driveWithdrawalReversal(prisma, applied.reversal);
+    if (result.result && w) {
+      await safeAudit({ actorId: null, action: 'withdrawal.failed', target: w.id, metadata: { ref, event: evt.event } });
+      realtime.emitToUser(w.wallet.usher.userId, RT.WITHDRAWAL_FAILED, withdrawalEvent(w.id, 'FAILED', w.amount));
+    }
+    return;
+  }
   if (!applied) return;
   await safeAudit({
     actorId: null,

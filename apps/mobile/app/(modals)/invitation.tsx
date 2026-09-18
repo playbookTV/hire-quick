@@ -68,7 +68,10 @@ export default function Invitation(): React.JSX.Element {
   const onAccept = (): void => {
     respond.mutate('ACCEPTED', {
       onSuccess: () => {
-        toast.success('Slot reserved. You’ll be booked once the client pays.', 'Invitation accepted');
+        toast.success(
+          'Slot reserved. You’ll be booked once the client pays.',
+          'Invitation accepted',
+        );
         router.replace('/(usher)/jobs');
       },
       onError: (e: unknown) => toast.error(userMessage(e), 'Couldn’t accept'),
@@ -90,31 +93,70 @@ export default function Invitation(): React.JSX.Element {
       <Screen scroll>
         <Box style={{ gap: 16 }}>
           {/* hero */}
-          <Box alignItems="center" borderRadius="lg" style={[{ backgroundColor: theme.colors.brandEmerald, padding: 20, gap: 12 }, shadowMd]}>
-            <Box style={{ width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandEmeraldStrong }}>
+          <Box
+            alignItems="center"
+            borderRadius="lg"
+            style={[{ backgroundColor: theme.colors.brandSurface, padding: 20, gap: 12 }, shadowMd]}
+          >
+            <Box
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: 28,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: theme.colors.brandEmeraldStrong,
+              }}
+            >
               <Icon name="mail" size={26} color="inverseInk" />
             </Box>
-            <Text variant="h2" color="inverseInk">You’re invited!</Text>
+            <Text variant="h2" color="inverseInk">
+              You’re invited!
+            </Text>
             <Text variant="body" color="brandEmeraldTint" style={{ textAlign: 'center' }}>
               {clientName} invited you to usher at {ev.title}.
             </Text>
           </Box>
 
           {/* event */}
-          <Box backgroundColor="bgSurface" borderWidth={1} borderColor="borderDefault" borderRadius="lg" padding="400" style={{ gap: 12 }}>
-            <Box flexDirection="row" alignItems="center" justifyContent="space-between" style={{ gap: 12 }}>
-              <Text variant="titleM" numberOfLines={1} style={{ flex: 1 }}>{ev.title}</Text>
-              <Text variant="amountM" color="brandEmerald">{money(ev.budgetPerHead)}</Text>
+          <Box
+            backgroundColor="bgSurface"
+            borderWidth={1}
+            borderColor="borderDefault"
+            borderRadius="lg"
+            padding="400"
+            style={{ gap: 12 }}
+          >
+            <Box
+              flexDirection="row"
+              alignItems="center"
+              justifyContent="space-between"
+              style={{ gap: 12 }}
+            >
+              <Text variant="titleM" numberOfLines={1} style={{ flex: 1 }}>
+                {ev.title}
+              </Text>
+              <Text variant="amountM" color="brandEmerald">
+                {money(ev.budgetPerHead)}
+              </Text>
             </Box>
             <MetaRow icon="calendar" text={dateTime(ev.eventDate, ev.startTime)} />
-            <MetaRow icon="map-pin" text={ev.dressCode ? `${ev.venue} · ${ev.dressCode}` : ev.venue} />
+            <MetaRow
+              icon="map-pin"
+              text={ev.dressCode ? `${ev.venue} · ${ev.dressCode}` : ev.venue}
+            />
           </Box>
 
           {pending ? (
-            <Banner tone="warning" message={`Accepting reserves your slot. The booking confirms once ${clientName} pays.`} />
+            <Banner
+              tone="warning"
+              message={`Accepting reserves your slot. The booking confirms once ${clientName} pays.`}
+            />
           ) : (
             <Box flexDirection="row" alignItems="center" style={{ gap: 8 }}>
-              <Text variant="bodySm" color="inkMuted">This invitation is</Text>
+              <Text variant="bodySm" color="inkMuted">
+                This invitation is
+              </Text>
               <StatusPill status={data.status} />
             </Box>
           )}
@@ -123,7 +165,18 @@ export default function Invitation(): React.JSX.Element {
 
       {/* actions */}
       {pending ? (
-        <Box flexDirection="row" backgroundColor="bgCanvas" style={{ gap: 12, paddingHorizontal: 20, paddingTop: 16, paddingBottom: insets.bottom + 16, borderTopWidth: 1.5, borderTopColor: theme.colors.borderDefault }}>
+        <Box
+          flexDirection="row"
+          backgroundColor="bgCanvas"
+          style={{
+            gap: 12,
+            paddingHorizontal: 20,
+            paddingTop: 16,
+            paddingBottom: insets.bottom + 16,
+            borderTopWidth: 1.5,
+            borderTopColor: theme.colors.borderDefault,
+          }}
+        >
           <Box flex={1}>
             <Button label="Decline" variant="secondary" onPress={onDecline} disabled={busy} />
           </Box>
@@ -132,7 +185,16 @@ export default function Invitation(): React.JSX.Element {
           </Box>
         </Box>
       ) : (
-        <Box backgroundColor="bgCanvas" style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: insets.bottom + 16, borderTopWidth: 1.5, borderTopColor: theme.colors.borderDefault }}>
+        <Box
+          backgroundColor="bgCanvas"
+          style={{
+            paddingHorizontal: 20,
+            paddingTop: 16,
+            paddingBottom: insets.bottom + 16,
+            borderTopWidth: 1.5,
+            borderTopColor: theme.colors.borderDefault,
+          }}
+        >
           <Button label="Close" variant="secondary" onPress={() => router.back()} />
         </Box>
       )}

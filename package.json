@@ -17,6 +17,7 @@
     "mobile": "turbo run dev --filter=@hq/mobile",
     "mobile:start": "pnpm --filter @hq/mobile start",
     "format": "prettier --write .",
+    "docs:check": "node scripts/check-docs.mjs",
     "db:generate": "pnpm --filter @hq/database generate",
     "db:push": "pnpm --filter @hq/database push",
     "db:migrate": "pnpm --filter @hq/database migrate",

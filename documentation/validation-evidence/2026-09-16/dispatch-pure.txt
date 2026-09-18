@@ -1,0 +1,11 @@
+
+ RUN  v2.1.9 /Users/leslieisah/app-dev/hire-quick/apps/api
+
+ ✓ src/modules/payments/__tests__/commission-limits.unit.test.ts (3 tests) 6ms
+ ✓ src/modules/payments/__tests__/transfer-failure-precedence.unit.test.ts (2 tests) 1ms
+
+ Test Files  2 passed (2)
+      Tests  5 passed (5)
+   Start at  11:25:54
+   Duration  1.82s (transform 528ms, setup 0ms, collect 1.56s, tests 7ms, environment 0ms, prepare 86ms)
+

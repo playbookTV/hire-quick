@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-export function useAsync<T>(fn: () => Promise<T>): {
+export function useAsync<T>(
+  fn: () => Promise<T>,
+  key = '',
+): {
   data: T | null;
   error: string | null;
   loading: boolean;
@@ -12,11 +15,15 @@ export function useAsync<T>(fn: () => Promise<T>): {
   const [loading, setLoading] = useState(true);
   const generation = useRef(0);
 
+  const latestFn = useRef(fn);
+  latestFn.current = fn;
+
   // fn is recreated each render; we intentionally run on mount + manual reload.
   const run = useCallback(() => {
     const current = ++generation.current;
     setLoading(true);
-    return fn()
+    return latestFn
+      .current()
       .then((d) => {
         if (generation.current !== current) return false;
         setData(d);
@@ -27,10 +34,25 @@ export function useAsync<T>(fn: () => Promise<T>): {
         if (generation.current === current) setError(e instanceof Error ? e.message : 'error');
         return false;
       })
-      .finally(() => { if (generation.current === current) setLoading(false); });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      .finally(() => {
+        if (generation.current === current) setLoading(false);
+      });
   }, []);
 
-  useEffect(() => { void run(); return () => { generation.current += 1; }; }, [run]);
-  return { data, error, loading, reload: () => { void run(); }, reloadFresh: run };
+  useEffect(() => {
+    setData(null);
+    void run();
+    return () => {
+      generation.current += 1;
+    };
+  }, [run, key]);
+  return {
+    data,
+    error,
+    loading,
+    reload: () => {
+      void run();
+    },
+    reloadFresh: run,
+  };
 }

@@ -8,6 +8,10 @@ This document covers: how money is represented, the append-only ledger, the full
 escrow lifecycle, the Paystack boundary, the webhook pipeline, reconciliation,
 idempotency, and concurrency.
 
+[Documentation index](README.md) · [API](API.md) · [Operations](OPERATIONS.md) · [Current limitations](STATUS.md)
+
+Reviewed against current implementation on 2026-09-16. Policy intent and implemented settlement support are distinguished below.
+
 ---
 
 ## 1. Money is integer kobo
@@ -21,7 +25,7 @@ arithmetic goes through `@hq/shared/money`:
 ```ts
 import { kobo, naira, splitFee, sumKobo, PLATFORM_FEE_BPS } from '@hq/shared';
 
-naira(10_000);                 // → 1_000_000 kobo (₦10,000)
+naira(10_000); // → 1_000_000 kobo (₦10,000)
 splitFee(kobo(1_000_000), PLATFORM_FEE_BPS); // → { fee: 150_000, payout: 850_000 }
 ```
 
@@ -42,10 +46,10 @@ Two tables are the source of truth. **Rows are never UPDATEd or DELETEd.**
 
 Entry types (`@hq/shared/enums`):
 
-| Ledger | Entry types |
-| --- | --- |
+| Ledger | Entry types                                                        |
+| ------ | ------------------------------------------------------------------ |
 | Escrow | `HOLD`, `RELEASE`, `REFUND`, `FEE`, `REVERSAL`, `COMMISSION_SWEEP` |
-| Wallet | `CREDIT`, `DEBIT`, `REVERSAL` |
+| Wallet | `CREDIT`, `DEBIT`, `REVERSAL`                                      |
 
 **The core invariant:** for a fully-resolved booking, its escrow entries sum to
 **0** (`HOLD − RELEASE − FEE = 0`, or `HOLD − REFUND = 0`). A wallet's
@@ -58,6 +62,8 @@ transaction and takes row locks (see [Concurrency](#concurrency)).
 ---
 
 ## 3. Escrow lifecycle
+
+Checkout is durable: the 30-minute reservation, initialization attempt, original reference, and recovery status live in `Checkout`. Unknown provider evidence retains a reservation under review; time alone does not prove nonpayment. Late payment after conclusive expiry is held only for refund recovery and does not confirm staff. See [checkout API states](API.md#checkout-and-payments) and [checkout recovery source](../apps/api/src/modules/payments/checkout.ts).
 
 The signs below are how amounts are stored in `EscrowLedger` (positive = money
 in, negative = money out of the held pool).
@@ -109,20 +115,22 @@ Key points:
 
 Ledger functions (all in `payments/ledger/ledger.ts`):
 
-| Function | Effect |
-| --- | --- |
-| `holdOrder(tx, orderId, chargeRef)` | HOLD every booking in the order into escrow; order → PAID. |
-| `releaseBooking(tx, bookingId, method)` | RELEASE + FEE; credit usher wallet; booking → COMPLETED → PAID. |
-| `refundBooking(tx, bookingId, amount)` | REFUND to client; booking → REFUNDED; recompute order status. |
-| `markCheckedIn / markNoShow / cancelBooking` | Status precursors (no money movement). |
-| `freezeBooking(tx, bookingId)` | Dispute: booking → DISPUTED, escrow → FROZEN. |
-| `requestWithdrawal / completeWithdrawal / failWithdrawal` | Wallet → bank lifecycle (see §7). |
-| `commissionSweep(tx, amount)` | COMMISSION_SWEEP platform-level entry (D3). |
-| `reverseCommissionSweep(tx, amount)` | Positive COMMISSION_SWEEP compensating a returned transfer, guarded by the original operation lock. |
+| Function                                                  | Effect                                                                                              |
+| --------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `holdOrder(tx, orderId, chargeRef)`                       | HOLD every booking in the order into escrow; order → PAID.                                          |
+| `releaseBooking(tx, bookingId, method)`                   | RELEASE + FEE; credit usher wallet; booking → COMPLETED → PAID.                                     |
+| `refundBooking(tx, bookingId, amount)`                    | REFUND to client; booking → REFUNDED; recompute order status.                                       |
+| `markCheckedIn / markNoShow / cancelBooking`              | Status precursors (no money movement).                                                              |
+| `freezeBooking(tx, bookingId)`                            | Dispute: booking → DISPUTED, escrow → FROZEN.                                                       |
+| `requestWithdrawal / completeWithdrawal / failWithdrawal` | Wallet → bank lifecycle (see §7).                                                                   |
+| `commissionSweep(tx, amount)`                             | COMMISSION_SWEEP platform-level entry (D3).                                                         |
+| `reverseCommissionSweep(tx, amount)`                      | Positive COMMISSION_SWEEP compensating a returned transfer, guarded by the original operation lock. |
 
 ---
 
-## 4. Wallet & withdrawals {#withdrawals}
+<a id="withdrawals"></a>
+
+## 4. Wallet & withdrawals
 
 When a booking is released, the usher's payout is credited to their `Wallet`
 (`availableBalance`, backed by `WalletLedger`). To cash out:
@@ -168,6 +176,7 @@ All Paystack access goes through one interface — `PaystackPort`
 interface PaystackPort {
   initializeCharge(...)        // hosted checkout URL + reference
   verifyChargeKobo(reference)  // confirm a charge
+  verifyCheckout(reference)    // checkout recovery evidence (where implemented)
   listBanks()                 // complete Nigerian bank directory
   resolveAccount(...)         // registered destination name
   createTransferRecipient(...) // register an usher bank account
@@ -202,8 +211,7 @@ provided.
 
 ## 6. The webhook pipeline
 
-Paystack webhooks are the **source of truth** for money state — the API
-initiates a charge, but the HOLD into escrow happens on the verified webhook.
+Verified provider evidence establishes money outcomes. The API initiates a charge; authenticated callbacks and checkout recovery through verified provider reads can both record the HOLD. A browser return or a successful initialization response cannot establish payment.
 
 Pipeline (`payments/webhooks/paystack-webhook.ts`), mounted with `express.raw`
 **before** `express.json`:
@@ -232,7 +240,9 @@ refund. A terminal refund callback with unavailable read evidence returns 500.
 
 ---
 
-## 7. Reconciliation — the operational alarm {#reconciliation}
+<a id="reconciliation"></a>
+
+## 7. Reconciliation — the operational alarm
 
 `payments/ledger/reconciliation.ts` is the most important operational safeguard.
 It recomputes the **expected** Paystack Balance from ledger aggregates and
@@ -242,11 +252,11 @@ compares it against the **real** balance:
 expected = Σ HOLD  +  Σ REFUND(neg)  +  Σ COMMISSION_SWEEP(signed)  −  Σ withdrawalsPaid
 
 drift = actual (Paystack.getBalanceKobo()) − expected
-ok    = drift === 0
+ok    = drift === 0 AND staleHeldBookingIds is empty
 ```
 
 **RELEASE and FEE are deliberately absent from this formula** — they move money
-from escrow into the wallet/revenue buckets but stay *inside* the Balance, so
+from escrow into the wallet/revenue buckets but stay _inside_ the Balance, so
 they don't change it. If you add a new `LedgerEntryType` that moves money in or
 out of the Paystack Balance, **you must update this formula.**
 
@@ -258,25 +268,26 @@ is no drift. The daily `reconcile` job (cron `17 3 * * *`) logs a
 
 ---
 
+<a id="idempotency"></a>
+
 ## 8. Idempotency
 
 Money operations must be safe to retry.
 
-- **HTTP layer:** money-mutating endpoints require an `Idempotency-Key` header
+- **HTTP layer:** confirmation, charge, withdrawal, booking completion/cancellation, and erasure routes require an `Idempotency-Key` header
   (`requireIdempotencyKey`, min length 8). Missing → `400 IDEMPOTENCY_REQUIRED`.
 - **Ledger layer:** `runIdempotent(prisma, key, scope, fn)` records the key in
   `IdempotencyKey` inside the transaction; a replay finds the existing key and
-  returns `{ duplicate: true }` without re-running the effect.
+  returns the stored outcome with a duplicate marker without repeating the guarded effect. Entity-based operations also use row locks and state guards; see the [API route tables](API.md) for where the header is enforced.
 - **Webhooks:** dedupe by Paystack event id/reference, so an at-least-once
   webhook delivery produces exactly one ledger effect.
 
 Withdrawal keys additionally bind the caller and request fingerprint. Concurrent
 replays serialize before lookup; a changed amount or bank under the same key
 returns a conflict. Legacy results are adopted only after ownership and payload
-checks. Other HTTP scopes retain their existing unbound format pending OVA-147.
+checks. Confirmation also binds the caller/event and selected applications in its service. Do not assume every remaining HTTP scope has equivalent payload-bound replay; inspect the specific service before extending it.
 
-Replaying a hold, a confirm, or a withdrawal therefore produces **exactly one**
-effect.
+The relevant ledger/state and replay guards prevent duplicate financial effects. An uncertain provider result can remain pending; idempotency does not guarantee immediate completion.
 
 ### Durable external operations
 
@@ -319,7 +330,9 @@ separate follow-up work.
 
 ---
 
-## 9. Concurrency {#concurrency}
+<a id="concurrency"></a>
+
+## 9. Concurrency
 
 Prisma has no native row-lock API, so the ledger uses raw `SELECT … FOR UPDATE`
 inside the transaction (`lockBooking`, `lockOrder`, `lockWallet`). This serializes
@@ -338,26 +351,28 @@ for migrations: session advisory locks can outlive the migration client.
 
 ---
 
-## 10. Cancellation / no-show policy matrix {#policy-matrix}
+<a id="policy-matrix"></a>
+
+## 10. Cancellation / no-show policy matrix
 
 Refund and payout outcomes are defined **once** in `@hq/shared/policy` so the
-ledger, the (future) mobile app, and admin all compute identical results
+API and mobile can share the same policy data
 (PRD §13). The matrix is keyed by **actor** (who cancelled) and **window** (how
 far before the event):
 
-| Window | Client cancels | Usher cancels |
-| --- | --- | --- |
-| `GT_48H` (>48h) | refund per row; minor flag | client 100% refund; minor flag |
-| `BETWEEN_12_48H` | 100% client refund; usher penalty | client 100% refund; penalty |
-| `LT_12H` (<12h) | 100% client refund; major penalty; suspend-if-repeat | client 100% refund; major penalty; suspend-if-repeat |
+| Window                              | Client cancellation policy: refund / usher compensation | Usher cancellation policy                                 |
+| ----------------------------------- | ------------------------------------------------------- | --------------------------------------------------------- |
+| `GT_48H` (>48h)                     | 100% / 0%; no usher reputation penalty                  | 100% client refund; minor flag                            |
+| `BETWEEN_12_48H` (12–48h inclusive) | 50% / 50%; no usher reputation penalty                  | 100% client refund; penalty                               |
+| `LT_12H` (<12h)                     | 0% / 100%; no usher reputation penalty                  | 100% client refund; major penalty; suspend-if-repeat flag |
+
+**Implementation boundary:** the client cancellation service currently executes only the 100% refund case. Other windows return `409 PARTIAL_CANCEL_UNSUPPORTED` for support handling; this is not an implemented automatic split settlement. Administrative refunds also require the supported full booking amount. Do not promise a partial financial outcome or manually alter ledger balances to emulate one.
 
 **No-show** (`NO_SHOW_OUTCOME`): usher confirmed but neither client-verified nor
 self-asserted by `start + grace` → client refunded 100%, usher unpaid + major
 penalty. Default grace is `DEFAULT_GRACE_MINUTES = 60`.
 
-> **Pending:** whether the non-refundable Paystack processing fee is deducted
-> from refunds (`lessProcessingFee`) is currently `false` everywhere and is
-> **pending TRD §23 Q4** — do not hard-code a deduction until that is settled.
+The >48h client policy row has `lessProcessingFee: true` as a specification marker, but the effective global `DEDUCT_PROCESSING_FEE_ON_REFUND` flag is **false** and deductions are not wired into ledger settlement. The provider fee question remains in TRD §23 Q4. Enabling deductions would require a retained-fee entry and reconciliation changes, not only changing the policy flag.
 
 Every cancellation outcome's `clientRefundPct + usherPayoutPct` sums to 100 (a
 tested invariant).
@@ -371,12 +386,13 @@ Bookings, orders, and withdrawals may only move along documented transitions
 ledger enforces them on every write.
 
 **Booking:**
+
 ```
 PENDING_PAYMENT → CONFIRMED | CANCELLED
 CONFIRMED       → CHECKED_IN | CANCELLED | NO_SHOW | DISPUTED
 CHECKED_IN      → COMPLETED | DISPUTED
-COMPLETED       → PAID | DISPUTED
-PAID            → DISPUTED            (post-payout dispute → clawback at resolution)
+COMPLETED       → PAID
+PAID            → (terminal; post-payout disputes currently blocked)
 DISPUTED        → COMPLETED | REFUNDED | CANCELLED   (admin resolution targets)
 CANCELLED       → REFUNDED
 NO_SHOW         → REFUNDED
@@ -386,6 +402,8 @@ REFUNDED        → (terminal)
 **Order:** `PENDING → PAID → PARTIALLY_REFUNDED → REFUNDED` (partial can loop).
 **Withdrawal:** `REQUESTED → PROCESSING → PAID`; failure can enter `FAILED`,
 including `PAID → FAILED` for a confirmed reversal. `FAILED` is terminal.
+
+Post-payout dispute support is deferred until wallet clawback/debt is modeled. The broader 72-hour product dispute window does not override these current state guards.
 
 The tables are exported as data so tests can exhaustively check every
 `(from, to)` pair.
@@ -415,4 +433,4 @@ Platform fees accumulate in the Balance as the residue of releases. The daily
 - [ ] A new ledger entry type that changes the Paystack Balance is added to the
       reconciliation formula.
 - [ ] A new state transition is added to its table **before** code performs it.
-- [ ] Money-mutating endpoints require an `Idempotency-Key`.
+- [ ] Money operations preserve their required request key or durable entity/reference guard; document the actual route contract.

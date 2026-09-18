@@ -159,9 +159,21 @@ export interface Booking {
   usherId: string;
   status: string;
   amount: number;
+  /** Detail response only; never confuse gross booking amount with net earnings. */
+  payment?: {
+    grossAmount: number;
+    platformFee: number;
+    usherPayout: number;
+    escrowStatus: string;
+  } | null;
   createdAt: string;
   /** Enriched on list/detail: event summary + the host (client) name. */
-  event?: Partial<EventResource> & { title: string; eventDate: string; startTime: string; client?: { displayName: string } };
+  event?: Partial<EventResource> & {
+    title: string;
+    eventDate: string;
+    startTime: string;
+    client?: { displayName: string };
+  };
   /** Enriched on list: the booked usher's name/phone. */
   usher?: { displayName: string | null; user: { phone: string } };
 }

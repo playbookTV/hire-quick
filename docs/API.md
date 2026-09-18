@@ -1,368 +1,260 @@
-# API Reference
+# API reference
 
-HTTP reference for `@hq/api`. The base URL in development is
-`http://localhost:4000`. All request/response bodies are JSON unless noted.
+[Documentation index](README.md) · [Workflows](WORKFLOWS.md) · [Payments](PAYMENTS.md)
 
-For the money concepts behind these endpoints, see [`PAYMENTS.md`](./PAYMENTS.md).
-
----
+Reviewed against the mounted routers on 2026-09-16. Local base URL: `http://localhost:4000`. The tables inventory HTTP methods and paths; linked route handlers and shared validators define complete field constraints and response shapes. There is no generated OpenAPI contract in this guide.
 
 ## Conventions
 
-**Auth.** Most endpoints require a Bearer access token:
+Authenticated calls send `Authorization: Bearer <accessToken>`. HTTP checks token validity and current ACTIVE account status. Role and ownership checks are endpoint-specific; an ADMIN token does not automatically authorize party-only booking routes.
 
-```
-Authorization: Bearer <accessToken>
-```
+Bodies are JSON with `Content-Type: application/json`, except raw signed webhooks and direct object-store uploads. Money is integer kobo; UUIDs identify resources. Lists do not share a universal pagination envelope: some are capped arrays, others have dedicated response objects. Do not infer cursor support.
 
-`requireAuth` verifies the token and attaches the caller's `{ userId, role }`.
-Admin endpoints additionally require the `ADMIN` role (`requireRole`).
+The **Key** column marks routes enforcing `Idempotency-Key` (minimum 8 characters). Persist one key and the exact payload for a logical operation and reuse it on retry. Not every financial route uses this header: some operations deduplicate by durable entity/reference and state. Header presence alone does not imply payload-bound replay for every route. See [Payments](PAYMENTS.md#idempotency).
 
-**Roles.** `CLIENT`, `USHER`, `ADMIN`. RBAC is enforced per route; a wrong role
-returns `403 FORBIDDEN`.
-
-**Idempotency.** Money-mutating endpoints require an `Idempotency-Key` header
-(min 8 chars). Reuse the same key to safely retry a request.
-
-```
-Idempotency-Key: <unique-per-logical-operation>
-```
-
-**Errors.** Every error is a leak-free envelope; internals are never exposed:
+Most errors follow:
 
 ```json
 { "error": { "code": "FORBIDDEN", "message": "not your event" } }
 ```
 
-| Situation | Status | Code |
-| --- | --- | --- |
-| Zod validation failure | 400 | `VALIDATION` (with `issues`) |
-| Missing/invalid token | 401 | `UNAUTHENTICATED` |
-| Wrong role / not your resource | 403 | `FORBIDDEN` (or `NOT_A_CLIENT` / `NOT_AN_USHER` / `NOT_VERIFIED`) |
-| Missing idempotency key | 400 | `IDEMPOTENCY_REQUIRED` |
-| Too many requests | 429 | `RATE_LIMITED` |
-| Payments port not configured | 503 | `PAYMENTS_UNAVAILABLE` (e.g. confirm-batch) |
-| Unknown route | 404 | `NOT_FOUND` |
-| Unhandled error | 500 | `INTERNAL` (generic message) |
+| Condition                             | Status / code                                                                    |
+| ------------------------------------- | -------------------------------------------------------------------------------- |
+| Invalid DTO or malformed JSON         | `400 VALIDATION`; DTO errors may include `issues`                                |
+| JSON body exceeds 1 MiB               | `413 PAYLOAD_TOO_LARGE`                                                          |
+| Missing/expired access token          | `401 UNAUTHENTICATED`                                                            |
+| Consumed/invalid refresh token        | `401 INVALID_REFRESH`                                                            |
+| Inactive account                      | `403 ACCOUNT_INACTIVE`                                                           |
+| Wrong role/owner                      | `403 FORBIDDEN` or feature-specific code; some resources deliberately return 404 |
+| Missing/short idempotency key         | `400 IDEMPOTENCY_REQUIRED`                                                       |
+| Unsupported late client cancellation  | `409 PARTIAL_CANCEL_UNSUPPORTED`                                                 |
+| Conflicting request/state             | `409` with feature-specific code                                                 |
+| Missing injected payment/storage port | `503 PAYMENTS_UNAVAILABLE` / `STORAGE_UNAVAILABLE` where guarded                 |
+| Rate limit                            | `429 RATE_LIMITED`                                                               |
+| Unknown route                         | `404 NOT_FOUND`                                                                  |
+| Unexpected error                      | `500 INTERNAL`, generic public message                                           |
 
-**Rate limiting.** When Redis is configured, three tiers apply (per client IP):
-a lenient **global** ceiling on everything, a strict **auth** limiter on
-`/auth/*` (OTP/login/refresh are brute-force targets), and a moderate **money**
-limiter on `/api/payments/*`. Exceeding a tier returns `429 RATE_LIMITED` with
-`RateLimit-*` headers. In dev/test without Redis the limiters pass through.
+**Exception:** OTP delivery failure returns `502` with `{ "sent": false }`, rather than the standard error envelope. Do not treat every non-2xx response as the same JSON schema.
 
-**Request correlation.** Every response carries an `x-request-id` header (echoed
-from the request or generated).
+With Redis, per-IP limits are 300/min globally, 10/min under `/auth`, and 30/min under `/api/payments`. OTP issuance also has a database-backed five-per-hour per-phone limit. Global limiting precedes request-ID middleware; most responses carry `x-request-id`, but early failures may not. Sources: [app](../apps/api/src/app.ts), [rate limiter](../apps/api/src/middleware/rate-limit.ts).
 
----
+## Health and authentication
 
-## Health
+Source: [auth routes](../apps/api/src/modules/auth/routes.ts), [OTP service](../apps/api/src/modules/auth/otp.ts), [refresh policy](../apps/api/src/modules/auth/README.md).
 
-### `GET /health`
-No auth. Liveness probe.
+| Method | Path                | Access                       | Input / response                                                                         |
+| ------ | ------------------- | ---------------------------- | ---------------------------------------------------------------------------------------- |
+| GET    | `/health`           | Public                       | `{"status":"ok"}`; liveness only                                                         |
+| POST   | `/auth/otp/request` | Public                       | `{phone}` → `{sent}`; `devCode` only in isolated `NODE_ENV=test`                         |
+| POST   | `/auth/otp/verify`  | Public                       | `{phone,code,role?}` → `{accessToken,refreshToken,user}`                                 |
+| POST   | `/auth/refresh`     | Refresh credential           | `{refreshToken}` → successor token pair                                                  |
+| POST   | `/auth/logout`      | Presented refresh credential | `{refreshToken}` → 204; best-effort revocation, malformed/expired tokens also return 204 |
 
-```json
-{ "status": "ok", "service": "hirequick-api" }
-```
+`phone` accepts an optional `+` and 7–15 digits. Use one consistent international representation. Codes are six digits. Optional signup role is `CLIENT` or `USHER`, defaulting to CLIENT; it does not change an existing user's role. Admin accounts must already exist. OTP request replaces earlier unconsumed codes for that phone. Development requires delivery; codes are not a console-login mechanism.
 
----
+Refresh consumes the original JTI atomically. Concurrent reuse has at most one winner. Clients must store the successor pair and serialize refresh attempts. If a committed response is lost, sign in again; replay cannot recover the successor. Logout targets the presented token, not all independent sessions.
 
-## Auth — `/auth`
+## Profile, verification, photos, availability
 
-Phone + OTP. In development the OTP is logged to the server console and returned
-as `devCode` (never returned in production).
+All routes below require authentication. Source: [profile router](../apps/api/src/modules/profile/routes.ts), [biometric router](../apps/api/src/modules/verification/routes.ts).
 
-### `POST /auth/otp/request`
-Body: `{ "phone": "+2348012345678" }`
-Rate-limited to 5 requests/hour per phone → `429 RATE_LIMITED`.
-Response: `{ "sent": true, "devCode": "123456" }` (devCode dev-only).
+| Method | Path                              | Access / contract                                                                                                                           |
+| ------ | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/api/me`                         | Own identity/profile; usher includes wallet, milestones, avatar, portfolio                                                                  |
+| PATCH  | `/api/me`                         | Optional `displayName`, `businessName`, `bio`, `yearsExperience`, `state`, `city`, `languages`, `dayRateKobo`; fields apply by profile role |
+| POST   | `/api/me/verification/kyc/start`  | Usher biometric session; result from KYC service                                                                                            |
+| POST   | `/api/me/verification/upload-url` | Usher; `{kind: "id" or "selfie", contentType}` → `{url,key}`; storage required                                                              |
+| POST   | `/api/me/verification`            | Usher; `{idDocumentUrl,selfieUrl}` containing server-issued keys when storage configured                                                    |
+| GET    | `/api/me/verification`            | Usher's submissions, newest first; private download URLs                                                                                    |
+| POST   | `/api/me/photos/upload-url`       | Usher; `{kind: "avatar" or "portfolio",contentType}` → `{url,key}`                                                                          |
+| PUT    | `/api/me/photos/avatar`           | Usher; `{key}` → `{avatarUrl}`                                                                                                              |
+| POST   | `/api/me/photos/portfolio`        | Usher; `{key}` → `{id,imageUrl}`; maximum five photos                                                                                       |
+| DELETE | `/api/me/photos/portfolio/:id`    | Usher owns photo; → `{deleted:true}`                                                                                                        |
+| POST   | `/api/me/devices`                 | `{fcmToken,platform: "IOS" or "ANDROID"}`; token minimum eight characters                                                                   |
+| GET    | `/api/me/availability`            | Usher; optional `from`/`to` query dates (`YYYY-MM-DD`)                                                                                      |
+| PUT    | `/api/me/availability`            | Usher; `{date,status}` per shared schema; conflicts with existing bookings can return `409 SCHEDULE_CONFLICT`                               |
 
-### `POST /auth/otp/verify`
-Body: `{ "phone": "+234...", "code": "123456", "role": "CLIENT" | "USHER" }`
-(`role` optional; used only when creating a brand-new user — defaults to
-`CLIENT`. A new `USHER` is created with a wallet; a new `CLIENT` with a profile.)
-Response:
+Upload flow: request a URL, PUT bytes directly to storage with matching content type, then submit the returned **key** to the profile/verification route. Do not save a temporary signed URL as a key. Photos permit raster JPEG/PNG/WebP/HEIC/HEIF variants; KYC additionally permits PDF. See the route schemas for exact MIME strings.
 
-```json
-{
-  "accessToken": "...",
-  "refreshToken": "...",
-  "user": { "id": "...", "role": "USHER", "phone": "+234..." }
-}
-```
+`dayRateKobo` is a discovery/display value. Order pricing comes from the event budget captured at confirmation.
 
-### `POST /auth/refresh`
-Body: `{ "refreshToken": "..." }`
-Rotates the pair (issues a fresh access **and** refresh token). Suspended/unknown
-users → `401 INVALID_REFRESH`.
+## Privacy, legal policy, notifications
 
-### `POST /auth/logout`
-`204 No Content`. Stateless — logout is a client-side token discard. (A refresh
-denylist is a documented Phase 9 hardening item.)
+Sources: [privacy](../apps/api/src/modules/privacy/routes.ts), [legal](../apps/api/src/modules/legal/routes.ts), [notifications](../apps/api/src/modules/notifications/routes.ts).
 
----
+| Method | Path                               | Access           | Key | Contract                                                                       |
+| ------ | ---------------------------------- | ---------------- | --- | ------------------------------------------------------------------------------ |
+| GET    | `/api/me/export`                   | Own account      | —   | Personal-data export                                                           |
+| POST   | `/api/me/erase`                    | Own account      | Yes | Pseudonymization; financial history retained                                   |
+| GET    | `/api/me/consents`                 | Own account      | —   | Consent state by purpose                                                       |
+| POST   | `/api/me/consents`                 | Own account      | —   | `{purpose,granted}`; purpose `PUSH_NOTIFICATIONS`, `MARKETING_EMAIL`, or `SMS` |
+| GET    | `/api/legal/privacy-policy`        | Public           | —   | Current published policy                                                       |
+| POST   | `/api/legal/privacy-policy/accept` | Authenticated    | —   | Accept current server policy version; no client-selected version               |
+| GET    | `/api/me/notifications`            | Own account      | —   | `{notifications,unreadCount}`; latest 50 records                               |
+| PATCH  | `/api/me/notifications/:id/read`   | Own notification | —   | `{read:true}`                                                                  |
+| POST   | `/api/me/notifications/read-all`   | Own account      | —   | `{read:true}`                                                                  |
 
-## Profile — `/api/me`
-All require auth.
+Erasure is not a financial-record delete operation. A later authenticated retry can be rejected because the account is now inactive. Do not assume a successful erasure response guarantees every object-store deletion succeeded.
 
-### `GET /api/me`
-Returns the caller's user + `client` and/or `usher` (with wallet) records.
+## Events and recruitment
 
-### `PATCH /api/me`
-Body (all optional): `{ "displayName", "bio", "yearsExperience" }`.
-`displayName` updates the client profile; `bio`/`yearsExperience` update the
-usher profile. Response: `{ "updated": true }`.
+Source: [events router](../apps/api/src/modules/events/routes.ts). All routes require auth. This router mounts even without a payment port.
 
-### `POST /api/me/verification/upload-url` (usher)
-Request short-lived presigned upload URLs for KYC documents. Body names the
-document kind(s) and content type; the response returns the URL(s) to PUT to and
-the server-owned object key(s) to submit back. (When storage is unconfigured the
-flow falls back to plain URLs.)
+| Method | Path                           | Access / contract                                                        | Key |
+| ------ | ------------------------------ | ------------------------------------------------------------------------ | --- |
+| POST   | `/api/events`                  | Client; event DTO → created event                                        | —   |
+| GET    | `/api/events`                  | Client's own events; usher discovery with state filter and venue masking | —   |
+| GET    | `/api/events/:id`              | Owning client, admin, or eligible/related usher                          | —   |
+| PATCH  | `/api/events/:id`              | Owning client; partial event DTO; lifecycle/booking constraints enforced | —   |
+| POST   | `/api/events/:id/apply`        | Verified usher; application                                              | —   |
+| GET    | `/api/events/:id/applications` | Owning client; applicant profiles without phone numbers                  | —   |
+| PATCH  | `/api/applications/:id`        | Owning client; `{status: "SHORTLISTED", "ACCEPTED", or "REJECTED"}`      | —   |
+| GET    | `/api/me/applications`         | Usher's applications                                                     | —   |
+| POST   | `/api/events/:id/save`         | Usher; save → `{id,saved:true}`                                          | —   |
+| DELETE | `/api/events/:id/save`         | Usher; unsave → `{saved:false}`                                          | —   |
+| GET    | `/api/me/saved-jobs`           | Usher's saved events                                                     | —   |
+| POST   | `/api/events/:id/invite`       | Owning client; `{usherId}`                                               | —   |
+| GET    | `/api/me/invitations`          | Verified usher's invitations                                             | —   |
+| GET    | `/api/invitations/:id`         | Verified usher who owns invitation                                       | —   |
+| PATCH  | `/api/invitations/:id`         | Verified invited usher; `{status: "ACCEPTED" or "DECLINED"}`             | —   |
+| POST   | `/api/events/:id/confirm`      | Owning client; `{applicationIds,email}` → checkout snapshot              | Yes |
 
-### `POST /api/me/verification` (usher)
-Submit identity verification, referencing the keys/URLs from the upload step.
-Response: `{ "id", "status": "PENDING" }`.
-
-### `GET /api/me/verification` (usher)
-List the caller's verification submissions (newest first).
-
-### Photos (usher) — `/api/me/photos`
-- `POST /api/me/photos/upload-url` — presigned upload URL for an avatar or
-  portfolio photo (server-owned key, scoped to the usher).
-- `POST /api/me/photos/avatar` — set the profile avatar from an uploaded key.
-- `POST /api/me/photos/portfolio` — add a portfolio photo.
-- `DELETE /api/me/photos/portfolio/:id` — remove a portfolio photo.
-
-### `PUT /api/me/availability` (usher)
-Set the usher's availability status (used by discovery/booking).
-
-### `POST /api/me/devices`
-Register a device push token (`{ token, platform }`) for notifications.
-
-### Privacy (data-subject rights) — `/api/me`
-- `GET /api/me/export` — export the caller's personal data (NDPR access right).
-- `POST /api/me/erase` — erase the caller's account. Erasure **pseudonymizes**
-  rather than deletes, because financial/audit records are retained for the
-  legally-required window (TRD §14).
-
----
-
-## Events, Applications & Invitations — `/api`
-All require auth. The events router mounts **unconditionally** (discovery and
-applications don't need payments); only `confirm` depends on a Paystack port and
-returns `503 PAYMENTS_UNAVAILABLE` when none is configured.
-
-### `POST /api/events` (client)
-Create a multi-staff event. Body (`createEventSchema`):
+Example event input (replace the date with a future event date):
 
 ```json
 {
-  "title": "Oriental Hotel Wedding",
-  "venue": "Oriental Hotel, Lekki",
+  "title": "Wedding reception",
+  "venue": "Example venue, Lekki",
+  "state": "Lagos",
   "category": "Wedding",
-  "eventDate": "2026-07-01",
+  "eventDate": "2027-01-20",
   "startTime": "16:00",
   "endTime": "22:00",
-  "headcount": 10,
-  "budgetPerHeadKobo": 1500000,
-  "dressCode": "Black tie",
-  "requirements": "Prior wedding experience"
+  "headcount": 4,
+  "budgetPerHeadKobo": 2000000,
+  "accommodation": "PROVIDED",
+  "dressCode": "Black formal wear"
 }
 ```
-`endTime` must be after `startTime`. Created with status `OPEN`.
 
-### `GET /api/events`
-Clients see their own events; ushers see `OPEN` / `PARTIALLY_STAFFED` events.
+End time must be after start time. Events ending at/after 22:00 must disclose accommodation; both `PROVIDED` and `NOT_PROVIDED` are disclosures. Headcount is 1–100, while one confirmation accepts 1–50 application IDs. Aggregate event budget must fit the money limit. Optional fields and constraints live in [shared DTOs](../packages/shared/src/dto.ts); the confirm route defines its own actual input schema.
 
-### `GET /api/events/:id`
-Event detail with application/booking counts.
+Invitation acceptance creates an accepted application. Application acceptance alone is not a paid booking. Precise venue access depends on booking/payment eligibility, not merely application or invitation status.
 
-### `POST /api/events/:id/apply` (verified usher)
-Usher applies (upsert → `APPLIED`). Requires `verificationStatus === 'VERIFIED'`
-(else `403 NOT_VERIFIED`).
+## Checkout and payments
 
-### `GET /api/events/:id/applications` (client, own event)
-List applications with usher phone.
+Source: [payments router](../apps/api/src/modules/payments/http/routes.ts), [checkout](../apps/api/src/modules/payments/checkout.ts). All require auth and an injected payment port; the normal server injects the real HTTP implementation.
 
-### `PATCH /api/applications/:id` (client, own event)
-Body: `{ "status": "SHORTLISTED" | "ACCEPTED" | "REJECTED" }`.
+| Method | Path                                            | Access / contract                                                       | Key |
+| ------ | ----------------------------------------------- | ----------------------------------------------------------------------- | --- |
+| POST   | `/api/payments/orders/:orderId/charge`          | Order owner; `{email}` → checkout snapshot                              | Yes |
+| GET    | `/api/payments/orders/:orderId/checkout`        | Order owner; verifies/reconciles provider evidence and returns snapshot | —   |
+| POST   | `/api/payments/orders/:orderId/checkout/resume` | Order owner; resumes the durable original checkout                      | —   |
+| GET    | `/api/payments/wallet`                          | Usher; `{availableBalance,pendingEscrow,lifetimeEarned}` in kobo        | —   |
+| GET    | `/api/payments/wallet/activity`                 | Usher; merged ledger/held activity, bounded list                        | —   |
+| GET    | `/api/payments/banks`                           | Authenticated; provider bank directory                                  | —   |
+| GET    | `/api/payments/resolve-account`                 | Authenticated; `bankCode`, ten-digit `accountNumber` query              | —   |
+| POST   | `/api/payments/bank-accounts`                   | Usher; `{bankCode,accountNumber}`; server resolves account name         | —   |
+| GET    | `/api/payments/bank-accounts`                   | Usher's bank accounts                                                   | —   |
+| POST   | `/api/payments/withdrawals`                     | Usher; `{bankAccountId,amountKobo}` → persisted receipt                 | Yes |
 
-### `GET /api/me/applications` (usher)
-The caller's own applications across events.
+Checkout snapshot fields: `orderId`, `eventId`, `bookingIds`, `reference`, `authorizationUrl`, `state`, `expiresAt`, `amountKobo`, `duplicate`. A new confirmation returns 201; replay returns 200. New references use `hq-<order-id>`. `authorizationUrl` is available only in `READY`; consumers must inspect `state` before opening it.
 
-### `POST /api/events/:id/save` · `GET /api/me/saved-jobs` (usher)
-Bookmark an event and list saved events.
+| Checkout state   | Client meaning                                                 |
+| ---------------- | -------------------------------------------------------------- |
+| `CREATED`        | Durable reservation exists, dispatch not yet started           |
+| `INITIALIZING`   | Initialization attempt recorded                                |
+| `READY`          | Hosted checkout can be opened                                  |
+| `REVIEW`         | Outcome uncertain; retain original order/reference and recover |
+| `EXPIRED`        | Reservation conclusively released                              |
+| `PAID`           | Charge recorded; staff confirmation may be shown               |
+| `REFUND_PENDING` | Late charge for expired reservation; refund in progress        |
+| `REFUNDED`       | Refund recorded                                                |
 
-### `POST /api/events/:id/invite` (client, own event)
-Body: `{ "usherId": "<uuid>" }`. Upserts an invitation (`SENT`).
+The nominal reservation lifetime is 30 minutes, but elapsed time alone does not establish an unpaid outcome. Browser dismissal, return, or network failure must not trigger a fresh order automatically. The checkout GET is not a passive DB read: it can reconcile provider evidence and progress recovery.
 
-### `PATCH /api/invitations/:id` (usher)
-Body: `{ "status": "ACCEPTED" | "DECLINED" }`. Accepting an invitation creates an
-`ACCEPTED` application — so both hiring models converge on the same confirm input.
+Withdrawal receipts include `withdrawalId`, `status`, `amountKobo`, `bankAccountId`, `availableBalance`, and `duplicate`. The same key with a changed bank or amount conflicts. Wallet debit occurs before provider transfer, and uncertainty keeps it reserved. A validated failure/reversal restores funds once. There is no separate withdrawal-list/status HTTP route in this router; replay the original request as implemented by the mobile recovery flow.
 
-### `POST /api/events/:id/confirm` (client) · Idempotency-Key required
-Confirm a batch of accepted ushers → creates an `Order` + `Booking`s and
-initializes the Paystack charge. Body:
+## Bookings, attendance, disputes, reviews
 
-```json
-{ "applicationIds": ["<uuid>", "..."], "email": "client@example.com" }
-```
-Response:
+Source: [booking routes](../apps/api/src/modules/bookings/routes.ts). All require authentication and service-level ownership/state checks.
 
-```json
-{
-  "orderId": "...",
-  "authorizationUrl": "https://checkout.paystack.com/...",
-  "reference": "hq_<orderId>",
-  "bookingIds": ["...", "..."]
-}
-```
-The client opens `authorizationUrl` to pay; the HOLD into escrow happens on the
-`charge.success` webhook.
+| Method | Path                                 | Access / contract                                             | Key |
+| ------ | ------------------------------------ | ------------------------------------------------------------- | --- |
+| GET    | `/api/bookings`                      | Client's event bookings or usher's own bookings               | —   |
+| GET    | `/api/bookings/:id`                  | Booking party; payment and event details                      | —   |
+| POST   | `/api/bookings/:id/checkin/generate` | Client party; attendance code result                          | —   |
+| POST   | `/api/bookings/:id/checkin/verify`   | Usher party; `{code}` → `{status:"CHECKED_IN"}`               | —   |
+| POST   | `/api/bookings/:id/arrived`          | Usher party; `{arrived:true}`                                 | —   |
+| POST   | `/api/bookings/:id/complete`         | Client party; release to wallet → `{status:"PAID"}`           | Yes |
+| POST   | `/api/bookings/:id/cancel`           | Booking party; cancellation DTO; policy/state/provider checks | Yes |
+| POST   | `/api/bookings/:id/disputes`         | Booking party; `{reason,note?}`; freeze eligible escrow       | —   |
+| POST   | `/api/bookings/:id/reviews`          | Booking party after payout; `{rating,comment?}`               | —   |
 
----
+Client cancellation requiring a split refund/payout is currently rejected with `PARTIAL_CANCEL_UNSUPPORTED`. Completed/paid bookings cannot enter dispute under current state tables. These limits qualify the broader product policy; see [Status](STATUS.md).
 
-## Bookings — `/api`
-All require auth.
+## Chat and media
 
-### `GET /api/bookings`
-Ushers see their own bookings; clients see bookings on their events.
+Sources: [booking routes](../apps/api/src/modules/bookings/routes.ts), [media routes](../apps/api/src/modules/storage/chat-media-routes.ts), [realtime authorization](../apps/api/src/realtime/README.md).
 
-### `GET /api/bookings/:id`
-Booking detail (event, usher, payment). Only the booking's client or usher may
-view it.
+| Method | Path                                              | Contract                                                   |
+| ------ | ------------------------------------------------- | ---------------------------------------------------------- |
+| GET    | `/api/bookings/:id/messages`                      | Authorized party's booking messages                        |
+| POST   | `/api/bookings/:id/messages`                      | `{content,contentType?}`; `TEXT`, `IMAGE`, or `VOICE`      |
+| GET    | `/api/bookings/:id/messages/unread`               | `{unread}`                                                 |
+| POST   | `/api/bookings/:id/messages/seen`                 | `{upToMessageId?}` → `{seen}`                              |
+| POST   | `/api/bookings/:id/media/upload-url`              | `{contentType: "IMAGE" or "VOICE",mimeType}` → `{key,url}` |
+| GET    | `/api/bookings/:id/messages/:messageId/media-url` | Authorized private download → `{url}`                      |
 
-### `POST /api/bookings/:id/checkin/generate` (client)
-Generate a 6-digit attendance code for a `CONFIRMED` booking (valid 8h).
-Response: `{ "generated": true, "devCode": "123456" }` (devCode dev-only).
+Chat requires party membership and a messageable booking state. UUID and content validation is shared across REST/socket paths. Text content is 1–4,000 characters. Media messages reference server-issued private keys; use the authorized media route for downloads.
 
-### `POST /api/bookings/:id/checkin/verify` (usher)
-Body: `{ "code": "123456" }`. On success the booking → `CHECKED_IN`
-(`attendanceMethod = OTP`). Response: `{ "status": "CHECKED_IN" }`.
+## Usher discovery
 
-### `POST /api/bookings/:id/arrived` (usher)
-Usher self-asserts arrival (D1 passive-client path). Allowed when `CONFIRMED` or
-`CHECKED_IN`. Response: `{ "arrived": true }`.
+Source: [usher routes](../apps/api/src/modules/ushers/routes.ts). All require auth.
 
-### `POST /api/bookings/:id/complete` (client)
-Client confirms completion of a `CHECKED_IN` booking → releases payout to the
-usher's wallet (`releaseBooking`). Response: `{ "status": "PAID" }`.
+| Method | Path                      | Contract                                                                                                               |
+| ------ | ------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/api/ushers`             | Optional `query`, `minRating`, `verified`, `location`, `maxRate`, `availableOn`, `limit`; default limit 20, maximum 50 |
+| GET    | `/api/ushers/:id`         | Authorized profile view with portfolio                                                                                 |
+| GET    | `/api/ushers/:id/reviews` | Reviews for visible usher                                                                                              |
 
-### `POST /api/bookings/:id/cancel` (client or usher party)
-Cancel a booking. The refund/payout outcome is computed from the
-[cancellation policy matrix](./PAYMENTS.md#policy-matrix) by actor and window.
+`maxRate` is integer kobo. Non-admin discovery is verified-only even with `verified=false`. Precise contact data is not a public discovery contract.
 
-### `POST /api/bookings/:id/disputes` (client or usher party)
-Open a dispute → **freezes the escrow** (booking → `DISPUTED`,
-`escrowStatus = FROZEN`). Body: `{ "reason": "...", "note": "..."? }`.
-Response: `201 { "id": "<disputeId>" }`.
+## Administration
 
-### `POST /api/bookings/:id/reviews`
-Leave a review for the counterparty on a completed booking (drives the usher's
-`ratingAvg` / `ratingCount`).
+Source: [admin routes](../apps/api/src/modules/admin/routes.ts). Every route requires ADMIN. These routes use service-level authorization, durable operations, and state guards; they do not currently enforce the HTTP idempotency-key middleware.
 
-### Booking chat — `/api/bookings/:id/messages`
-REST companions to the realtime chat (the live path is Socket.IO; see below):
-- `GET /api/bookings/:id/messages` — message history (booking parties only).
-- `POST /api/bookings/:id/messages` — send a message.
-- `POST /api/bookings/:id/messages/seen` — mark messages seen up to an id.
-- `GET /api/bookings/:id/messages/unread` — unread count for the badge.
+| Method | Path                                   | Contract                                                                               |
+| ------ | -------------------------------------- | -------------------------------------------------------------------------------------- |
+| GET    | `/api/admin/stats`                     | Queue counts, users, held escrow, approval threshold                                   |
+| GET    | `/api/admin/verifications`             | `status`: PENDING (default), APPROVED, REJECTED; sensitive reads audited               |
+| POST   | `/api/admin/verifications/:id/approve` | Approve submission                                                                     |
+| POST   | `/api/admin/verifications/:id/reject`  | `{reason,reasonCode?}`                                                                 |
+| GET    | `/api/admin/disputes`                  | Open/under-review by default; `status=ALL` includes closed                             |
+| POST   | `/api/admin/disputes/:id/resolve`      | `{outcome: "RELEASE" or "REFUND",resolution}`                                          |
+| POST   | `/api/admin/refunds`                   | `{bookingId,amountKobo,reason}`; current service supports full eligible booking refund |
+| GET    | `/api/admin/approvals`                 | `status`: PENDING (default), APPROVED, REJECTED, EXECUTED                              |
+| POST   | `/api/admin/approvals/:id`             | `{decision: "approve" or "reject"}`; checker must differ from maker                    |
+| GET    | `/api/admin/ledger`                    | Latest escrow rows; default limit 100, capped at 250                                   |
+| GET    | `/api/admin/users`                     | Optional `query` over phone/email; latest 100                                          |
+| POST   | `/api/admin/users/:id/suspend`         | Set SUSPENDED                                                                          |
+| POST   | `/api/admin/users/:id/reinstate`       | Set ACTIVE                                                                             |
+| GET    | `/api/admin/milestone-tiers`           | Configured reward tiers                                                                |
+| POST   | `/api/admin/milestone-tiers`           | `{threshold,name,rewardType,description?,active?}`                                     |
+| PATCH  | `/api/admin/milestone-tiers/:id`       | Partial tier DTO                                                                       |
+| DELETE | `/api/admin/milestone-tiers/:id`       | Soft deactivate                                                                        |
+| GET    | `/api/admin/milestones`                | Physical reward queue; UNLOCKED default or `status=FULFILLED`                          |
+| POST   | `/api/admin/milestones/:id/fulfill`    | Mark an unlocked reward fulfilled                                                      |
 
-> **Attendance / completion windows are also driven by scheduled jobs**
-> (auto-complete, no-show) rather than only by these endpoints — see
-> [`ARCHITECTURE.md`](./ARCHITECTURE.md#scheduled-jobs).
+Amounts **greater than** 5,000,000 kobo (₦50,000) require a different admin to approve. An approval decision does not itself establish provider settlement: `APPROVED` remains until execution completes. Re-read state and consult [Operations](OPERATIONS.md).
 
----
+## Webhooks and realtime
 
-## Ushers (discovery) — `/api`
-All require auth. Read-only public-ish surface for client-side discovery.
+| Method | Path                 | Authentication                                         |
+| ------ | -------------------- | ------------------------------------------------------ |
+| POST   | `/webhooks/paystack` | HMAC-SHA512 over raw body using `x-paystack-signature` |
+| POST   | `/webhooks/dojah`    | Raw-body verification by the configured KYC adapter    |
 
-### `GET /api/ushers`
-Search/browse usher cards (id, displayName, bio, yearsExperience, ratingAvg,
-ratingCount, completedJobsCount, avatar). Supports discovery filters.
+Provider payloads are not user-authenticated requests. Do not synthesize a successful payment callback to resolve uncertain money. Paystack callbacks deduplicate effects and can return 500 while authoritative evidence is unavailable, allowing retry. Dojah unknown/duplicate/superseded references do not overwrite current identity state.
 
-### `GET /api/ushers/:id`
-A single usher's public profile (card + portfolio photos, presigned for reading).
-
-### `GET /api/ushers/:id/reviews`
-Reviews an usher has received.
-
----
-
-## Payments — `/api/payments`
-All require auth. Mount only when a Paystack port is configured.
-
-### `POST /api/payments/orders/:orderId/charge` · Idempotency-Key required
-Initialize a Paystack charge for a `PENDING` order. Body: `{ "email": "..." }`.
-Response: `201 { "authorizationUrl", "reference" }`.
-
-### `POST /api/payments/bank-accounts` (usher)
-Register a bank account as a Paystack transfer recipient. Body
-(`bankAccountSchema`): `{ "bankCode", "accountNumber" (10 digits), "accountName" }`.
-
-### Withdrawals (usher)
-Withdraw available wallet balance to a registered bank account
-(`withdrawSchema`: `{ "bankAccountId", "amountKobo" }`). The wallet is debited
-immediately; the `transfer.success` / `transfer.failed` webhook finalizes the
-status (a failure reverses the debit). See
-[`PAYMENTS.md` §4](./PAYMENTS.md#withdrawals).
-
----
-
-## Admin — `/api/admin`
-Require auth **and** `ADMIN` role. Every action is written to the hash-chained
-audit log. This surface backs the `apps/admin` console.
-
-**Verifications**
-- `GET /api/admin/verifications` — queue of pending KYC submissions.
-- `POST /api/admin/verifications/:id/approve` — usher `verificationStatus =
-  VERIFIED` (now discoverable/payable).
-- `POST /api/admin/verifications/:id/reject` — body `{ "reason" }`; marks usher
-  `REJECTED`.
-
-**Disputes**
-- `GET /api/admin/disputes` — open disputes (frozen escrow).
-- `POST /api/admin/disputes/:id/resolve` — resolve toward release / refund /
-  cancel per the booking state machine; unfreezes the escrow.
-
-**Refunds**
-- `POST /api/admin/refunds` — issue a manual/administrative refund on a booking.
-
-**Two-person approvals**
-- `GET /api/admin/approvals` · `POST /api/admin/approvals/:id` — review and
-  approve/reject sensitive actions that require a second admin.
-
-**Rewards (loyalty)**
-- `GET`/`POST` `/api/admin/milestone-tiers` · `PATCH /api/admin/milestone-tiers/:id`
-  — manage loyalty tiers.
-- `GET /api/admin/milestones` · `POST /api/admin/milestones/:id/fulfill` — see
-  unlocked milestones and mark physical rewards fulfilled.
-
-**Operations**
-- `GET /api/admin/stats` — operational dashboard metrics.
-- `GET /api/admin/ledger` — inspect ledger entries.
-- `GET /api/admin/users` — user directory.
-
----
-
-## Realtime (Socket.IO)
-Clients connect to the same origin over Socket.IO, authenticating with the
-**access JWT** on connect. Joining `booking:<id>` requires being a party to the
-booking. Client→server events: `room:join`, `message:send`, `message:seen`,
-`typing:start`/`typing:stop`. Server→client events (catalogue in
-`realtime/events.ts`): booking lifecycle (`booking.confirmed`, `booking.checked_in`,
-`booking.completed`, `booking.paid`, `booking.cancelled`, `booking.no_show`,
-`booking.disputed`, `booking.dispute_resolved`, `order.paid`), withdrawals
-(`withdrawal.requested/completed/failed`), and chat (`message:new`,
-`message:seen`, `typing`, `conversation.unread`). Pushes are convenience signals;
-the REST/DB state remains authoritative.
-
----
-
-## Webhooks — `/webhooks/paystack`
-No auth header — authenticated by **HMAC-SHA512 signature** over the raw body
-(`x-paystack-signature`). Mounted with `express.raw` before `express.json`.
-Handles `charge.success`, `transfer.success`, `transfer.failed`. Bad signature →
-`401`; bad JSON → `400`; handler error → `500` (so Paystack retries). Duplicate
-events are deduped and return `200`. See
-[`PAYMENTS.md` §6](./PAYMENTS.md#6-the-webhook-pipeline).
+Socket.IO runs on the API HTTP server. Session-bound tokens, authorization on private delivery, rate limits, payload limits, and rollout compatibility are documented in the [realtime note](../apps/api/src/realtime/README.md). The [event catalogue](../apps/api/src/realtime/events.ts) defines lifecycle events such as `booking.confirmed`, `order.paid`, `withdrawal.completed`, and chat events such as `message:new`. Receiving a signal should trigger reconciliation/refetch; absence of a signal proves nothing about committed state.

@@ -1,0 +1,42 @@
+# Troubleshooting
+
+[Documentation index](README.md) · [Local setup](GETTING_STARTED.md) · [Operations](OPERATIONS.md)
+
+Start by recording the command, working directory, intended environment, and sanitized error. Check which API URL the client actually uses. Do not paste secrets or complete connection URLs into an issue.
+
+| Symptom                                                | Likely check                                                | Next action                                                                                                 |
+| ------------------------------------------------------ | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| API says DATABASE_URL missing despite root `.env`      | Filtered process runs in `apps/api`                         | Export trusted root `.env` in that terminal as shown in Local setup                                         |
+| JWT secret validation fails after copying example      | Explicit empty value bypasses absent-value default          | Set nonempty local secrets; deployed secrets must meet strong-secret rules                                  |
+| Staging/production refuses to start                    | Missing required provider/storage/KYC/current OTP secret    | Compare with [Configuration](CONFIGURATION.md); do not weaken environment mode to bypass checks             |
+| Redis connection refused or repeated retries           | Normal API and worker use real Redis                        | Start intended Redis and verify host/port/network; empty key settings do not create an offline server       |
+| `/health` succeeds but login/data routes fail          | Liveness does not inspect dependencies                      | Check DB-backed requests, migrations, delivery, and Redis separately                                        |
+| Missing Prisma client or shared package output         | Generation/build order or stale declarations                | Run `pnpm db:generate` then `pnpm --filter @hq/api build` with correct environment                          |
+| Prisma migrations hang on pooled endpoint              | Direct connection needed; migration lock/session behavior   | Check DIRECT_URL and use the direct endpoint; investigate lock owner before repair                          |
+| Migration drift                                        | Schema differs from tracked history                         | Author/review missing migration on development storage; do not use `db:push` to conceal CI drift            |
+| Test guard rejects the database                        | Unsafe shared DB or schema/search-path mismatch             | Use [Testing](TESTING.md); do not disable the guard                                                         |
+| Tests interfere with each other                        | Concurrent processes or unisolated global aggregates        | Use separate disposable storage and serial API suites                                                       |
+| OTP response is `{sent:false}` / 502                   | Delivery not configured or provider refused                 | Check Brevo mode, sender/template, and sanitized provider logs; codes are not echoed outside isolated tests |
+| OTP fails after restart                                | Ephemeral development verifier key changed                  | Request a new code or configure a stable valid verifier secret across processes                             |
+| Old OTP no longer works after requesting another       | Expected supersession                                       | Use latest delivered code; avoid repeatedly requesting and hitting phone quota                              |
+| Seed account cannot log in                             | Fixture phone cannot receive SMS; no password auth shortcut | Use isolated tests or provision an account with a reachable development phone                               |
+| Seed event cannot be staffed                           | Fixed historical date                                       | Create a future event; repeated seeds also create additional events                                         |
+| Admin shows unexpected remote data                     | Default API fallback is a deployed endpoint                 | Start with explicit `VITE_API_URL=http://localhost:4000`; rebuild when changing a deployed bundle           |
+| Browser CORS error                                     | Admin origin missing from allowlist                         | Set exact origin (scheme/host/port); restart API and inspect preflight                                      |
+| Android emulator cannot reach localhost                | localhost refers to emulator                                | Use `http://10.0.2.2:4000`                                                                                  |
+| Physical phone cannot reach API                        | localhost refers to phone or LAN/firewall mismatch          | Use computer LAN IP, same network, and allowed API port; restart Expo after config changes                  |
+| Expo resolves stale shared code/types                  | Shared output not rebuilt                                   | Build `@hq/shared`, then restart Expo; clear Metro cache only if stale output persists                      |
+| Late-night event validation fails                      | Accommodation disclosure required at/after 22:00            | Supply the appropriate PROVIDED/NOT_PROVIDED disclosure and valid time ordering                             |
+| Applicant confirmation returns conflict                | Selection/capacity/schedule changed                         | Refetch eligibility; do not silently drop applicants or retry with a changed payload under the same key     |
+| Checkout remains REVIEW                                | Initialization/payment evidence uncertain                   | Recover original checkout; follow [Operations](OPERATIONS.md#checkout-charged-missing-booking-confirmation) |
+| Withdrawal reduces balance but is pending              | Wallet debit precedes transfer completion                   | Reconcile original request/reference; do not issue a second withdrawal to test it                           |
+| Refund pending after timeout                           | Ambiguous provider dispatch                                 | Follow the refund runbook; no blind duplicate POST                                                          |
+| Client cancellation returns PARTIAL_CANCEL_UNSUPPORTED | Current split settlement limitation                         | Escalate support case; see [policy](PAYMENTS.md#policy-matrix)                                              |
+| Dispute rejected after PAID                            | Post-payout disputes currently blocked                      | See [Status](STATUS.md); do not edit booking status to force eligibility                                    |
+| Private image URL expires                              | Signed download URL is short-lived                          | Refetch authorized resource; store object keys, not signed URLs                                             |
+| Upload returns STORAGE_UNAVAILABLE                     | No storage adapter                                          | Configure private storage; missing adapter does not generate a working upload URL                           |
+| Socket fails after refresh                             | Old session binding is consumed                             | Reconnect with successor access token; recover state over HTTP                                              |
+| API/worker signals disappear after deploy              | Mixed transport versions or Redis outage                    | Deploy matching versions and inspect guarded Redis transport; signals have no replay buffer                 |
+| Job effects never appear                               | Worker absent or jobs failing                               | Inspect worker startup, queue schedules, failed jobs, and backlog; HTTP liveness is insufficient            |
+
+If the issue remains, capture a minimal reproduction, expected/actual result, affected app/revision, provider mode, request ID, and sanitized logs. For money, preserve original keys and references so investigation does not create a second financial action.

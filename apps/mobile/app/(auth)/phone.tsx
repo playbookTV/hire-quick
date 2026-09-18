@@ -14,6 +14,7 @@ import { StepIndicator } from '../../components/StepIndicator.js';
 import { Box, Text, useTheme } from '../../theme/restyle.js';
 import { fonts } from '../../theme/fonts.js';
 import { useRequestOtp } from '../../lib/hooks.js';
+import { nigerianPhone } from '../../lib/ui-state.js';
 import { userMessage } from '../../lib/api-error.js';
 
 export default function Phone(): React.JSX.Element {
@@ -27,11 +28,11 @@ export default function Phone(): React.JSX.Element {
   const requestOtp = useRequestOtp();
 
   // Local digits → E.164 (+234, dropping a leading 0).
-  const digits = local.replace(/[^\d]/g, '').replace(/^0+/, '');
-  const phone = `+234${digits}`;
-  const valid = /^\+?\d{7,15}$/.test(phone) && digits.length >= 7;
+  const phone = nigerianPhone(local);
+  const valid = phone !== null;
 
   const submit = async () => {
+    if (!phone || requestOtp.isPending) return;
     setError(null);
     try {
       const res = await requestOtp.mutateAsync(phone);
@@ -64,7 +65,13 @@ export default function Phone(): React.JSX.Element {
             alignItems="center"
             backgroundColor="bgSurface"
             borderRadius="md"
-            style={{ height: 56, paddingHorizontal: 16, gap: 12, borderWidth: 1.5, borderColor: theme.colors.borderStrong }}
+            style={{
+              height: 56,
+              paddingHorizontal: 16,
+              gap: 12,
+              borderWidth: 1.5,
+              borderColor: theme.colors.borderStrong,
+            }}
           >
             <Text variant="labelLg" color="inkStrong">
               🇳🇬 +234
@@ -84,17 +91,31 @@ export default function Phone(): React.JSX.Element {
                 if (valid) void submit();
               }}
               autoFocus
-              maxLength={15}
-              style={{ flex: 1, fontFamily: fonts.sansRegular, fontSize: 16, color: theme.colors.inkStrong, paddingVertical: 0 }}
+              maxLength={24}
+              style={{
+                flex: 1,
+                fontFamily: fonts.sansRegular,
+                fontSize: 16,
+                color: theme.colors.inkStrong,
+                paddingVertical: 0,
+              }}
             />
           </Box>
 
           <Text variant="bodySm" color={error ? 'statusDanger' : 'inkFaint'}>
-            {error ?? 'Standard message rates may apply.'}
+            {error ??
+              (local && !valid
+                ? 'Enter a Nigerian number, for example 0801 234 5678 or +234 801 234 5678.'
+                : 'Standard message rates may apply.')}
           </Text>
         </Box>
 
-        <Button label="Send code" disabled={!valid} loading={requestOtp.isPending} onPress={() => void submit()} />
+        <Button
+          label="Send code"
+          disabled={!valid}
+          loading={requestOtp.isPending}
+          onPress={() => void submit()}
+        />
       </Screen>
     </Box>
   );

@@ -13,6 +13,7 @@ import { AppBar } from '../../components/AppBar.js';
 import { StatusPill } from '../../components/StatusPill.js';
 import { Avatar } from '../../components/Avatar.js';
 import { Button } from '../../components/Button.js';
+import { EmptyState } from '../../components/EmptyState.js';
 import { Loading } from '../../components/Loading.js';
 import { shadowMd, shadowSm } from '../../theme/shadows.js';
 import { primitives } from '../../theme/primitives.js';
@@ -21,7 +22,24 @@ import { useEvent, useBookings, useGenerateCheckin, useCompleteBooking } from '.
 import { useToast } from '../../lib/toast.js';
 import type { Booking } from '../../lib/types.js';
 
-function RosterRow({ booking, onCode, onRate, onCancel }: { booking: Booking; onCode: (code: string) => void; onRate: (id: string) => void; onCancel: (id: string) => void }) {
+interface CheckinCode {
+  code: string;
+  expiresAt: string;
+  bookingId: string;
+  name: string;
+}
+
+function RosterRow({
+  booking,
+  onCode,
+  onRate,
+  onCancel,
+}: {
+  booking: Booking;
+  onCode: (code: CheckinCode) => void;
+  onRate: (id: string) => void;
+  onCancel: (id: string) => void;
+}) {
   const generate = useGenerateCheckin(booking.id);
   const complete = useCompleteBooking(booking.id);
   const toast = useToast();
@@ -35,14 +53,16 @@ function RosterRow({ booking, onCode, onRate, onCancel }: { booking: Booking; on
 
   const gen = (): void => {
     generate.mutate(undefined, {
-      onSuccess: (res) => onCode(res.code),
-      onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Try again.', "Couldn’t generate"),
+      onSuccess: (res) => onCode({ ...res, bookingId: booking.id, name }),
+      onError: (e: unknown) =>
+        toast.error(e instanceof Error ? e.message : 'Try again.', 'Couldn’t generate'),
     });
   };
   const release = (): void => {
     setConfirming(false);
     complete.mutate(undefined, {
-      onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Try again.', "Couldn’t release"),
+      onError: (e: unknown) =>
+        toast.error(e instanceof Error ? e.message : 'Try again.', 'Couldn’t release'),
     });
   };
 
@@ -85,7 +105,16 @@ function RosterRow({ booking, onCode, onRate, onCancel }: { booking: Booking; on
   }
 
   return (
-    <Box flexDirection="row" alignItems="center" backgroundColor="bgSurface" borderWidth={1} borderColor="borderDefault" borderRadius="lg" padding="300" style={[{ gap: 12 }, shadowSm]}>
+    <Box
+      flexDirection="row"
+      alignItems="center"
+      backgroundColor="bgSurface"
+      borderWidth={1}
+      borderColor="borderDefault"
+      borderRadius="lg"
+      padding="300"
+      style={[{ gap: 12 }, shadowSm]}
+    >
       <Avatar name={name} size={40} />
       <Box flex={1} style={{ gap: 2 }}>
         <Text variant="labelLg" color="inkStrong" numberOfLines={1}>
@@ -96,15 +125,40 @@ function RosterRow({ booking, onCode, onRate, onCancel }: { booking: Booking; on
         </Text>
       </Box>
       {paid ? (
-        <Button label="Rate" variant="secondary" size="md" fullWidth={false} onPress={() => onRate(booking.id)} />
+        <Button
+          label="Rate"
+          variant="secondary"
+          size="md"
+          fullWidth={false}
+          onPress={() => onRate(booking.id)}
+        />
       ) : checkedIn ? (
-        <Button label="Release" size="md" fullWidth={false} onPress={() => setConfirming(true)} />
-      ) : (
+        <Button
+          label={complete.isPending ? 'Releasing…' : 'Release'}
+          size="md"
+          fullWidth={false}
+          onPress={() => setConfirming(true)}
+          disabled={complete.isPending}
+        />
+      ) : booking.status === 'CONFIRMED' ? (
         <Box flexDirection="row" style={{ gap: 8 }}>
-          <Button label={generate.isPending ? '…' : 'Code'} variant="secondary" size="md" fullWidth={false} onPress={gen} disabled={generate.isPending} />
-          <Button label="Cancel" variant="ghost" size="md" fullWidth={false} onPress={() => onCancel(booking.id)} />
+          <Button
+            label={generate.isPending ? '…' : 'Code'}
+            variant="secondary"
+            size="md"
+            fullWidth={false}
+            onPress={gen}
+            disabled={generate.isPending}
+          />
+          <Button
+            label="Cancel"
+            variant="ghost"
+            size="md"
+            fullWidth={false}
+            onPress={() => onCancel(booking.id)}
+          />
         </Box>
-      )}
+      ) : null}
     </Box>
   );
 }
@@ -116,7 +170,17 @@ export default function EventDay(): React.JSX.Element {
   const eventId = id ?? '';
   const event = useEvent(eventId);
   const bookings = useBookings();
-  const [lastCode, setLastCode] = useState<string | null>(null);
+  const [lastCode, setLastCode] = useState<CheckinCode | null>(null);
+
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  const codeActive =
+    lastCode &&
+    Date.parse(lastCode.expiresAt) > now &&
+    !bookings.data?.some((b) => b.id === lastCode.bookingId && b.status !== 'CONFIRMED');
 
   // The roster is the live check-in board; poll it while this screen is open so an
   // usher who just checked in appears without a manual refresh (keeps "Live" honest).
@@ -136,38 +200,102 @@ export default function EventDay(): React.JSX.Element {
       <Screen scroll>
         <Box style={{ gap: 16 }}>
           <Box flexDirection="row" alignItems="center" justifyContent="space-between">
-            <Text variant="h2" numberOfLines={1}>{event.data?.title ?? 'Event day'}</Text>
+            <Text variant="h2" numberOfLines={1}>
+              {event.data?.title ?? 'Event day'}
+            </Text>
             <StatusPill status="IN_PROGRESS" />
           </Box>
 
           {/* check-in code card */}
-          <Box alignItems="center" borderRadius="lg" style={[{ backgroundColor: theme.colors.brandEmerald, padding: 24, gap: 8 }, shadowMd]}>
-            <Box style={{ backgroundColor: theme.colors.brandEmeraldStrong, paddingHorizontal: 8, paddingVertical: 4, borderRadius: theme.borderRadii.xs }}>
-              <Text style={{ fontFamily: fonts.sansBold, fontSize: 11, lineHeight: 14, letterSpacing: 1.2, color: primitives.gold[500] }}>
+          <Box
+            alignItems="center"
+            borderRadius="lg"
+            style={[{ backgroundColor: theme.colors.brandSurface, padding: 24, gap: 8 }, shadowMd]}
+          >
+            <Box
+              style={{
+                backgroundColor: theme.colors.brandEmeraldStrong,
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: theme.borderRadii.xs,
+              }}
+            >
+              <Text
+                style={{
+                  fontFamily: fonts.sansBold,
+                  fontSize: 11,
+                  lineHeight: 14,
+                  letterSpacing: 1.2,
+                  color: theme.colors.onBrandAccent,
+                }}
+              >
                 CHECK-IN CODE
               </Text>
             </Box>
-            <Text style={{ fontFamily: fonts.sansBold, fontSize: 44, letterSpacing: 4, color: primitives.neutral[50] }}>
-              {lastCode ?? '— — —'}
+            <Text
+              style={{
+                fontFamily: fonts.sansBold,
+                fontSize: 44,
+                letterSpacing: 4,
+                color: primitives.neutral[50],
+              }}
+            >
+              {codeActive ? lastCode.code : '— — —'}
             </Text>
-            <Text style={{ fontFamily: fonts.sansRegular, fontSize: 13, lineHeight: 18, color: primitives.emerald[100], textAlign: 'center' }}>
-              {lastCode ? 'The usher enters this on arrival' : 'Tap “Code” by a usher to generate their code'}
+            <Text
+              style={{
+                fontFamily: fonts.sansRegular,
+                fontSize: 13,
+                lineHeight: 18,
+                color: primitives.emerald[100],
+                textAlign: 'center',
+              }}
+            >
+              {codeActive
+                ? `${lastCode.name} · expires in ${Math.ceil((Date.parse(lastCode.expiresAt) - now) / 60000)} min. Share only with this usher on arrival.`
+                : lastCode
+                  ? 'This code is no longer active. Generate a new code if needed.'
+                  : 'Tap “Code” beside an usher to generate their code'}
             </Text>
           </Box>
 
           {/* count */}
           <Box flexDirection="row" alignItems="center" justifyContent="space-between">
-            <Text variant="headingS">{checkedIn} of {roster.length} checked in</Text>
-            <Text variant="label" style={{ fontSize: 13 }} color={bookings.isFetching ? 'inkMuted' : 'statusSuccess'}>
-              {bookings.isFetching ? 'Updating…' : 'Live'}
+            <Text variant="headingS">
+              {bookings.data ? `${checkedIn} of ${roster.length} checked in` : 'Attendance'}
+            </Text>
+            <Text
+              variant="label"
+              style={{ fontSize: 13 }}
+              color={bookings.isError ? 'statusDanger' : 'inkMuted'}
+            >
+              {bookings.isError
+                ? 'Refresh failed'
+                : bookings.isFetching
+                  ? 'Updating…'
+                  : bookings.dataUpdatedAt
+                    ? `Updated ${new Date(bookings.dataUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                    : 'Not loaded'}
             </Text>
           </Box>
 
           {/* roster */}
           {bookings.isLoading ? (
             <Loading />
+          ) : bookings.isError ? (
+            <EmptyState
+              icon="alert-circle"
+              title="Couldn’t refresh attendance"
+              subtitle="Retry before generating codes or releasing payments."
+              actionLabel="Refresh roster"
+              onAction={() => {
+                void bookings.refetch();
+              }}
+            />
           ) : roster.length === 0 ? (
-            <Text variant="bodySm" color="inkMuted">No confirmed staff for this event yet.</Text>
+            <Text variant="bodySm" color="inkMuted">
+              No confirmed staff for this event yet.
+            </Text>
           ) : (
             <Box style={{ gap: 8 }}>
               {roster.map((b) => (
@@ -175,8 +303,15 @@ export default function EventDay(): React.JSX.Element {
                   key={b.id}
                   booking={b}
                   onCode={setLastCode}
-                  onRate={(bid) => router.push({ pathname: '/(modals)/rate-staff', params: { booking: bid, name: 'your usher' } })}
-                  onCancel={(bid) => router.push({ pathname: '/(modals)/cancellation', params: { booking: bid } })}
+                  onRate={(bid) =>
+                    router.push({
+                      pathname: '/(modals)/rate-staff',
+                      params: { booking: bid, name: 'your usher' },
+                    })
+                  }
+                  onCancel={(bid) =>
+                    router.push({ pathname: '/(modals)/cancellation', params: { booking: bid } })
+                  }
                 />
               ))}
             </Box>

@@ -1,0 +1,16 @@
+Date: 2026-09-16
+Command: pnpm --filter @hq/api exec vitest run src/realtime/__tests__/http-parser.unit.test.ts src/realtime/__tests__/gateway-runtime.unit.test.ts
+Exit code: 0
+Environment: unused loopback database URLs; Paystack, Brevo and configured Redis keys blank. No external calls.
+
+
+ RUN  v2.1.9 /Users/leslieisah/app-dev/hire-quick/apps/api
+
+ ✓ src/realtime/__tests__/gateway-runtime.unit.test.ts (6 tests) 510ms
+ ✓ src/realtime/__tests__/http-parser.unit.test.ts (4 tests) 16ms
+
+ Test Files  2 passed (2)
+      Tests  10 passed (10)
+   Start at  10:35:59
+   Duration  1.31s (transform 167ms, setup 0ms, collect 659ms, tests 526ms, environment 0ms, prepare 47ms)
+

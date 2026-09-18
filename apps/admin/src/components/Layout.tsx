@@ -1,45 +1,53 @@
+import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
-
 const NAV = [
-  ['/', 'Dashboard'],
+  ['/', 'Overview'],
   ['/verifications', 'Verifications'],
   ['/disputes', 'Disputes'],
   ['/approvals', 'Approvals'],
   ['/ledger', 'Ledger'],
   ['/users', 'Users'],
 ] as const;
-
 export function Layout() {
   const { logout } = useAuth();
+  const [open, setOpen] = useState(false);
   return (
-    <div className="flex min-h-screen bg-slate-50 text-slate-800">
-      <aside className="flex w-56 flex-col bg-slate-900 text-slate-100">
-        <div className="px-5 py-4 text-lg font-semibold">
-          HireQuick <span className="text-sm text-slate-400">admin</span>
+    <div className="app-shell">
+      <a className="skip-link" href="#main">
+        Skip to content
+      </a>
+      <aside className="sidebar">
+        <div className="brand">
+          <span>HireQuick</span>
+          <small>Operations</small>
         </div>
-        <nav className="flex-1 space-y-1 px-2">
+        <button
+          className="menu-toggle"
+          aria-expanded={open}
+          aria-controls="main-nav"
+          onClick={() => setOpen(!open)}
+        >
+          {open ? 'Close menu' : 'Menu'}
+        </button>
+        <nav id="main-nav" aria-label="Main navigation" className={open ? 'nav-open' : ''}>
           {NAV.map(([to, label]) => (
             <NavLink
               key={to}
               to={to}
               end={to === '/'}
-              className={({ isActive }) =>
-                `block rounded px-3 py-2 text-sm ${isActive ? 'bg-slate-700' : 'hover:bg-slate-800'}`
-              }
+              onClick={() => setOpen(false)}
+              className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
             >
               {label}
             </NavLink>
           ))}
+          <button onClick={logout} className="nav-link logout">
+            Log out
+          </button>
         </nav>
-        <button
-          onClick={logout}
-          className="m-3 rounded bg-slate-800 px-3 py-2 text-sm hover:bg-slate-700"
-        >
-          Log out
-        </button>
       </aside>
-      <main className="flex-1 overflow-auto p-8">
+      <main id="main" tabIndex={-1}>
         <Outlet />
       </main>
     </div>

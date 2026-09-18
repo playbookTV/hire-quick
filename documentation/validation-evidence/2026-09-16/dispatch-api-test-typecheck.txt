@@ -1,0 +1,8 @@
+
+> @hq/api@0.0.0 typecheck:tests /Users/leslieisah/app-dev/hire-quick/apps/api
+> tsc -p tsconfig.tests.json
+
+src/modules/payments/__tests__/transfer-dispatch.test.ts(60,22): error TS2339: Property 'toHaveBeenCalledExactlyOnceWith' does not exist on type 'Assertion<MockInstance<(params: TransferParams) => Promise<TransferResult>>>'.
+/Users/leslieisah/app-dev/hire-quick/apps/api:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @hq/api@0.0.0 typecheck:tests: `tsc -p tsconfig.tests.json`
+Exit status 2

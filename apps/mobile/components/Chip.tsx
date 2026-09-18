@@ -17,14 +17,20 @@ export function Chip({ label, selected = false, onPress }: ChipProps): React.JSX
   return (
     <AnimatedPressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected }}
       style={{
         alignSelf: 'flex-start',
+        minHeight: 44,
+        minWidth: 44,
+        justifyContent: 'center',
         paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: theme.borderRadii.pill,
         borderWidth: selected ? 0 : 1.5,
         borderColor: theme.colors.borderStrong,
-        backgroundColor: selected ? theme.colors.brandEmerald : theme.colors.bgSurface,
+        backgroundColor: selected ? theme.colors.brandSurface : theme.colors.bgSurface,
       }}
     >
       <Text

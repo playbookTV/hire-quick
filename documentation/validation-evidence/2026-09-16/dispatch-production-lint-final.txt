@@ -1,0 +1,27 @@
+
+/Users/leslieisah/app-dev/hire-quick/apps/api/src/modules/payments/service.ts
+  0:0  error  Parsing error: No tsconfigRootDir was set, and multiple candidate TSConfigRootDirs are present:
+ - /Users/leslieisah/app-dev/hire-quick/packages/config
+ - /Users/leslieisah/app-dev/hire-quick
+You'll need to explicitly set tsconfigRootDir in your parser options.
+See: https://tseslint.com/parser-tsconfigrootdir
+
+/Users/leslieisah/app-dev/hire-quick/apps/api/src/modules/payments/transfer-dispatch.ts
+  0:0  error  Parsing error: No tsconfigRootDir was set, and multiple candidate TSConfigRootDirs are present:
+ - /Users/leslieisah/app-dev/hire-quick/packages/config
+ - /Users/leslieisah/app-dev/hire-quick
+You'll need to explicitly set tsconfigRootDir in your parser options.
+See: https://tseslint.com/parser-tsconfigrootdir
+
+/Users/leslieisah/app-dev/hire-quick/apps/api/src/modules/payments/webhooks/paystack-webhook.ts
+  0:0  error  Parsing error: No tsconfigRootDir was set, and multiple candidate TSConfigRootDirs are present:
+ - /Users/leslieisah/app-dev/hire-quick/packages/config
+ - /Users/leslieisah/app-dev/hire-quick
+You'll need to explicitly set tsconfigRootDir in your parser options.
+See: https://tseslint.com/parser-tsconfigrootdir
+
+✖ 3 problems (3 errors, 0 warnings)
+
+undefined
+/Users/leslieisah/app-dev/hire-quick/apps/api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: eslint src/modules/payments/service.ts src/modules/payments/transfer-dispatch.ts src/modules/payments/webhooks/paystack-webhook.ts
