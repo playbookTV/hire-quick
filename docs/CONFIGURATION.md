@@ -109,3 +109,17 @@ and authentication checks remain enabled. The default is `KYC_MODE=dojah`;
 `NODE_ENV=production` rejects manual testing mode. Restore `KYC_MODE=dojah` and
 configure all three Dojah credentials before enabling biometric verification.
 
+### Admin email sign-in
+
+The admin console uses `/auth/admin/otp/request` and `/auth/admin/otp/verify`
+with an email address. Only a pre-existing ACTIVE ADMIN account can receive a
+code or authenticate; these endpoints never register accounts or grant roles.
+Email codes expire after ten minutes, allow at most five failed attempts, and
+are issued at most five times per hour per admin email. Codes are bound to the
+normalized email and user ID, and are separate from phone OTPs.
+
+Set `BREVO_EMAIL_SENDER` to a verified sender in the configured Brevo account
+(default `no-reply@hirequick.app`). Brevo must authorize the API service's
+outbound IP. A provider rejection reports a delivery failure and invalidates
+that issuance; provider acceptance alone does not prove inbox delivery. Mobile
+phone login remains available through its existing endpoints.

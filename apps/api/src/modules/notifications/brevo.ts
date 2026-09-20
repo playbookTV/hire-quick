@@ -74,12 +74,12 @@ export async function sendSms(to: string, text: string): Promise<boolean> {
   return true;
 }
 
-export async function sendEmail(to: string, subject: string, html: string): Promise<void> {
+export async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
   record({ kind: 'email', to, summary: subject });
-  if (IS_TEST) return;
+  if (IS_TEST) return true;
   if (!env.BREVO_API_KEY) {
     log('email transport unavailable');
-    return;
+    return false;
   }
   const res = await providerFetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
@@ -89,13 +89,18 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
       accept: 'application/json',
     },
     body: JSON.stringify({
-      sender: { name: 'HireQuick', email: 'no-reply@hirequick.app' },
+      sender: { name: 'HireQuick', email: env.BREVO_EMAIL_SENDER },
       to: [{ email: to }],
       subject,
       htmlContent: html,
     }),
   });
-  if (res && !res.ok) log(`email failed: ${String(res.status)}`);
+  if (!res) return false;
+  if (!res.ok) {
+    log(`email failed: ${String(res.status)}`);
+    return false;
+  }
+  return true;
 }
 
 /**

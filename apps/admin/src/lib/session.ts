@@ -156,13 +156,13 @@ export function createAdminSession(deps: {
         if (run === operation && generation === expected) setState('unavailable', 'Couldn’t restore your admin session. Check your connection and try again.');
       } finally { clearTimeout(timer); }
     },
-    async requestOtp(this: void, phone: string): Promise<{ devCode?: string }> {
-      const response = await send('/auth/otp/request', 'POST', JSON.stringify({ phone }), null);
+    async requestOtp(this: void, email: string): Promise<{ sent: true }> {
+      const response = await send('/auth/admin/otp/request', 'POST', JSON.stringify({ email: email.trim().toLowerCase() }), null);
       const result = await bodyOf(response);
       if (!response.ok) throw apiError(response, result);
-      return result as { devCode?: string };
+      return result as { sent: true };
     },
-    async verify(this: void, phone: string, code: string): Promise<void> {
+    async verify(this: void, email: string, code: string): Promise<void> {
       const previous = tokens;
       const expected = ++generation;
       const run = ++operation;
@@ -176,7 +176,7 @@ export function createAdminSession(deps: {
         setState('unavailable', 'Couldn’t clear your previous admin session. Try again.');
         throw error;
       }
-      const response = await send('/auth/otp/verify', 'POST', JSON.stringify({ phone, code }), null);
+      const response = await send('/auth/admin/otp/verify', 'POST', JSON.stringify({ email: email.trim().toLowerCase(), code }), null);
       const result = await bodyOf(response);
       if (!response.ok) { assertCurrent(expected); throw apiError(response, result); }
       const next = pair(result);

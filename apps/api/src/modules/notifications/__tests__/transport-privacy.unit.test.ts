@@ -5,6 +5,7 @@ const state = vi.hoisted(() => ({
   env: {
     NODE_ENV: 'test' as 'development' | 'test' | 'staging' | 'production',
     BREVO_API_KEY: '',
+    BREVO_EMAIL_SENDER: 'verified-sender@example.com',
     BREVO_SMS_SENDER: 'HireQuick',
     BREVO_WHATSAPP_SENDER: '',
     BREVO_WHATSAPP_OTP_TEMPLATE_ID: 0,
@@ -84,7 +85,7 @@ describe('Notification and OTP isolation', () => {
     const { requestOtp } = await import('../../auth/otp.js');
     expect(await requestOtp(phone)).toEqual({ sent: false });
     expect(await transport.sendWhatsAppOtp(phone, code)).toBe(false);
-    await transport.sendEmail(email, `OTP${code}`, 'sensitive-email-html');
+    expect(await transport.sendEmail(email, `OTP${code}`, 'sensitive-email-html')).toBe(false);
     transport.recordPush(token, 'sensitive-push-content');
     expect(transport.sentNotifications()).toEqual([]);
     expect(fetcher).not.toHaveBeenCalled();
@@ -111,7 +112,10 @@ describe('Notification and OTP isolation', () => {
       const { requestOtp } = await import('../../auth/otp.js');
       expect(await requestOtp(phone)).toEqual({ sent: true });
       expect(await transport.sendSms(phone, `OTP${code}`)).toBe(true);
-      await transport.sendEmail(email, 'Private subject', 'Private body');
+      expect(await transport.sendEmail(email, 'Private subject', 'Private body')).toBe(true);
+      expect(JSON.parse(String(fetcher.mock.calls[2]?.[1]?.body))).toMatchObject({
+        sender: { name: 'HireQuick', email: 'verified-sender@example.com' },
+      });
       expect(fetcher).toHaveBeenCalledTimes(3);
       expect(transport.sentNotifications()).toEqual([]);
       expect(logs).not.toHaveBeenCalled();
@@ -170,13 +174,13 @@ describe('Notification and OTP isolation', () => {
       const transport = await import('../brevo.js');
       expect(await transport.sendSms(phone, code)).toBe(false);
       expect(await transport.sendWhatsAppOtp(phone, code)).toBe(false);
-      await transport.sendEmail(email, code, code);
+      expect(await transport.sendEmail(email, code, code)).toBe(false);
       transport.recordPush(token, code);
       await vi.waitFor(() => expect(logs).toHaveBeenCalledWith('[brevo] push delivery failed'));
       fetcher.mockResolvedValue(new Response('provider-body-secret', { status: 400 }));
       expect(await transport.sendSms(phone, code)).toBe(false);
       expect(await transport.sendWhatsAppOtp(phone, code)).toBe(false);
-      await transport.sendEmail(email, code, code);
+      expect(await transport.sendEmail(email, code, code)).toBe(false);
       const output = JSON.stringify(logs.mock.calls);
       for (const value of [
         phone,

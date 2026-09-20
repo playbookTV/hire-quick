@@ -21,6 +21,46 @@ function setup(fetch: typeof globalThis.fetch, saved: string | null = JSON.strin
 const endpoint = (url: unknown, path: string) => String(url).endsWith(path);
 
 describe('admin session lifecycle and checker expiry', () => {
+  it('requests an admin email code with a normalized address and no phone payload', async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(ok({ sent: true }));
+    const { session } = setup(fetch, null);
+    await session.restore();
+    await expect(session.requestOtp('  Admin@Example.com  ')).resolves.toEqual({ sent: true });
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(fetch).toHaveBeenCalledWith('https://example.test/auth/admin/otp/request', expect.objectContaining({
+      method: 'POST', body: JSON.stringify({ email: 'admin@example.com' }),
+    }));
+    expect(session.getSnapshot().status).toBe('guest');
+  });
+
+  it.each(['provider', 'network'] as const)('rejects a failed %s email delivery request and allows a retry', async (failure) => {
+    const fetch = vi.fn<typeof globalThis.fetch>();
+    if (failure === 'provider') fetch.mockResolvedValueOnce(ok({ error: { code: 'DELIVERY_UNAVAILABLE', message: 'Couldn’t send your code. Try again.' } }, 503));
+    else fetch.mockRejectedValueOnce(new Error('offline'));
+    fetch.mockResolvedValue(ok({ sent: true }));
+    const { session, saved } = setup(fetch, null);
+    await session.restore();
+    if (failure === 'provider') await expect(session.requestOtp('admin@example.com')).rejects.toMatchObject({ status: 503, code: 'DELIVERY_UNAVAILABLE' });
+    else await expect(session.requestOtp('admin@example.com')).rejects.toThrow('offline');
+    expect(session.getSnapshot().status).toBe('guest');
+    expect(saved()).toBeNull();
+    await expect(session.requestOtp('admin@example.com')).resolves.toEqual({ sent: true });
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('verifies an admin email code and persists the returned session', async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(ok({ ...first, user: { role: 'ADMIN' } }));
+    const { session, saved } = setup(fetch, null);
+    await session.restore();
+    await session.verify(' Admin@Example.COM ', '123456');
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(fetch).toHaveBeenCalledWith('https://example.test/auth/admin/otp/verify', expect.objectContaining({
+      method: 'POST', body: JSON.stringify({ email: 'admin@example.com', code: '123456' }),
+    }));
+    expect(saved().tokens).toEqual(first);
+    expect(session.getSnapshot().status).toBe('authed');
+  });
+
   it('returns access-only legacy sessions to login without trusting their token', async () => {
     const fetch = vi.fn<typeof globalThis.fetch>();
     const { session, discardLegacy } = setup(fetch, null);
@@ -152,7 +192,7 @@ describe('admin session lifecycle and checker expiry', () => {
     const next = { accessToken: 'access-b', refreshToken: 'refresh-b', user: { role: 'ADMIN' } };
     const { session, saved } = setup(async (url) => {
       if (endpoint(url, '/api/me')) return ok({ role: 'ADMIN' });
-      if (endpoint(url, '/auth/otp/verify')) return ok(next);
+      if (endpoint(url, '/auth/admin/otp/verify')) return ok(next);
       started.resolve(); return stale.promise;
     });
     await session.restore();
@@ -240,7 +280,7 @@ describe('admin session lifecycle and checker expiry', () => {
     write.mockImplementationOnce(() => { throw new Error('storage denied'); });
     await expect(session.verify('replacement', '123456')).rejects.toThrow('storage denied');
     expect(session.getSnapshot().status).toBe('unavailable');
-    expect(fetch.mock.calls.filter(([url]) => endpoint(url, '/auth/otp/verify'))).toHaveLength(0);
+    expect(fetch.mock.calls.filter(([url]) => endpoint(url, '/auth/admin/otp/verify'))).toHaveLength(0);
     // A repeated storage failure keeps restoration unavailable and does not read
     // the stale pair that is still on disk.
     write.mockImplementationOnce(() => { throw new Error('storage denied'); });
@@ -253,7 +293,7 @@ describe('admin session lifecycle and checker expiry', () => {
     await session.verify('replacement', '123456');
     expect(session.getSnapshot().status).toBe('authed');
     expect(saved().tokens).toEqual(rotated);
-    expect(fetch.mock.calls.filter(([url]) => endpoint(url, '/auth/otp/verify'))).toHaveLength(1);
+    expect(fetch.mock.calls.filter(([url]) => endpoint(url, '/auth/admin/otp/verify'))).toHaveLength(1);
   });
 
   it('does not surface a late successful decision after logout', async () => {

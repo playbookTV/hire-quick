@@ -58,6 +58,7 @@ const EnvSchema = z.object({
     ),
   // Brevo — transactional SMS + email (notifications). Empty = dev stub.
   BREVO_API_KEY: z.string().default(''),
+  BREVO_EMAIL_SENDER: z.string().email().default('no-reply@hirequick.app'),
   BREVO_SMS_SENDER: z.string().default('HireQuick'),
   // Brevo WhatsApp — preferred OTP channel. Requires a connected WhatsApp
   // Business Account + an approved authentication template. When sender +

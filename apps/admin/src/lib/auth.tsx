@@ -11,8 +11,8 @@ import { Btn } from '../components/ui';
 
 interface AuthCtx {
   authed: boolean;
-  requestOtp: (phone: string) => Promise<{ devCode?: string }>;
-  verify: (phone: string, code: string) => Promise<void>;
+  requestOtp: (email: string) => Promise<{ sent: true }>;
+  verify: (email: string, code: string) => Promise<void>;
   logout: () => void;
 }
 const Ctx = createContext<AuthCtx | null>(null);

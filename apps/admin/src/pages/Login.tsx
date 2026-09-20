@@ -3,7 +3,7 @@ import { useAuth } from '../lib/auth';
 import { Btn } from '../components/ui';
 export function Login() {
   const { requestOtp, verify } = useAuth();
-  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [sent, setSent] = useState(false);
   const [hint, setHint] = useState('');
@@ -15,10 +15,10 @@ export function Login() {
     setHint('');
     setBusy(true);
     try {
-      const r = await requestOtp(phone.trim());
+      await requestOtp(email.trim().toLowerCase());
       setSent(true);
       setCode('');
-      setHint(r.devCode ? `Staging code: ${r.devCode}` : 'Your sign-in code has been sent.');
+      setHint('If this email has admin access, a sign-in code has been sent.');
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Couldn’t send your code. Try again.');
     } finally {
@@ -30,7 +30,7 @@ export function Login() {
     setErr('');
     setBusy(true);
     try {
-      await verify(phone.trim(), code);
+      await verify(email.trim().toLowerCase(), code);
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Couldn’t sign in. Try again.');
     } finally {
@@ -51,22 +51,21 @@ export function Login() {
           className="form-stack"
           aria-busy={busy}
         >
-          <label htmlFor="phone">Admin phone number</label>
+          <label htmlFor="email">Admin email address</label>
           <input
-            id="phone"
-            type="tel"
-            autoComplete="tel"
-            inputMode="tel"
+            id="email"
+            type="email"
+            autoComplete="email"
+            inputMode="email"
             required
-            pattern="\+[1-9][0-9]{7,14}"
-            aria-describedby="phone-hint"
-            value={phone}
+            aria-describedby="email-hint"
+            value={email}
             readOnly={sent}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="+234…"
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
           />
-          <small id="phone-hint" className="muted">
-            Include your country code, for example +234.
+          <small id="email-hint" className="muted">
+            Use the email address linked to your admin account.
           </small>
           {sent && (
             <>
@@ -112,7 +111,7 @@ export function Login() {
                   setErr('');
                 }}
               >
-                Change number
+                Change email
               </Btn>
             </div>
           )}
