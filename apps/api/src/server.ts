@@ -10,9 +10,9 @@ import { NoopKyc } from './modules/verification/port/noop-kyc.js';
 
 const paystack = new HttpPaystack(env.PAYSTACK_SECRET_KEY);
 
-// Biometric KYC via Dojah when configured; NoopKyc otherwise (dev with no account).
+// Manual-only test deployments retain document review and refuse biometric sessions.
 const kyc =
-  env.DOJAH_APP_ID && env.DOJAH_SECRET_KEY && env.DOJAH_WIDGET_ID
+  env.KYC_MODE === 'dojah' && env.DOJAH_APP_ID && env.DOJAH_SECRET_KEY && env.DOJAH_WIDGET_ID
     ? new DojahKyc({
         appId: env.DOJAH_APP_ID,
         secretKey: env.DOJAH_SECRET_KEY,

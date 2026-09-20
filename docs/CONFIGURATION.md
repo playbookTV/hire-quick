@@ -99,3 +99,13 @@ All are positive integers. The worker also removes expired refresh denylist entr
 | `EXPO_PUBLIC_SUPPORT_EMAIL`    | Mobile           | Fallback support address.                                                                                        |
 
 These are public bundle contents, not secret stores. See [mobile example](../apps/mobile/.env.example), [mobile config](../apps/mobile/lib/env.ts), [EAS profiles](../apps/mobile/eas.json), and [admin client](../apps/admin/src/lib/api.ts). Changing a deployed runtime variable does not rewrite an already built client bundle.
+
+### Temporary manual verification for client testing
+
+`KYC_MODE=manual` permits staging to start without Dojah credentials. Biometric
+sessions return `KYC_UNAVAILABLE`, and Dojah callbacks cannot approve identities.
+Document uploads and authorized admin review remain required. All payment, storage,
+and authentication checks remain enabled. The default is `KYC_MODE=dojah`;
+`NODE_ENV=production` rejects manual testing mode. Restore `KYC_MODE=dojah` and
+configure all three Dojah credentials before enabling biometric verification.
+

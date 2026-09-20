@@ -44,3 +44,5 @@ A full Prisma schema diff against the release shows only the new `CheckoutState`
 4. Native distribution remains out of scope pending the user's Android preview preference; no APK was uploaded or published.
 
 Native device acceptance and real authenticated admin integration remain outstanding; static checks and exports do not establish those results.
+
+> Follow-up: the [20 September client test deployment](deployment-2026-09-20.md) completed with explicitly authorized manual verification mode.

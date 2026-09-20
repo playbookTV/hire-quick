@@ -70,6 +70,8 @@ const EnvSchema = z.object({
   // Dojah — biometric KYC (NIN/BVN + liveness + face-match). App ID + Secret Key
   // (server-side) and the EasyOnboard flow's Widget ID. Empty = NoopKyc (dev/test
   // boot with no account). DOJAH_ENVIRONMENT picks the sandbox vs production base.
+  // Explicit manual-only mode for client testing; never auto-approves identity.
+  KYC_MODE: z.enum(['dojah', 'manual']).default('dojah'),
   DOJAH_APP_ID: z.string().default(''),
   DOJAH_SECRET_KEY: z.string().default(''),
   DOJAH_WIDGET_ID: z.string().default(''),
@@ -128,9 +130,14 @@ const EnvSchema = z.object({
   require('STORAGE_BUCKET', 'KYC document storage bucket');
   require('STORAGE_ACCESS_KEY', 'KYC document storage access key');
   require('STORAGE_SECRET_KEY', 'KYC document storage secret key');
-  require('DOJAH_APP_ID', 'Dojah App ID (biometric KYC)');
-  require('DOJAH_SECRET_KEY', 'Dojah Secret Key (biometric KYC)');
-  require('DOJAH_WIDGET_ID', 'Dojah Widget ID (biometric KYC)');
+  if (cfg.KYC_MODE === 'manual' && cfg.NODE_ENV === 'production') {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['KYC_MODE'], message: 'manual-only testing mode is unavailable in production' });
+  }
+  if (cfg.KYC_MODE === 'dojah') {
+    require('DOJAH_APP_ID', 'Dojah App ID (biometric KYC)');
+    require('DOJAH_SECRET_KEY', 'Dojah Secret Key (biometric KYC)');
+    require('DOJAH_WIDGET_ID', 'Dojah Widget ID (biometric KYC)');
+  }
 });
 
 export type Env = z.infer<typeof EnvSchema>;
