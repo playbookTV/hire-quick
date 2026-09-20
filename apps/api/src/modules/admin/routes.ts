@@ -18,6 +18,7 @@ import { createMilestoneTierSchema, updateMilestoneTierSchema } from '@hq/shared
 import type { RealtimeGateway } from '../../realtime/gateway.js';
 import type { PaystackPort } from '../payments/port/paystack-port.js';
 import { type StoragePort, presignDoc } from '../storage/storage.js';
+import { authorizedChatMediaKey } from '../storage/chat-media.js';
 import { pageQuery, pageResult } from './pagination.js';
 import { reviewVerification } from '../verification/service.js';
 
@@ -190,6 +191,39 @@ export function adminRouter(deps: {
     }),
   );
 
+  r.get(
+    '/bookings',
+    wrap(async (req, res) => {
+      const page = pageQuery.parse(req.query);
+      const query = z.string().max(120).default('').parse(req.query.query).trim();
+      const uuid = z.string().uuid().safeParse(query);
+      const rows = await prisma.booking.findMany({
+        where: query
+          ? {
+              OR: [
+                ...(uuid.success ? [{ id: uuid.data }] : []),
+                { event: { title: { contains: query, mode: 'insensitive' } } },
+                { event: { client: { displayName: { contains: query, mode: 'insensitive' } } } },
+                { usher: { displayName: { contains: query, mode: 'insensitive' } } },
+              ],
+            }
+          : {},
+        select: {
+          id: true,
+          status: true,
+          amount: true,
+          createdAt: true,
+          event: { select: { title: true } },
+          usher: { select: { displayName: true } },
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: page.limit + 1,
+        ...(page.cursor ? { cursor: { id: page.cursor }, skip: 1 } : {}),
+      });
+      res.json(pageResult(rows, page.limit));
+    }),
+  );
+
   // Read-only case context; money decisions still use the existing guarded service.
   r.get(
     '/bookings/:id/review',
@@ -212,12 +246,26 @@ export function adminRouter(deps: {
               eventDate: true,
               startTime: true,
               endTime: true,
-              client: { select: { user: { select: { phone: true } } } },
+              client: { select: { user: { select: { id: true, phone: true } } } },
             },
           },
-          usher: { select: { displayName: true, user: { select: { phone: true } } } },
+          usher: { select: { displayName: true, user: { select: { id: true, phone: true } } } },
           payment: {
             select: { grossAmount: true, usherPayout: true, platformFee: true, escrowStatus: true },
+          },
+          conversation: {
+            select: {
+              messages: {
+                orderBy: { createdAt: 'asc' },
+                select: {
+                  id: true,
+                  senderId: true,
+                  contentType: true,
+                  content: true,
+                  createdAt: true,
+                },
+              },
+            },
           },
           disputes: {
             select: {
@@ -227,7 +275,7 @@ export function adminRouter(deps: {
               status: true,
               resolution: true,
               createdAt: true,
-              raisedBy: { select: { phone: true } },
+              raisedBy: { select: { id: true, phone: true } },
             },
             orderBy: { createdAt: 'asc' },
           },
@@ -235,7 +283,33 @@ export function adminRouter(deps: {
       });
       if (!booking) throw new ApiError(404, 'NOT_FOUND', 'Booking not found');
       await writeAudit({ actorId: req.auth.userId, action: 'admin.booking.review', target: id });
-      res.json(booking);
+      const messages = await Promise.all(
+        (booking.conversation?.messages ?? []).map(async (message) => {
+          const key = authorizedChatMediaKey(message, {
+            bookingId: id,
+            clientUserId: booking.event.client.user.id,
+            usherUserId: booking.usher.user.id,
+          });
+          return {
+            id: message.id,
+            sender: message.senderId === booking.event.client.user.id ? 'Client' : 'Usher',
+            contentType: message.contentType,
+            content: message.contentType === 'TEXT' ? message.content : null,
+            createdAt: message.createdAt,
+            mediaUrl: key && deps.storage ? await deps.storage.presignDownload(key) : null,
+          };
+        }),
+      );
+      const refund = await prisma.paymentOperation.findUnique({
+        where: { dedupeKey: `BOOKING_REFUND:${id}` },
+        select: { id: true, status: true, providerRef: true, updatedAt: true },
+      });
+      const refundApprovals = await prisma.approval.findMany({
+        where: { kind: 'REFUND', payload: { path: ['bookingId'], equals: id } },
+        select: { id: true, status: true, amountKobo: true, updatedAt: true },
+        orderBy: { createdAt: 'desc' },
+      });
+      res.json({ ...booking, conversation: undefined, messages, refund, refundApprovals });
     }),
   );
 

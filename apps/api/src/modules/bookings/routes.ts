@@ -1,7 +1,14 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '@hq/database';
-import { checkinVerifySchema, createReviewSchema, cancelBookingSchema } from '@hq/shared';
+import {
+  checkinVerifySchema,
+  createReviewSchema,
+  cancelBookingSchema,
+  eventInstant,
+  cancelWindow,
+  policyForCancellation,
+} from '@hq/shared';
 import { ApiError } from '../../app.js';
 import { requireAuth, type AuthedRequest } from '../auth/middleware.js';
 import { requireIdempotencyKey } from '../payments/http/middleware.js';
@@ -29,7 +36,10 @@ const wrap =
     h(req as AuthedRequest, res).catch(next);
   };
 
-export function bookingsRouter(deps: { realtime: RealtimeGateway; paystack?: PaystackPort | undefined }): Router {
+export function bookingsRouter(deps: {
+  realtime: RealtimeGateway;
+  paystack?: PaystackPort | undefined;
+}): Router {
   const r = Router();
   r.use(requireAuth);
 
@@ -40,16 +50,51 @@ export function bookingsRouter(deps: { realtime: RealtimeGateway; paystack?: Pay
       // Enrich with the event + counterparty identity so the mobile booking
       // lists (usher upcoming jobs, messages, event-day roster) show real names.
       const include = {
+        conversation: {
+          select: {
+            _count: {
+              select: { messages: { where: { senderId: { not: req.auth.userId }, seenAt: null } } },
+            },
+          },
+        },
+        reviews: {
+          where: { reviewerId: req.auth.userId },
+          select: { id: true, rating: true, comment: true },
+        },
         event: {
-          select: { title: true, eventDate: true, startTime: true, endTime: true, venue: true, client: { select: { displayName: true } } },
+          select: {
+            title: true,
+            eventDate: true,
+            startTime: true,
+            endTime: true,
+            venue: true,
+            client: { select: { displayName: true } },
+          },
         },
         usher: { select: { displayName: true, user: { select: { phone: true } } } },
       } as const;
       if (req.auth.role === 'USHER') {
         const usher = await prisma.usher.findFirstOrThrow({ where: { userId: req.auth.userId } });
-        const bookings = await prisma.booking.findMany({ where: { usherId: usher.id }, orderBy: { createdAt: 'desc' }, include });
-        const unlocked = await venueUnlockedEventIds(usher.id, bookings.map((booking) => booking.eventId));
-        res.json(bookings.map((booking) => ({ ...booking, event: serializeEventVenue(booking.event, { role: 'USHER', hasConfirmedBooking: unlocked.has(booking.eventId) }) })));
+        const bookings = await prisma.booking.findMany({
+          where: { usherId: usher.id },
+          orderBy: { createdAt: 'desc' },
+          include,
+        });
+        const unlocked = await venueUnlockedEventIds(
+          usher.id,
+          bookings.map((booking) => booking.eventId),
+        );
+        res.json(
+          bookings.map(({ conversation, ...booking }) => ({
+            ...booking,
+            unreadCount: conversation?._count.messages ?? 0,
+            myReview: booking.reviews[0] ?? null,
+            event: serializeEventVenue(booking.event, {
+              role: 'USHER',
+              hasConfirmedBooking: unlocked.has(booking.eventId),
+            }),
+          })),
+        );
         return;
       }
       const client = await prisma.client.findFirstOrThrow({ where: { userId: req.auth.userId } });
@@ -58,7 +103,14 @@ export function bookingsRouter(deps: { realtime: RealtimeGateway; paystack?: Pay
         orderBy: { createdAt: 'desc' },
         include,
       });
-      res.json(bookings.map((booking) => ({ ...booking, event: serializeEventVenue(booking.event, { role: 'CLIENT' }) })));
+      res.json(
+        bookings.map(({ conversation, ...booking }) => ({
+          ...booking,
+          unreadCount: conversation?._count.messages ?? 0,
+          myReview: booking.reviews[0] ?? null,
+          event: serializeEventVenue(booking.event, { role: 'CLIENT' }),
+        })),
+      );
     }),
   );
 
@@ -67,20 +119,82 @@ export function bookingsRouter(deps: { realtime: RealtimeGateway; paystack?: Pay
     wrap(async (req, res) => {
       const booking = await prisma.booking.findUniqueOrThrow({
         where: { id: String(req.params.id) },
-        include: { event: { include: { client: true } }, usher: true, payment: true },
+        include: {
+          event: { include: { client: true } },
+          usher: true,
+          payment: true,
+          reviews: {
+            where: { reviewerId: req.auth.userId },
+            select: { id: true, rating: true, comment: true },
+          },
+          disputes: {
+            select: {
+              id: true,
+              reason: true,
+              note: true,
+              status: true,
+              resolution: true,
+              createdAt: true,
+            },
+            orderBy: { createdAt: 'desc' },
+          },
+        },
       });
       const uid = req.auth.userId;
       if (booking.event.client.userId !== uid && booking.usher.userId !== uid) {
         throw new ApiError(403, 'FORBIDDEN', 'not your booking');
       }
+      const refund = await prisma.paymentOperation.findUnique({
+        where: { dedupeKey: `BOOKING_REFUND:${booking.id}` },
+        select: { id: true, status: true, providerRef: true, createdAt: true, updatedAt: true },
+      });
       if (booking.event.client.userId === uid) {
-        res.json({ ...booking, event: serializeEventVenue(booking.event, { role: 'CLIENT' }) });
+        res.json({
+          ...booking,
+          refund,
+          myReview: booking.reviews[0] ?? null,
+          event: serializeEventVenue(booking.event, { role: 'CLIENT' }),
+        });
         return;
       }
       const unlocked = await venueUnlockedEventIds(booking.usherId, [booking.eventId]);
-      res.json({ ...booking, event: serializeEventVenue(booking.event, {
-        role: 'USHER', hasConfirmedBooking: unlocked.has(booking.eventId),
-      }) });
+      res.json({
+        ...booking,
+        refund,
+        myReview: booking.reviews[0] ?? null,
+        event: serializeEventVenue(booking.event, {
+          role: 'USHER',
+          hasConfirmedBooking: unlocked.has(booking.eventId),
+        }),
+      });
+    }),
+  );
+
+  r.get(
+    '/bookings/:id/cancellation-quote',
+    wrap(async (req, res) => {
+      const booking = await prisma.booking.findUniqueOrThrow({
+        where: { id: String(req.params.id) },
+        include: { event: { include: { client: true } }, usher: true },
+      });
+      const uid = req.auth.userId;
+      if (booking.event.client.userId !== uid && booking.usher.userId !== uid)
+        throw new ApiError(403, 'FORBIDDEN', 'not your booking');
+      const actor = booking.usher.userId === uid ? 'USHER' : 'CLIENT';
+      const window = cancelWindow(
+        eventInstant(booking.event.eventDate, booking.event.startTime),
+        new Date(),
+      );
+      const outcome = policyForCancellation(actor, window);
+      res.json({
+        actor,
+        window,
+        ...outcome,
+        gross: booking.amount,
+        eligible: booking.status === 'CONFIRMED',
+        selfServe: booking.status === 'CONFIRMED' && outcome.clientRefundPct === 100,
+        quotedAt: new Date().toISOString(),
+      });
     }),
   );
 
@@ -131,7 +245,13 @@ export function bookingsRouter(deps: { realtime: RealtimeGateway; paystack?: Pay
       const { reason, note } = z
         .object({ reason: z.string().min(3).max(200), note: z.string().max(2000).optional() })
         .parse(req.body);
-      const out = await openDispute(String(req.params.id), req.auth.userId, reason, note, deps.realtime);
+      const out = await openDispute(
+        String(req.params.id),
+        req.auth.userId,
+        reason,
+        note,
+        deps.realtime,
+      );
       res.status(201).json(out);
     }),
   );
@@ -141,7 +261,12 @@ export function bookingsRouter(deps: { realtime: RealtimeGateway; paystack?: Pay
     '/bookings/:id/reviews',
     wrap(async (req, res) => {
       const body = createReviewSchema.parse(req.body);
-      const out = await createReview(String(req.params.id), req.auth.userId, body.rating, body.comment);
+      const out = await createReview(
+        String(req.params.id),
+        req.auth.userId,
+        body.rating,
+        body.comment,
+      );
       res.status(201).json(out);
     }),
   );
@@ -154,12 +279,23 @@ export function bookingsRouter(deps: { realtime: RealtimeGateway; paystack?: Pay
     requireIdempotencyKey,
     wrap(async (req, res) => {
       cancelBookingSchema.parse(req.body ?? {});
-      if (!deps.paystack) throw new ApiError(503, 'PAYMENTS_UNAVAILABLE', 'payments are not configured');
+      if (!deps.paystack)
+        throw new ApiError(503, 'PAYMENTS_UNAVAILABLE', 'payments are not configured');
       const ledgerDeps = { prisma, paystack: deps.paystack, realtime: deps.realtime };
       const out =
         req.auth.role === 'USHER'
-          ? await cancelBookingByUsher(ledgerDeps, String(req.params.id), req.auth.userId, deps.realtime)
-          : await cancelBookingByClient(ledgerDeps, String(req.params.id), req.auth.userId, deps.realtime);
+          ? await cancelBookingByUsher(
+              ledgerDeps,
+              String(req.params.id),
+              req.auth.userId,
+              deps.realtime,
+            )
+          : await cancelBookingByClient(
+              ledgerDeps,
+              String(req.params.id),
+              req.auth.userId,
+              deps.realtime,
+            );
       res.json(out);
     }),
   );

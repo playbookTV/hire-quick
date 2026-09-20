@@ -144,7 +144,11 @@ export default function Wallet(): React.JSX.Element {
             </>
           )}
         </QueryState>
-        <SectionHeader title="Recent activity" />
+        <SectionHeader
+          title="Recent activity"
+          actionLabel="Withdrawals"
+          onAction={() => router.push('/(modals)/withdrawal-history')}
+        />
         {activity.isLoading ? (
           <Box style={{ gap: 8 }}>
             {[0, 1, 2].map((i) => (

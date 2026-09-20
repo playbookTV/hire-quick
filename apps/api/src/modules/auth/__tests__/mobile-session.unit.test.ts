@@ -12,25 +12,41 @@ const unauthorized = () => ok({ error: { code: 'INVALID_REFRESH', message: 'expi
 function deferred<T>() {
   let resolve!: (value: T) => void;
   let reject!: (error: unknown) => void;
-  const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; });
+  const promise = new Promise<T>((yes, no) => {
+    resolve = yes;
+    reject = no;
+  });
   return { promise, resolve, reject };
 }
 function storage(tokens: typeof original | null = original) {
   let value = JSON.stringify({ version: 1, tokens });
-  return { read: vi.fn(async () => value), write: vi.fn(async (next: string) => { value = next; }), value: () => JSON.parse(value) };
+  return {
+    read: vi.fn(async () => value),
+    write: vi.fn(async (next: string) => {
+      value = next;
+    }),
+    value: () => JSON.parse(value),
+  };
 }
 function setup(transport: typeof fetch) {
   const disk = storage();
   const sessions = createSessionStore(disk);
   const http = createHttpClient('https://example.test', sessions, transport, () => 'request-id');
   const publish = vi.fn();
-  const auth = createAuthSession<{ id: string }>({ sessions, fetchMe: (signal) => http.request('/api/me', { signal }), revoke: http.revoke, publish });
+  const auth = createAuthSession<{ id: string }>({
+    sessions,
+    fetchMe: (signal) => http.request('/api/me', { signal }),
+    revoke: http.revoke,
+    publish,
+  });
   http.setUnauthorizedHandler(auth.invalidated);
   return { disk, sessions, http, auth, publish };
 }
 
 /** Matches RN's abort-controller3 surface: events + aborted, no newer DOM helpers. */
-class NativeAbortSignal extends EventTarget { aborted = false; }
+class NativeAbortSignal extends EventTarget {
+  aborted = false;
+}
 class NativeAbortController {
   readonly signal = new NativeAbortSignal();
   abort(): void {
@@ -41,33 +57,40 @@ class NativeAbortController {
 }
 async function withNativeAbort<T>(work: () => Promise<T>): Promise<T> {
   vi.stubGlobal('AbortController', NativeAbortController);
-  try { return await work(); }
-  finally { vi.unstubAllGlobals(); }
+  try {
+    return await work();
+  } finally {
+    vi.unstubAllGlobals();
+  }
 }
 
 describe('mobile session persistence and lifecycle', () => {
-  it.each(['restore', 'login'] as const)('%s works with RN signals lacking throwIfAborted and reason', async (operation) => {
-    await withNativeAbort(async () => {
-      const transport = vi.fn<typeof fetch>(async (_url, options) => {
-        expect(options?.signal).toBeInstanceOf(NativeAbortSignal);
-        expect('throwIfAborted' in options!.signal!).toBe(false);
-        expect('reason' in options!.signal!).toBe(false);
-        return ok({ id: 'a' });
+  it.each(['restore', 'login'] as const)(
+    '%s works with RN signals lacking throwIfAborted and reason',
+    async (operation) => {
+      await withNativeAbort(async () => {
+        const transport = vi.fn<typeof fetch>(async (_url, options) => {
+          expect(options?.signal).toBeInstanceOf(NativeAbortSignal);
+          expect('throwIfAborted' in options!.signal!).toBe(false);
+          expect('reason' in options!.signal!).toBe(false);
+          return ok({ id: 'a' });
+        });
+        const { auth } = setup(transport);
+        if (operation === 'restore') await auth.restore();
+        else await auth.login(original);
+        expect(auth.getSnapshot()).toMatchObject({ status: 'authed', user: { id: 'a' } });
+        expect(transport).toHaveBeenCalledOnce();
       });
-      const { auth } = setup(transport);
-      if (operation === 'restore') await auth.restore();
-      else await auth.login(original);
-      expect(auth.getSnapshot()).toMatchObject({ status: 'authed', user: { id: 'a' } });
-      expect(transport).toHaveBeenCalledOnce();
-    });
-  });
+    },
+  );
 
   it('rejects an already-aborted RN signal before dispatch with a portable AbortError', async () => {
     const transport = vi.fn<typeof fetch>();
     const { http } = setup(transport);
     const abort = new NativeAbortController();
     abort.abort();
-    const result = await http.request('/api/me', { signal: abort.signal as unknown as AbortSignal })
+    const result = await http
+      .request('/api/me', { signal: abort.signal as unknown as AbortSignal })
       .catch((error: unknown) => error);
     expect(result).toBeInstanceOf(Error);
     expect(result).toMatchObject({ name: 'AbortError' });
@@ -75,11 +98,18 @@ describe('mobile session persistence and lifecycle', () => {
   });
 
   it('migrates complete legacy pairs and never revives them after a logout tombstone', async () => {
-    const values = new Map<string, string>([['hq.access', original.accessToken], ['hq.refresh', original.refreshToken]]);
+    const values = new Map<string, string>([
+      ['hq.access', original.accessToken],
+      ['hq.refresh', original.refreshToken],
+    ]);
     const keychain = {
       getItemAsync: async (key: string) => values.get(key) ?? null,
-      setItemAsync: async (key: string, value: string) => { values.set(key, value); },
-      deleteItemAsync: async () => { throw new Error('legacy cleanup failed'); },
+      setItemAsync: async (key: string, value: string) => {
+        values.set(key, value);
+      },
+      deleteItemAsync: async () => {
+        throw new Error('legacy cleanup failed');
+      },
     };
     const sessions = createSessionStore(createSessionKeychain(keychain));
     expect((await sessions.snapshot()).tokens).toEqual(original);
@@ -91,7 +121,10 @@ describe('mobile session persistence and lifecycle', () => {
   });
 
   it('preserves an offline startup and restores with the same credentials on retry', async () => {
-    const transport = vi.fn<typeof fetch>().mockRejectedValueOnce(new Error('offline')).mockResolvedValue(ok({ id: 'a' }));
+    const transport = vi
+      .fn<typeof fetch>()
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValue(ok({ id: 'a' }));
     const { auth, disk, publish } = setup(transport);
     await auth.restore();
     expect(auth.getSnapshot().status).toBe('unavailable');
@@ -129,8 +162,15 @@ describe('mobile session persistence and lifecycle', () => {
     await sessions.snapshot();
     disk.write.mockRejectedValueOnce(new Error('keychain locked'));
     await auth.logout();
-    expect(auth.getSnapshot()).toMatchObject({ status: 'unavailable', problem: 'logout', user: null });
-    expect(transport).toHaveBeenCalledWith('https://example.test/auth/logout', expect.objectContaining({ body: JSON.stringify({ refreshToken: 'refresh-a' }) }));
+    expect(auth.getSnapshot()).toMatchObject({
+      status: 'unavailable',
+      problem: 'logout',
+      user: null,
+    });
+    expect(transport).toHaveBeenCalledWith(
+      'https://example.test/auth/logout',
+      expect.objectContaining({ body: JSON.stringify({ refreshToken: 'refresh-a' }) }),
+    );
     await auth.logout();
     expect(auth.getSnapshot().status).toBe('guest');
     expect(disk.value().tokens).toBeNull();
@@ -160,7 +200,10 @@ describe('mobile session persistence and lifecycle', () => {
     const oldProfile = deferred<Response>();
     const started = deferred<void>();
     const transport: typeof fetch = async (_url, opts) => {
-      if (new Headers(opts?.headers).get('authorization') === 'Bearer access-a') { started.resolve(); return oldProfile.promise; }
+      if (new Headers(opts?.headers).get('authorization') === 'Bearer access-a') {
+        started.resolve();
+        return oldProfile.promise;
+      }
       return ok({ id: 'b' });
     };
     const { auth, publish } = setup(transport);
@@ -189,7 +232,9 @@ describe('mobile session-bound refresh', () => {
         if (++calls === 1) throw new Error('offline refresh');
         return ok(rotated);
       }
-      return new Headers(opts?.headers).get('authorization') === 'Bearer access-a2' ? ok({ id: 'a' }) : unauthorized();
+      return new Headers(opts?.headers).get('authorization') === 'Bearer access-a2'
+        ? ok({ id: 'a' })
+        : unauthorized();
     });
     await expect(http.request('/api/me')).rejects.toThrow('offline refresh');
     expect(disk.value().tokens).toEqual(original);
@@ -201,37 +246,64 @@ describe('mobile session-bound refresh', () => {
     const refreshing = deferred<Response>();
     const started = deferred<void>();
     const transport = vi.fn<typeof fetch>(async (url, opts) => {
-      if (String(url).endsWith('/auth/refresh')) { started.resolve(); return refreshing.promise; }
-      return new Headers(opts?.headers).get('authorization') === 'Bearer access-a' ? unauthorized() : ok({ accepted: true });
+      if (String(url).endsWith('/auth/refresh')) {
+        started.resolve();
+        return refreshing.promise;
+      }
+      return new Headers(opts?.headers).get('authorization') === 'Bearer access-a'
+        ? unauthorized()
+        : ok({ accepted: true });
     });
     const { http } = setup(transport);
-    const first = http.request('/money', { method: 'POST', body: { amount: 1 }, idempotencyKey: 'first-key' });
-    const next = http.request('/money', { method: 'POST', body: { amount: 2 }, idempotencyKey: 'next-key' });
+    const first = http.request('/money', {
+      method: 'POST',
+      body: { amount: 1 },
+      idempotencyKey: 'first-key',
+    });
+    const next = http.request('/money', {
+      method: 'POST',
+      body: { amount: 2 },
+      idempotencyKey: 'next-key',
+    });
     await started.promise;
     refreshing.resolve(ok(rotated));
     await Promise.all([first, next]);
-    expect(transport.mock.calls.filter(([url]) => String(url).endsWith('/auth/refresh'))).toHaveLength(1);
-    const retries = transport.mock.calls.filter(([, opts]) => new Headers(opts?.headers).get('authorization') === 'Bearer access-a2');
-    expect(retries.map(([, opts]) => new Headers(opts?.headers).get('idempotency-key')).sort()).toEqual(['first-key', 'next-key']);
+    expect(
+      transport.mock.calls.filter(([url]) => String(url).endsWith('/auth/refresh')),
+    ).toHaveLength(1);
+    const retries = transport.mock.calls.filter(
+      ([, opts]) => new Headers(opts?.headers).get('authorization') === 'Bearer access-a2',
+    );
+    expect(
+      retries.map(([, opts]) => new Headers(opts?.headers).get('idempotency-key')).sort(),
+    ).toEqual(['first-key', 'next-key']);
   });
 
-  it.each([429, 500, 503])('retains credentials after refresh %s and clears the flight for later retry', async (status) => {
-    let refreshCalls = 0;
-    const transport: typeof fetch = async (url, opts) => {
-      if (String(url).endsWith('/auth/refresh')) return ++refreshCalls === 1 ? ok({}, status) : ok(rotated);
-      return new Headers(opts?.headers).get('authorization') === 'Bearer access-a' ? unauthorized() : ok({ id: 'a' });
-    };
-    const { http, disk } = setup(transport);
-    await expect(http.request('/api/me')).rejects.toMatchObject({ status });
-    expect(disk.value().tokens).toEqual(original);
-    await expect(http.request('/api/me')).resolves.toEqual({ id: 'a' });
-    expect(refreshCalls).toBe(2);
-  });
+  it.each([429, 500, 503])(
+    'retains credentials after refresh %s and clears the flight for later retry',
+    async (status) => {
+      let refreshCalls = 0;
+      const transport: typeof fetch = async (url, opts) => {
+        if (String(url).endsWith('/auth/refresh'))
+          return ++refreshCalls === 1 ? ok({}, status) : ok(rotated);
+        return new Headers(opts?.headers).get('authorization') === 'Bearer access-a'
+          ? unauthorized()
+          : ok({ id: 'a' });
+      };
+      const { http, disk } = setup(transport);
+      await expect(http.request('/api/me')).rejects.toMatchObject({ status });
+      expect(disk.value().tokens).toEqual(original);
+      await expect(http.request('/api/me')).resolves.toEqual({ id: 'a' });
+      expect(refreshCalls).toBe(2);
+    },
+  );
 
   it('clears failed refresh flights after storage rejection and persists the already rotated pair on retry', async () => {
     const transport = vi.fn<typeof fetch>(async (url, opts) => {
       if (String(url).endsWith('/auth/refresh')) return ok(rotated);
-      return new Headers(opts?.headers).get('authorization') === 'Bearer access-a' ? unauthorized() : ok({ id: 'a' });
+      return new Headers(opts?.headers).get('authorization') === 'Bearer access-a'
+        ? unauthorized()
+        : ok({ id: 'a' });
     });
     const { http, sessions, disk } = setup(transport);
     await sessions.snapshot();
@@ -239,14 +311,19 @@ describe('mobile session-bound refresh', () => {
     await expect(http.request('/api/me')).rejects.toThrow('write rejected');
     await expect(http.request('/api/me')).resolves.toEqual({ id: 'a' });
     expect(disk.value().tokens).toEqual(rotated);
-    expect(transport.mock.calls.filter(([url]) => String(url).endsWith('/auth/refresh'))).toHaveLength(1);
+    expect(
+      transport.mock.calls.filter(([url]) => String(url).endsWith('/auth/refresh')),
+    ).toHaveLength(1);
   });
 
   it('fences logout during refresh and revokes the stale returned refresh token', async () => {
     const refreshing = deferred<Response>();
     const started = deferred<void>();
     const transport = vi.fn<typeof fetch>(async (url) => {
-      if (String(url).endsWith('/auth/refresh')) { started.resolve(); return refreshing.promise; }
+      if (String(url).endsWith('/auth/refresh')) {
+        started.resolve();
+        return refreshing.promise;
+      }
       if (String(url).endsWith('/auth/logout')) return new Response(null, { status: 204 });
       return unauthorized();
     });
@@ -258,8 +335,13 @@ describe('mobile session-bound refresh', () => {
     expect(await requested).toBeInstanceOf(SessionChanged);
     expect(disk.value().tokens).toBeNull();
     expect(auth.getSnapshot().status).toBe('guest');
-    const revocations = transport.mock.calls.filter(([url]) => String(url).endsWith('/auth/logout')).map(([, opts]) => opts?.body);
-    expect(revocations).toEqual([JSON.stringify({ refreshToken: 'refresh-a' }), JSON.stringify({ refreshToken: 'refresh-a2' })]);
+    const revocations = transport.mock.calls
+      .filter(([url]) => String(url).endsWith('/auth/logout'))
+      .map(([, opts]) => opts?.body);
+    expect(revocations).toEqual([
+      JSON.stringify({ refreshToken: 'refresh-a' }),
+      JSON.stringify({ refreshToken: 'refresh-a2' }),
+    ]);
   });
 
   it('ignores a stale refresh401 after second login, which can later refresh normally', async () => {
@@ -267,10 +349,15 @@ describe('mobile session-bound refresh', () => {
     const started = deferred<void>();
     const transport: typeof fetch = async (url, opts) => {
       if (String(url).endsWith('/auth/refresh')) {
-        if (opts?.body === JSON.stringify({ refreshToken: 'refresh-a' })) { started.resolve(); return oldRefresh.promise; }
+        if (opts?.body === JSON.stringify({ refreshToken: 'refresh-a' })) {
+          started.resolve();
+          return oldRefresh.promise;
+        }
         return ok({ accessToken: 'access-b2', refreshToken: 'refresh-b2' });
       }
-      return new Headers(opts?.headers).get('authorization') === 'Bearer access-b2' ? ok({ id: 'b' }) : unauthorized();
+      return new Headers(opts?.headers).get('authorization') === 'Bearer access-b2'
+        ? ok({ id: 'b' })
+        : unauthorized();
     };
     const { http, sessions, disk } = setup(transport);
     const invalidated = vi.fn();
@@ -288,7 +375,9 @@ describe('mobile session-bound refresh', () => {
   it('handles missing tokens then a later login without leaving refresh blocked', async () => {
     const { http, sessions } = setup(async (url, opts) => {
       if (String(url).endsWith('/auth/refresh')) return ok(rotated);
-      return new Headers(opts?.headers).get('authorization') === 'Bearer access-a2' ? ok({ id: 'a' }) : unauthorized();
+      return new Headers(opts?.headers).get('authorization') === 'Bearer access-a2'
+        ? ok({ id: 'a' })
+        : unauthorized();
     });
     await sessions.end().completion;
     await expect(http.request('/api/me')).rejects.toMatchObject({ status: 401 });
@@ -298,22 +387,61 @@ describe('mobile session-bound refresh', () => {
 
   it('aborts startup through the refresh fetch and preserves credentials for retry', async () => {
     await withNativeAbort(async () => {
-    let refreshSignal: AbortSignal | null = null;
-    const transport: typeof fetch = async (url, opts) => {
-      if (String(url).endsWith('/auth/refresh')) {
-        refreshSignal = opts?.signal ?? null;
-        return new Promise<Response>((_, reject) => {
-          opts?.signal?.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
-        });
-      }
-      return unauthorized();
-    };
-    const { sessions, http, disk } = setup(transport);
-    const auth = createAuthSession({ sessions, fetchMe: (signal) => http.request('/api/me', { signal }), revoke: http.revoke, publish: vi.fn(), timeoutMs: 20 });
-    await auth.restore();
-    expect((refreshSignal as AbortSignal | null)?.aborted).toBe(true);
-    expect(auth.getSnapshot().status).toBe('unavailable');
-    expect(disk.value().tokens).toEqual(original);
+      let refreshSignal: AbortSignal | null = null;
+      const transport: typeof fetch = async (url, opts) => {
+        if (String(url).endsWith('/auth/refresh')) {
+          refreshSignal = opts?.signal ?? null;
+          return new Promise<Response>((_, reject) => {
+            opts?.signal?.addEventListener('abort', () => reject(new Error('aborted')), {
+              once: true,
+            });
+          });
+        }
+        return unauthorized();
+      };
+      const { sessions, http, disk } = setup(transport);
+      const auth = createAuthSession({
+        sessions,
+        fetchMe: (signal) => http.request('/api/me', { signal }),
+        revoke: http.revoke,
+        publish: vi.fn(),
+        timeoutMs: 20,
+      });
+      await auth.restore();
+      expect((refreshSignal as AbortSignal | null)?.aborted).toBe(true);
+      expect(auth.getSnapshot().status).toBe('unavailable');
+      expect(disk.value().tokens).toEqual(original);
     });
+  });
+  it('distinguishes restricted accounts from connection failure without discarding the session', async () => {
+    const { auth, disk } = setup(async () =>
+      ok({ error: { code: 'ACCOUNT_INACTIVE', message: 'account is not active' } }, 403),
+    );
+    await auth.restore();
+    expect(auth.getSnapshot()).toMatchObject({
+      status: 'unavailable',
+      problem: 'restricted',
+      user: null,
+    });
+    expect(disk.value().tokens).toEqual(original);
+  });
+  it('shows account restriction discovered during a profile refresh and clears stale cached identity', async () => {
+    let restricted = false;
+    const { auth, disk, publish } = setup(async () =>
+      restricted
+        ? ok({ error: { code: 'ACCOUNT_INACTIVE', message: 'account is not active' } }, 403)
+        : ok({ id: 'a' }),
+    );
+    await auth.restore();
+    expect(auth.getSnapshot().status).toBe('authed');
+    restricted = true;
+    expect(await auth.refreshMe()).toBeNull();
+    expect(auth.getSnapshot()).toEqual({
+      status: 'unavailable',
+      problem: 'restricted',
+      user: null,
+    });
+    expect(publish).toHaveBeenLastCalledWith(null);
+    expect(disk.value().tokens).toEqual(original);
   });
 });

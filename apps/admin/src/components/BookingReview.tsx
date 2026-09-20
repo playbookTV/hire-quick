@@ -25,6 +25,16 @@ export interface ReviewBooking {
     platformFee: number;
     escrowStatus: string;
   } | null;
+  messages?: Array<{
+    id: string;
+    sender: string;
+    contentType: string;
+    content: string | null;
+    createdAt: string;
+    mediaUrl: string | null;
+  }>;
+  refund?: { id: string; status: string; providerRef: string | null; updatedAt: string } | null;
+  refundApprovals?: Array<{ id: string; status: string; amountKobo: number; updatedAt: string }>;
   disputes: Array<{
     id: string;
     reason: string;
@@ -106,6 +116,43 @@ export function BookingReview({
               </p>
               <p className="whitespace-pre-wrap">{d.note || 'No supporting note supplied.'}</p>
               {d.resolution && <p>Resolution: {d.resolution}</p>}
+            </div>
+          ))}
+          {q.data.refund ? (
+            <p className="notice">
+              Refund {q.data.refund.status} · {q.data.refund.providerRef ?? q.data.refund.id} ·{' '}
+              {shortDate(q.data.refund.updatedAt)}
+            </p>
+          ) : null}
+          {(q.data.refundApprovals ?? []).map((a) => (
+            <p className="notice" key={a.id}>
+              Refund approval {a.status} · {naira(a.amountKobo)} · {a.id}
+            </p>
+          ))}
+          <h3>Booking conversation</h3>
+          {(q.data.messages ?? []).length === 0 ? (
+            <p className="muted">No retained messages.</p>
+          ) : null}
+          {(q.data.messages ?? []).map((m) => (
+            <div className="notice" key={m.id}>
+              <strong>
+                {m.sender} · {shortDate(m.createdAt)}
+              </strong>
+              {m.content ? (
+                <p className="whitespace-pre-wrap">{m.content}</p>
+              ) : m.mediaUrl ? (
+                m.contentType === 'IMAGE' ? (
+                  <img
+                    src={m.mediaUrl}
+                    alt="Booking evidence photo"
+                    style={{ maxWidth: '100%', maxHeight: 320 }}
+                  />
+                ) : (
+                  <audio src={m.mediaUrl} controls />
+                )
+              ) : (
+                <p>Attachment unavailable.</p>
+              )}
             </div>
           ))}
           {children(q.data)}

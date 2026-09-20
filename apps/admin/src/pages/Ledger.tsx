@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import { naira, shortDate } from '../lib/api';
 import { useRecords } from '../lib/useRecords';
@@ -60,7 +61,11 @@ function LedgerRecords({ filters }: { filters: string }) {
             <td className="whitespace-nowrap">{naira(e.balanceAfter)}</td>
             <td>
               {e.booking?.event.title ?? 'Platform'}
-              {e.booking && <small className="block muted">{e.booking.id}</small>}
+              {e.booking && (
+                <Link className="block" to={`/bookings?booking=${e.booking.id}`}>
+                  {e.booking.id}
+                </Link>
+              )}
             </td>
           </tr>
         ))}

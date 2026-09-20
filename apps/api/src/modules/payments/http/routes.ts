@@ -28,7 +28,8 @@ const bankAccountSchema = z.object({
   accountNumber: z.string().regex(/^\d{10}$/),
 });
 
-let banksCache: { at: number; banks: Awaited<ReturnType<Deps['paystack']['listBanks']>> } | null = null;
+let banksCache: { at: number; banks: Awaited<ReturnType<Deps['paystack']['listBanks']>> } | null =
+  null;
 const BANKS_TTL_MS = 24 * 60 * 60 * 1000;
 
 async function usherWalletFor(
@@ -39,7 +40,11 @@ async function usherWalletFor(
     include: { wallet: true },
   });
   if (!usher?.wallet) throw new ApiError(403, 'NOT_AN_USHER', 'no usher wallet for this user');
-  return { usherId: usher.id, walletId: usher.wallet.id, availableBalance: usher.wallet.availableBalance };
+  return {
+    usherId: usher.id,
+    walletId: usher.wallet.id,
+    availableBalance: usher.wallet.availableBalance,
+  };
 }
 
 type Activity = {
@@ -63,24 +68,47 @@ export function paymentsRouter(deps: Deps): Router {
     wrap(async (req, res) => {
       const { email } = z.object({ email: z.string().email() }).parse(req.body);
       const orderId = String(req.params.orderId);
-      const out = await initChargeForOrder(deps, { orderId, email, clientUserId: (req as AuthedRequest).auth.userId });
-      await writeAudit({ actorId: (req as AuthedRequest).auth.userId, action: 'payment.charge.init', target: orderId });
+      const out = await initChargeForOrder(deps, {
+        orderId,
+        email,
+        clientUserId: (req as AuthedRequest).auth.userId,
+      });
+      await writeAudit({
+        actorId: (req as AuthedRequest).auth.userId,
+        action: 'payment.charge.init',
+        target: orderId,
+      });
       res.status(201).json(out);
     }),
   );
 
-  r.get('/orders/:orderId/checkout', wrap(async (req, res) => {
-    res.json(await getCheckout(deps, String(req.params.orderId), (req as AuthedRequest).auth.userId));
-  }));
-  r.post('/orders/:orderId/checkout/resume', wrap(async (req, res) => {
-    res.json(await resumeCheckout(deps, { orderId: String(req.params.orderId), clientUserId: (req as AuthedRequest).auth.userId }));
-  }));
+  r.get(
+    '/orders/:orderId/checkout',
+    wrap(async (req, res) => {
+      res.json(
+        await getCheckout(deps, String(req.params.orderId), (req as AuthedRequest).auth.userId),
+      );
+    }),
+  );
+  r.post(
+    '/orders/:orderId/checkout/resume',
+    wrap(async (req, res) => {
+      res.json(
+        await resumeCheckout(deps, {
+          orderId: String(req.params.orderId),
+          clientUserId: (req as AuthedRequest).auth.userId,
+        }),
+      );
+    }),
+  );
 
   // wallet summary — available (withdrawable) + pending-in-escrow + lifetime earned
   r.get(
     '/wallet',
     wrap(async (req, res) => {
-      const { usherId, walletId, availableBalance } = await usherWalletFor((req as AuthedRequest).auth.userId);
+      const { usherId, walletId, availableBalance } = await usherWalletFor(
+        (req as AuthedRequest).auth.userId,
+      );
       const pending = await prisma.payment.aggregate({
         where: { escrowStatus: 'HELD', booking: { usherId } },
         _sum: { usherPayout: true },
@@ -182,7 +210,11 @@ export function paymentsRouter(deps: Deps): Router {
         const out = await deps.paystack.resolveAccount({ bankCode, accountNumber });
         res.json(out);
       } catch {
-        throw new ApiError(422, 'ACCOUNT_RESOLVE_FAILED', 'Could not verify this account. Check the number and bank.');
+        throw new ApiError(
+          422,
+          'ACCOUNT_RESOLVE_FAILED',
+          'Could not verify this account. Check the number and bank.',
+        );
       }
     }),
   );
@@ -207,9 +239,85 @@ export function paymentsRouter(deps: Deps): Router {
         await prisma.bankAccount.findMany({
           where: { usherId },
           orderBy: { createdAt: 'desc' },
-          select: { id: true, bankCode: true, accountNumber: true, accountName: true, verified: true },
+          select: {
+            id: true,
+            bankCode: true,
+            accountNumber: true,
+            accountName: true,
+            verified: true,
+          },
         }),
       );
+    }),
+  );
+
+  const withdrawalSelect = {
+    id: true,
+    amount: true,
+    status: true,
+    paystackTransferRef: true,
+    createdAt: true,
+    updatedAt: true,
+    bankAccount: { select: { bankCode: true, accountNumber: true, accountName: true } },
+  } as const;
+  const withdrawalDto = (row: {
+    id: string;
+    amount: number;
+    status: string;
+    paystackTransferRef: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    bankAccount: { bankCode: string; accountNumber: string; accountName: string };
+  }) => ({
+    id: row.id,
+    amount: row.amount,
+    status: row.status,
+    reference: row.paystackTransferRef,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    bank: {
+      code: row.bankAccount.bankCode,
+      accountName: row.bankAccount.accountName,
+      last4: row.bankAccount.accountNumber.slice(-4),
+    },
+  });
+  r.get(
+    '/withdrawals',
+    wrap(async (req, res) => {
+      const { walletId } = await usherWalletFor((req as AuthedRequest).auth.userId);
+      const cursor = z.string().uuid().optional().parse(req.query.cursor);
+      if (
+        cursor &&
+        !(await prisma.withdrawal.findFirst({
+          where: { id: cursor, walletId },
+          select: { id: true },
+        }))
+      )
+        throw new ApiError(400, 'INVALID_CURSOR', 'Refresh your withdrawal history.');
+      const rows = await prisma.withdrawal.findMany({
+        where: { walletId },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: 26,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+        select: withdrawalSelect,
+      });
+      res.json({
+        items: rows.slice(0, 25).map(withdrawalDto),
+        nextCursor: rows.length > 25 ? rows[24]!.id : null,
+      });
+    }),
+  );
+  r.get(
+    '/withdrawals/:id',
+    wrap(async (req, res) => {
+      const { walletId } = await usherWalletFor((req as AuthedRequest).auth.userId);
+      const id = z.string().uuid().parse(req.params.id);
+      const row = await prisma.withdrawal.findFirst({
+        where: { id, walletId },
+        select: withdrawalSelect,
+      });
+      if (!row) throw new ApiError(404, 'NOT_FOUND', 'Withdrawal not found.');
+      res.json(withdrawalDto(row));
     }),
   );
 

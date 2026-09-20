@@ -2,6 +2,7 @@
  * ProfileView — shared by both role Profile tabs. Identity header + sign out.
  * Settings rows are placeholders for later phases.
  */
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Screen } from './Screen.js';
 import { AppBar } from './AppBar.js';
@@ -15,7 +16,11 @@ import { Pressable } from 'react-native';
 import { useAuth } from '../lib/auth-context.js';
 import { openSupport } from '../lib/support.js';
 
-function Row({ icon, label, onPress }: Readonly<{ icon: IconName; label: string; onPress?: () => void }>): React.JSX.Element {
+function Row({
+  icon,
+  label,
+  onPress,
+}: Readonly<{ icon: IconName; label: string; onPress?: () => void }>): React.JSX.Element {
   const inner = (
     <Box flexDirection="row" alignItems="center" gap="300" paddingVertical="300">
       <Icon name={icon} size={18} color="inkMuted" />
@@ -34,6 +39,7 @@ function Row({ icon, label, onPress }: Readonly<{ icon: IconName; label: string;
 }
 
 export function ProfileView(): React.JSX.Element {
+  const router = useRouter();
   const { user, logout } = useAuth();
   const [signingOut, setSigningOut] = useState(false);
 
@@ -62,9 +68,22 @@ export function ProfileView(): React.JSX.Element {
         </Box>
 
         <Card padded>
-          <Row icon="settings" label="Account settings" />
+          <Row
+            icon="briefcase"
+            label="My bookings"
+            onPress={() => router.push('/(modals)/my-bookings')}
+          />
+          <Row
+            icon="settings"
+            label="Account settings"
+            onPress={() => router.push('/(modals)/account-settings')}
+          />
           <Box height={1} backgroundColor="borderDefault" />
-          <Row icon="bell" label="Notifications" />
+          <Row
+            icon="bell"
+            label="Notifications"
+            onPress={() => router.push('/(modals)/notifications')}
+          />
           <Box height={1} backgroundColor="borderDefault" />
           <Row icon="help-circle" label="Help & support" onPress={() => void openSupport()} />
         </Card>

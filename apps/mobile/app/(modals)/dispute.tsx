@@ -14,10 +14,16 @@ import { OptionCard } from '../../components/OptionCard.js';
 import { TextArea } from '../../components/TextArea.js';
 import { Button } from '../../components/Button.js';
 import { Icon } from '../../components/Icon.js';
+import { useAuth } from '../../lib/auth-context.js';
 import { useCreateDispute } from '../../lib/hooks.js';
 import { useToast } from '../../lib/toast.js';
 
-const REASONS = ['Usher didn’t show up', 'Arrived late', 'Conduct or presentation', 'Something else'];
+const REASONS = [
+  'Usher didn’t show up',
+  'Arrived late',
+  'Conduct or presentation',
+  'Something else',
+];
 
 export default function Dispute(): React.JSX.Element {
   const router = useRouter();
@@ -25,7 +31,17 @@ export default function Dispute(): React.JSX.Element {
   const { booking } = useLocalSearchParams<{ booking: string }>();
   const dispute = useCreateDispute(booking ?? '');
   const toast = useToast();
-  const [reason, setReason] = useState(REASONS[0]);
+  const { user } = useAuth();
+  const reasons =
+    user?.role === 'USHER'
+      ? [
+          'Attendance or payment issue',
+          'Unsafe working conditions',
+          'Client conduct',
+          'Something else',
+        ]
+      : REASONS;
+  const [reason, setReason] = useState(reasons[0]);
   const [details, setDetails] = useState('');
 
   const submit = (): void => {
@@ -38,9 +54,13 @@ export default function Dispute(): React.JSX.Element {
       {
         onSuccess: () => {
           toast.success('Funds are frozen while our team reviews.', 'Dispute opened');
-          router.back();
+          router.replace({ pathname: '/(modals)/booking-details', params: { booking } });
         },
-        onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Please try again.', 'Couldn’t open dispute'),
+        onError: (e: unknown) =>
+          toast.error(
+            e instanceof Error ? e.message : 'Please try again.',
+            'Couldn’t open dispute',
+          ),
       },
     );
   };
@@ -50,17 +70,25 @@ export default function Dispute(): React.JSX.Element {
       <AppBar title="Open a dispute" showBack inset />
       <Screen scroll>
         <Box style={{ gap: 16 }}>
-          <Banner tone="info" message="Funds stay safely on hold while our team reviews — usually within 72 hours." />
+          <Banner
+            tone="info"
+            message="Submitting an eligible dispute freezes held funds while our team reviews. Track the case from your booking."
+          />
 
           <Text variant="headingS">What went wrong?</Text>
 
           <Box style={{ gap: 8 }}>
-            {REASONS.map((r) => (
+            {reasons.map((r) => (
               <OptionCard key={r} title={r} selected={reason === r} onPress={() => setReason(r)} />
             ))}
           </Box>
 
-          <TextArea placeholder="Tell us what happened…" value={details} onChangeText={setDetails} maxLength={2000} />
+          <TextArea
+            placeholder="Tell us what happened…"
+            value={details}
+            onChangeText={setDetails}
+            maxLength={2000}
+          />
 
           <Box flexDirection="row" alignItems="center" style={{ gap: 8 }}>
             <Icon name="paperclip" size={16} color="inkMuted" />
@@ -72,7 +100,11 @@ export default function Dispute(): React.JSX.Element {
 
         <Box style={{ flex: 1, minHeight: 20 }} />
         <Box style={{ gap: 12, paddingBottom: insets.bottom }}>
-          <Button label={dispute.isPending ? 'Submitting…' : 'Submit dispute'} onPress={submit} disabled={dispute.isPending} />
+          <Button
+            label={dispute.isPending ? 'Submitting…' : 'Submit dispute'}
+            onPress={submit}
+            disabled={dispute.isPending}
+          />
           <Button label="Cancel" variant="ghost" onPress={() => router.back()} />
         </Box>
       </Screen>

@@ -119,6 +119,11 @@ export default function Welcome(): React.JSX.Element {
           />
         </Box>
 
+        <Button
+          label="Privacy policy"
+          variant="ghost"
+          onPress={() => router.push('/privacy-policy')}
+        />
         <DevLogin />
       </Box>
     </Box>

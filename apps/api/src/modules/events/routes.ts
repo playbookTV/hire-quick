@@ -6,15 +6,18 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma, type Prisma } from '@hq/database';
-import {
-  createEventSchema,
-} from '@hq/shared';
+import { createEventSchema, staffingCounts, type BookingStatus } from '@hq/shared';
 import { ApiError } from '../../app.js';
 import { requireAuth, type AuthedRequest } from '../auth/middleware.js';
 import { requireIdempotencyKey } from '../payments/http/middleware.js';
 import { confirmBatch } from '../bookings/service.js';
 import { editEvent } from './edit.js';
-import { applyToEvent, selectApplication, inviteToEvent, replyToInvitation } from './recruitment.js';
+import {
+  applyToEvent,
+  selectApplication,
+  inviteToEvent,
+  replyToInvitation,
+} from './recruitment.js';
 import { serializeEventVenue, venueUnlockedEventIds } from './venue.js';
 import { notifyInvitationReceived, notifyApplicationReceived } from '../notifications/service.js';
 import { RT } from '../../realtime/events.js';
@@ -45,7 +48,8 @@ async function clientFor(userId: string): Promise<string> {
 async function verifiedUsherFor(userId: string): Promise<string> {
   const u = await prisma.usher.findFirst({ where: { userId } });
   if (!u) throw new ApiError(403, 'NOT_AN_USHER', 'only ushers do this');
-  if (u.verificationStatus !== 'VERIFIED') throw new ApiError(403, 'NOT_VERIFIED', 'verification required');
+  if (u.verificationStatus !== 'VERIFIED')
+    throw new ApiError(403, 'NOT_VERIFIED', 'verification required');
   return u.id;
 }
 /** Resolve the usher id without the verification gate (for read/save flows). */
@@ -56,11 +60,27 @@ async function usherFor(userId: string): Promise<string> {
 }
 
 /** Free-text staff preferences live in the `preferences` JSON blob (no column per field). */
-function eventPreferences(b: { requirements?: string | undefined; hairstyle?: string | undefined }): Record<string, string> | undefined {
+function eventPreferences(b: {
+  requirements?: string | undefined;
+  hairstyle?: string | undefined;
+}): Record<string, string> | undefined {
   const p: Record<string, string> = {};
   if (b.requirements) p.requirements = b.requirements;
   if (b.hairstyle) p.hairstyle = b.hairstyle;
   return Object.keys(p).length > 0 ? p : undefined;
+}
+
+function withStaffing<T extends { headcount: number; bookings: { status: BookingStatus }[] }>({
+  bookings,
+  ...event
+}: T) {
+  return {
+    ...event,
+    staffing: staffingCounts(
+      event.headcount,
+      bookings.map((b) => b.status),
+    ),
+  };
 }
 
 export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
@@ -102,7 +122,10 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
     wrap(async (req, res) => {
       if (req.auth.role === 'USHER') {
         const usherId = await usherFor(req.auth.userId);
-        const me = await prisma.usher.findUnique({ where: { id: usherId }, select: { state: true } });
+        const me = await prisma.usher.findUnique({
+          where: { id: usherId },
+          select: { state: true },
+        });
         // Hard state filter (feedback: Abuja/Enugu ushers shouldn't see Lagos jobs).
         // Untagged events (state: null) stay visible to everyone; ushers with no
         // state set yet see all until they choose one.
@@ -110,6 +133,7 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
         if (me?.state) where.OR = [{ state: me.state }, { state: null }];
         const events = await prisma.event.findMany({
           where,
+          include: { bookings: { select: { status: true } } },
           orderBy: { eventDate: 'asc' },
         });
         // Mask the precise venue per event unless this usher already has escrow
@@ -118,12 +142,23 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
           usherId,
           events.map((e) => e.id),
         );
-        res.json(events.map((e) => serializeEventVenue(e, { role: 'USHER', hasConfirmedBooking: unlocked.has(e.id) })));
+        res.json(
+          events.map((e) =>
+            serializeEventVenue(withStaffing(e), {
+              role: 'USHER',
+              hasConfirmedBooking: unlocked.has(e.id),
+            }),
+          ),
+        );
         return;
       }
       const clientId = await clientFor(req.auth.userId);
-      const events = await prisma.event.findMany({ where: { clientId }, orderBy: { createdAt: 'desc' } });
-      res.json(events.map((event) => serializeEventVenue(event, { role: 'CLIENT' })));
+      const events = await prisma.event.findMany({
+        where: { clientId },
+        orderBy: { createdAt: 'desc' },
+        include: { bookings: { select: { status: true } } },
+      });
+      res.json(events.map((event) => serializeEventVenue(withStaffing(event), { role: 'CLIENT' })));
     }),
   );
 
@@ -132,11 +167,14 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
     wrap(async (req, res) => {
       const event = await prisma.event.findUniqueOrThrow({
         where: { id: String(req.params.id) },
-        include: { _count: { select: { applications: true, bookings: true } } },
+        include: {
+          _count: { select: { applications: true, bookings: true } },
+          bookings: { select: { status: true } },
+        },
       });
       const auth = req.auth;
       if (auth.role === 'ADMIN') {
-        res.json(serializeEventVenue(event, { role: auth.role }));
+        res.json(serializeEventVenue(withStaffing(event), { role: auth.role }));
         return;
       }
       if (auth.role === 'CLIENT') {
@@ -144,7 +182,7 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
         if (event.clientId !== (await clientFor(auth.userId))) {
           throw new ApiError(404, 'NOT_FOUND', 'event not found');
         }
-        res.json(serializeEventVenue(event, { role: auth.role }));
+        res.json(serializeEventVenue(withStaffing(event), { role: auth.role }));
         return;
       }
       // USHER: readable only if the event is discoverable (OPEN/PARTIALLY_STAFFED)
@@ -167,7 +205,12 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
       // CONFIRMED+ booking. Until then they see a masked placeholder (PRD §7/§13:
       // contact-masking + withholding precise venue until escrow is held).
       const unlocked = await venueUnlockedEventIds(usherId, [event.id]);
-      res.json(serializeEventVenue(event, { role: 'USHER', hasConfirmedBooking: unlocked.has(event.id) }));
+      res.json(
+        serializeEventVenue(withStaffing(event), {
+          role: 'USHER',
+          hasConfirmedBooking: unlocked.has(event.id),
+        }),
+      );
     }),
   );
 
@@ -197,8 +240,16 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
           select: { title: true, client: { select: { userId: true } } },
         });
         if (event?.client?.userId) {
-          const usher = await prisma.usher.findUnique({ where: { id: usherId }, select: { displayName: true } });
-          notifyApplicationReceived(event.client.userId, event.title, eventId, usher?.displayName ?? undefined);
+          const usher = await prisma.usher.findUnique({
+            where: { id: usherId },
+            select: { displayName: true },
+          });
+          notifyApplicationReceived(
+            event.client.userId,
+            event.title,
+            eventId,
+            usher?.displayName ?? undefined,
+          );
           deps.realtime?.emitToUser(event.client.userId, RT.APPLICATION_RECEIVED, { eventId });
         }
       }
@@ -215,13 +266,31 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
         orderBy: { createdAt: 'desc' },
         include: { event: true },
       });
+      const bookings = await prisma.booking.findMany({
+        where: { usherId },
+        select: { id: true, eventId: true, status: true },
+        orderBy: { createdAt: 'desc' },
+      });
       // Applying does not unlock the precise venue — only an escrow-held booking
       // does (PRD §7/§13), same rule as discovery.
       const unlocked = await venueUnlockedEventIds(
         usherId,
         apps.map((a) => a.eventId),
       );
-      res.json(apps.map((a) => ({ ...a, event: serializeEventVenue(a.event, { role: 'USHER', hasConfirmedBooking: unlocked.has(a.eventId) }) })));
+      res.json(
+        apps.map((a) => ({
+          ...a,
+          booking:
+            bookings.find(
+              (b) =>
+                b.eventId === a.eventId && !['CANCELLED', 'REFUNDED', 'NO_SHOW'].includes(b.status),
+            ) ?? null,
+          event: serializeEventVenue(a.event, {
+            role: 'USHER',
+            hasConfirmedBooking: unlocked.has(a.eventId),
+          }),
+        })),
+      );
     }),
   );
 
@@ -261,7 +330,14 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
         usherId,
         rows.map((s) => s.event.id),
       );
-      res.json(rows.map((s) => serializeEventVenue(s.event, { role: 'USHER', hasConfirmedBooking: unlocked.has(s.event.id) })));
+      res.json(
+        rows.map((s) =>
+          serializeEventVenue(s.event, {
+            role: 'USHER',
+            hasConfirmedBooking: unlocked.has(s.event.id),
+          }),
+        ),
+      );
     }),
   );
 
@@ -276,14 +352,18 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
       const apps = await prisma.application.findMany({
         where: { eventId },
         // Surface more-accomplished (badged) ushers first, then higher-rated.
-        orderBy: [
-          { usher: { completedJobsCount: 'desc' } },
-          { usher: { ratingAvg: 'desc' } },
-        ],
+        orderBy: [{ usher: { completedJobsCount: 'desc' } }, { usher: { ratingAvg: 'desc' } }],
         // Do NOT include user.phone — contact details stay off-platform until a
         // booking exists (on-platform messaging/safety model). displayName lives
         // on the Usher record and is enough to choose whom to hire.
         include: { usher: true },
+      });
+      const bookings = await prisma.booking.findMany({
+        where: {
+          eventId: String(req.params.id),
+          status: { notIn: ['CANCELLED', 'REFUNDED', 'NO_SHOW'] },
+        },
+        select: { id: true, usherId: true, status: true },
       });
       // Presign the applicant's avatar so the client sees a real photo when
       // deciding whom to hire; never leak the raw storage key.
@@ -291,6 +371,7 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
         await Promise.all(
           apps.map(async ({ usher: { avatarKey, ...usher }, ...app }) => ({
             ...app,
+            booking: bookings.find((b) => b.usherId === usher.id) ?? null,
             usher: { ...usher, avatarUrl: avatarKey ? await presignDoc(storage, avatarKey) : null },
           })),
         ),
@@ -311,6 +392,30 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
     }),
   );
 
+  r.get(
+    '/events/:id/invitations',
+    wrap(async (req, res) => {
+      const clientId = await clientFor(req.auth.userId);
+      const eventId = String(req.params.id);
+      const event = await prisma.event.findFirst({
+        where: { id: eventId, clientId },
+        select: { id: true },
+      });
+      if (!event) throw new ApiError(404, 'NOT_FOUND', 'event not found');
+      const invitations = await prisma.invitation.findMany({
+        where: { eventId },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          status: true,
+          createdAt: true,
+          usher: { select: { id: true, displayName: true } },
+        },
+      });
+      res.json(invitations);
+    }),
+  );
+
   // client invites an usher
   r.post(
     '/events/:id/invite',
@@ -318,8 +423,15 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
       const clientId = await clientFor(req.auth.userId);
       const eventId = String(req.params.id);
       const { usherId } = z.object({ usherId: z.string().uuid() }).parse(req.body);
-      const { invitation: inv, event, notify } = await inviteToEvent(deps.prisma, eventId, clientId, usherId);
-      const usher = await prisma.usher.findUnique({ where: { id: usherId }, select: { userId: true } });
+      const {
+        invitation: inv,
+        event,
+        notify,
+      } = await inviteToEvent(deps.prisma, eventId, clientId, usherId);
+      const usher = await prisma.usher.findUnique({
+        where: { id: usherId },
+        select: { userId: true },
+      });
       if (notify && usher) {
         notifyInvitationReceived(usher.userId, event.title, inv.id);
         deps.realtime?.emitToUser(usher.userId, RT.INVITATION_RECEIVED, {
@@ -336,14 +448,27 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
   r.get(
     '/me/invitations',
     wrap(async (req, res) => {
-      const usherId = await verifiedUsherFor(req.auth.userId);
+      const usherId = await usherFor(req.auth.userId);
       const invites = await prisma.invitation.findMany({
         where: { usherId },
         orderBy: { createdAt: 'desc' },
-        include: { event: { include: { client: { select: { displayName: true, businessName: true } } } } },
+        include: {
+          event: { include: { client: { select: { displayName: true, businessName: true } } } },
+        },
       });
-      const unlocked = await venueUnlockedEventIds(usherId, invites.map((inv) => inv.eventId));
-      res.json(invites.map((inv) => ({ ...inv, event: serializeEventVenue(inv.event, { role: 'USHER', hasConfirmedBooking: unlocked.has(inv.eventId) }) })));
+      const unlocked = await venueUnlockedEventIds(
+        usherId,
+        invites.map((inv) => inv.eventId),
+      );
+      res.json(
+        invites.map((inv) => ({
+          ...inv,
+          event: serializeEventVenue(inv.event, {
+            role: 'USHER',
+            hasConfirmedBooking: unlocked.has(inv.eventId),
+          }),
+        })),
+      );
     }),
   );
 
@@ -351,14 +476,22 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
   r.get(
     '/invitations/:id',
     wrap(async (req, res) => {
-      const usherId = await verifiedUsherFor(req.auth.userId);
+      const usherId = await usherFor(req.auth.userId);
       const inv = await prisma.invitation.findUniqueOrThrow({
         where: { id: String(req.params.id) },
-        include: { event: { include: { client: { select: { displayName: true, businessName: true } } } } },
+        include: {
+          event: { include: { client: { select: { displayName: true, businessName: true } } } },
+        },
       });
       if (inv.usherId !== usherId) throw new ApiError(404, 'NOT_FOUND', 'invitation not found');
       const unlocked = await venueUnlockedEventIds(usherId, [inv.eventId]);
-      res.json({ ...inv, event: serializeEventVenue(inv.event, { role: 'USHER', hasConfirmedBooking: unlocked.has(inv.eventId) }) });
+      res.json({
+        ...inv,
+        event: serializeEventVenue(inv.event, {
+          role: 'USHER',
+          hasConfirmedBooking: unlocked.has(inv.eventId),
+        }),
+      });
     }),
   );
 
@@ -379,7 +512,10 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
     requireIdempotencyKey,
     wrap(async (req, res) => {
       const { applicationIds, email } = z
-        .object({ applicationIds: z.array(z.string().uuid()).min(1).max(50), email: z.string().email() })
+        .object({
+          applicationIds: z.array(z.string().uuid()).min(1).max(50),
+          email: z.string().email(),
+        })
         .parse(req.body);
       const { paystack } = deps;
       if (!paystack) throw new ApiError(503, 'PAYMENTS_UNAVAILABLE', 'payments are not configured');

@@ -262,9 +262,9 @@ export default function UsherHome(): React.JSX.Element {
               message="Submit your ID and a selfie to unlock job applications and payouts."
             />
             <Button
-              label="Start verification"
+              label="Check verification"
               variant="secondary"
-              onPress={() => router.push('/(verification)/profile-setup')}
+              onPress={() => router.push('/(verification)/awaiting-approval')}
             />
           </Box>
         ) : null}
@@ -362,7 +362,7 @@ export default function UsherHome(): React.JSX.Element {
           <SectionHeader
             title="Upcoming jobs"
             actionLabel="See all"
-            onAction={() => router.push('/(usher)/jobs')}
+            onAction={() => router.push('/(modals)/my-bookings')}
           />
           <QueryState query={bookings} errorTitle="Couldn’t load your jobs">
             {() =>
@@ -376,7 +376,10 @@ export default function UsherHome(): React.JSX.Element {
                     key={b.id}
                     booking={b}
                     onPress={() =>
-                      router.push({ pathname: '/(modals)/check-in', params: { booking: b.id } })
+                      router.push({
+                        pathname: '/(modals)/booking-details',
+                        params: { booking: b.id },
+                      })
                     }
                   />
                 ))

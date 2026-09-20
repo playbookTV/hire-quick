@@ -101,8 +101,8 @@ export default function EventDetail(): React.JSX.Element {
 
   const total = kobo(event.headcount * event.budgetPerHead);
   const applicants = event._count?.applications ?? 0;
-  const confirmed = Math.min(event._count?.bookings ?? 0, event.headcount);
-  const open = Math.max(0, event.headcount - confirmed);
+  const confirmed = event.staffing?.confirmed ?? 0;
+  const open = event.staffing?.available ?? 0;
   const requirements = event.preferences?.requirements;
   const dots = Math.min(event.headcount, 12);
   // Editable only before any booking is confirmed (mirrors the PATCH guard).
@@ -159,6 +159,9 @@ export default function EventDetail(): React.JSX.Element {
               {open} slot{open === 1 ? '' : 's'} open
             </Text>
           </Box>
+          <Text variant="bodySm" color="inkMuted">
+            {event.staffing?.reserved ?? 0} awaiting payment
+          </Text>
           <Box flexDirection="row" style={{ gap: 4 }}>
             {Array.from({ length: dots }).map((_, i) => (
               <Dot key={i} filled={i < confirmed} />
@@ -198,13 +201,24 @@ export default function EventDetail(): React.JSX.Element {
         <Box height={20} />
         <Button
           label={`Review applications${applicants ? ` (${applicants})` : ''}`}
-          disabled={applicants === 0}
           onPress={() => router.push({ pathname: '/(modals)/applications', params: { id } })}
         />
 
         {/* secondary actions */}
         <Box height={16} />
         <Box flexDirection="row" flexWrap="wrap" style={{ gap: 8 }}>
+          <ActionChip
+            label="Invitations"
+            onPress={() =>
+              router.push({ pathname: '/(modals)/invitations', params: { event: id } })
+            }
+          />
+          <ActionChip
+            label="Bookings"
+            onPress={() =>
+              router.push({ pathname: '/(modals)/my-bookings', params: { event: id } })
+            }
+          />
           {editable ? (
             <ActionChip
               label="Edit event"

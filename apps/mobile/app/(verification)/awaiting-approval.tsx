@@ -14,6 +14,7 @@ import { QueryState } from '../../components/QueryState.js';
 import { EmptyState } from '../../components/EmptyState.js';
 import { Screen } from '../../components/Screen.js';
 import { StepIndicator } from '../../components/StepIndicator.js';
+import { useAuth } from '../../lib/auth-context.js';
 import { useMyVerifications } from '../../lib/hooks.js';
 
 type StepState = 'done' | 'active' | 'todo';
@@ -97,6 +98,7 @@ export default function AwaitingApproval(): React.JSX.Element {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const verifications = useMyVerifications();
+  const { user, refreshMe } = useAuth();
   const latest = verifications.data?.[0];
 
   // A rejected submission routes to the dedicated rejected state.
@@ -105,6 +107,9 @@ export default function AwaitingApproval(): React.JSX.Element {
   }, [latest?.status, router]);
 
   const approved = latest?.status === 'APPROVED';
+  useEffect(() => {
+    if (approved && user?.usher?.verificationStatus !== 'VERIFIED') void refreshMe();
+  }, [approved, user?.usher?.verificationStatus, refreshMe]);
 
   return (
     <Box flex={1} backgroundColor="bgCanvas" style={{ paddingTop: insets.top }}>
@@ -128,6 +133,14 @@ export default function AwaitingApproval(): React.JSX.Element {
         {() => (
           <>
             <Screen scroll>
+              <Button
+                label={verifications.isFetching ? 'Checking…' : 'Check latest status'}
+                variant="ghost"
+                disabled={verifications.isFetching}
+                onPress={() => {
+                  void verifications.refetch();
+                }}
+              />
               <Box style={{ paddingHorizontal: 24, paddingTop: 8 }}>
                 <StepIndicator
                   total={5}

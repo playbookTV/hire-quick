@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock('@hq/database', () => ({
   prisma: {
+    paymentOperation: { findUnique: vi.fn(async () => null) },
+    approval: { findMany: vi.fn(async () => []) },
     user: { findMany: mocks.users },
     escrowLedger: { findMany: mocks.ledger },
     booking: { findUnique: mocks.booking },
@@ -117,7 +119,14 @@ describe('admin read contracts', () => {
   });
   it('audit-logs successful case reads and returns not-found explicitly', async () => {
     mocks.booking.mockResolvedValueOnce({ id, status: 'DISPUTED' }).mockResolvedValueOnce(null);
-    expect(await read('/bookings/:id/review', {}, { id })).toEqual({ id, status: 'DISPUTED' });
+    expect(await read('/bookings/:id/review', {}, { id })).toEqual({
+      id,
+      status: 'DISPUTED',
+      messages: [],
+      conversation: undefined,
+      refund: null,
+      refundApprovals: [],
+    });
     expect(mocks.audit).toHaveBeenCalledWith({
       actorId: id,
       action: 'admin.booking.review',

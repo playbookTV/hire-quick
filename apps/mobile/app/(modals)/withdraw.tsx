@@ -223,6 +223,16 @@ export default function Withdraw(): React.JSX.Element {
               <ReceiptRow label={receipt.amountLabel} value={money(sent.amountKobo)} strong />
               <ReceiptRow label="To" value={accountLabel(sent.account)} />
               <Box height={1} backgroundColor="borderDefault" />
+              <Button
+                label="Track this withdrawal"
+                variant="secondary"
+                onPress={() =>
+                  router.push({
+                    pathname: '/(modals)/withdrawal-details',
+                    params: { id: sent.withdrawalId },
+                  })
+                }
+              />
               <ReceiptRow label="Balance after withdrawal" value={money(sent.availableBalance)} />
             </Box>
 

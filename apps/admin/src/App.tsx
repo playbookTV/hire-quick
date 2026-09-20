@@ -7,6 +7,7 @@ import { Verifications } from './pages/Verifications';
 import { Disputes } from './pages/Disputes';
 import { Approvals } from './pages/Approvals';
 import { Ledger } from './pages/Ledger';
+import { Bookings } from './pages/Bookings';
 import { Users } from './pages/Users';
 
 export function App() {
@@ -19,6 +20,7 @@ export function App() {
         <Route path="/verifications" element={<Verifications />} />
         <Route path="/disputes" element={<Disputes />} />
         <Route path="/approvals" element={<Approvals />} />
+        <Route path="/bookings" element={<Bookings />} />
         <Route path="/ledger" element={<Ledger />} />
         <Route path="/users" element={<Users />} />
         <Route path="*" element={<Navigate to="/" replace />} />

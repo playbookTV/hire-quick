@@ -20,7 +20,12 @@ import { SkeletonCard } from '../../components/Skeleton.js';
 import { EmptyState } from '../../components/EmptyState.js';
 import { shadowSm } from '../../theme/shadows.js';
 import { fonts } from '../../theme/fonts.js';
-import { useApplications, usePatchApplication, useEvent, useSavedCheckout } from '../../lib/hooks.js';
+import {
+  useApplications,
+  usePatchApplication,
+  useEvent,
+  useSavedCheckout,
+} from '../../lib/hooks.js';
 import { useToast } from '../../lib/toast.js';
 import { money, formatEventDate } from '../../lib/format.js';
 import type { Application } from '../../lib/types.js';
@@ -49,10 +54,15 @@ export default function Applications(): React.JSX.Element {
     return b.usher.completedJobsCount - a.usher.completedJobsCount;
   });
   // Highlight the strongest pick when there's a real choice to make.
-  const topId = list.length > 1 && list[0].status !== 'REJECTED' && list[0].usher.ratingAvg > 0 ? list[0].id : null;
-  const slots = event.data?.headcount ?? 0;
+  const topId =
+    list.length > 1 && list[0].status !== 'REJECTED' && list[0].usher.ratingAvg > 0
+      ? list[0].id
+      : null;
+  const slots = event.data?.staffing?.available ?? 0;
+  const eligible = (a: Application) => !a.booking && !['REJECTED', 'WITHDRAWN'].includes(a.status);
+  const isSelected = (a: Application) => eligible(a) && (selected[a.id] ?? a.status === 'ACCEPTED');
   const perHead = event.data?.budgetPerHead ?? 0;
-  const selectedIds = list.filter((a) => selected[a.id]).map((a) => a.id);
+  const selectedIds = list.filter(isSelected).map((a) => a.id);
   const count = selectedIds.length;
 
   const openProfile = (usherId: string): void =>
@@ -60,7 +70,10 @@ export default function Applications(): React.JSX.Element {
 
   const setStatus = (appId: string, status: 'SHORTLISTED' | 'REJECTED'): void => {
     if (status === 'REJECTED') setSelected((s) => ({ ...s, [appId]: false }));
-    patch.mutate({ id: appId, status });
+    patch.mutate(
+      { id: appId, status },
+      { onError: (e) => toast.error(e instanceof Error ? e.message : 'Please try again.') },
+    );
   };
 
   const confirm = async (): Promise<void> => {
@@ -68,13 +81,16 @@ export default function Applications(): React.JSX.Element {
       router.push({ pathname: '/(modals)/payment-summary', params: { id: eventId } });
       return;
     }
-    if (count === 0) return;
+    if (count === 0 || count > slots) return;
     setBusy(true);
     try {
       for (const appId of selectedIds) {
         await patch.mutateAsync({ id: appId, status: 'ACCEPTED' });
       }
-      router.push({ pathname: '/(modals)/payment-summary', params: { id: eventId, apps: selectedIds.join(',') } });
+      router.push({
+        pathname: '/(modals)/payment-summary',
+        params: { id: eventId, apps: selectedIds.join(',') },
+      });
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Please try again.', 'Couldn’t confirm');
     } finally {
@@ -83,10 +99,10 @@ export default function Applications(): React.JSX.Element {
   };
 
   const renderCard = (a: Application, isTop: boolean): React.JSX.Element => {
-    const on = !!selected[a.id];
+    const on = isSelected(a);
     const name = a.usher.displayName ?? 'Usher';
     const verified = a.usher.verificationStatus === 'VERIFIED';
-    const rejected = a.status === 'REJECTED';
+    const rejected = !eligible(a);
     const shortlisted = a.status === 'SHORTLISTED';
 
     return (
@@ -116,16 +132,49 @@ export default function Applications(): React.JSX.Element {
                 </Text>
                 {verified ? <Icon name="check-circle" size={15} color="brandEmerald" /> : null}
                 {isTop && !shortlisted ? (
-                  <Box flexDirection="row" alignItems="center" style={{ gap: 3, backgroundColor: theme.colors.brandEmeraldTint, paddingHorizontal: 8, paddingVertical: 2, borderRadius: theme.borderRadii.pill }}>
+                  <Box
+                    flexDirection="row"
+                    alignItems="center"
+                    style={{
+                      gap: 3,
+                      backgroundColor: theme.colors.brandEmeraldTint,
+                      paddingHorizontal: 8,
+                      paddingVertical: 2,
+                      borderRadius: theme.borderRadii.pill,
+                    }}
+                  >
                     <Icon name="award" size={11} color="brandEmeraldStrong" />
-                    <Text style={{ fontFamily: fonts.sansBold, fontSize: 11, lineHeight: 14, letterSpacing: 0.6 }} color="brandEmeraldStrong">
+                    <Text
+                      style={{
+                        fontFamily: fonts.sansBold,
+                        fontSize: 11,
+                        lineHeight: 14,
+                        letterSpacing: 0.6,
+                      }}
+                      color="brandEmeraldStrong"
+                    >
                       Top rated
                     </Text>
                   </Box>
                 ) : null}
                 {shortlisted ? (
-                  <Box style={{ backgroundColor: theme.colors.accentGoldTint, paddingHorizontal: 8, paddingVertical: 2, borderRadius: theme.borderRadii.pill }}>
-                    <Text style={{ fontFamily: fonts.sansBold, fontSize: 11, lineHeight: 14, letterSpacing: 1 }} color="accentGoldStrong">
+                  <Box
+                    style={{
+                      backgroundColor: theme.colors.accentGoldTint,
+                      paddingHorizontal: 8,
+                      paddingVertical: 2,
+                      borderRadius: theme.borderRadii.pill,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontFamily: fonts.sansBold,
+                        fontSize: 11,
+                        lineHeight: 14,
+                        letterSpacing: 1,
+                      }}
+                      color="accentGoldStrong"
+                    >
                       Shortlisted
                     </Text>
                   </Box>
@@ -135,14 +184,16 @@ export default function Applications(): React.JSX.Element {
                 <Icon name="star" size={14} color="accentGold" />
                 <Text variant="bodySm" color="inkMuted">
                   {a.usher.ratingAvg.toFixed(1)} · {a.usher.completedJobsCount} jobs
-                  {a.usher.yearsExperience > 0 ? ` · ${a.usher.yearsExperience}y exp` : ''} · {money(perHead)}
+                  {a.usher.yearsExperience > 0 ? ` · ${a.usher.yearsExperience}y exp` : ''} ·{' '}
+                  {money(perHead)}
                 </Text>
               </Box>
             </Box>
           </Pressable>
           {!rejected ? (
             <Pressable
-              onPress={() => setSelected((s) => ({ ...s, [a.id]: !s[a.id] }))}
+              onPress={() => setSelected((s) => ({ ...s, [a.id]: !on }))}
+              disabled={busy || patch.isPending || (!on && count >= slots)}
               hitSlop={8}
               accessibilityRole="checkbox"
               accessibilityLabel={`Select ${name}`}
@@ -164,17 +215,43 @@ export default function Applications(): React.JSX.Element {
               </Box>
             </Pressable>
           ) : (
-            <Text variant="labelSm" color="statusDanger">Rejected</Text>
+            <Text variant="labelSm" color="statusDanger">
+              {a.booking
+                ? a.booking.status === 'PENDING_PAYMENT'
+                  ? 'Payment pending'
+                  : 'Booked'
+                : a.status === 'WITHDRAWN'
+                  ? 'Withdrawn'
+                  : 'Rejected'}
+            </Text>
           )}
         </Box>
 
         {!rejected ? (
           <Box flexDirection="row" style={{ gap: 8 }}>
-            <Button label="View profile" variant="secondary" size="md" fullWidth={false} onPress={() => openProfile(a.usher.id)} />
+            <Button
+              label="View profile"
+              variant="secondary"
+              size="md"
+              fullWidth={false}
+              onPress={() => openProfile(a.usher.id)}
+            />
             {!shortlisted ? (
-              <Button label="Shortlist" variant="ghost" size="md" fullWidth={false} onPress={() => setStatus(a.id, 'SHORTLISTED')} />
+              <Button
+                label="Shortlist"
+                variant="ghost"
+                size="md"
+                fullWidth={false}
+                onPress={() => setStatus(a.id, 'SHORTLISTED')}
+              />
             ) : null}
-            <Button label="Reject" variant="ghost" size="md" fullWidth={false} onPress={() => setStatus(a.id, 'REJECTED')} />
+            <Button
+              label="Reject"
+              variant="ghost"
+              size="md"
+              fullWidth={false}
+              onPress={() => setStatus(a.id, 'REJECTED')}
+            />
           </Box>
         ) : null}
       </Box>
@@ -188,9 +265,12 @@ export default function Applications(): React.JSX.Element {
         {/* event context */}
         {event.data ? (
           <Box style={{ gap: 2, marginBottom: 12 }}>
-            <Text variant="headingS" numberOfLines={1}>{event.data.title}</Text>
+            <Text variant="headingS" numberOfLines={1}>
+              {event.data.title}
+            </Text>
             <Text variant="bodySm" color="inkMuted">
-              {formatEventDate(event.data.eventDate)} · {slots} {slots === 1 ? 'usher' : 'ushers'} needed
+              {formatEventDate(event.data.eventDate)} · {slots} {slots === 1 ? 'usher' : 'ushers'}{' '}
+              needed
             </Text>
           </Box>
         ) : null}
@@ -206,11 +286,13 @@ export default function Applications(): React.JSX.Element {
         >
           <Box flexDirection="row" alignItems="center" style={{ gap: 8 }}>
             <Icon name="check" size={18} color="brandEmerald" />
-          <Text variant="labelLg" color="brandEmerald">
+            <Text variant="labelLg" color="brandEmerald">
               {count} of {slots} open slots selected
             </Text>
           </Box>
-          <Text variant="bodySm" color="inkMuted">Tap to choose</Text>
+          <Text variant="bodySm" color="inkMuted">
+            Tap to choose
+          </Text>
         </Box>
 
         {apps.isLoading ? (
@@ -240,15 +322,33 @@ export default function Applications(): React.JSX.Element {
             />
           </Box>
         ) : (
-          <Box style={{ gap: 12 }}>{list.map((a) => <Box key={a.id}>{renderCard(a, a.id === topId)}</Box>)}</Box>
+          <Box style={{ gap: 12 }}>
+            {list.map((a) => (
+              <Box key={a.id}>{renderCard(a, a.id === topId)}</Box>
+            ))}
+          </Box>
         )}
 
         <Box style={{ flex: 1, minHeight: 16 }} />
         <Box style={{ gap: 8, paddingBottom: insets.bottom }}>
           <Button
-            label={busy ? 'Confirming…' : savedCheckout.data ? 'Resume saved checkout' : `Pay & confirm · ${money(perHead * count)}`}
-            disabled={busy || savedCheckout.isLoading || savedCheckout.isError || (!savedCheckout.data && count === 0)}
-            onPress={() => { void confirm(); }}
+            label={
+              busy
+                ? 'Confirming…'
+                : savedCheckout.data
+                  ? 'Resume saved checkout'
+                  : `Pay & confirm · ${money(perHead * count)}`
+            }
+            disabled={
+              busy ||
+              savedCheckout.isLoading ||
+              savedCheckout.isError ||
+              (!savedCheckout.data &&
+                (count === 0 || count > slots || event.isError || event.isLoading))
+            }
+            onPress={() => {
+              void confirm();
+            }}
           />
           <Text variant="bodySm" color="inkFaint" style={{ textAlign: 'center' }}>
             {count} {count === 1 ? 'usher' : 'ushers'} · funds held safely until check-in

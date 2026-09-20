@@ -4,9 +4,15 @@
  * vs inbound is decided by the signed-in user id. The API flags messages that
  * leak contact details (off-platform coordination).
  */
-import { useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, TextInput } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
+import { Image } from 'expo-image';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '../../lib/query.js';
+import { api } from '../../lib/client.js';
+import { pickImageAsset, uploadChatPhoto } from '../../lib/upload.js';
+import { useToast } from '../../lib/toast.js';
+import { AppState, KeyboardAvoidingView, Platform, ScrollView, TextInput } from 'react-native';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, Box, Text } from '../../theme/restyle.js';
 import { fonts } from '../../theme/fonts.js';
@@ -28,10 +34,17 @@ export default function MessageThread(): React.JSX.Element {
   const { booking } = useLocalSearchParams<{ booking: string }>();
   const bookingId = booking ?? '';
   const messages = useBookingMessages(bookingId);
+  const qc = useQueryClient();
   const send = useSendMessage(bookingId);
   const detail = useBooking(bookingId);
   const { user } = useAuth();
   const [text, setText] = useState('');
+  const toast = useToast();
+  const [uploading, setUploading] = useState(false);
+  const canSend =
+    !!detail.data &&
+    !detail.isError &&
+    ['CONFIRMED', 'CHECKED_IN', 'COMPLETED', 'PAID', 'DISPUTED'].includes(detail.data.status);
   const nextId = useRef(0);
   const [failed, setFailed] = useState<Array<{ id: number; body: string }>>([]);
   const [pendingBody, setPendingBody] = useState<string | null>(null);
@@ -39,7 +52,7 @@ export default function MessageThread(): React.JSX.Element {
   const isUsher = user?.role === 'USHER';
   const counterparty = isUsher
     ? detail.data?.event?.client?.displayName
-    : (detail.data?.usher?.displayName ?? detail.data?.usher?.user.phone);
+    : (detail.data?.usher?.displayName ?? detail.data?.usher?.user?.phone);
   const ev = detail.data?.event;
   const headerName = counterparty ?? ev?.title ?? `Booking · ${bookingId.slice(0, 6)}`;
   const headerSub = ev?.title ?? 'Coordination chat';
@@ -48,7 +61,7 @@ export default function MessageThread(): React.JSX.Element {
     : null;
 
   const sendBody = (body: string, retryId?: number): void => {
-    if (send.isPending) return;
+    if (send.isPending || !canSend) return;
     const id = retryId ?? ++nextId.current;
     setPendingBody(body);
     send.mutate(body, {
@@ -68,6 +81,35 @@ export default function MessageThread(): React.JSX.Element {
   };
 
   const list = messages.data ?? [];
+  const lastInbound = list.filter((m) => m.senderId !== user?.id && !m.seenAt).at(-1)?.id;
+  useFocusEffect(
+    useCallback(() => {
+      const markRead = () => {
+        if (lastInbound && AppState.currentState === 'active')
+          void api
+            .post(`/api/bookings/${bookingId}/messages/seen`, { upToMessageId: lastInbound })
+            .then(() => qc.invalidateQueries({ queryKey: queryKeys.bookings }))
+            .catch(() => undefined);
+      };
+      markRead();
+      const subscription = AppState.addEventListener('change', markRead);
+      return () => subscription.remove();
+    }, [bookingId, lastInbound, qc]),
+  );
+  const sendPhoto = async (): Promise<void> => {
+    if (!canSend || uploading || send.isPending) return;
+    setUploading(true);
+    try {
+      const asset = await pickImageAsset('library');
+      if (!asset) return;
+      const content = await uploadChatPhoto(bookingId, asset);
+      await send.mutateAsync({ content, contentType: 'IMAGE' });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Couldn’t send photo.');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
     <Box flex={1} backgroundColor="bgCanvas" style={{ paddingTop: insets.top }}>
@@ -213,16 +255,20 @@ export default function MessageThread(): React.JSX.Element {
                         borderBottomRightRadius: mine ? 6 : 16,
                       }}
                     >
-                      <Text variant="body" color={mine ? 'inverseInk' : 'inkDefault'}>
-                        {m.content}
-                      </Text>
+                      {m.contentType === 'TEXT' ? (
+                        <Text variant="body" color={mine ? 'inverseInk' : 'inkDefault'}>
+                          {m.content}
+                        </Text>
+                      ) : (
+                        <ChatMedia bookingId={bookingId} messageId={m.id} type={m.contentType} />
+                      )}
                       {m.flagged ? (
                         <Text
                           variant="bodySm"
                           color={mine ? 'brandEmeraldTint' : 'statusWarning'}
                           style={{ marginTop: 4 }}
                         >
-                          ⚠ Contact details are hidden
+                          Keep contact and payment on HireQuick.
                         </Text>
                       ) : null}
                     </Box>
@@ -232,6 +278,7 @@ export default function MessageThread(): React.JSX.Element {
                       style={{ alignSelf: mine ? 'flex-end' : 'flex-start', paddingHorizontal: 4 }}
                     >
                       {formatTime(m.createdAt)}
+                      {mine && m.seenAt ? ' · Read' : ''}
                     </Text>
                   </Box>,
                 );
@@ -259,13 +306,31 @@ export default function MessageThread(): React.JSX.Element {
                   label="Retry this message"
                   variant="secondary"
                   size="md"
-                  disabled={send.isPending}
+                  disabled={send.isPending || !canSend || uploading}
                   onPress={() => sendBody(item.body, item.id)}
                 />
               </Box>
             ))}
           </ScrollView>
         ) : null}
+        {!canSend ? (
+          <Box padding="400">
+            <Text variant="bodySm" color="inkMuted">
+              {detail.isError
+                ? 'Reload booking details before sending a message.'
+                : 'This conversation is read-only.'}
+            </Text>
+          </Box>
+        ) : (
+          <Button
+            label={uploading ? 'Sending photo…' : 'Share photo'}
+            variant="ghost"
+            disabled={uploading || send.isPending}
+            onPress={() => {
+              void sendPhoto();
+            }}
+          />
+        )}
         {/* composer */}
         <Box
           flexDirection="row"
@@ -286,6 +351,8 @@ export default function MessageThread(): React.JSX.Element {
             style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 16 }}
           >
             <TextInput
+              editable={canSend}
+              maxLength={2000}
               accessibilityLabel="Message"
               value={text}
               onChangeText={setText}
@@ -304,7 +371,7 @@ export default function MessageThread(): React.JSX.Element {
           </Box>
           <AnimatedPressable
             onPress={onSend}
-            disabled={send.isPending}
+            disabled={send.isPending || !canSend || uploading}
             accessibilityRole="button"
             accessibilityLabel="Send message"
           >
@@ -325,5 +392,43 @@ export default function MessageThread(): React.JSX.Element {
         </Box>
       </KeyboardAvoidingView>
     </Box>
+  );
+}
+
+function ChatMedia({
+  bookingId,
+  messageId,
+  type,
+}: {
+  bookingId: string;
+  messageId: string;
+  type: string;
+}): React.JSX.Element {
+  const query = useQuery({
+    queryKey: ['chatMedia', bookingId, messageId],
+    queryFn: () =>
+      api.get<{ url: string }>(`/api/bookings/${bookingId}/messages/${messageId}/media-url`),
+    staleTime: 60_000,
+  });
+  if (query.isError)
+    return (
+      <Button
+        label="Retry attachment"
+        variant="secondary"
+        onPress={() => {
+          void query.refetch();
+        }}
+      />
+    );
+  if (!query.data) return <Text variant="bodySm">Loading attachment…</Text>;
+  return type === 'IMAGE' ? (
+    <Image
+      source={{ uri: query.data.url }}
+      style={{ width: 200, height: 200 }}
+      contentFit="contain"
+      accessibilityLabel="Photo shared in this booking"
+    />
+  ) : (
+    <Text variant="bodySm">Voice attachment — contact support to access this recording.</Text>
   );
 }

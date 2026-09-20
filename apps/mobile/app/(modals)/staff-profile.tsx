@@ -27,8 +27,18 @@ import { shortDate, money } from '../../lib/format.js';
 function Pill({ label }: { label: string }) {
   const theme = useTheme();
   return (
-    <Box style={{ backgroundColor: theme.colors.bgSubtle, paddingHorizontal: 12, paddingVertical: 6, borderRadius: theme.borderRadii.pill }}>
-      <Text style={{ fontFamily: fonts.sansSemibold, fontSize: 13, lineHeight: 16, letterSpacing: 0.2 }} color="inkDefault">
+    <Box
+      style={{
+        backgroundColor: theme.colors.bgSubtle,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: theme.borderRadii.pill,
+      }}
+    >
+      <Text
+        style={{ fontFamily: fonts.sansSemibold, fontSize: 13, lineHeight: 16, letterSpacing: 0.2 }}
+        color="inkDefault"
+      >
         {label}
       </Text>
     </Box>
@@ -39,7 +49,10 @@ function Pill({ label }: { label: string }) {
 function RatingBreakdown({ ratings, avg }: { ratings: number[]; avg: number }) {
   const theme = useTheme();
   const total = ratings.length;
-  const rows = [5, 4, 3, 2, 1].map((star) => ({ star, n: ratings.filter((r) => Math.round(r) === star).length }));
+  const rows = [5, 4, 3, 2, 1].map((star) => ({
+    star,
+    n: ratings.filter((r) => Math.round(r) === star).length,
+  }));
   return (
     <Box
       flexDirection="row"
@@ -51,22 +64,50 @@ function RatingBreakdown({ ratings, avg }: { ratings: number[]; avg: number }) {
       style={{ gap: 16 }}
     >
       <Box alignItems="center" justifyContent="center" style={{ gap: 4, minWidth: 64 }}>
-        <Text variant="display" color="inkStrong">{avg.toFixed(1)}</Text>
+        <Text variant="display" color="inkStrong">
+          {avg.toFixed(1)}
+        </Text>
         <Box flexDirection="row" style={{ gap: 2 }}>
           {[1, 2, 3, 4, 5].map((i) => (
-            <Icon key={i} name="star" size={12} color={i <= Math.round(avg) ? 'accentGold' : 'borderStrong'} />
+            <Icon
+              key={i}
+              name="star"
+              size={12}
+              color={i <= Math.round(avg) ? 'accentGold' : 'borderStrong'}
+            />
           ))}
         </Box>
-        <Text variant="bodySm" color="inkMuted">{total} review{total === 1 ? '' : 's'}</Text>
+        <Text variant="bodySm" color="inkMuted">
+          {total} review{total === 1 ? '' : 's'}
+        </Text>
       </Box>
       <Box flex={1} justifyContent="center" style={{ gap: 6 }}>
         {rows.map(({ star, n }) => (
           <Box key={star} flexDirection="row" alignItems="center" style={{ gap: 8 }}>
-            <Text variant="labelSm" color="inkMuted" style={{ width: 8 }}>{star}</Text>
-            <Box flex={1} style={{ height: 6, borderRadius: 999, backgroundColor: theme.colors.bgInset, overflow: 'hidden' }}>
-              <Box style={{ height: 6, borderRadius: 999, width: `${total ? (n / total) * 100 : 0}%`, backgroundColor: theme.colors.accentGold }} />
+            <Text variant="labelSm" color="inkMuted" style={{ width: 8 }}>
+              {star}
+            </Text>
+            <Box
+              flex={1}
+              style={{
+                height: 6,
+                borderRadius: 999,
+                backgroundColor: theme.colors.bgInset,
+                overflow: 'hidden',
+              }}
+            >
+              <Box
+                style={{
+                  height: 6,
+                  borderRadius: 999,
+                  width: `${total ? (n / total) * 100 : 0}%`,
+                  backgroundColor: theme.colors.accentGold,
+                }}
+              />
             </Box>
-            <Text variant="labelSm" color="inkMuted" style={{ width: 18, textAlign: 'right' }}>{n}</Text>
+            <Text variant="labelSm" color="inkMuted" style={{ width: 18, textAlign: 'right' }}>
+              {n}
+            </Text>
           </Box>
         ))}
       </Box>
@@ -93,7 +134,12 @@ function PortfolioCarousel({ photos }: { photos: { id: string; imageUrl: string 
           <Image
             key={p.id}
             source={{ uri: p.imageUrl }}
-            style={{ width, height: 240, borderRadius: theme.borderRadii.lg, backgroundColor: theme.colors.bgSubtle }}
+            style={{
+              width,
+              height: 240,
+              borderRadius: theme.borderRadii.lg,
+              backgroundColor: theme.colors.bgSubtle,
+            }}
             contentFit="cover"
             cachePolicy="memory-disk"
             transition={150}
@@ -131,8 +177,7 @@ export default function StaffProfile(): React.JSX.Element {
   const toast = useToast();
 
   const invite = (): void => {
-    toast.info('Open one of your events to invite this usher.', 'Invite to an event');
-    router.back();
+    router.push({ pathname: '/(modals)/invite-staff', params: { usher: id } });
   };
 
   if (usher.isLoading) {
@@ -170,19 +215,38 @@ export default function StaffProfile(): React.JSX.Element {
   // "Message" opens the most recent thread we already share with this usher; if
   // none exists yet, nudge the client to invite them (a thread exists once a
   // booking does).
-  const existingThread = (bookings.data ?? []).find((b) => b.usherId === (id ?? ''));
+  const existingThread = (bookings.data ?? []).find(
+    (b) =>
+      b.usherId === (id ?? '') &&
+      [
+        'CONFIRMED',
+        'CHECKED_IN',
+        'COMPLETED',
+        'PAID',
+        'DISPUTED',
+        'CANCELLED',
+        'REFUNDED',
+        'NO_SHOW',
+      ].includes(b.status),
+  );
   const message = (): void => {
     if (existingThread) {
       router.push({ pathname: '/(modals)/message-thread', params: { booking: existingThread.id } });
       return;
     }
-    toast.info(`You can message ${name} once they've accepted an invite to one of your events.`, 'No booking yet');
+    toast.info(
+      `You can message ${name} once their booking is confirmed by payment.`,
+      'No booking yet',
+    );
   };
 
   return (
     <Box flex={1} backgroundColor="bgCanvas">
       <AppBar showBack inset />
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 24, gap: 24 }} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 24, gap: 24 }}
+        showsVerticalScrollIndicator={false}
+      >
         {/* identity */}
         <Box alignItems="center" style={{ gap: 12 }}>
           <Avatar name={name} size={96} imageUrl={u.avatarUrl} />
@@ -195,9 +259,15 @@ export default function StaffProfile(): React.JSX.Element {
             <Text variant="labelLg" color="inkStrong">
               {u.ratingAvg.toFixed(1)}
             </Text>
-            <Text variant="bodyLg" color="inkFaint">·</Text>
-            <Text variant="bodyLg" color="inkMuted">{u.completedJobsCount} jobs</Text>
-            <Text variant="bodyLg" color="inkFaint">·</Text>
+            <Text variant="bodyLg" color="inkFaint">
+              ·
+            </Text>
+            <Text variant="bodyLg" color="inkMuted">
+              {u.completedJobsCount} jobs
+            </Text>
+            <Text variant="bodyLg" color="inkFaint">
+              ·
+            </Text>
             <Text variant="label" style={{ fontSize: 13 }} color="statusSuccess">
               {Math.round(u.reliabilityScore)}% reliable
             </Text>
@@ -208,7 +278,9 @@ export default function StaffProfile(): React.JSX.Element {
         {u.bio ? (
           <Box style={{ gap: 8 }}>
             <Text variant="headingS">About</Text>
-            <Text variant="body" color="inkDefault">{u.bio}</Text>
+            <Text variant="body" color="inkDefault">
+              {u.bio}
+            </Text>
           </Box>
         ) : null}
 
@@ -222,7 +294,9 @@ export default function StaffProfile(): React.JSX.Element {
 
         {/* details — experience, base area, indicative rate */}
         <Box style={{ gap: 8 }}>
-          <Text variant="labelSm" color="inkMuted">Details</Text>
+          <Text variant="labelSm" color="inkMuted">
+            Details
+          </Text>
           <Box flexDirection="row" flexWrap="wrap" style={{ gap: 8 }}>
             <Pill label={`${u.yearsExperience} year${u.yearsExperience === 1 ? '' : 's'} exp`} />
             {u.city ? <Pill label={u.city} /> : null}
@@ -233,7 +307,9 @@ export default function StaffProfile(): React.JSX.Element {
         {/* languages */}
         {(u.languages ?? []).length > 0 ? (
           <Box style={{ gap: 8 }}>
-            <Text variant="labelSm" color="inkMuted">Languages</Text>
+            <Text variant="labelSm" color="inkMuted">
+              Languages
+            </Text>
             <Box flexDirection="row" flexWrap="wrap" style={{ gap: 8 }}>
               {(u.languages ?? []).map((lang) => (
                 <Pill key={lang} label={lang} />
@@ -246,12 +322,23 @@ export default function StaffProfile(): React.JSX.Element {
         <Box style={{ gap: 12 }}>
           <SectionHeader title="Reviews" />
           {(reviews.data ?? []).length === 0 ? (
-            <Text variant="bodySm" color="inkMuted">No reviews yet.</Text>
+            <Text variant="bodySm" color="inkMuted">
+              No reviews yet.
+            </Text>
           ) : (
             <>
-              <RatingBreakdown ratings={(reviews.data ?? []).map((r) => r.rating)} avg={u.ratingAvg} />
+              <RatingBreakdown
+                ratings={(reviews.data ?? []).map((r) => r.rating)}
+                avg={u.ratingAvg}
+              />
               {(reviews.data ?? []).map((rv) => (
-                <ReviewCard key={rv.id} name={rv.reviewerName} date={shortDate(rv.createdAt)} comment={rv.comment ?? ''} rating={rv.rating} />
+                <ReviewCard
+                  key={rv.id}
+                  name={rv.reviewerName}
+                  date={shortDate(rv.createdAt)}
+                  comment={rv.comment ?? ''}
+                  rating={rv.rating}
+                />
               ))}
             </>
           )}
@@ -259,7 +346,18 @@ export default function StaffProfile(): React.JSX.Element {
       </ScrollView>
 
       {/* action bar */}
-      <Box flexDirection="row" backgroundColor="bgCanvas" style={{ gap: 12, paddingHorizontal: 20, paddingTop: 16, paddingBottom: insets.bottom + 16, borderTopWidth: 1.5, borderTopColor: theme.colors.borderDefault }}>
+      <Box
+        flexDirection="row"
+        backgroundColor="bgCanvas"
+        style={{
+          gap: 12,
+          paddingHorizontal: 20,
+          paddingTop: 16,
+          paddingBottom: insets.bottom + 16,
+          borderTopWidth: 1.5,
+          borderTopColor: theme.colors.borderDefault,
+        }}
+      >
         <Box flex={1}>
           <Button label="Message" variant="secondary" onPress={message} />
         </Box>

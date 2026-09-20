@@ -6,6 +6,7 @@ const NAV = [
   ['/verifications', 'Verifications'],
   ['/disputes', 'Disputes'],
   ['/approvals', 'Approvals'],
+  ['/bookings', 'Bookings & refunds'],
   ['/ledger', 'Ledger'],
   ['/users', 'Users'],
 ] as const;

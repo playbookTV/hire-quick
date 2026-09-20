@@ -9,6 +9,9 @@ import { createApprovalActions } from '../lib/approval-actions';
 interface Approval {
   id: string;
   kind: string;
+  status: string;
+  checker: { phone: string } | null;
+  updatedAt: string;
   amountKobo: number;
   maker: { phone: string };
   createdAt: string;
@@ -22,8 +25,10 @@ interface Approval {
 }
 
 export function Approvals() {
-  const { data, loading, error, reloadFresh } = useAsync<Approval[]>(() =>
-    api('/api/admin/approvals?status=PENDING'),
+  const [status, setStatus] = useState('PENDING');
+  const { data, loading, error, reloadFresh } = useAsync<Approval[]>(
+    () => api(`/api/admin/approvals?status=${status}`),
+    status,
   );
   const [actions] = useState(() =>
     createApprovalActions(
@@ -83,6 +88,21 @@ export function Approvals() {
         Money moves above the threshold need a second admin. You can&apos;t approve a request you
         made.
       </p>
+      <label className="action-row">
+        Decision status
+        <select
+          value={status}
+          onChange={(e) => {
+            setStatus(e.target.value);
+            setSelected(null);
+          }}
+        >
+          <option value="PENDING">Awaiting second admin</option>
+          <option value="APPROVED">Approved · processing</option>
+          <option value="EXECUTED">Executed</option>
+          <option value="REJECTED">Rejected</option>
+        </select>
+      </label>
       <State loading={loading} error={error} />
       {actionError ? (
         <p role="alert" className="mb-3 text-sm text-red-600">
@@ -102,7 +122,8 @@ export function Approvals() {
             </Btn>
           </div>
           <p>
-            Requested by {selected.maker.phone} · {shortDate(selected.createdAt)}
+            {selected.status} · Requested by {selected.maker.phone} ·{' '}
+            {shortDate(selected.createdAt)}
           </p>
           <p>
             <strong>{naira(selected.amountKobo)}</strong> · Proposed outcome:{' '}
@@ -111,36 +132,54 @@ export function Approvals() {
           <p className="whitespace-pre-wrap">
             {selected.payload.resolution ?? selected.payload.reason ?? 'No rationale supplied.'}
           </p>
+          <p>
+            {selected.checker
+              ? `Decision by ${selected.checker.phone} · ${shortDate(selected.updatedAt)}`
+              : 'Awaiting a checker decision'}
+          </p>
+          {selected.status === 'APPROVED' ? (
+            <p className="notice">
+              Approved and processing. Execution is not yet complete. Reload to check the outcome.
+            </p>
+          ) : null}
+          {selected.status === 'REJECTED' ? (
+            <p className="notice">
+              Rejected. Dispute proposals can be revised from the open case once no other proposal
+              is pending.
+            </p>
+          ) : null}
           {selected.payload.bookingId ? (
             <BookingReview key={selected.id} id={selected.payload.bookingId}>
-              {() => (
-                <>
-                  <label className="action-row">
-                    <input
-                      type="checkbox"
-                      checked={reviewed}
-                      onChange={(e) => setReviewed(e.target.checked)}
-                      disabled={actions.disabled(selected.id)}
-                    />{' '}
-                    I have reviewed the case, amount, and proposed outcome.
-                  </label>
-                  <div className="action-row">
-                    <Btn
-                      disabled={!reviewed || loading || !!error || actions.disabled(selected.id)}
-                      onClick={() => void decide(selected.id, 'approve')}
-                    >
-                      Approve proposed action
-                    </Btn>
-                    <Btn
-                      disabled={!reviewed || loading || !!error || actions.disabled(selected.id)}
-                      variant="danger"
-                      onClick={() => void decide(selected.id, 'reject')}
-                    >
-                      Reject proposed action
-                    </Btn>
-                  </div>
-                </>
-              )}
+              {() =>
+                selected.status === 'PENDING' ? (
+                  <>
+                    <label className="action-row">
+                      <input
+                        type="checkbox"
+                        checked={reviewed}
+                        onChange={(e) => setReviewed(e.target.checked)}
+                        disabled={actions.disabled(selected.id)}
+                      />{' '}
+                      I have reviewed the case, amount, and proposed outcome.
+                    </label>
+                    <div className="action-row">
+                      <Btn
+                        disabled={!reviewed || loading || !!error || actions.disabled(selected.id)}
+                        onClick={() => void decide(selected.id, 'approve')}
+                      >
+                        Approve proposed action
+                      </Btn>
+                      <Btn
+                        disabled={!reviewed || loading || !!error || actions.disabled(selected.id)}
+                        variant="danger"
+                        onClick={() => void decide(selected.id, 'reject')}
+                      >
+                        Reject proposed action
+                      </Btn>
+                    </div>
+                  </>
+                ) : null
+              }
             </BookingReview>
           ) : (
             <p role="alert" className="notice notice-error">
@@ -149,11 +188,14 @@ export function Approvals() {
           )}
         </ReviewPanel>
       )}
-      <Table head={['Kind', 'Amount', 'Requested by', 'Actions']}>
+      <Table head={['Kind', 'Amount', 'Status', 'Requested by', 'Actions']}>
         {(data ?? []).map((a) => (
           <tr key={a.id}>
             <td className="px-4 py-2">{a.kind}</td>
             <td className="px-4 py-2">{naira(a.amountKobo)}</td>
+            <td className="px-4 py-2">
+              {a.status === 'APPROVED' ? 'Approved · processing' : a.status}
+            </td>
             <td className="px-4 py-2">{a.maker.phone}</td>
             <td className="space-x-2 px-4 py-2">
               <Btn
@@ -171,8 +213,8 @@ export function Approvals() {
         ))}
         {data && data.length === 0 && (
           <tr>
-            <td className="px-4 py-3 muted" colSpan={4}>
-              Nothing awaiting a second admin.
+            <td className="px-4 py-3 muted" colSpan={5}>
+              No records with this status.
             </td>
           </tr>
         )}

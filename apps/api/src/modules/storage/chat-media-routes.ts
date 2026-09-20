@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '@hq/database';
 import { ApiError } from '../../app.js';
 import { requireAuth, type AuthedRequest } from '../auth/middleware.js';
-import { assertMessageableParty } from '../../realtime/messages.js';
+import { assertMessageableParty, loadBookingParties, isParty } from '../../realtime/messages.js';
 import { authorizedChatMediaKey, chatMediaKey, CHAT_MEDIA_MIME_TYPES } from './chat-media.js';
 import type { StoragePort } from './storage.js';
 
@@ -37,7 +37,9 @@ export function chatMediaRouter(storage?: StoragePort): Router {
     '/bookings/:id/messages/:messageId/media-url',
     wrap(async (req, res) => {
       const { id, messageId } = routeIds.parse(req.params);
-      const parties = await assertMessageableParty(id, req.auth.userId);
+      const parties = await loadBookingParties(id);
+      if (!isParty(parties, req.auth.userId))
+        throw new ApiError(403, 'FORBIDDEN', 'not a party to this booking');
       if (!storage) throw new ApiError(503, 'STORAGE_UNAVAILABLE', 'chat storage not configured');
       const message = await prisma.message.findFirst({
         where: { id: messageId!, conversation: { bookingId: id } },

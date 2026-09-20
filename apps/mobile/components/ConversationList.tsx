@@ -4,8 +4,9 @@
  * confirmed-or-later bookings (`useBookings`). Tapping opens the booking thread.
  * It reads the role from auth, so the same component serves both sides.
  */
+import { useCallback } from 'react';
 import { ScrollView, RefreshControl } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, Box, Text } from '../theme/restyle.js';
 import { Avatar } from './Avatar.js';
@@ -16,7 +17,16 @@ import { AnimatedPressable } from './Pressable.js';
 import { useBookings } from '../lib/hooks.js';
 import { useAuth } from '../lib/auth-context.js';
 
-const CHATTABLE = new Set(['CONFIRMED', 'CHECKED_IN', 'COMPLETED', 'PAID', 'DISPUTED']);
+const CHATTABLE = new Set([
+  'CONFIRMED',
+  'CHECKED_IN',
+  'COMPLETED',
+  'PAID',
+  'DISPUTED',
+  'CANCELLED',
+  'REFUNDED',
+  'NO_SHOW',
+]);
 
 export function ConversationList(): React.JSX.Element {
   const router = useRouter();
@@ -25,6 +35,12 @@ export function ConversationList(): React.JSX.Element {
   const { user } = useAuth();
   const isUsher = user?.role === 'USHER';
   const bookings = useBookings();
+  const { refetch } = bookings;
+  useFocusEffect(
+    useCallback(() => {
+      void refetch();
+    }, [refetch]),
+  );
   const threads = (bookings.data ?? []).filter((b) => CHATTABLE.has(b.status));
 
   return (
@@ -75,7 +91,7 @@ export function ConversationList(): React.JSX.Element {
             {threads.map((b, i) => {
               const counterparty = isUsher
                 ? b.event?.client?.displayName
-                : (b.usher?.displayName ?? b.usher?.user.phone);
+                : (b.usher?.displayName ?? b.usher?.user?.phone);
               const title = counterparty ?? b.event?.title ?? `Booking · ${b.id.slice(0, 6)}`;
               return (
                 <AnimatedPressable
@@ -84,7 +100,7 @@ export function ConversationList(): React.JSX.Element {
                     router.push({ pathname: '/(modals)/message-thread', params: { booking: b.id } })
                   }
                   accessibilityRole="button"
-                  accessibilityLabel={`Open chat with ${title}`}
+                  accessibilityLabel={`Open chat with ${title}${b.unreadCount ? `, ${b.unreadCount} unread messages` : ''}`}
                 >
                   <Box
                     flexDirection="row"
@@ -104,6 +120,11 @@ export function ConversationList(): React.JSX.Element {
                       <Text variant="bodySm" color="inkMuted" numberOfLines={1}>
                         {b.event?.title ?? 'Booking'}
                       </Text>
+                      {b.unreadCount ? (
+                        <Text variant="label" color="brandEmerald">
+                          {b.unreadCount} unread
+                        </Text>
+                      ) : null}
                     </Box>
                     <StatusPill status={b.status} />
                   </Box>

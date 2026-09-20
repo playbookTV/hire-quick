@@ -45,7 +45,7 @@ function RosterRow({
   const toast = useToast();
   const checkedIn = booking.status === 'CHECKED_IN';
   const paid = booking.status === 'PAID';
-  const name = booking.usher?.displayName ?? booking.usher?.user.phone ?? 'Usher';
+  const name = booking.usher?.displayName ?? booking.usher?.user?.phone ?? 'Usher';
   // REL-H1: Replace native Alert.alert with a designed inline confirmation.
   // Alert couldn’t be disabled while isPending, making double-tap possible;
   // this state also uses the danger variant so the action’s weight is clear.
@@ -299,20 +299,38 @@ export default function EventDay(): React.JSX.Element {
           ) : (
             <Box style={{ gap: 8 }}>
               {roster.map((b) => (
-                <RosterRow
-                  key={b.id}
-                  booking={b}
-                  onCode={setLastCode}
-                  onRate={(bid) =>
-                    router.push({
-                      pathname: '/(modals)/rate-staff',
-                      params: { booking: bid, name: 'your usher' },
-                    })
-                  }
-                  onCancel={(bid) =>
-                    router.push({ pathname: '/(modals)/cancellation', params: { booking: bid } })
-                  }
-                />
+                <Box key={b.id} style={{ gap: 8 }}>
+                  {b.arrivalAssertedAt && !b.checkedInAt ? (
+                    <Text variant="bodySm" color="inkMuted">
+                      Arrival reported {new Date(b.arrivalAssertedAt).toLocaleString()}. Verify
+                      attendance or report a problem before automatic completion.
+                    </Text>
+                  ) : null}
+                  <RosterRow
+                    key={b.id}
+                    booking={b}
+                    onCode={setLastCode}
+                    onRate={(bid) =>
+                      router.push({
+                        pathname: '/(modals)/rate-staff',
+                        params: { booking: bid, name: 'your usher' },
+                      })
+                    }
+                    onCancel={(bid) =>
+                      router.push({ pathname: '/(modals)/cancellation', params: { booking: bid } })
+                    }
+                  />
+                  <Button
+                    label="Booking details & report a problem"
+                    variant="ghost"
+                    onPress={() =>
+                      router.push({
+                        pathname: '/(modals)/booking-details',
+                        params: { booking: b.id },
+                      })
+                    }
+                  />
+                </Box>
               ))}
             </Box>
           )}
@@ -322,7 +340,8 @@ export default function EventDay(): React.JSX.Element {
         <Box style={{ gap: 8 }}>
           <Button label="Done" variant="secondary" onPress={() => router.back()} />
           <Text variant="bodySm" color="inkFaint" style={{ textAlign: 'center' }}>
-            Auto-completes 60 min after the event ends
+            Bookings with verified attendance or reported arrival can complete automatically 60 min
+            after the event ends, unless a dispute is open.
           </Text>
         </Box>
       </Screen>

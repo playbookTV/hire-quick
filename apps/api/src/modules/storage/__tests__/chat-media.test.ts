@@ -118,6 +118,24 @@ describe('authorized chat-media routes, messages and retention', () => {
         .set('Authorization', `Bearer ${f.token}`)
         .send({ contentType: type, content: key });
       expect(sent.status).toBe(201);
+      const inbox = await request(app)
+        .get('/api/bookings')
+        .set('Authorization', `Bearer ${f.usherToken}`);
+      expect(inbox.status).toBe(200);
+      expect(inbox.body).toEqual(
+        expect.arrayContaining([expect.objectContaining({ id: f.bookingId, unreadCount: 1 })]),
+      );
+      const seen = await request(app)
+        .post(`/api/bookings/${f.bookingId}/messages/seen`)
+        .set('Authorization', `Bearer ${f.usherToken}`)
+        .send({ upToMessageId: sent.body.id });
+      expect(seen.status).toBe(200);
+      const readInbox = await request(app)
+        .get('/api/bookings')
+        .set('Authorization', `Bearer ${f.usherToken}`);
+      expect(readInbox.body).toEqual(
+        expect.arrayContaining([expect.objectContaining({ id: f.bookingId, unreadCount: 0 })]),
+      );
       const response = await request(app)
         .get(`/api/bookings/${f.bookingId}/messages/${sent.body.id}/media-url`)
         .set('Authorization', `Bearer ${f.usherToken}`);
@@ -227,7 +245,7 @@ describe('authorized chat-media routes, messages and retention', () => {
     ).toBe(503);
     expect(storage.presignUpload).not.toHaveBeenCalled();
   });
-  it('does not presign malicious legacy content or another conversation’s message', async () => {
+  it('rejects unsafe references while keeping owned archived media readable and uploads locked', async () => {
     const f = await fixture();
     const other = await fixture();
     const legacy = await prisma.message.create({
@@ -263,6 +281,7 @@ describe('authorized chat-media routes, messages and retention', () => {
       .get(`/api/bookings/${f.bookingId}/messages`)
       .set('Authorization', `Bearer ${f.token}`);
     expect(history.body[0].content).toBe('');
+    expect(storage.presignDownload).not.toHaveBeenCalled();
     await prisma.booking.update({ where: { id: other.bookingId }, data: { status: 'CANCELLED' } });
     expect(
       (
@@ -270,8 +289,18 @@ describe('authorized chat-media routes, messages and retention', () => {
           .get(`/api/bookings/${other.bookingId}/messages/${good.id}/media-url`)
           .set('Authorization', `Bearer ${other.token}`)
       ).status,
+    ).toBe(200);
+    expect(storage.presignDownload).toHaveBeenCalledTimes(1);
+    expect(storage.presignDownload).toHaveBeenCalledWith(good.content);
+    expect(
+      (
+        await request(app)
+          .post(`/api/bookings/${other.bookingId}/media/upload-url`)
+          .set('Authorization', `Bearer ${other.token}`)
+          .send({ contentType: 'IMAGE', mimeType: 'image/png' })
+      ).status,
     ).toBe(409);
-    expect(storage.presignDownload).not.toHaveBeenCalled();
+    expect(storage.presignUpload).not.toHaveBeenCalled();
   });
   it('retention deletes only correctly bound objects, skipping malicious legacy references', async () => {
     const f = await fixture(true);

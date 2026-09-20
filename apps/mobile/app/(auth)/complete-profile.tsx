@@ -38,6 +38,12 @@ export default function CompleteProfile(): React.JSX.Element {
   if (status === 'guest' || !user) return <Redirect href="/(auth)/welcome" />;
 
   const isUsher = user.role === 'USHER';
+  if (isUsher)
+    return (
+      <Redirect
+        href={user.usher?.displayName && user.usher.bio ? '/' : '/(verification)/profile-setup'}
+      />
+    );
   const clientNamed = !!user.client?.displayName && user.client.displayName !== user.phone;
   const usherFilled = !!user.usher?.bio;
   if ((isUsher && usherFilled) || (!isUsher && clientNamed)) {

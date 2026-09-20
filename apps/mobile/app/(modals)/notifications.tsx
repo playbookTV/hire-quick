@@ -15,7 +15,11 @@ import { Icon } from '../../components/Icon.js';
 import { AnimatedPressable } from '../../components/Pressable.js';
 import type { IconName } from '../../components/Icon.js';
 import { shadowSm } from '../../theme/shadows.js';
-import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '../../lib/hooks.js';
+import {
+  useNotifications,
+  useMarkNotificationRead,
+  useMarkAllNotificationsRead,
+} from '../../lib/hooks.js';
 import { formatDayLabel } from '../../lib/format.js';
 import type { Notification } from '../../lib/types.js';
 
@@ -49,15 +53,47 @@ function Row({ item, onPress }: Readonly<{ item: Notification; onPress: () => vo
         shadowSm,
       ]}
     >
-      <Box style={{ width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.bgCanvas }}>
-        <Icon name={ICON[item.type] ?? 'bell'} size={18} color={unread ? 'brandEmerald' : 'inkMuted'} />
+      <Box
+        style={{
+          width: 38,
+          height: 38,
+          borderRadius: 19,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: theme.colors.bgCanvas,
+        }}
+      >
+        <Icon
+          name={ICON[item.type] ?? 'bell'}
+          size={18}
+          color={unread ? 'brandEmerald' : 'inkMuted'}
+        />
       </Box>
       <Box flex={1} style={{ gap: 2 }}>
-        <Box flexDirection="row" alignItems="center" justifyContent="space-between" style={{ gap: 8 }}>
-          <Text variant="label" style={{ fontSize: 15, flex: 1 }} color="inkStrong" numberOfLines={1}>
+        <Box
+          flexDirection="row"
+          alignItems="center"
+          justifyContent="space-between"
+          style={{ gap: 8 }}
+        >
+          <Text
+            variant="label"
+            style={{ fontSize: 15, flex: 1 }}
+            color="inkStrong"
+            numberOfLines={1}
+          >
             {item.title}
           </Text>
-          {unread ? <Box style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.brandEmerald }} /> : null}
+          {unread ? (
+            <Box
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: theme.colors.brandEmerald,
+              }}
+            />
+          ) : null}
         </Box>
         <Text variant="bodySm" color="inkMuted" numberOfLines={2}>
           {item.body}
@@ -81,7 +117,11 @@ export default function Notifications(): React.JSX.Element {
 
   const open = (n: Notification): void => {
     if (!n.readAt) markRead.mutate(n.id);
-    if (n.targetType === 'checkout' && n.targetId) {
+    if (n.targetType === 'booking' && n.targetId) {
+      router.push({ pathname: '/(modals)/booking-details', params: { booking: n.targetId } });
+    } else if (n.targetType === 'withdrawal' && n.targetId) {
+      router.push({ pathname: '/(modals)/withdrawal-details', params: { id: n.targetId } });
+    } else if (n.targetType === 'checkout' && n.targetId) {
       router.push({ pathname: '/(modals)/funds-held', params: { order: n.targetId } });
     } else if (n.targetType === 'invitation' && n.targetId) {
       router.push({ pathname: '/(modals)/invitation', params: { id: n.targetId } });
@@ -99,8 +139,15 @@ export default function Notifications(): React.JSX.Element {
         inset
         right={
           data && data.unreadCount > 0 ? (
-            <Pressable onPress={() => markAll.mutate()} hitSlop={8} accessibilityRole="button" accessibilityLabel="Mark all notifications read">
-              <Text variant="label" color="brandEmerald">Mark all read</Text>
+            <Pressable
+              onPress={() => markAll.mutate()}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Mark all notifications read"
+            >
+              <Text variant="label" color="brandEmerald">
+                Mark all read
+              </Text>
             </Pressable>
           ) : undefined
         }
@@ -116,12 +163,23 @@ export default function Notifications(): React.JSX.Element {
           onAction={() => void feed.refetch()}
         />
       ) : rows.length === 0 ? (
-        <EmptyState icon="bell" title="No notifications yet" subtitle="Invitations, bookings and payouts will show up here." />
+        <EmptyState
+          icon="bell"
+          title="No notifications yet"
+          subtitle="Invitations, bookings and payouts will show up here."
+        />
       ) : (
         <ScrollView
-          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 24, gap: 10 }}
+          contentContainerStyle={{
+            paddingHorizontal: 20,
+            paddingTop: 12,
+            paddingBottom: 24,
+            gap: 10,
+          }}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={feed.isFetching} onRefresh={() => void feed.refetch()} />}
+          refreshControl={
+            <RefreshControl refreshing={feed.isFetching} onRefresh={() => void feed.refetch()} />
+          }
         >
           {rows.map((n) => (
             <Row key={n.id} item={n} onPress={() => open(n)} />

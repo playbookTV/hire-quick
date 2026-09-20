@@ -1,10 +1,11 @@
 import { SessionChanged, type SessionStore, type TokenPair } from './session-store.js';
+import { ApiError } from './api-error.js';
 import { assertNotAborted } from './abort.js';
 
 export type AuthState<User> = {
   status: 'loading' | 'authed' | 'guest' | 'unavailable';
   user: User | null;
-  problem: 'restore' | 'logout' | null;
+  problem: 'restore' | 'logout' | 'restricted' | null;
 };
 
 /** Lifecycle coordinator; all user/cache publication is tied to the current login. */
@@ -29,7 +30,8 @@ export function createAuthSession<User>(deps: {
     for (const controller of controllers) controller.abort();
     return operation;
   };
-  const current = (run: number, generation: number): boolean => run === operation && deps.sessions.isCurrent(generation);
+  const current = (run: number, generation: number): boolean =>
+    run === operation && deps.sessions.isCurrent(generation);
   const bounded = async <T>(work: (signal: AbortSignal) => Promise<T>): Promise<T> => {
     const controller = new AbortController();
     controllers.add(controller);
@@ -38,7 +40,10 @@ export function createAuthSession<User>(deps: {
       return await Promise.race([
         work(controller.signal),
         new Promise<never>((_, reject) => {
-          timer = setTimeout(() => { controller.abort(); reject(new Error('Session check timed out')); }, deps.timeoutMs ?? 8000);
+          timer = setTimeout(() => {
+            controller.abort();
+            reject(new Error('Session check timed out'));
+          }, deps.timeoutMs ?? 8000);
         }),
       ]);
     } finally {
@@ -52,13 +57,24 @@ export function createAuthSession<User>(deps: {
   };
   return {
     getSnapshot: () => state,
-    subscribe(this: void, listener: () => void): () => void { listeners.add(listener); return () => { listeners.delete(listener); }; },
-    dispose(this: void): void { cancel(); },
+    subscribe(this: void, listener: () => void): () => void {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    dispose(this: void): void {
+      cancel();
+    },
     invalidated(this: void, generation: number, persistenceFailed: boolean): void {
       if (!deps.sessions.isCurrent(generation)) return;
       cancel();
       deps.publish(null);
-      setState({ status: persistenceFailed ? 'unavailable' : 'guest', user: null, problem: persistenceFailed ? 'logout' : null });
+      setState({
+        status: persistenceFailed ? 'unavailable' : 'guest',
+        user: null,
+        problem: persistenceFailed ? 'logout' : null,
+      });
     },
     async restore(this: void): Promise<void> {
       const run = cancel();
@@ -72,10 +88,17 @@ export function createAuthSession<User>(deps: {
           return snapshot.tokens ? deps.fetchMe(signal) : null;
         });
         if (current(run, generation)) publish(user);
-      } catch {
+      } catch (error) {
         if (current(run, generation)) {
           deps.publish(null);
-          setState({ status: 'unavailable', user: null, problem: 'restore' });
+          setState({
+            status: 'unavailable',
+            user: null,
+            problem:
+              error instanceof ApiError && error.code === 'ACCOUNT_INACTIVE'
+                ? 'restricted'
+                : 'restore',
+          });
         }
       }
     },
@@ -96,7 +119,15 @@ export function createAuthSession<User>(deps: {
         publish(user);
         return user;
       } catch (error) {
-        if (current(run, generation)) setState({ status: 'unavailable', user: null, problem: 'restore' });
+        if (current(run, generation))
+          setState({
+            status: 'unavailable',
+            user: null,
+            problem:
+              error instanceof ApiError && error.code === 'ACCOUNT_INACTIVE'
+                ? 'restricted'
+                : 'restore',
+          });
         throw error;
       }
     },
@@ -106,12 +137,15 @@ export function createAuthSession<User>(deps: {
       const ended = deps.sessions.end();
       deps.publish(null);
       setState({ status: 'loading', user: null, problem: null });
-      const revoking = ended.tokens ? deps.revoke(ended.tokens.refreshToken).catch(() => undefined) : Promise.resolve();
+      const revoking = ended.tokens
+        ? deps.revoke(ended.tokens.refreshToken).catch(() => undefined)
+        : Promise.resolve();
       try {
         await ended.completion;
         if (current(run, ended.generation)) publish(null);
       } catch {
-        if (current(run, ended.generation)) setState({ status: 'unavailable', user: null, problem: 'logout' });
+        if (current(run, ended.generation))
+          setState({ status: 'unavailable', user: null, problem: 'logout' });
       }
       await revoking;
     },
@@ -124,7 +158,18 @@ export function createAuthSession<User>(deps: {
         if (!current(run, generation) || profile !== profileRun) return null;
         publish(user);
         return user;
-      } catch { return null; }
+      } catch (error) {
+        if (
+          current(run, generation) &&
+          profile === profileRun &&
+          error instanceof ApiError &&
+          error.code === 'ACCOUNT_INACTIVE'
+        ) {
+          deps.publish(null);
+          setState({ status: 'unavailable', user: null, problem: 'restricted' });
+        }
+        return null;
+      }
     },
   };
 }

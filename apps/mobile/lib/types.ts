@@ -4,6 +4,8 @@
  * routes return (money fields are integer kobo).
  */
 import type { UserRole, EventStatus, NotificationType } from '@hq/shared';
+export type { ApplicationStatus } from '@hq/shared';
+import type { ApplicationStatus } from '@hq/shared';
 
 export type UsherVerifyState = 'PENDING' | 'VERIFIED' | 'REJECTED';
 
@@ -83,6 +85,7 @@ export interface EventResource {
   status: EventStatus;
   createdAt: string;
   _count?: { applications: number; bookings: number };
+  staffing?: { confirmed: number; reserved: number; vacated: number; available: number };
 }
 
 /** GET /api/me/notifications — one persisted inbox row. */
@@ -154,6 +157,14 @@ export interface Review {
 
 /** GET /api/bookings[/:id] */
 export interface Booking {
+  unreadCount?: number;
+  refund?: {
+    id: string;
+    status: string;
+    providerRef: string | null;
+    createdAt: string;
+    updatedAt: string;
+  } | null;
   id: string;
   eventId: string;
   usherId: string;
@@ -168,6 +179,18 @@ export interface Booking {
   } | null;
   createdAt: string;
   /** Enriched on list/detail: event summary + the host (client) name. */
+  arrivalAssertedAt?: string | null;
+  checkedInAt?: string | null;
+  completedAt?: string | null;
+  myReview?: { id: string; rating: number; comment: string | null } | null;
+  disputes?: {
+    id: string;
+    reason: string;
+    note: string | null;
+    status: string;
+    resolution: string | null;
+    createdAt: string;
+  }[];
   event?: Partial<EventResource> & {
     title: string;
     eventDate: string;
@@ -175,7 +198,7 @@ export interface Booking {
     client?: { displayName: string };
   };
   /** Enriched on list: the booked usher's name/phone. */
-  usher?: { displayName: string | null; user: { phone: string } };
+  usher?: { displayName: string | null; user?: { phone: string } };
 }
 
 /** GET /api/bookings/:id/messages */
@@ -186,13 +209,13 @@ export interface Message {
   contentType: 'TEXT' | 'IMAGE' | 'VOICE';
   content: string;
   flagged: boolean;
+  seenAt?: string | null;
   createdAt: string;
 }
 
-export type ApplicationStatus = 'APPLIED' | 'SHORTLISTED' | 'ACCEPTED' | 'REJECTED';
-
 /** GET /api/events/:id/applications */
 export interface Application {
+  booking?: { id: string; status: string } | null;
   id: string;
   status: ApplicationStatus;
   createdAt: string;
@@ -213,6 +236,7 @@ export interface Application {
 
 /** GET /api/me/applications — the usher's own applications, with the event. */
 export interface MyApplication {
+  booking?: { id: string; status: string } | null;
   id: string;
   status: ApplicationStatus;
   createdAt: string;

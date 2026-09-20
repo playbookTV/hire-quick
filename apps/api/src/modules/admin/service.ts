@@ -6,7 +6,7 @@
  */
 import { prisma, type ApprovalKind } from '@hq/database';
 import { ApiError } from '../../app.js';
-import { resolveDisputeRelease } from '../payments/ledger/ledger.js';
+import { resolveDisputeRelease, assertRefundable } from '../payments/ledger/ledger.js';
 import { claimOperation, runOperation } from '../payments/ledger/operations.js';
 import { refundBookingToClient } from '../payments/service.js';
 import type { PaystackPort } from '../payments/port/paystack-port.js';
@@ -143,15 +143,26 @@ export async function resolveDispute(
   const amount = dispute.booking.payment?.grossAmount ?? 0;
 
   if (amount > APPROVAL_THRESHOLD_KOBO) {
-    const approval = await prisma.approval.create({
-      data: {
-        kind: 'DISPUTE_RESOLVE',
-        amountKobo: amount,
-        makerId: adminId,
-        payload: { disputeId, bookingId: dispute.bookingId, outcome, resolution },
-      },
-    });
-    await prisma.dispute.update({ where: { id: disputeId }, data: { status: 'UNDER_REVIEW' } });
+    const approval = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM disputes WHERE id = ${disputeId}::uuid FOR UPDATE`;
+      const current = await tx.dispute.findUniqueOrThrow({ where: { id: disputeId } });
+      if (current.status !== 'OPEN')
+        throw new ApiError(
+          409,
+          'CASE_NOT_OPEN',
+          'This case already has a decision or a proposal under review.',
+        );
+      const proposal = await tx.approval.create({
+        data: {
+          kind: 'DISPUTE_RESOLVE',
+          amountKobo: amount,
+          makerId: adminId,
+          payload: { disputeId, bookingId: dispute.bookingId, outcome, resolution },
+        },
+      });
+      await tx.dispute.update({ where: { id: disputeId }, data: { status: 'UNDER_REVIEW' } });
+      return proposal;
+    }, TX);
     await writeAudit({
       actorId: adminId,
       action: 'dispute.resolve.proposed',
@@ -183,14 +194,32 @@ export async function createRefund(
   paystack: PaystackPort,
 ): Promise<{ executed: boolean; approvalId?: string }> {
   if (amountKobo > APPROVAL_THRESHOLD_KOBO) {
-    const approval = await prisma.approval.create({
-      data: {
-        kind: 'REFUND',
+    const approval = await prisma.$transaction(async (tx) => {
+      await lockBookingLifecycle(tx, bookingId);
+      const booking = await tx.booking.findUniqueOrThrow({ where: { id: bookingId } });
+      await assertRefundable(
+        tx,
+        bookingId,
         amountKobo,
-        makerId: adminId,
-        payload: { bookingId, amountKobo, reason },
-      },
-    });
+        booking.status === 'CONFIRMED' ? 'CANCEL' : undefined,
+      );
+      const existing = await tx.approval.findFirst({
+        where: {
+          kind: 'REFUND',
+          status: { in: ['PENDING', 'APPROVED'] },
+          payload: { path: ['bookingId'], equals: bookingId },
+        },
+      });
+      if (existing) return existing;
+      return tx.approval.create({
+        data: {
+          kind: 'REFUND',
+          amountKobo,
+          makerId: adminId,
+          payload: { bookingId, amountKobo, reason },
+        },
+      });
+    }, TX);
     await writeAudit({
       actorId: adminId,
       action: 'refund.proposed',
@@ -222,12 +251,36 @@ export async function decideApproval(
     throw new ApiError(403, 'SAME_ADMIN', 'checker must differ from maker');
 
   if (decision === 'reject') {
-    // Atomic claim: only the first checker flips PENDING → REJECTED.
-    const claimed = await prisma.approval.updateMany({
-      where: { id: approvalId, status: 'PENDING' },
-      data: { status: 'REJECTED', checkerId },
-    });
-    if (claimed.count === 0) throw new ApiError(409, 'NOT_PENDING', 'approval already decided');
+    await prisma.$transaction(async (tx) => {
+      const payload = a.payload as Record<string, unknown>;
+      const disputeId =
+        a.kind === 'DISPUTE_RESOLVE' && typeof payload.disputeId === 'string'
+          ? payload.disputeId
+          : null;
+      if (disputeId)
+        await tx.$queryRaw`SELECT id FROM disputes WHERE id = ${disputeId}::uuid FOR UPDATE`;
+      const claimed = await tx.approval.updateMany({
+        where: { id: approvalId, status: 'PENDING' },
+        data: { status: 'REJECTED', checkerId },
+      });
+      if (claimed.count === 0) throw new ApiError(409, 'NOT_PENDING', 'approval already decided');
+      if (disputeId) {
+        // Legacy cases may have multiple proposals. Only reopen after every
+        // pending/approved proposal has ended; never undo a resolved case.
+        const remaining = await tx.approval.count({
+          where: {
+            kind: 'DISPUTE_RESOLVE',
+            status: { in: ['PENDING', 'APPROVED'] },
+            payload: { path: ['disputeId'], equals: disputeId },
+          },
+        });
+        if (!remaining)
+          await tx.dispute.updateMany({
+            where: { id: disputeId, status: 'UNDER_REVIEW' },
+            data: { status: 'OPEN' },
+          });
+      }
+    }, TX);
     await writeAudit({ actorId: checkerId, action: 'approval.reject', target: approvalId });
     return;
   }

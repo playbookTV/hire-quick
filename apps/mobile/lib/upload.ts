@@ -36,7 +36,11 @@ function extFor(asset: PickedAsset, contentType: string): string {
 async function putBytes(url: string, contentType: string, asset: PickedAsset): Promise<void> {
   const fileRes = await fetch(asset.uri);
   const blob = await fileRes.blob();
-  const put = await fetch(url, { method: 'PUT', headers: { 'content-type': contentType }, body: blob });
+  const put = await fetch(url, {
+    method: 'PUT',
+    headers: { 'content-type': contentType },
+    body: blob,
+  });
   if (!put.ok) throw new Error(`Upload failed (${put.status})`);
 }
 
@@ -48,7 +52,11 @@ async function putBytes(url: string, contentType: string, asset: PickedAsset): P
 async function presignAndPut(path: string, kind: string, asset: PickedAsset): Promise<string> {
   const contentType = asset.mimeType ?? 'image/jpeg';
   const ext = extFor(asset, contentType);
-  const { url, key } = await api.post<{ url: string; key: string }>(path, { kind, contentType, ext });
+  const { url, key } = await api.post<{ url: string; key: string }>(path, {
+    kind,
+    contentType,
+    ext,
+  });
   await putBytes(url, contentType, asset);
   return key;
 }
@@ -111,4 +119,16 @@ export type PhotoKind = 'avatar' | 'portfolio';
  */
 export async function uploadUsherPhoto(kind: PhotoKind, asset: PickedAsset): Promise<string> {
   return presignAndPut('/api/me/photos/upload-url', kind, asset);
+}
+
+export async function uploadChatPhoto(bookingId: string, asset: PickedAsset): Promise<string> {
+  const mimeType = asset.mimeType ?? 'image/jpeg';
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(mimeType))
+    throw new Error('Choose a JPEG, PNG or WebP photo.');
+  const { url, key } = await api.post<{ url: string; key: string }>(
+    `/api/bookings/${bookingId}/media/upload-url`,
+    { contentType: 'IMAGE', mimeType },
+  );
+  await putBytes(url, mimeType, asset);
+  return key;
 }

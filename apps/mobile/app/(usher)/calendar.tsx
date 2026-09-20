@@ -9,6 +9,7 @@
  * has a screen-reader label, and loading/error are handled instead of rendering
  * a stale grid.
  */
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { calendarWeeks } from '../../lib/ui-state.js';
 import { Screen } from '../../components/Screen.js';
@@ -89,6 +90,7 @@ function LegendItem({
 }
 
 export default function Calendar(): React.JSX.Element {
+  const router = useRouter();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -129,7 +131,15 @@ export default function Calendar(): React.JSX.Element {
   };
 
   const toggle = (day: number): void => {
-    if (jobDays.has(day)) return; // locked by a booking
+    if (jobDays.has(day)) {
+      const b = (bookings.data ?? []).find(
+        (b) =>
+          b.event?.eventDate.slice(0, 10) === dateOf(day) &&
+          ['CONFIRMED', 'CHECKED_IN', 'COMPLETED', 'PAID'].includes(b.status),
+      );
+      if (b) router.push({ pathname: '/(modals)/booking-details', params: { booking: b.id } });
+      return;
+    }
     const next = statusByDay.get(day) === 'AVAILABLE' ? 'UNAVAILABLE' : 'AVAILABLE';
     setAvailability.mutate({ date: dateOf(day), status: next });
   };
@@ -262,13 +272,13 @@ export default function Calendar(): React.JSX.Element {
                       <Pressable
                         key={day}
                         onPress={() => toggle(day)}
-                        disabled={s === 'job' || errored || setAvailability.isPending}
+                        disabled={errored || setAvailability.isPending}
                         accessibilityRole="button"
                         accessibilityState={{
-                          disabled: s === 'job' || errored || setAvailability.isPending,
+                          disabled: errored || setAvailability.isPending,
                           busy: setAvailability.isPending,
                         }}
-                        accessibilityLabel={`${day} ${MONTHS[month]}, ${meta.label}${s === 'job' ? '' : '. Tap to toggle.'}`}
+                        accessibilityLabel={`${day} ${MONTHS[month]}, ${meta.label}${s === 'job' ? '. View booking.' : '. Tap to toggle.'}`}
                         style={{
                           flex: 1,
                           minHeight: 48,

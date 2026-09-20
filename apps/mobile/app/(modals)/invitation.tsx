@@ -20,7 +20,7 @@ import { Loading } from '../../components/Loading.js';
 import { EmptyState } from '../../components/EmptyState.js';
 import { StatusPill } from '../../components/StatusPill.js';
 import { shadowMd } from '../../theme/shadows.js';
-import { useInvitation, useRespondInvitation } from '../../lib/hooks.js';
+import { useInvitation, useRespondInvitation, useBookings } from '../../lib/hooks.js';
 import { useToast } from '../../lib/toast.js';
 import { money, dateTime } from '../../lib/format.js';
 import { userMessage } from '../../lib/api-error.js';
@@ -33,6 +33,7 @@ export default function Invitation(): React.JSX.Element {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const invitationId = id ?? '';
   const inv = useInvitation(invitationId);
+  const bookings = useBookings();
   const respond = useRespondInvitation(invitationId);
 
   if (inv.isLoading) {
@@ -61,7 +62,7 @@ export default function Invitation(): React.JSX.Element {
 
   const data = inv.data;
   const ev = data.event;
-  const clientName = ev.client.businessName ?? ev.client.displayName;
+  const clientName = ev.client.businessName || ev.client.displayName;
   const pending = data.status === 'SENT';
   const busy = respond.isPending;
 
@@ -69,10 +70,10 @@ export default function Invitation(): React.JSX.Element {
     respond.mutate('ACCEPTED', {
       onSuccess: () => {
         toast.success(
-          'Slot reserved. You’ll be booked once the client pays.',
+          'You’ve accepted. You’ll be booked once the client pays.',
           'Invitation accepted',
         );
-        router.replace('/(usher)/jobs');
+        router.replace('/(modals)/invitations');
       },
       onError: (e: unknown) => toast.error(userMessage(e), 'Couldn’t accept'),
     });
@@ -150,7 +151,7 @@ export default function Invitation(): React.JSX.Element {
           {pending ? (
             <Banner
               tone="warning"
-              message={`Accepting reserves your slot. The booking confirms once ${clientName} pays.`}
+              message={`Accepting tells the client you’re interested. The booking confirms once ${clientName} pays.`}
             />
           ) : (
             <Box flexDirection="row" alignItems="center" style={{ gap: 8 }}>
@@ -195,7 +196,26 @@ export default function Invitation(): React.JSX.Element {
             borderTopColor: theme.colors.borderDefault,
           }}
         >
-          <Button label="Close" variant="secondary" onPress={() => router.back()} />
+          {data.status === 'ACCEPTED' &&
+          bookings.data &&
+          !bookings.isError &&
+          !bookings.data.some(
+            (b) =>
+              b.eventId === data.eventId &&
+              !['CANCELLED', 'REFUNDED', 'NO_SHOW'].includes(b.status),
+          ) ? (
+            <Button
+              label="Withdraw acceptance"
+              variant="secondary"
+              disabled={busy}
+              onPress={onDecline}
+            />
+          ) : null}
+          <Button
+            label="View my bookings"
+            variant="secondary"
+            onPress={() => router.push('/(modals)/my-bookings')}
+          />
         </Box>
       )}
     </Box>

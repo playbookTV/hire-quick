@@ -21,7 +21,7 @@ const STATUS: Record<string, Entry> = {
   CHECKED_IN: { label: 'Checked in', bg: 'statusInfoTint', fg: 'statusInfo' },
   COMPLETED: { label: 'Completed', bg: 'brandEmeraldTint', fg: 'brandEmerald' },
   PAID: { label: 'Paid', bg: 'brandSurface', fg: 'inverseInk' },
-  PENDING_PAYMENT: { label: 'Pending', bg: 'bgSubtle', fg: 'inkMuted' },
+  PENDING_PAYMENT: { label: 'Awaiting payment', bg: 'bgSubtle', fg: 'inkMuted' },
   CANCELLED: { label: 'Cancelled', bg: 'statusDangerTint', fg: 'statusDanger' },
   NO_SHOW: { label: 'No-show', bg: 'statusDangerTint', fg: 'statusDanger' },
   DISPUTED: { label: 'Disputed', bg: 'accentGoldTint', fg: 'accentGoldStrong' },
@@ -33,6 +33,9 @@ const STATUS: Record<string, Entry> = {
   PARTIALLY_STAFFED: { label: 'Partially staffed', bg: 'accentGoldTint', fg: 'accentGoldStrong' },
   FULLY_STAFFED: { label: 'Fully staffed', bg: 'brandEmeraldTint', fg: 'brandEmerald' },
   IN_PROGRESS: { label: 'In progress', bg: 'accentGoldTint', fg: 'accentGoldStrong' },
+  REQUESTED: { label: 'Requested', bg: 'bgSubtle', fg: 'inkMuted' },
+  PROCESSING: { label: 'Processing', bg: 'accentGoldTint', fg: 'accentGoldStrong' },
+  FAILED: { label: 'Failed / reversed', bg: 'statusDangerTint', fg: 'statusDanger' },
   // invitation lifecycle
   SENT: { label: 'Pending', bg: 'bgSubtle', fg: 'inkMuted' },
   ACCEPTED: { label: 'Accepted', bg: 'brandEmeraldTint', fg: 'brandEmerald' },
