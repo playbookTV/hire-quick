@@ -1,0 +1,23 @@
+{
+  "snapshot": "/private/tmp/hirequick-apk-20260920T203811Z",
+  "snapshotCommit": "a6a5efe01e4035fe611b48fda0cdbd17ca069548",
+  "sourceFiles": 397,
+  "checks": {
+    "frozenLockfileInstall": "passed",
+    "sharedBuild": "passed",
+    "mobileTypecheck": "passed",
+    "mobileLint": "passed",
+    "androidExport": "passed",
+    "bundleContainsExpectedApiOrigin": true,
+    "bundleContainsOtpRequestEndpoint": true,
+    "manifestMatchesSnapshot": true
+  },
+  "apiOrigin": "https://prolific-love-production-2775.up.railway.app",
+  "buildId": "19d364c1-fce6-415f-a380-5297fc454311",
+  "androidVersionCode": "2",
+  "notes": [
+    "Preview autoIncrement enabled only in the isolated build snapshot.",
+    "Existing Expo signing credentials reused.",
+    "No on-device OTP delivery test performed."
+  ]
+}
