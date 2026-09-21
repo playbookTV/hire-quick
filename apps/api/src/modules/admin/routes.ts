@@ -20,6 +20,7 @@ import type { PaystackPort } from '../payments/port/paystack-port.js';
 import { type StoragePort, presignDoc } from '../storage/storage.js';
 import { authorizedChatMediaKey } from '../storage/chat-media.js';
 import { pageQuery, pageResult } from './pagination.js';
+import { paymentOperationsRouter } from './payment-operations.js';
 import { reviewVerification } from '../verification/service.js';
 
 type Handler = (req: AuthedRequest, res: Response) => Promise<void>;
@@ -52,6 +53,7 @@ export function adminRouter(deps: {
 }): Router {
   const r = Router();
   r.use(requireAuth, requireRole('ADMIN'));
+  r.use(paymentOperationsRouter());
 
   // Refund/dispute execution issues a real Paystack refund, so those routes
   // can't run without a configured port.

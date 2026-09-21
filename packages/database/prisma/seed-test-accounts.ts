@@ -1,8 +1,8 @@
 /**
  * Test accounts for QA against the live/staging API + mobile app.
- * Fully idempotent (upsert on phone). Login is phone + OTP — on non-production
- * envs the OTP code is echoed in the POST /auth/otp/request response, so these
- * numbers don't need to receive SMS.
+ * Fully idempotent (upsert on phone). Login is phone + OTP. The staging API must
+ * explicitly enable STAGING_QA_OTP_CODE with Paystack test keys for these exact
+ * seeded identities to sign in without SMS delivery.
  *
  * Creates: 1 client, 3 ushers (spread of completed-job counts so applicant
  * ranking + milestone badges are visible), the reward tiers, and one open event.

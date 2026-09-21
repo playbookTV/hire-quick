@@ -41,7 +41,11 @@ export async function resumePaymentOperation(
 }
 
 /** Repair legacy withdrawal intents as well as missed terminal webhooks. */
-export async function reconcileStuckWithdrawals(deps: Deps, olderThanMs = 30 * 60_000) {
+export async function reconcileStuckWithdrawals(
+  deps: Deps,
+  olderThanMs = 30 * 60_000,
+  scheduled = false,
+) {
   const stuck = await deps.prisma.withdrawal.findMany({
     where: { status: 'PROCESSING', updatedAt: { lt: new Date(Date.now() - olderThanMs) } },
     select: { id: true },
@@ -54,6 +58,10 @@ export async function reconcileStuckWithdrawals(deps: Deps, olderThanMs = 30 * 6
         where: { dedupeKey: `WITHDRAWAL_REVERSAL:${w.id}` },
       });
       if (!reversal) return false;
+      if (scheduled) {
+        counts.pending += 1;
+        return true;
+      }
       try {
         await driveWithdrawalReversal(deps.prisma, reversal);
         counts.failed += 1;
@@ -80,13 +88,16 @@ export async function reconcileStuckWithdrawals(deps: Deps, olderThanMs = 30 * 6
       } else counts.pending += 1;
       continue;
     }
+    if (scheduled) {
+      counts.pending += 1;
+      continue;
+    }
     const result = await driveTransfer(deps, op);
     if (result.status === 'RECORDED') {
       const settled = await deps.prisma.withdrawal.findUniqueOrThrow({ where: { id: w.id } });
       if (settled.status === 'FAILED') counts.failed += 1;
       else counts.completed += 1;
-    }
-    else if (result.status === 'FAILED') counts.failed += 1;
+    } else if (result.status === 'FAILED') counts.failed += 1;
     else counts.pending += 1;
   }
   return counts;

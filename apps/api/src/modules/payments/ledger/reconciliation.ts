@@ -1,14 +1,18 @@
-/**
- * Daily reconciliation (TRD §17) — the single most important operational alarm.
- * Compares the ledger-derived expected Paystack Balance to the actual balance,
- * and flags HELD allocations nearing the 90-day Manual Payouts rule (§10).
- *
- * expected = ΣHOLD + ΣREFUND(neg) + ΣCOMMISSION_SWEEP(neg) − Σ withdrawalsPaid
- * (RELEASE/FEE move money escrow→wallet but stay *inside* the Balance, so they
- * don't change it.)
- */
-import { type PrismaClient } from '@hq/database';
+/** Daily balance evidence (TRD §17). Provider reads cannot share a DB snapshot. */
+import { randomUUID } from 'node:crypto';
+import { type PrismaClient, type LedgerEntryType } from '@hq/database';
 import type { PaystackPort } from '../port/paystack-port.js';
+import { writeAudit } from '../../audit.js';
+
+// Every new ledger type must explicitly declare its effect on provider balance.
+export const PROVIDER_BALANCE_EFFECT: Record<LedgerEntryType, 0 | 1> = {
+  HOLD: 1,
+  REFUND: 1,
+  COMMISSION_SWEEP: 1,
+  RELEASE: 0,
+  FEE: 0,
+  REVERSAL: 0,
+};
 
 export interface ReconResult {
   expectedKobo: number;
@@ -16,6 +20,115 @@ export interface ReconResult {
   driftKobo: number;
   ok: boolean;
   staleHeldBookingIds: string[];
+  staleFrozenBookingIds: string[];
+  pendingOperations: number;
+  quarantinedOperations: number;
+  classification: 'balanced' | 'drift' | 'in_flight' | 'review';
+  snapshotChanged: boolean;
+}
+
+async function snapshot(prisma: PrismaClient, cutoff: Date) {
+  return prisma.$transaction(
+    async (tx) => {
+      const entries = await tx.escrowLedger.groupBy({
+        by: ['entryType'],
+        _sum: { amount: true },
+        _count: { _all: true },
+        orderBy: { entryType: 'asc' },
+      });
+      const withdrawals = await tx.withdrawal.aggregate({
+        where: { status: 'PAID' },
+        _sum: { amount: true },
+        _count: { _all: true },
+      });
+      const operations = await tx.paymentOperation.aggregate({
+        where: { status: { in: ['PENDING', 'PROVIDER_OK'] } },
+        _count: { _all: true },
+        _max: { updatedAt: true },
+      });
+      const quarantinedOperations = await tx.paymentOperation.count({
+        where: { status: { in: ['PENDING', 'PROVIDER_OK'] }, quarantinedAt: { not: null } },
+      });
+      const processingWithdrawals = await tx.withdrawal.count({ where: { status: 'PROCESSING' } });
+      const stale = await tx.payment.findMany({
+        where: { escrowStatus: { in: ['HELD', 'FROZEN'] }, createdAt: { lt: cutoff } },
+        select: { bookingId: true, escrowStatus: true },
+        orderBy: { bookingId: 'asc' },
+      });
+      const expectedKobo =
+        entries.reduce(
+          (sum, e) => sum + (e._sum.amount ?? 0) * PROVIDER_BALANCE_EFFECT[e.entryType],
+          0,
+        ) - (withdrawals._sum.amount ?? 0);
+      if (!Number.isSafeInteger(expectedKobo))
+        throw new Error('Reconciliation exceeds safe integer range');
+      return {
+        entries,
+        withdrawals,
+        operations,
+        quarantinedOperations,
+        processingWithdrawals,
+        stale,
+        expectedKobo,
+      };
+    },
+    { isolationLevel: 'RepeatableRead', timeout: 30_000, maxWait: 30_000 },
+  );
+}
+
+async function collect(
+  prisma: PrismaClient,
+  paystack: PaystackPort,
+  opts: { staleAfterDays?: number; now?: Date } = {},
+) {
+  const startedAt = opts.now ?? new Date();
+  const cutoff = new Date(startedAt.getTime() - (opts.staleAfterDays ?? 80) * 86_400_000);
+  const before = await snapshot(prisma, cutoff);
+  const providerReadStartedAt = new Date().toISOString();
+  const actualKobo = await paystack.getBalanceKobo();
+  if (!Number.isSafeInteger(actualKobo)) throw new Error('Invalid provider balance');
+  const providerReadFinishedAt = new Date().toISOString();
+  const after = await snapshot(prisma, cutoff);
+  const snapshotChanged = JSON.stringify(before) !== JSON.stringify(after);
+  const driftKobo = actualKobo - before.expectedKobo;
+  const staleHeldBookingIds = before.stale
+    .filter((p) => p.escrowStatus === 'HELD')
+    .map((p) => p.bookingId);
+  const staleFrozenBookingIds = before.stale
+    .filter((p) => p.escrowStatus === 'FROZEN')
+    .map((p) => p.bookingId);
+  const pendingOperations = before.operations._count._all;
+  const inFlight = snapshotChanged || pendingOperations > 0 || before.processingWithdrawals > 0;
+  const classification = inFlight
+    ? 'in_flight'
+    : driftKobo !== 0
+      ? 'drift'
+      : before.stale.length
+        ? 'review'
+        : 'balanced';
+  const result: ReconResult = {
+    expectedKobo: before.expectedKobo,
+    actualKobo,
+    driftKobo,
+    ok: classification === 'balanced',
+    classification,
+    snapshotChanged,
+    staleHeldBookingIds,
+    staleFrozenBookingIds,
+    pendingOperations,
+    quarantinedOperations: before.quarantinedOperations,
+  };
+  return {
+    result,
+    evidence: {
+      startedAt: startedAt.toISOString(),
+      cutoff: cutoff.toISOString(),
+      providerReadStartedAt,
+      providerReadFinishedAt,
+      before,
+      after,
+    },
+  };
 }
 
 export async function reconcile(
@@ -23,35 +136,41 @@ export async function reconcile(
   paystack: PaystackPort,
   opts: { staleAfterDays?: number; now?: Date } = {},
 ): Promise<ReconResult> {
-  const [holds, refunds, sweeps, withdrawalsPaid] = await Promise.all([
-    prisma.escrowLedger.aggregate({ where: { entryType: 'HOLD' }, _sum: { amount: true } }),
-    prisma.escrowLedger.aggregate({ where: { entryType: 'REFUND' }, _sum: { amount: true } }),
-    prisma.escrowLedger.aggregate({ where: { entryType: 'COMMISSION_SWEEP' }, _sum: { amount: true } }),
-    prisma.withdrawal.aggregate({ where: { status: 'PAID' }, _sum: { amount: true } }),
-  ]);
+  return (await collect(prisma, paystack, opts)).result;
+}
 
-  const expectedKobo =
-    (holds._sum.amount ?? 0) +
-    (refunds._sum.amount ?? 0) +
-    (sweeps._sum.amount ?? 0) -
-    (withdrawalsPaid._sum.amount ?? 0);
-
-  const actualKobo = await paystack.getBalanceKobo();
-  const driftKobo = actualKobo - expectedKobo;
-
-  const staleAfterDays = opts.staleAfterDays ?? 80;
-  const now = opts.now ?? new Date();
-  const cutoff = new Date(now.getTime() - staleAfterDays * 86_400_000);
-  const staleHeld = await prisma.payment.findMany({
-    where: { escrowStatus: 'HELD', createdAt: { lt: cutoff } },
-    select: { bookingId: true },
-  });
-
-  return {
-    expectedKobo,
-    actualKobo,
-    driftKobo,
-    ok: driftKobo === 0 && staleHeld.length === 0,
-    staleHeldBookingIds: staleHeld.map((p) => p.bookingId),
-  };
+/** Durable audit rows are the run history; investigations append separate rows. */
+export async function recordReconciliation(prisma: PrismaClient, paystack: PaystackPort) {
+  const runId = randomUUID();
+  try {
+    const { result, evidence } = await collect(prisma, paystack);
+    await prisma.$transaction((tx) =>
+      writeAudit(
+        {
+          actorId: null,
+          action: 'reconciliation.run',
+          target: runId,
+          metadata: JSON.parse(JSON.stringify({ ...result, evidence })) as Record<string, unknown>,
+        },
+        tx,
+      ),
+    );
+    return { runId, ...result };
+  } catch (error) {
+    await prisma.$transaction((tx) =>
+      writeAudit(
+        {
+          actorId: null,
+          action: 'reconciliation.error',
+          target: runId,
+          metadata: {
+            message:
+              'Balance evidence could not be collected; investigate provider and database availability',
+          },
+        },
+        tx,
+      ),
+    );
+    throw error;
+  }
 }

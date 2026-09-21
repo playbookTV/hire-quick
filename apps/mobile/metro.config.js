@@ -1,26 +1,6 @@
-// Metro config for the pnpm monorepo. Watches the workspace root so the
-// pnpm-symlinked `@hq/shared` (precompiled ESM in dist) resolves, and lets Metro
-// look in both the app's and the root's node_modules.
-//
-// Do NOT set `disableHierarchicalLookup` — that breaks pnpm's nested store.
+// Expo configures pnpm workspace watching and dependency resolution automatically.
 const { getDefaultConfig } = require('expo/metro-config');
-const path = require('node:path');
-
-const projectRoot = __dirname;
-const workspaceRoot = path.resolve(projectRoot, '../..');
-
-const config = getDefaultConfig(projectRoot);
-
-config.watchFolders = [workspaceRoot];
-
-config.resolver.nodeModulesPaths = [
-  path.resolve(projectRoot, 'node_modules'),
-  path.resolve(workspaceRoot, 'node_modules'),
-];
-
-// Follow pnpm symlinks and honour the "exports" field (@hq/shared ships ESM).
-config.resolver.unstable_enableSymlinks = true;
-config.resolver.unstable_enablePackageExports = true;
+const config = getDefaultConfig(__dirname);
 
 // The repo writes relative imports with a `.js` extension (NodeNext convention,
 // see CLAUDE.md), but our TS source files are `.ts`/`.tsx`. tsc (Bundler

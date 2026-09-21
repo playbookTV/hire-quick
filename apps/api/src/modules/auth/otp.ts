@@ -1,6 +1,6 @@
 /**
  * Phone-OTP login (TRD §4/§7). Codes are delivered through the configured
- * transport and exposed directly only in isolated tests. Rate-limited via the
+ * transport, except explicitly enabled seeded staging QA identities and tests. Rate-limited via the
  * verification_codes table so no Redis dependency for the core flow.
  */
 import { randomUUID } from 'node:crypto';
@@ -11,6 +11,7 @@ import { generateOtp, hashOtp, verifyOtpHash, OTP_TTL_MS, OTP_MAX_ATTEMPTS } fro
 import { signAccessToken, signRefreshToken } from './tokens.js';
 import { sendSms, sendWhatsAppOtp } from '../notifications/brevo.js';
 import { writeAudit } from '../audit.js';
+import { qaSubject, stagingQaCode } from './staging-qa.js';
 
 const MAX_REQUESTS_PER_HOUR = 5;
 const TX = { timeout: 30_000, maxWait: 30_000 };
@@ -22,14 +23,16 @@ async function lockPhone(tx: Prisma.TransactionClient, phone: string): Promise<v
 }
 
 export async function requestOtp(phone: string): Promise<{ sent: boolean; devCode?: string }> {
-  const code = generateOtp();
-  await prisma.$transaction(async (tx) => {
+  const { code, qaLogin } = await prisma.$transaction(async (tx) => {
     await lockPhone(tx, phone);
+    const qaCode = await stagingQaCode(tx, phone);
+    const code = qaCode ?? generateOtp();
+    const subjects = { in: [phone, qaSubject(phone)] };
     const now = new Date();
     const recent = await tx.verificationCode.count({
       where: {
         purpose: 'AUTH',
-        subjectRef: phone,
+        subjectRef: subjects,
         createdAt: { gte: new Date(now.getTime() - 3_600_000) },
       },
     });
@@ -37,10 +40,10 @@ export async function requestOtp(phone: string): Promise<{ sent: boolean; devCod
       throw new ApiError(429, 'RATE_LIMITED', 'too many OTP requests, try again later');
     }
     await tx.verificationCode.updateMany({
-      where: { purpose: 'AUTH', subjectRef: phone, consumedAt: null },
+      where: { purpose: 'AUTH', subjectRef: subjects, consumedAt: null },
       data: { expiresAt: now },
     });
-    const binding = { purpose: 'AUTH' as const, subjectRef: phone, id: randomUUID() };
+    const binding = { purpose: 'AUTH' as const, subjectRef: qaCode ? qaSubject(phone) : phone, id: randomUUID() };
     await tx.verificationCode.create({
       data: {
         ...binding,
@@ -49,7 +52,10 @@ export async function requestOtp(phone: string): Promise<{ sent: boolean; devCod
         expiresAt: new Date(now.getTime() + OTP_TTL_MS),
       },
     });
+    return { code, qaLogin: qaCode !== null };
   }, TX);
+
+  if (qaLogin) return { sent: true, devCode: code };
 
   // Prefer WhatsApp when a sender + approved template are configured (better fit
   // for the Lagos market and avoids SMS sender-ID/credit friction); otherwise
@@ -58,8 +64,7 @@ export async function requestOtp(phone: string): Promise<{ sent: boolean; devCod
   const sent = whatsappReady
     ? await sendWhatsAppOtp(phone, code)
     : await sendSms(phone, `Your HireQuick code is ${code}. It expires in 10 minutes.`);
-  // Only isolated tests receive the code directly. Every deployed/dev runtime
-  // requires delivery through its configured transport.
+  // All other deployed accounts require delivery through the real transport.
   const echo = env.NODE_ENV === 'test';
   return echo ? { sent, devCode: code } : { sent };
 }
@@ -73,11 +78,13 @@ export interface AuthResult {
 export async function verifyOtp(phone: string, code: string, role?: UserRole): Promise<AuthResult> {
   const outcome = await prisma.$transaction(async (tx) => {
     await lockPhone(tx, phone);
+    const qaCode = await stagingQaCode(tx, phone);
+    const subjectRef = qaCode ? qaSubject(phone) : phone;
     const now = new Date();
     const rec = await tx.verificationCode.findFirst({
       where: {
         purpose: 'AUTH',
-        subjectRef: phone,
+        subjectRef,
         consumedAt: null,
         expiresAt: { gt: now },
         createdAt: { gt: new Date(now.getTime() - OTP_TTL_MS) },
@@ -88,7 +95,8 @@ export async function verifyOtp(phone: string, code: string, role?: UserRole): P
       return { error: new ApiError(400, 'OTP_INVALID', 'no valid code; request a new one') };
     if (rec.attempts >= OTP_MAX_ATTEMPTS)
       return { error: new ApiError(429, 'OTP_LOCKED', 'too many attempts') };
-    if (!verifyOtpHash(rec.codeHash, code, { purpose: 'AUTH', subjectRef: phone, id: rec.id })) {
+    if ((qaCode !== null && code !== qaCode) ||
+        !verifyOtpHash(rec.codeHash, code, { purpose: 'AUTH', subjectRef, id: rec.id })) {
       const updated = await tx.verificationCode.update({
         where: { id: rec.id },
         data: { attempts: { increment: 1 } },

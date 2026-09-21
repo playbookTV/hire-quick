@@ -1,0 +1,28 @@
+{
+  "id": "d79d6c9f-55bf-4251-bc03-af6c43f43d1f",
+  "status": "FINISHED",
+  "platform": "ANDROID",
+  "appIdentifier": "com.hirequick.mobile",
+  "appVersion": "0.0.1",
+  "appBuildVersion": "4",
+  "sdkVersion": "57.0.0",
+  "buildProfile": "preview",
+  "distribution": "INTERNAL",
+  "gitCommitHash": "9aa950cd0028a278d7aec7d434c25ce1383a0e04",
+  "createdAt": "2026-09-21T13:54:10.343Z",
+  "completedAt": "2026-09-21T14:34:26.278Z",
+  "artifacts": {
+    "buildUrl": "https://expo.dev/artifacts/eas/wEwY6fYaK8ygCyAGHtdZrhJ3EFpBBsYHdenOB-eZ34M.apk",
+    "applicationArchiveUrl": "https://expo.dev/artifacts/eas/wEwY6fYaK8ygCyAGHtdZrhJ3EFpBBsYHdenOB-eZ34M.apk"
+  },
+  "metrics": {
+    "buildWaitTime": 3784,
+    "buildQueueTime": 1283528,
+    "buildDuration": 1128623
+  },
+  "downloadVerified": true,
+  "apkBytes": 109065016,
+  "sha256": "a7f03f6b8dfee5451e7e7fd82581ad9b198278f8116809a9eb594b91ca3d0f89",
+  "stagingApiVerifiedInApk": true,
+  "otpEndpointVerifiedInApk": true
+}

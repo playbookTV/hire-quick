@@ -8,6 +8,7 @@ const NAV = [
   ['/approvals', 'Approvals'],
   ['/bookings', 'Bookings & refunds'],
   ['/ledger', 'Ledger'],
+  ['/payment-operations', 'Payment operations'],
   ['/users', 'Users'],
 ] as const;
 export function Layout() {

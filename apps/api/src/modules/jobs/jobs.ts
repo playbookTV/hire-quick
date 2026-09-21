@@ -5,7 +5,7 @@
  */
 import { prisma } from '@hq/database';
 import { autoComplete, noShowSweep } from '../bookings/service.js';
-import { reconcile } from '../payments/ledger/reconciliation.js';
+import { recordReconciliation } from '../payments/ledger/reconciliation.js';
 import { runCommissionSweep, type Deps } from '../payments/service.js';
 import { resumePaymentOperation, reconcileStuckWithdrawals } from '../payments/recovery.js';
 import { noopGateway, type RealtimeGateway } from '../../realtime/gateway.js';
@@ -15,6 +15,7 @@ import { claimOperation } from '../payments/ledger/operations.js';
 import { writeAudit, verifyAuditChain } from '../audit.js';
 import { env } from '../../env.js';
 import { reconcileCheckouts } from '../payments/checkout.js';
+import { claimRecoveryBatch } from '../payments/recovery-schedule.js';
 
 const DAY_MS = 86_400_000;
 
@@ -34,40 +35,19 @@ export async function jobNoShow(deps: Deps, realtime: RealtimeGateway = noopGate
 }
 
 export async function jobReconcile(deps: Deps, realtime: RealtimeGateway = noopGateway): Promise<void> {
-  const r = await reconcile(prisma, deps.paystack);
-  if (r.ok) {
-    log('reconciliation ok');
-    return;
-  }
-  log(`⚠ RECONCILIATION ALARM drift=${String(r.driftKobo)} stale=${String(r.staleHeldBookingIds.length)}`);
-  // Push the alarm to the admin operational feed so drift gets investigated and
-  // stale HELD allocations are actioned before Paystack's 90-day Manual Payouts
-  // cutoff (§10/§17) — previously this was log-only and nothing consumed it.
-  realtime.emitToAdmins('recon:alarm', {
-    driftKobo: r.driftKobo,
-    staleHeldBookingIds: r.staleHeldBookingIds,
-    at: new Date().toISOString(),
-  });
-  if (r.staleHeldBookingIds.length > 0) {
-    await writeAudit({
-      actorId: null,
-      action: 'reconciliation.stale_held',
-      target: 'system',
-      metadata: {
-        count: r.staleHeldBookingIds.length,
-        bookingIds: r.staleHeldBookingIds,
-        driftKobo: r.driftKobo,
-      },
-    });
-  }
+  const r = await recordReconciliation(deps.prisma, deps.paystack);
+  if (r.ok) { log('reconciliation ok'); return; }
+  log(`RECONCILIATION ALARM run=${r.runId} drift=${String(r.driftKobo)} classification=${r.classification}`);
+  // Durable history is available even when no admin is connected to realtime.
+  realtime.emitToAdmins('recon:alarm', { ...r, at: new Date().toISOString() });
 }
 
-export async function jobCommissionSweep(deps: Deps): Promise<void> {
+export async function jobCommissionSweep(deps: Deps, period: string): Promise<void> {
   if (!env.PAYSTACK_OPERATING_RECIPIENT) {
     log('commission sweep skipped: PAYSTACK_OPERATING_RECIPIENT not set');
     return;
   }
-  const r = await runCommissionSweep(deps, { operatingRecipientCode: env.PAYSTACK_OPERATING_RECIPIENT });
+  const r = await runCommissionSweep(deps, { operatingRecipientCode: env.PAYSTACK_OPERATING_RECIPIENT, period });
   log(`commission swept: ${String(r.swept)} kobo`);
 }
 
@@ -104,12 +84,8 @@ export async function jobResumePaymentOps(
     if (approvals.length < 100) break;
     after = approvals.at(-1)?.id;
   }
-  const cutoff = new Date(Date.now() - 5 * 60_000); // let the synchronous path finish first
-  const ops = await deps.prisma.paymentOperation.findMany({
-    where: { status: { in: ['PENDING', 'PROVIDER_OK'] }, updatedAt: { lt: cutoff } },
-    orderBy: [{ updatedAt: 'asc' }, { id: 'asc' }],
-    take: 100,
-  });
+  const wd = await reconcileStuckWithdrawals(deps, 30 * 60_000, true);
+  const ops = await claimRecoveryBatch(deps.prisma);
   let recorded = 0;
   let failed = 0;
   let stillPending = 0;
@@ -119,12 +95,15 @@ export async function jobResumePaymentOps(
       if (r === 'recorded') recorded += 1;
       else if (r === 'failed') failed += 1;
       else stillPending += 1;
-    } catch (e) {
+    } catch {
       stillPending += 1;
-      log(`resume op ${op.id} (${op.kind}) failed: ${e instanceof Error ? e.message : String(e)}`);
+      log(`resume op ${op.id} (${op.kind}) failed; retained for recovery review`);
+      await deps.prisma.paymentOperation.updateMany({
+        where: { id: op.id, status: { in: ['PENDING', 'PROVIDER_OK'] } },
+        data: { lastError: 'Recovery could not complete; inspect provider evidence and local prerequisites' },
+      });
     }
   }
-  const wd = await reconcileStuckWithdrawals(deps);
   if (recorded || failed || stillPending || wd.completed || wd.failed) {
     log(
       `payment-op resume: ${String(recorded)} recorded, ${String(failed)} failed, ${String(stillPending)} pending; ` +

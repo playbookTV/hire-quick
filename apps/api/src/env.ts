@@ -16,6 +16,8 @@ const EnvSchema = z.object({
   JWT_ACCESS_SECRET: z.string().min(1).default('dev-access-secret'),
   JWT_REFRESH_SECRET: z.string().min(1).default('dev-refresh-secret'),
   OTP_VERIFIER_SECRET: z.string().default(''),
+  // Explicit, server-only access for the four seeded staging QA identities.
+  STAGING_QA_OTP_CODE: z.union([z.literal(''), z.string().regex(/^[0-9]{6}$/)]).default(''),
   OTP_VERIFIER_KEY_ID: z.string().regex(/^[a-zA-Z0-9_-]{1,32}$/).default('v1'),
   OTP_VERIFIER_PREVIOUS_SECRET: z.string().default(''),
   OTP_VERIFIER_PREVIOUS_KEY_ID: z.string().regex(/^[a-zA-Z0-9_-]{0,32}$/).default(''),
@@ -90,6 +92,10 @@ const EnvSchema = z.object({
     .default('false')
     .transform((v) => v === 'true'),
 }).superRefine((cfg, ctx) => {
+  if (cfg.STAGING_QA_OTP_CODE &&
+      (cfg.NODE_ENV !== 'staging' || !cfg.PAYSTACK_SECRET_KEY.startsWith('sk_test_'))) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['STAGING_QA_OTP_CODE'], message: 'QA login requires staging and Paystack test keys' });
+  }
   if (!!cfg.OTP_VERIFIER_PREVIOUS_SECRET !== !!cfg.OTP_VERIFIER_PREVIOUS_KEY_ID) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['OTP_VERIFIER_PREVIOUS_SECRET'], message: 'previous OTP key ID and secret must be configured together' });
   }

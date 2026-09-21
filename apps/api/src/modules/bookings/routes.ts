@@ -7,6 +7,7 @@ import {
   cancelBookingSchema,
   eventInstant,
   cancelWindow,
+  cancellationAmounts,
   policyForCancellation,
 } from '@hq/shared';
 import { ApiError } from '../../app.js';
@@ -190,6 +191,7 @@ export function bookingsRouter(deps: {
         actor,
         window,
         ...outcome,
+        ...cancellationAmounts(booking.amount, outcome),
         gross: booking.amount,
         eligible: booking.status === 'CONFIRMED',
         selfServe: booking.status === 'CONFIRMED' && outcome.clientRefundPct === 100,

@@ -87,12 +87,11 @@ export default function Cancellation(): React.JSX.Element {
       </Box>
     );
   const b = booking.data;
-  const gross = quote.data.gross;
   const ev = b.event;
   const window = quote.data.window;
   const outcome = quote.data;
-  const refund = Math.floor((gross * outcome.clientRefundPct) / 100);
-  const usherShare = Math.floor((gross * outcome.usherPayoutPct) / 100);
+  const refund = quote.data.refundKobo;
+  const usherShare = quote.data.usherCompensationKobo;
   // The API only self-executes full (100%) client refunds; late windows split the
   // usher payout and must be settled by support (server returns 409 otherwise).
   // Guard the action so the user is routed to support instead of tapping into a
@@ -149,7 +148,7 @@ export default function Cancellation(): React.JSX.Element {
               tone="success"
             />
             <KeyValueRow label="Usher compensation" value={money(usherShare)} />
-            <KeyValueRow label="Processing fee deduction" value="None" tone="muted" />
+            <KeyValueRow label="Processing fee deduction" value={quote.data.processingFeeKobo === 0 ? 'None' : money(quote.data.processingFeeKobo)} tone="muted" />
             <Box style={{ width: 100, height: 1 }} backgroundColor="borderDefault" />
             <Box flexDirection="row" alignItems="center" justifyContent="space-between">
               <Text variant="titleM">

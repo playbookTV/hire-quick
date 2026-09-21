@@ -19,7 +19,23 @@ export function newIdempotencyKey(): string {
   return `idem_${requestId()}`;
 }
 
-const client = createHttpClient(env.API_URL, sessionStore, (...args) => fetch(...args), requestId);
+const transport: typeof fetch = async (...args) => {
+  const [url, options] = args;
+  const traceOtp = __DEV__ && typeof url === 'string' && url.endsWith('/auth/otp/request');
+  if (traceOtp) console.info('[auth:otp] request', options?.method ?? 'GET', url);
+  try {
+    const response = await fetch(...args);
+    if (traceOtp) {
+      console.info('[auth:otp] response', response.status, 'requestId:', response.headers.get('x-request-id'));
+    }
+    return response;
+  } catch (error) {
+    if (traceOtp) console.info('[auth:otp] request failed before receiving a response');
+    throw error;
+  }
+};
+
+const client = createHttpClient(env.API_URL, sessionStore, transport, requestId);
 export const request = client.request;
 export const setUnauthorizedHandler = client.setUnauthorizedHandler;
 export const revokeRefreshToken = client.revoke;

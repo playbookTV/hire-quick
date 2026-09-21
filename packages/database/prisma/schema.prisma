@@ -860,11 +860,15 @@ model PaymentOperation {
   status      PaymentOpStatus @default(PENDING)
   payload     Json // params needed to resume the operation
   attempts    Int             @default(0)
+  recoveryAttempts Int        @default(0)
+  nextAttemptAt DateTime?      @db.Timestamptz(6)
+  quarantinedAt DateTime?      @db.Timestamptz(6)
   lastError   String?
   createdAt   DateTime        @default(now()) @db.Timestamptz(6)
   updatedAt   DateTime        @updatedAt @db.Timestamptz(6)
 
   @@index([status])
+  @@index([status, quarantinedAt, nextAttemptAt])
   @@map("payment_operations")
 }
 

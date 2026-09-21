@@ -26,6 +26,7 @@ export interface StorageConfig {
   bucket: string;
   accessKey: string;
   secretKey: string;
+  requestTimeoutMs?: number;
 }
 
 export function createS3Storage(cfg: StorageConfig): StoragePort {
@@ -34,6 +35,8 @@ export function createS3Storage(cfg: StorageConfig): StoragePort {
     // Custom endpoint (R2/B2/minio) needs path-style addressing.
     ...(cfg.endpoint ? { endpoint: cfg.endpoint, forcePathStyle: true } : {}),
     credentials: { accessKeyId: cfg.accessKey, secretAccessKey: cfg.secretKey },
+    // Deletes are idempotent; allow one SDK retry inside the total deadline.
+    maxAttempts: 2,
   });
   return {
     presignUpload: (key, contentType) =>
@@ -43,7 +46,9 @@ export function createS3Storage(cfg: StorageConfig): StoragePort {
     presignDownload: (key, expiresInSec = 300) =>
       getSignedUrl(client, new GetObjectCommand({ Bucket: cfg.bucket, Key: key }), { expiresIn: expiresInSec }),
     deleteObject: async (key) => {
-      await client.send(new DeleteObjectCommand({ Bucket: cfg.bucket, Key: key }));
+      await client.send(new DeleteObjectCommand({ Bucket: cfg.bucket, Key: key }), {
+        abortSignal: AbortSignal.timeout(cfg.requestTimeoutMs ?? 15_000),
+      });
     },
   };
 }

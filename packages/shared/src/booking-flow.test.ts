@@ -35,3 +35,17 @@ describe('booking flow contracts', () => {
     });
   });
 });
+
+describe('millisecond cancellation boundaries', () => {
+  it.each([
+    [48 * 3_600_000 + 1, 'GT_48H'],
+    [48 * 3_600_000, 'BETWEEN_12_48H'],
+    [48 * 3_600_000 - 1, 'BETWEEN_12_48H'],
+    [12 * 3_600_000 + 1, 'BETWEEN_12_48H'],
+    [12 * 3_600_000, 'BETWEEN_12_48H'],
+    [12 * 3_600_000 - 1, 'LT_12H'],
+  ] as const)('classifies %s milliseconds before Lagos midnight', (remaining, expected) => {
+    const start = eventInstant('2030-06-01', '00:00');
+    expect(cancelWindow(start, new Date(start.getTime() - remaining))).toBe(expected);
+  });
+});

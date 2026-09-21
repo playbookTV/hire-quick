@@ -1,0 +1,16 @@
+{
+  "id": "19d364c1-fce6-415f-a380-5297fc454311",
+  "status": "FINISHED",
+  "platform": "ANDROID",
+  "buildProfile": "preview",
+  "distribution": "INTERNAL",
+  "appVersion": "0.0.1",
+  "appBuildVersion": "2",
+  "gitCommitHash": "a6a5efe01e4035fe611b48fda0cdbd17ca069548",
+  "createdAt": "2026-09-20T20:41:43.152Z",
+  "completedAt": "2026-09-20T20:56:02.387Z",
+  "artifacts": {
+    "buildUrl": "https://expo.dev/artifacts/eas/i11pYxpaQWjmdjbDbMs3tTFIVu3-qSSq20K6XwrWrrc.apk",
+    "applicationArchiveUrl": "https://expo.dev/artifacts/eas/i11pYxpaQWjmdjbDbMs3tTFIVu3-qSSq20K6XwrWrrc.apk"
+  }
+}

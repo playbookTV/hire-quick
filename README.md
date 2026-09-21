@@ -14,7 +14,7 @@ This pnpm/Turbo monorepo contains the Express API and background worker, a React
 
 ## Local setup overview
 
-Use Node 22 (the CI/container version), pnpm **10.27.0**, PostgreSQL, and Redis. The package minimum is Node 20. Run commands from the repository root.
+Use Node **22.13 or newer** (CI and containers use Node 22), pnpm **10.27.0**, PostgreSQL, and Redis. The mobile app uses **Expo SDK 57** and needs a matching version of Expo Go. Run commands from the repository root.
 
 ```sh
 pnpm install --frozen-lockfile

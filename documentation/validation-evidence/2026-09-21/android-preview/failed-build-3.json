@@ -1,0 +1,15 @@
+{
+  "id": "7751d28f-8536-408a-a9f0-5a1f198e6646",
+  "status": "ERRORED",
+  "platform": "ANDROID",
+  "sdkVersion": "57.0.0",
+  "appVersion": "0.0.1",
+  "appBuildVersion": "3",
+  "createdAt": "2026-09-21T12:51:54.902Z",
+  "completedAt": "2026-09-21T12:59:53.615Z",
+  "error": {
+    "errorCode": "EAS_BUILD_UNKNOWN_GRADLE_ERROR",
+    "message": "Gradle build failed with unknown error. See logs for the \"Run gradlew\" phase for more information."
+  },
+  "diagnosis": "Android release bundling could not resolve babel-preset-expo from the app Babel configuration."
+}

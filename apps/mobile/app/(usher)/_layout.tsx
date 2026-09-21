@@ -5,6 +5,7 @@
  * the five-slot bar can carry Messages.
  */
 import { Redirect, Tabs } from 'expo-router';
+import type { ColorValue } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { BottomNav } from '../../components/BottomNav.js';
 import { useAuth } from '../../lib/auth-context.js';
@@ -13,7 +14,7 @@ import { Loading } from '../../components/Loading.js';
 type FeatherName = keyof typeof Feather.glyphMap;
 const icon =
   (name: FeatherName) =>
-  ({ color, size }: { color: string; size: number }) => (
+  ({ color, size }: { color: ColorValue; size: number }) => (
     <Feather name={name} size={size} color={color} />
   );
 

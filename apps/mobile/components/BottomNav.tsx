@@ -3,7 +3,7 @@
  * border, five flex tabs (24px icon + Overline/S bold label), emerald when
  * active, ink/muted otherwise. Used as the expo-router Tabs `tabBar`.
  */
-import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import type { BottomTabBarProps } from 'expo-router/js-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, Box, Text } from '../theme/restyle.js';
 import { AnimatedPressable } from './Pressable.js';

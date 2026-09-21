@@ -34,6 +34,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Runtime tests start disposable loopback Redis servers (including TLS).
+      - run: sudo apt-get update && sudo apt-get install -y redis-server
       - run: pnpm --filter @hq/database exec prisma generate
       - run: pnpm docs:check
       - run: pnpm typecheck

@@ -667,6 +667,9 @@ export function useCancellationQuote(id: string) {
       api.get<{
         actor: 'CLIENT' | 'USHER';
         window: string;
+        refundKobo: number;
+        usherCompensationKobo: number;
+        processingFeeKobo: number;
         clientRefundPct: number;
         usherPayoutPct: number;
         gross: number;

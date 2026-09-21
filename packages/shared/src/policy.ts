@@ -50,7 +50,7 @@ const CLIENT_CANCEL: Record<CancelWindow, PolicyOutcome> = {
     usherPayoutPct: 0,
     usherReputation: 'NONE',
     suspendIfRepeat: false,
-    lessProcessingFee: true, // "100% less non-refundable processing fee †"
+    lessProcessingFee: DEDUCT_PROCESSING_FEE_ON_REFUND, // Provider decision gate remains off.
   },
   BETWEEN_12_48H: {
     clientRefundPct: 50,
@@ -113,3 +113,14 @@ export const NO_SHOW_OUTCOME: PolicyOutcome = {
 
 /** Default grace window (minutes) for both the no-show and auto-complete cutoffs (§12). */
 export const DEFAULT_GRACE_MINUTES = 60;
+
+/** Quote the active fee policy. Late-window settlement remains an approval gate.
+ * Give the compensation the remainder so even odd-kobo allocations conserve gross.
+ */
+export function cancellationAmounts(gross: number, outcome: PolicyOutcome) {
+  if (!Number.isSafeInteger(gross) || gross < 0) throw new Error('Invalid cancellation amount');
+  const refundKobo = Math.floor((gross * outcome.clientRefundPct) / 100);
+  if (outcome.lessProcessingFee)
+    throw new Error('Refund fee deduction requires an approved ledger policy');
+  return { refundKobo, usherCompensationKobo: gross - refundKobo, processingFeeKobo: 0 };
+}

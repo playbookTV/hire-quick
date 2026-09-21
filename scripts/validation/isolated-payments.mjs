@@ -132,7 +132,8 @@ try {
       ),
     );
     if (
-      connections.some((row) => row.schema !== schema || row.search_path !== schema) ||
+      connections.some((row) => row.schema !== schema ||
+        ![schema, `"${schema}"`].includes(row.search_path)) ||
       new Set(connections.map((row) => row.pid)).size !== 8
     ) {
       throw new Error('Isolation verification failed; refusing migrations and tests');
