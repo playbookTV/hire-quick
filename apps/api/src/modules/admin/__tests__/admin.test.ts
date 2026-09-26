@@ -3,7 +3,12 @@ import { prisma } from '@hq/database';
 import { holdOrder, freezeBooking } from '../../payments/ledger/ledger.js';
 import { resolveDispute, decideApproval, createRefund } from '../service.js';
 import { InMemoryPaystack } from '../../payments/port/paystack-port.js';
-import { createScenario, teardown, type Scenario } from '../../payments/__tests__/fixtures.js';
+import {
+  createScenario,
+  teardown,
+  type Scenario,
+  FIXTURE_DISPUTE_TIME,
+} from '../../payments/__tests__/fixtures.js';
 
 let scenario: Scenario | null = null;
 const adminIds: string[] = [];
@@ -22,7 +27,7 @@ async function setupDisputed(
   scenario = await createScenario({ headcount: 1, amountKobo });
   await prisma.$transaction((tx) => holdOrder(tx, scenario!.orderId, 'chg_admin'));
   const bookingId = scenario.bookingIds[0]!;
-  await prisma.$transaction((tx) => freezeBooking(tx, bookingId));
+  await prisma.$transaction((tx) => freezeBooking(tx, bookingId, FIXTURE_DISPUTE_TIME));
   const dispute = await prisma.dispute.create({
     data: { bookingId, raisedById: scenario.clientUserId, reason: 'no-show', status: 'OPEN' },
   });

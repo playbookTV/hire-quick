@@ -18,6 +18,8 @@ coverage/
 packages/database/generated/
 .DS_Store
 *.log
+*.rdb
+*.aof
 
 # --- mobile / Expo ---
 **/.expo/

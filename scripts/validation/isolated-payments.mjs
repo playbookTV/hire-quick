@@ -2,26 +2,32 @@
 import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { appendFileSync, readFileSync } from 'node:fs';
+import { appendFileSync, existsSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const requireApi = createRequire(new URL('../../apps/api/package.json', import.meta.url));
 const { parse } = requireApi('dotenv');
 const { PrismaClient } = requireApi('@hq/database');
-const configured = { ...parse(readFileSync(`${root}/.env`)), ...process.env };
+const configured = {
+  ...(existsSync(`${root}/.env`) ? parse(readFileSync(`${root}/.env`)) : {}),
+  ...process.env,
+};
 const source = new URL(configured.DIRECT_URL ?? configured.DATABASE_URL);
 if (!['postgresql:', 'postgres:'].includes(source.protocol))
   throw new Error('PostgreSQL URL required');
 source.hostname = source.hostname.replace('-pooler.', '.');
 source.searchParams.delete('pgbouncer');
 source.searchParams.set('connect_timeout', '20');
+source.searchParams.set('pool_timeout', '60');
 source.searchParams.set('connection_limit', '8');
 const schema = `hq_validation_${new Date().toISOString().replace(/\D/g, '').slice(0, 14)}_${randomBytes(4).toString('hex')}`;
 const url = new URL(source);
 url.searchParams.set('schema', schema);
 url.searchParams.set('options', `-c search_path=${schema}`);
-const logPath = `/private/tmp/${schema}.log`;
+const logPath = join(tmpdir(), `${schema}.log`);
 function clean(text) {
   let result = String(text).replace(
     /postgres(?:ql)?:\/\/[^\s\u001b"']+/g,
@@ -65,9 +71,9 @@ async function command(label, args) {
     FCM_PROJECT_ID: '',
     FCM_CLIENT_EMAIL: '',
     FCM_PRIVATE_KEY: '',
-    DOJAH_APP_ID: '',
-    DOJAH_SECRET_KEY: '',
-    DOJAH_WIDGET_ID: '',
+    KYC_MODE: 'smile',
+    SMILE_PARTNER_ID: '',
+    SMILE_API_KEY: '',
     STORAGE_BUCKET: '',
     STORAGE_ACCESS_KEY: '',
     STORAGE_SECRET_KEY: '',
@@ -193,6 +199,9 @@ try {
       if (!files.length || files.some((file) => !/^src\/[a-zA-Z0-9_/.\-]+\.test\.ts$/.test(file))) {
         throw new Error('Explicit API test paths are required');
       }
+      const testNamePattern = process.argv
+        .find((arg) => arg.startsWith('--api-test-name-pattern='))
+        ?.slice('--api-test-name-pattern='.length);
       await command('Final affected API tests', [
         '--filter',
         '@hq/api',
@@ -200,6 +209,7 @@ try {
         'vitest',
         'run',
         ...files,
+        ...(testNamePattern ? ['--testNamePattern', testNamePattern] : []),
       ]);
       if (process.argv.includes('--actual-test-withdrawal-after')) {
         await command('Actual TEST seeded-wallet withdrawal', [
@@ -218,7 +228,9 @@ try {
         '--config',
         'scripts/validation/vitest.config.mts',
       ]);
-      await command('Full serial API suite', ['--filter', '@hq/api', 'exec', 'vitest', 'run']);
+      if (!process.argv.includes('--local-lifecycle-only')) {
+        await command('Full serial API suite', ['--filter', '@hq/api', 'exec', 'vitest', 'run']);
+      }
     }
   }
 } catch (error) {
@@ -227,13 +239,20 @@ try {
 } finally {
   if (isolated) await isolated.$disconnect();
   if (created) {
-    await control.$executeRawUnsafe(`DROP SCHEMA "${schema}" CASCADE`);
-    const remaining = await control.$queryRawUnsafe(
-      'SELECT 1 FROM pg_namespace WHERE nspname = $1',
-      schema,
-    );
-    if (remaining.length) throw new Error('Disposable schema cleanup could not be verified');
-    log(`PASS removed disposable schema ${schema}`);
+    try {
+      await control.$executeRawUnsafe(`DROP SCHEMA "${schema}" CASCADE`);
+      const remaining = await control.$queryRawUnsafe(
+        'SELECT 1 FROM pg_namespace WHERE nspname = $1',
+        schema,
+      );
+      if (remaining.length) throw new Error('Disposable schema cleanup could not be verified');
+      log(`PASS removed disposable schema ${schema}`);
+    } catch (error) {
+      // Preserve the failure and exact cleanup scope without an unredacted
+      // Prisma exception escaping the runner during a database outage.
+      log(`FAIL cleanup unconfirmed for ${schema}: ${error.message}`);
+      process.exitCode = 1;
+    }
   }
   await control.$disconnect();
 }

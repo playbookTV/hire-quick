@@ -8,9 +8,10 @@ import { useCallback } from 'react';
 import { ScrollView, RefreshControl } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme, Box, Text } from '../theme/restyle.js';
+import { Box, Text } from '../theme/restyle.js';
 import { Avatar } from './Avatar.js';
-import { StatusPill } from './StatusPill.js';
+import { ScreenHeading } from './ScreenHeading.js';
+import { screenTokens } from '../theme/token-manager.js';
 import { SkeletonRow } from './Skeleton.js';
 import { EmptyState } from './EmptyState.js';
 import { AnimatedPressable } from './Pressable.js';
@@ -30,7 +31,6 @@ const CHATTABLE = new Set([
 
 export function ConversationList(): React.JSX.Element {
   const router = useRouter();
-  const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const isUsher = user?.role === 'USHER';
@@ -47,8 +47,8 @@ export function ConversationList(): React.JSX.Element {
     <Box flex={1} backgroundColor="bgCanvas" style={{ paddingTop: insets.top }}>
       <ScrollView
         contentContainerStyle={{
-          paddingHorizontal: 20,
-          paddingTop: 16,
+          paddingHorizontal: screenTokens.gutter,
+          paddingTop: screenTokens.top,
           paddingBottom: 24,
           gap: 16,
         }}
@@ -62,7 +62,10 @@ export function ConversationList(): React.JSX.Element {
           />
         }
       >
-        <Text variant="h2">Messages</Text>
+        <ScreenHeading title="Messages" />
+        <Text variant="bodySm" color="inkMuted">
+          Chat opens once a booking is confirmed.
+        </Text>
         {bookings.isLoading ? (
           <Box style={{ gap: 8 }}>
             {[0, 1, 2, 3].map((i) => (
@@ -88,7 +91,7 @@ export function ConversationList(): React.JSX.Element {
           </Box>
         ) : (
           <Box>
-            {threads.map((b, i) => {
+            {threads.map((b) => {
               const counterparty = isUsher
                 ? b.event?.client?.displayName
                 : (b.usher?.displayName ?? b.usher?.user?.phone);
@@ -107,26 +110,33 @@ export function ConversationList(): React.JSX.Element {
                     alignItems="center"
                     style={{
                       gap: 12,
-                      paddingVertical: 14,
-                      borderTopWidth: i === 0 ? 0 : 1,
-                      borderTopColor: theme.colors.borderDefault,
+                      paddingVertical: 20,
                     }}
                   >
                     <Avatar name={title} size={48} />
                     <Box flex={1} style={{ gap: 4 }}>
-                      <Text variant="titleM" color="inkStrong" numberOfLines={1}>
+                      <Text variant="labelLg" color="inkStrong" numberOfLines={1}>
                         {title}
                       </Text>
                       <Text variant="bodySm" color="inkMuted" numberOfLines={1}>
                         {b.event?.title ?? 'Booking'}
                       </Text>
-                      {b.unreadCount ? (
-                        <Text variant="label" color="brandEmerald">
-                          {b.unreadCount} unread
-                        </Text>
-                      ) : null}
                     </Box>
-                    <StatusPill status={b.status} />
+                    {b.unreadCount ? (
+                      <Box
+                        minWidth={24}
+                        minHeight={24}
+                        paddingHorizontal="150"
+                        borderRadius="pill"
+                        backgroundColor="brandAccent"
+                        alignItems="center"
+                        justifyContent="center"
+                      >
+                        <Text variant="labelSm" color="inkOnAccent">
+                          {b.unreadCount}
+                        </Text>
+                      </Box>
+                    ) : null}
                   </Box>
                 </AnimatedPressable>
               );

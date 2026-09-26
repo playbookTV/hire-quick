@@ -1,8 +1,9 @@
 /** One usher lock serializes submissions, provider callbacks and manual review. */
 import type { Prisma, PrismaClient, VerificationRejectReason } from '@hq/database';
+import { consumeUpload, lockUploadOwner } from '../storage/uploads.js';
 import { randomUUID } from 'node:crypto';
 import { ApiError } from '../../app.js';
-import type { KycPort, KycResult } from './port/kyc-port.js';
+import type { KycIdentity, KycPort, KycResult } from './port/kyc-port.js';
 
 const MAX_KYC_ATTEMPTS = 5;
 const TX = { timeout: 30_000, maxWait: 30_000 };
@@ -49,50 +50,87 @@ export async function startBiometricVerification(
   prisma: PrismaClient,
   userId: string,
   kyc: KycPort,
+  identity: KycIdentity,
+  reference?: string,
 ) {
   const usher = await prisma.usher.findUnique({ where: { userId } });
   if (!usher) throw new ApiError(403, 'NOT_AN_USHER', 'only ushers verify identity');
-  assertCanStart(usher);
-  const referenceId = randomUUID();
-  const session = await kyc.startSession(referenceId);
-  if (session.referenceId !== referenceId || !session.widgetId)
-    throw new ApiError(503, 'KYC_UNAVAILABLE', 'identity verification is unavailable');
-  await prisma.$transaction(async (tx) => {
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+  return prisma.$transaction(async (tx) => {
     const current = await lockUsher(tx, usher.id);
-    assertCanStart(current);
+    if (reference) {
+      const active = await latest(tx, usher.id);
+      if (
+        current.verificationStatus === 'VERIFIED' ||
+        active?.providerReferenceId !== reference ||
+        active.provider !== 'SMILE_ID' ||
+        active.status !== 'PENDING' ||
+        active.reviewedById ||
+        Date.now() - active.createdAt.getTime() > 60 * 60 * 1000
+      )
+        throw new ApiError(409, 'STALE_VERIFICATION', 'Start a new identity check.');
+      return kyc.startSession(reference, identity, user.phone);
+    }
+    // Provider migration must not carry failed Dojah sessions into Smile's cap.
+    // Count committed Smile attempts under the same usher lock used to create them.
+    const smileAttempts = await tx.usherVerification.count({
+      where: { usherId: usher.id, provider: 'SMILE_ID', method: 'BIOMETRIC' },
+    });
+    assertCanStart({ ...current, kycAttempts: smileAttempts });
+    const referenceId = randomUUID();
+    const session = await kyc.startSession(referenceId, identity, user.phone);
+    if (session.referenceId !== referenceId || !session.token)
+      throw new ApiError(503, 'KYC_UNAVAILABLE', 'identity verification is unavailable');
     await tx.usherVerification.create({
       data: {
         usherId: usher.id,
         method: 'BIOMETRIC',
-        provider: 'DOJAH',
-        dojahReferenceId: referenceId,
+        provider: 'SMILE_ID',
+        providerReferenceId: referenceId,
         status: 'PENDING',
         createdAt: await submissionTime(tx, usher.id),
       },
     });
     await tx.usher.update({
       where: { id: usher.id },
-      data: {
-        kycAttempts: { increment: 1 },
-        verificationStatus: 'PENDING',
-        verifiedAt: null,
-      },
+      data: { kycAttempts: { increment: 1 }, verificationStatus: 'PENDING', verifiedAt: null },
     });
+    return session;
   }, TX);
-  return session;
 }
 
 export async function submitDocumentVerification(
   prisma: PrismaClient,
   usherId: string,
   documents: { idDocumentUrl: string; selfieUrl: string },
+  uploadOwnerId?: string,
 ) {
   return prisma.$transaction(async (tx) => {
+    if (uploadOwnerId) await lockUploadOwner(tx, uploadOwnerId);
     const usher = await lockUsher(tx, usherId);
     if (usher.verificationStatus === 'VERIFIED')
       throw new ApiError(409, 'ALREADY_VERIFIED', 'identity is already verified');
+    if (uploadOwnerId) {
+      const existing = await tx.usherVerification.findFirst({ where: { usherId, ...documents } });
+      if (existing) return existing;
+    }
+    const id = randomUUID();
+    if (uploadOwnerId) {
+      for (const [purpose, key] of [
+        ['id', documents.idDocumentUrl],
+        ['selfie', documents.selfieUrl],
+      ] as const)
+        await consumeUpload(tx, {
+          key,
+          ownerId: uploadOwnerId,
+          scopeId: usherId,
+          purpose,
+          reference: `verification:${id}:${purpose}`,
+        });
+    }
     const record = await tx.usherVerification.create({
       data: {
+        id,
         usherId,
         ...documents,
         method: 'DOCUMENT',
@@ -111,7 +149,7 @@ export async function submitDocumentVerification(
 /** Authenticated results can settle only the latest, still-pending biometric attempt. */
 export async function applyKycResult(prisma: PrismaClient, referenceId: string, result: KycResult) {
   const matches = await prisma.usherVerification.findMany({
-    where: { dojahReferenceId: referenceId },
+    where: { providerReferenceId: referenceId },
     take: 2,
   });
   // A reference must identify exactly one session. Do not guess on legacy duplicates.
@@ -123,14 +161,26 @@ export async function applyKycResult(prisma: PrismaClient, referenceId: string, 
     if (
       !current ||
       current.id !== candidate.id ||
-      current.dojahReferenceId !== referenceId ||
+      current.providerReferenceId !== referenceId ||
       current.method !== 'BIOMETRIC' ||
-      current.provider !== 'DOJAH' ||
+      current.provider !== 'SMILE_ID' ||
       current.status !== 'PENDING' ||
-      current.reviewedById !== null ||
-      result.decision === 'pending'
+      current.reviewedById !== null
     )
       return null;
+    if (result.decision === 'pending') {
+      if (result.providerJobId)
+        await tx.usherVerification.update({
+          where: { id: current.id },
+          data: {
+            govLookup: {
+              providerJobId: result.providerJobId,
+              providerStatus: result.providerStatus ?? 'processing',
+            },
+          },
+        });
+      return null;
+    }
     const approved = result.decision === 'verified';
     const reviewedAt = new Date();
     await tx.usherVerification.update({
@@ -145,10 +195,12 @@ export async function applyKycResult(prisma: PrismaClient, referenceId: string, 
         faceMatchScore: result.faceMatchScore ?? null,
         watchListed: result.watchListed ?? null,
         govLookup: {
+          providerJobId: result.providerJobId ?? null,
+          providerStatus: result.providerStatus ?? null,
           livenessPassed: result.livenessPassed ?? null,
           faceMatchScore: result.faceMatchScore ?? null,
           watchListed: result.watchListed ?? null,
-          idFound: Boolean(result.nin ?? result.bvn),
+          idFound: result.idFound ?? null,
         },
         reasonCode: approved
           ? null

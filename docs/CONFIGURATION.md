@@ -18,7 +18,7 @@ Source: [API environment schema](../apps/api/src/env.ts), [server wiring](../app
 | `CORS_ORIGINS` | Empty list               | Comma-separated exact browser origins. Production `createApp` requires a nonempty list. |
 | `PROCESS_TYPE` | Not read by API schema   | Container entrypoint selects worker only for `worker`; otherwise starts API.            |
 
-Do not infer service readiness from successful environment parsing or `/health`.
+Do not infer service readiness from successful environment parsing or `/health`. `/ready` checks database and Redis connectivity; see [Observability](OBSERVABILITY.md) for Sentry, release labels, heartbeat variables, and hosted activation steps.
 
 ## Authentication
 
@@ -52,30 +52,36 @@ Amounts remain integer kobo. Never place server payment keys in mobile or admin 
 | -------------------------------- | ----------- | -------------------------------------------------------------------------- |
 | `BREVO_API_KEY`                  | Empty       | Delivery API credential; required in staging/production.                   |
 | `BREVO_SMS_SENDER`               | `HireQuick` | Configured SMS sender identity.                                            |
-| `BREVO_WHATSAPP_SENDER`          | Empty       | WhatsApp business sender.                                                  |
-| `BREVO_WHATSAPP_OTP_TEMPLATE_ID` | `0`         | Nonnegative template ID; positive ID plus sender selects WhatsApp.         |
-| `BREVO_WHATSAPP_OTP_PARAM`       | `code`      | Approved template variable name.                                           |
+| `KUDISMS_API_KEY` | Empty | Backend-only key; when set, selects KudiSMS for Nigerian SMS OTP. |
+| `KUDISMS_SENDER_ID` | `HIREQUICK` | Approved Corporate Sender ID. |
+| `TWILIO_ACCOUNT_SID` | Empty | Twilio account SID (`AC` + 32 hex characters). |
+| `TWILIO_API_KEY_SID` | Empty | Backend Twilio API key SID (`SK` + 32 hex characters). |
+| `TWILIO_API_KEY_SECRET` | Empty | Backend-only API key secret. |
+| `TWILIO_WHATSAPP_FROM` | Empty | Registered sender, e.g. `whatsapp:+15551234567`. |
+| `TWILIO_WHATSAPP_CONTENT_SID` | Empty | Approved Authentication / Copy Code template (`HX` + 32 hex characters), OTP variable `1`. |
 | `FCM_PROJECT_ID`                 | Empty       | Firebase project; all three FCM variables enable provider delivery.        |
 | `FCM_CLIENT_EMAIL`               | Empty       | Service-account email.                                                     |
 | `FCM_PRIVATE_KEY`                | Empty       | Service-account private key; preserve multiline content in secret storage. |
 
-OTP selects WhatsApp when configured, otherwise SMS. Do not assume automatic SMS failover after a selected WhatsApp request fails. `devCode` is returned only with `NODE_ENV=test`. A stubbed notification path does not make interactive development login work offline.
+OTP uses KudiSMS Corporate SMS when `KUDISMS_API_KEY` is set, with the approved `HIREQUICK` sender by default. KudiSMS failures return a delivery failure without retrying another provider. This route supports Nigerian mobile numbers only. See [KudiSMS setup and validation](KUDISMS-OTP.md). Without a KudiSMS key, OTP uses Twilio WhatsApp when all five settings are configured, otherwise Brevo SMS. Partial Twilio configuration fails startup. A failed Twilio send attempt falls back to SMS with the same code; acceptance by Twilio is not a delivery receipt, and later delivery failures do not trigger automatic fallback. See [Twilio onboarding and validation](TWILIO-OTP.md). `devCode` is returned only with `NODE_ENV=test`. A stubbed notification path does not make interactive development login work offline.
 
 ## Verification and storage
 
 | Variable             | Default     | Usage                                                        |
 | -------------------- | ----------- | ------------------------------------------------------------ |
-| `DOJAH_APP_ID`       | Empty       | Server-side biometric KYC configuration.                     |
-| `DOJAH_SECRET_KEY`   | Empty       | Provider secret.                                             |
-| `DOJAH_WIDGET_ID`    | Empty       | EasyOnboard widget flow.                                     |
-| `DOJAH_ENVIRONMENT`  | `sandbox`   | `sandbox` or `production`; choose explicitly for deployment. |
+| `KYC_MODE` | `smile` | Smile ID biometric checks; `manual` only for staging/testing. |
+| `SMILE_PARTNER_ID` | Empty | Numeric partner ID from Smile ID. |
+| `SMILE_API_KEY` | Empty | Server-only API key for the selected environment. |
+| `SMILE_ENVIRONMENT` | `sandbox` | `sandbox` or `production`; production requires `production`. |
+| `SMILE_CALLBACK_URL` | Empty | Public HTTPS API base callback: `https://api.example.com/webhooks/smile-id`. |
+| `SMILE_PRIVACY_POLICY_URL` | Empty | Public HTTPS privacy notice displayed by the SDK. |
 | `STORAGE_ENDPOINT`   | Empty       | S3-compatible endpoint; empty uses AWS default.              |
 | `STORAGE_REGION`     | `us-east-1` | Root example uses `auto` for R2.                             |
 | `STORAGE_BUCKET`     | Empty       | Private document/photo/media bucket.                         |
 | `STORAGE_ACCESS_KEY` | Empty       | Server storage credential.                                   |
 | `STORAGE_SECRET_KEY` | Empty       | Server storage credential.                                   |
 
-Staging/production require all three Dojah values and storage bucket/access/secret values. Endpoint/region must match the provider. CORS on an object store is separate from API CORS and must permit the intended upload clients. Missing storage returns `503 STORAGE_UNAVAILABLE` on upload-url routes.
+Staging/production in Smile mode require all Smile credentials and URLs and storage bucket/access/secret values. Endpoint/region must match the provider. CORS on an object store is separate from API CORS and must permit the intended upload clients. Missing storage returns `503 STORAGE_UNAVAILABLE` on upload-url routes.
 
 ## Retention
 
@@ -102,12 +108,12 @@ These are public bundle contents, not secret stores. See [mobile example](../app
 
 ### Temporary manual verification for client testing
 
-`KYC_MODE=manual` permits staging to start without Dojah credentials. Biometric
-sessions return `KYC_UNAVAILABLE`, and Dojah callbacks cannot approve identities.
+`KYC_MODE=manual` permits staging to start without Smile ID credentials. Biometric
+sessions return `KYC_UNAVAILABLE`, and Smile ID callbacks cannot approve identities.
 Document uploads and authorized admin review remain required. All payment, storage,
-and authentication checks remain enabled. The default is `KYC_MODE=dojah`;
-`NODE_ENV=production` rejects manual testing mode. Restore `KYC_MODE=dojah` and
-configure all three Dojah credentials before enabling biometric verification.
+and authentication checks remain enabled. The default is `KYC_MODE=smile`;
+`NODE_ENV=production` rejects manual testing mode. Restore `KYC_MODE=smile` and
+configure Smile ID credentials and URLs before enabling biometric verification. See [Smile ID setup](SMILE-ID.md).
 
 ### Admin email sign-in
 

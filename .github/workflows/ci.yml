@@ -49,3 +49,5 @@ jobs:
       # drifted from them this diff is non-empty and exits non-zero (--exit-code).
       - run: pnpm --filter @hq/database exec prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
       - run: pnpm test
+      # Real local HTTP transport plus database lifecycle; never contacts Paystack.
+      - run: node scripts/validation/isolated-payments.mjs --run --static-already-passed --local-lifecycle-only

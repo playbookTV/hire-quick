@@ -6,9 +6,12 @@
  * is in a provider above the theme.
  */
 import { View, Text, Pressable } from 'react-native';
+import { useEffect } from 'react';
 import type { ErrorBoundaryProps } from 'expo-router';
+import { reportRenderError } from '../lib/monitoring.js';
 
 export function ErrorScreen({ error, retry }: Readonly<ErrorBoundaryProps>): React.JSX.Element {
+  useEffect(() => { reportRenderError(error); }, [error]);
   return (
     <View style={{ flex: 1, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 }}>
       <Text style={{ fontSize: 22, fontWeight: '700', color: '#11150F', textAlign: 'center' }}>Something went wrong</Text>

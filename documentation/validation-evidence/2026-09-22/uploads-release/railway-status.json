@@ -1,0 +1,94 @@
+{
+  "projectId": "396c28f8-30ac-4fd8-ba96-684e9a27d0e6",
+  "environmentId": "637575af-e645-4287-a21f-520e7219fb4c",
+  "services": [
+    {
+      "serviceName": "Redis",
+      "serviceId": "2dbb70c4-a61f-4c1e-bf3e-c2116d531c9f",
+      "domains": {
+        "serviceDomains": [],
+        "customDomains": []
+      },
+      "latest": {
+        "id": "c819707d-de20-42cb-9855-9970da27208d",
+        "status": "SUCCESS",
+        "createdAt": "2026-09-05T10:24:36.004Z"
+      },
+      "active": [
+        {
+          "id": "c819707d-de20-42cb-9855-9970da27208d",
+          "status": "SUCCESS"
+        }
+      ]
+    },
+    {
+      "serviceName": "hirequick-worker",
+      "serviceId": "2640683c-6796-4015-92f1-26075852b05c",
+      "domains": {
+        "serviceDomains": [],
+        "customDomains": []
+      },
+      "latest": {
+        "id": "a19f894e-9206-4819-b9fe-c73320be4106",
+        "status": "SUCCESS",
+        "createdAt": "2026-09-22T19:27:05.086Z"
+      },
+      "active": [
+        {
+          "id": "a19f894e-9206-4819-b9fe-c73320be4106",
+          "status": "SUCCESS"
+        }
+      ]
+    },
+    {
+      "serviceName": "prolific-love",
+      "serviceId": "85b4bcff-3dbc-48a9-882c-17da83ed20ef",
+      "domains": {
+        "serviceDomains": [
+          {
+            "id": "5e1e81f7-58c7-4fce-82f9-03f1e6e3cd5a",
+            "domain": "prolific-love-production-2775.up.railway.app",
+            "targetPort": 8080
+          }
+        ],
+        "customDomains": []
+      },
+      "latest": {
+        "id": "bb7de256-c69b-4e79-89bd-bfbc203e3b4b",
+        "status": "SUCCESS",
+        "createdAt": "2026-09-22T19:50:00.958Z"
+      },
+      "active": [
+        {
+          "id": "bb7de256-c69b-4e79-89bd-bfbc203e3b4b",
+          "status": "SUCCESS"
+        }
+      ]
+    },
+    {
+      "serviceName": "hirequick-admin",
+      "serviceId": "42070d14-5076-4a76-855f-1edd118f5485",
+      "domains": {
+        "serviceDomains": [
+          {
+            "id": "112cf5e8-604a-406e-a4ef-9606ad962f04",
+            "domain": "hirequick-admin-production.up.railway.app",
+            "targetPort": null
+          }
+        ],
+        "customDomains": []
+      },
+      "latest": {
+        "id": "ddfbfa33-088a-4337-9908-ce1be80dcc61",
+        "status": "SUCCESS",
+        "createdAt": "2026-09-22T00:12:46.610Z"
+      },
+      "active": [
+        {
+          "id": "ddfbfa33-088a-4337-9908-ce1be80dcc61",
+          "status": "SUCCESS"
+        }
+      ]
+    }
+  ]
+}

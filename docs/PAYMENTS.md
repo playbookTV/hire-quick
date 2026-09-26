@@ -10,7 +10,7 @@ idempotency, and concurrency.
 
 [Documentation index](README.md) · [API](API.md) · [Operations](OPERATIONS.md) · [Current limitations](STATUS.md)
 
-Reviewed against current implementation on 2026-09-16. Policy intent and implemented settlement support are distinguished below.
+Reviewed against current implementation on 2026-09-16; approved settlement behavior updated on 2026-09-21. The [implementation record](../documentation/payments/settlement-implementation-2026-09-21.md) distinguishes local validation from deployment and provider certification.
 
 ---
 
@@ -81,11 +81,14 @@ charge.success WEBHOOK ───▶ holdOrder()
    │                          Booking → CONFIRMED, Payment(escrow=HELD)
    │                          ─ invariant: Σ HOLD == order.grossAmount ─
    │
-   ├── happy path ──────────▶ releaseBooking()  (client confirms, or auto-complete)
+   ├── completion ─────────▶ completeBookingHeld() (client confirms, or auto-complete)
+   │                          Booking → COMPLETED; escrow remains HELD
+   │                          Wait until event end (Lagos) + 72 hours, no open dispute
+   ├── eligible release ────▶ releaseBooking()
    │                          EscrowLedger += RELEASE(−payout) + FEE(−fee)
    │                          WalletLedger += CREDIT(+payout); wallet balance += payout
    │                          Payment(escrow=RELEASED)
-   │                          Booking → COMPLETED → PAID
+   │                          Booking → PAID
    │                          ─ booking escrow now sums to 0 ─
    │
    └── refund path ─────────▶ refundBooking()   (cancel / no-show / dispute)
@@ -106,7 +109,7 @@ Key points:
 - **Partial refund of a batch:** refunding one booking moves only that booking
   to `REFUNDED` and the order to `PARTIALLY_REFUNDED`; sibling bookings are
   untouched. When all siblings are refunded the order becomes `REFUNDED`.
-- **Loyalty milestones are evaluated at the completion chokepoint.** Every release
+- **Loyalty milestones are evaluated at eligible wallet release.** Every release
   path (manual complete, auto-complete, dispute-release) calls
   `rewards.evaluateMilestones(tx, usherId)` **inside the same transaction**, so an
   usher's lifetime completed-job count and any unlocked tiers update atomically
@@ -118,7 +121,9 @@ Ledger functions (all in `payments/ledger/ledger.ts`):
 | Function                                                  | Effect                                                                                              |
 | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | `holdOrder(tx, orderId, chargeRef)`                       | HOLD every booking in the order into escrow; order → PAID.                                          |
-| `releaseBooking(tx, bookingId, method)`                   | RELEASE + FEE; credit usher wallet; booking → COMPLETED → PAID.                                     |
+| `completeBookingHeld(tx, bookingId, method)` | Record COMPLETED; retain HELD escrow and no wallet credit. |
+| `releaseBooking(tx, bookingId, method)` | At/after event end + 72h, with no unresolved dispute: RELEASE + FEE, wallet credit, booking → PAID. |
+| `settleClientCancellation(tx, bookingId, operationId, snapshot)` | Finalize the approved immutable refund/net payout/fee split after provider confirmation. |
 | `refundBooking(tx, bookingId, amount)`                    | REFUND to client; booking → REFUNDED; recompute order status.                                       |
 | `markCheckedIn / markNoShow / cancelBooking`              | Status precursors (no money movement).                                                              |
 | `freezeBooking(tx, bookingId)`                            | Dispute: booking → DISPUTED, escrow → FROZEN.                                                       |
@@ -319,8 +324,7 @@ refunds and pending transfers do not produce completed ledger entries. See the
 [transfer lifecycle](https://paystack.com/docs/transfers/single-transfers/).
 
 Approvals remain `APPROVED` until their action completes, then become `EXECUTED`.
-Dispute release commits its payout and resolution together; refund intents carry
-the resolution metadata into settlement. Recovery also reconstructs older
+An usher-favour dispute decision restores COMPLETED/HELD and commits its resolution atomically. It releases to the wallet in that transaction only if the 72-hour deadline has elapsed; otherwise the worker releases later. Refund intents carry the resolution metadata into settlement. Recovery also reconstructs older
 missing withdrawal/approval intents and repairs completed payouts/refunds whose
 dispute metadata was stranded. Older uncertain refunds are reconciled without
 blind reissue. A returned recorded sweep appends one positive COMMISSION_SWEEP
@@ -366,13 +370,15 @@ far before the event):
 | `BETWEEN_12_48H` (12–48h inclusive) | 50% / 50%; no usher reputation penalty                  | 100% client refund; penalty                               |
 | `LT_12H` (<12h)                     | 0% / 100%; no usher reputation penalty                  | 100% client refund; major penalty; suspend-if-repeat flag |
 
-**Implementation boundary:** the client cancellation service currently executes only the 100% refund case. Other windows return `409 PARTIAL_CANCEL_UNSUPPORTED` for support handling; this is not an implemented automatic split settlement. Administrative refunds also require the supported full booking amount. Do not promise a partial financial outcome or manually alter ledger balances to emulate one.
+**Implemented settlement:** the first accepted client request reserves the booking and persists its time, event start, window and all amounts. Late requests must confirm the displayed window/refund; stale quotes return `CANCELLATION_QUOTE_CHANGED`. The client refund rounds down, the usher allocation gets the remainder, the 15% commission within that allocation rounds down, and the net wallet payout gets the remainder. Refund + net payout + fee equals the original gross, including odd kobo.
+
+Gross booking allocations above 5,000,000 kobo require two distinct admins, including zero-refund cancellations. The original request remains reserved during approval/rejection and can be reproposed; a rejected approval does not change the accepted quote. Recovery and ledger finalization both verify approval. Provider uncertainty leaves all funds held. Confirmed settlement appends REFUND (when positive), RELEASE and FEE and a wallet CREDIT exactly once. Zero-refund cancellations skip the provider refund entirely. Full refunds end REFUNDED; compensation-bearing cancellations end CANCELLED with payment escrow RELEASED. The original Payment allocation is historical; cancellation summaries and ledger entries report actual settlement. Ordinary admin refunds still require the full eligible booking amount and cannot replace a cancellation reservation.
 
 **No-show** (`NO_SHOW_OUTCOME`): usher confirmed but neither client-verified nor
 self-asserted by `start + grace` → client refunded 100%, usher unpaid + major
 penalty. Default grace is `DEFAULT_GRACE_MINUTES = 60`.
 
-The >48h client policy row has `lessProcessingFee: true` as a specification marker, but the effective global `DEDUCT_PROCESSING_FEE_ON_REFUND` flag is **false** and deductions are not wired into ledger settlement. The provider fee question remains in TRD §23 Q4. Enabling deductions would require a retained-fee entry and reconciliation changes, not only changing the policy flag.
+No processing fee is deducted from client refunds (`DEDUCT_PROCESSING_FEE_ON_REFUND = false`). HireQuick bears unrecovered processing/refund charges. Account-specific provider fees and reconciliation evidence remain open under OVA-166; product approval is not provider certification.
 
 Every cancellation outcome's `clientRefundPct + usherPayoutPct` sums to 100 (a
 tested invariant).
@@ -391,7 +397,7 @@ ledger enforces them on every write.
 PENDING_PAYMENT → CONFIRMED | CANCELLED
 CONFIRMED       → CHECKED_IN | CANCELLED | NO_SHOW | DISPUTED
 CHECKED_IN      → COMPLETED | DISPUTED
-COMPLETED       → PAID
+COMPLETED       → PAID | DISPUTED
 PAID            → (terminal; post-payout disputes currently blocked)
 DISPUTED        → COMPLETED | REFUNDED | CANCELLED   (admin resolution targets)
 CANCELLED       → REFUNDED
@@ -403,7 +409,7 @@ REFUNDED        → (terminal)
 **Withdrawal:** `REQUESTED → PROCESSING → PAID`; failure can enter `FAILED`,
 including `PAID → FAILED` for a confirmed reversal. `FAILED` is terminal.
 
-Post-payout dispute support is deferred until wallet clawback/debt is modeled. The broader 72-hour product dispute window does not override these current state guards.
+The shared deadline is scheduled event end in Africa/Lagos + 72 elapsed hours. HELD bookings may enter dispute strictly before it; completed bookings become eligible for release at it. Ledger lifecycle locks serialize dispute/release checks. PAID and historical RELEASED funds cannot be frozen, refunded again or clawed back by this policy. The UI identifies them as already released and directs exceptional cases to support.
 
 The tables are exported as data so tests can exhaustively check every
 `(from, to)` pair.

@@ -10,6 +10,7 @@ const NAV = [
   ['/ledger', 'Ledger'],
   ['/payment-operations', 'Payment operations'],
   ['/users', 'Users'],
+  ['/observability', 'Observability'],
 ] as const;
 export function Layout() {
   const { logout } = useAuth();

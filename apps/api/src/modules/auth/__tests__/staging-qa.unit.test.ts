@@ -9,7 +9,6 @@ const mocks = vi.hoisted(() => ({
     NODE_ENV: 'staging', PAYSTACK_SECRET_KEY: 'sk_test_fixture', STAGING_QA_OTP_CODE: '012345',
     OTP_VERIFIER_SECRET: 'fixture-secret-with-more-than-thirty-two-characters', OTP_VERIFIER_KEY_ID: 'v1',
     OTP_VERIFIER_PREVIOUS_SECRET: '', OTP_VERIFIER_PREVIOUS_KEY_ID: '',
-    BREVO_WHATSAPP_SENDER: '', BREVO_WHATSAPP_OTP_TEMPLATE_ID: 0,
   },
 }));
 vi.mock('@hq/database', () => ({ prisma: { $transaction: mocks.transaction } }));
@@ -17,7 +16,8 @@ vi.mock('../../../env.js', () => ({ env: mocks.env }));
 vi.mock('../../../app.js', () => ({ ApiError: class extends Error {
   constructor(public statusCode: number, public code: string, message: string) { super(message); }
 } }));
-vi.mock('../../notifications/brevo.js', () => ({ sendSms: mocks.sms, sendWhatsAppOtp: mocks.whatsapp }));
+vi.mock('../../notifications/brevo.js', () => ({ sendSms: mocks.sms }));
+vi.mock('../../notifications/twilio.js', () => ({ whatsappConfigured: () => false, sendWhatsAppOtp: mocks.whatsapp }));
 vi.mock('../tokens.js', () => ({ signAccessToken: mocks.access, signRefreshToken: mocks.refresh }));
 vi.mock('../../audit.js', () => ({ writeAudit: mocks.audit }));
 import { requestOtp, verifyOtp } from '../otp.js';

@@ -1,3 +1,4 @@
+import { pendingEarningsByBooking } from '../pending-earnings.js';
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { z } from 'zod';
 import { withdrawSchema, resolveAccountSchema } from '@hq/shared';
@@ -109,17 +110,18 @@ export function paymentsRouter(deps: Deps): Router {
       const { usherId, walletId, availableBalance } = await usherWalletFor(
         (req as AuthedRequest).auth.userId,
       );
-      const pending = await prisma.payment.aggregate({
-        where: { escrowStatus: 'HELD', booking: { usherId } },
-        _sum: { usherPayout: true },
+      const held = await prisma.payment.findMany({
+        where: { escrowStatus: { in: ['HELD', 'FROZEN'] }, booking: { usherId } },
+        select: { bookingId: true, usherPayout: true },
       });
+      const pending = await pendingEarningsByBooking(prisma, held);
       const lifetime = await prisma.walletLedger.aggregate({
         where: { walletId, entryType: 'CREDIT' },
         _sum: { amount: true },
       });
       res.json({
         availableBalance,
-        pendingEscrow: pending._sum.usherPayout ?? 0,
+        pendingEscrow: [...pending.values()].reduce((sum, amount) => sum + amount, 0),
         lifetimeEarned: lifetime._sum.amount ?? 0,
       });
     }),
@@ -140,7 +142,7 @@ export function paymentsRouter(deps: Deps): Router {
         include: { booking: { include: { event: { select: { title: true } } } } },
       });
       const held = await prisma.payment.findMany({
-        where: { escrowStatus: 'HELD', booking: { usherId } },
+        where: { escrowStatus: { in: ['HELD', 'FROZEN'] }, booking: { usherId } },
         orderBy: { createdAt: 'desc' },
         take: 25,
         include: { booking: { include: { event: { select: { title: true } } } } },
@@ -175,12 +177,18 @@ export function paymentsRouter(deps: Deps): Router {
           createdAt: l.createdAt,
         };
       });
+      const pending = await pendingEarningsByBooking(prisma, held);
       const fromHeld: Activity[] = held.map((p) => ({
         id: p.id,
         type: 'pending',
-        title: 'Escrow hold',
+        title:
+          p.escrowStatus === 'FROZEN'
+            ? 'Dispute hold'
+            : p.booking.status === 'COMPLETED'
+              ? 'Completed · earnings held'
+              : 'Escrow hold',
         subtitle: p.booking.event.title,
-        amount: p.usherPayout,
+        amount: pending.get(p.bookingId) ?? p.usherPayout,
         createdAt: p.createdAt,
       }));
       const all = [...fromLedger, ...fromHeld]

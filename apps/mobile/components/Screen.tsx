@@ -28,10 +28,15 @@ export function Screen({
 }: ScreenProps): React.JSX.Element {
   const insets = useSafeAreaInsets();
   const theme = useTheme();
-  const pad = padding ? ('500' as const) : ('none' as const);
+  const pad = padding ? ('600' as const) : ('none' as const);
 
   const body = (
-    <Box flex={1} backgroundColor="bgCanvas" paddingHorizontal={pad} style={{ paddingTop: topInset ? insets.top : 0 }}>
+    <Box
+      flex={1}
+      backgroundColor="bgCanvas"
+      paddingHorizontal={pad}
+      style={{ paddingTop: topInset ? insets.top : 0 }}
+    >
       {children}
     </Box>
   );
@@ -46,7 +51,7 @@ export function Screen({
       <Box flex={1} backgroundColor="bgCanvas">
         <ScrollView
           contentContainerStyle={{
-            paddingHorizontal: padding ? 20 : 0,
+            paddingHorizontal: padding ? theme.spacing['600'] : 0,
             paddingTop: topInset ? insets.top + 8 : 8,
             paddingBottom: insets.bottom + 32,
             flexGrow: 1,

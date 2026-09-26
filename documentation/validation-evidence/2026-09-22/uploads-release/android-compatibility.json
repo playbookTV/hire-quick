@@ -1,0 +1,26 @@
+[
+  {
+    "path": "apps/mobile/app/(modals)/message-thread.tsx",
+    "matchesCurrent": true
+  },
+  {
+    "path": "apps/mobile/lib/upload.ts",
+    "matchesCurrent": true
+  },
+  {
+    "path": "apps/mobile/lib/upload-transfer.ts",
+    "matchesCurrent": true
+  },
+  {
+    "path": "apps/mobile/lib/chat.ts",
+    "matchesCurrent": true
+  },
+  {
+    "path": "apps/mobile/lib/use-chat.ts",
+    "matchesCurrent": true
+  },
+  {
+    "path": "apps/mobile/package.json",
+    "matchesCurrent": true
+  }
+]

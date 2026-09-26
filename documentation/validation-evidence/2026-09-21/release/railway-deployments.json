@@ -1,0 +1,46 @@
+[
+  {
+    "service": "Redis",
+    "deployment": "c819707d-de20-42cb-9855-9970da27208d",
+    "status": "SUCCESS",
+    "active": [
+      {
+        "id": "c819707d-de20-42cb-9855-9970da27208d",
+        "status": "SUCCESS"
+      }
+    ]
+  },
+  {
+    "service": "hirequick-worker",
+    "deployment": "3119613f-c073-4ad9-964c-4351a358ab67",
+    "status": "SUCCESS",
+    "active": [
+      {
+        "id": "3119613f-c073-4ad9-964c-4351a358ab67",
+        "status": "SUCCESS"
+      }
+    ]
+  },
+  {
+    "service": "prolific-love",
+    "deployment": "590a76c1-98dd-490b-bdf9-69d49e0f9ece",
+    "status": "SUCCESS",
+    "active": [
+      {
+        "id": "590a76c1-98dd-490b-bdf9-69d49e0f9ece",
+        "status": "SUCCESS"
+      }
+    ]
+  },
+  {
+    "service": "hirequick-admin",
+    "deployment": "0feb88e0-ca17-45c1-8998-eb568571a6c5",
+    "status": "SUCCESS",
+    "active": [
+      {
+        "id": "0feb88e0-ca17-45c1-8998-eb568571a6c5",
+        "status": "SUCCESS"
+      }
+    ]
+  }
+]

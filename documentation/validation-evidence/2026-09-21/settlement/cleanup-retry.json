@@ -1,0 +1,21 @@
+{
+  "schema": "hq_validation_20260921223552_801c2bec",
+  "initial_cleanup": "interrupted by connection error",
+  "retry_results": [
+    {
+      "attempt": 1,
+      "result": "unconfirmed",
+      "elapsedMs": 10043
+    },
+    {
+      "attempt": 2,
+      "result": "unconfirmed",
+      "elapsedMs": 10054
+    },
+    {
+      "attempt": 3,
+      "result": "verified absent after DROP SCHEMA IF EXISTS",
+      "elapsedMs": 2650
+    }
+  ]
+}

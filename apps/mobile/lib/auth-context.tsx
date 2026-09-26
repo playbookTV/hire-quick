@@ -62,6 +62,27 @@ export function AuthProvider({ children }: { children: ReactNode }): React.JSX.E
 
   let content = children;
   if (state.status === 'loading') content = <Loading />;
+  // Existing accounts keep their role at sign-in, even when “Usher” was selected.
+  // Gate restored sessions too, before any onboarding route can mount.
+  if (state.status === 'authed' && state.user?.role === 'ADMIN') {
+    content = (
+      <Screen topInset>
+        <Box flex={1} justifyContent="center" style={{ gap: 16 }}>
+          <Text variant="h2">This is an admin account</Text>
+          <Text variant="body" color="inkMuted">
+            This phone number is linked to HireQuick’s admin console. To join as an usher or client,
+            sign out and use a different phone number.
+          </Text>
+          <Button
+            label="Sign out and use another number"
+            onPress={() => {
+              void session.logout();
+            }}
+          />
+        </Box>
+      </Screen>
+    );
+  }
   if (state.status === 'unavailable') {
     const restricted = state.problem === 'restricted';
     const signingOut = state.problem === 'logout';

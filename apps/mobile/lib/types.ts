@@ -1,3 +1,4 @@
+import type { CancellationSummary } from '@hq/shared';
 /**
  * Shapes of the API resources the mobile app consumes. Enums come from
  * `@hq/shared` so client and server agree; the rest mirror the Prisma rows the
@@ -157,6 +158,9 @@ export interface Review {
 
 /** GET /api/bookings[/:id] */
 export interface Booking {
+  payoutAvailableAt?: string;
+  canDispute?: boolean;
+  cancellation?: CancellationSummary | null;
   unreadCount?: number;
   refund?: {
     id: string;

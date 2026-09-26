@@ -1,21 +1,13 @@
 import { EmptyState } from '../../components/EmptyState.js';
-/**
- * Discover — matches Figma `Client / 10 Discover` (27:214): title + subtitle, a
- * search field with a filter affordance, filter chips, and a list of StaffCards.
- * Live: verified ushers from `useUshers`, filtered by the (debounced) search
- * text. Tapping a card opens that usher's profile.
- *
- * The list is a FlashList (virtualized) with the header block as
- * `ListHeaderComponent`, so only on-screen cards mount — the feed scrolls and
- * filters without rendering every usher at once.
- */
 import { memo, useCallback, useState } from 'react';
-import { Pressable, ScrollView, TextInput, RefreshControl } from 'react-native';
+import { Pressable, TextInput, RefreshControl } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, Box, Text } from '../../theme/restyle.js';
 import { fonts } from '../../theme/fonts.js';
+import { ScreenHeading } from '../../components/ScreenHeading.js';
+import { screenTokens } from '../../theme/token-manager.js';
 import { Chip } from '../../components/Chip.js';
 import { StaffCard } from '../../components/StaffCard.js';
 import { Icon } from '../../components/Icon.js';
@@ -34,7 +26,7 @@ import type { UsherListItem } from '../../lib/types.js';
 
 /** 12px gap between cards (FlashList doesn't honour `gap` in contentContainerStyle). */
 function Separator(): React.JSX.Element {
-  return <Box style={{ height: 12 }} />;
+  return <Box style={{ height: 16 }} />;
 }
 
 /**
@@ -55,7 +47,7 @@ const StaffRow = memo(function StaffRow({
       avatarUrl={usher.avatarUrl}
       meta={`${usher.ratingAvg.toFixed(1)} · ${usher.completedJobsCount} jobs · ${usher.city ?? 'Lagos'}`}
       price={usher.dayRateKobo ? money(usher.dayRateKobo) : 'Rate on request'}
-      priceSuffix={usher.dayRateKobo ? '/day' : ''}
+      priceSuffix={usher.dayRateKobo ? '/ day indicative' : ''}
       verified={usher.verificationStatus === 'VERIFIED'}
       onPress={() => onOpen(usher.id)}
     />
@@ -85,12 +77,7 @@ export default function Discover(): React.JSX.Element {
 
   const header = (
     <Box style={{ gap: 16, paddingBottom: 16 }}>
-      <Box style={{ gap: 4 }}>
-        <Text variant="h2">Discover staff</Text>
-        <Text variant="bodySm" color="inkMuted">
-          Verified ushers available in Lagos
-        </Text>
-      </Box>
+      <ScreenHeading title="Find your team" />
 
       {/* search */}
       <Box
@@ -99,30 +86,32 @@ export default function Discover(): React.JSX.Element {
         backgroundColor="bgSurface"
         borderRadius="md"
         style={{
-          height: 48,
-          paddingHorizontal: 16,
+          minHeight: 48,
+          paddingHorizontal: 12,
           gap: 8,
           borderWidth: 1.5,
-          borderColor: theme.colors.borderDefault,
+          borderColor: theme.colors.borderControl,
         }}
       >
         <Icon name="search" size={18} color="inkFaint" />
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Search ushers, roles…"
+          placeholder="Search ushers"
+          accessibilityLabel="Search ushers"
           placeholderTextColor={theme.colors.inkFaint}
           style={{
             flex: 1,
+            minWidth: 0,
             fontFamily: fonts.sansRegular,
-            fontSize: 15,
+            fontSize: 16,
             color: theme.colors.inkStrong,
-            paddingVertical: 0,
+            paddingVertical: 12,
           }}
         />
         <Pressable
           onPress={() => router.push('/(modals)/filters')}
-          hitSlop={8}
+          style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
           accessibilityRole="button"
           accessibilityLabel={filterCount > 0 ? `Filters, ${filterCount} applied` : 'Filters'}
         >
@@ -159,52 +148,58 @@ export default function Discover(): React.JSX.Element {
         </Pressable>
       </Box>
 
-      {/* applied / quick filters — reflect the shared discover-filter store */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 8 }}
-        style={{ marginHorizontal: -20 }}
-        contentInset={{ left: 20, right: 20 }}
-      >
-        <Box style={{ width: 20 }} />
-        {filters.availableOn ? (
-          <Chip
-            label="Today ✕"
-            selected
-            onPress={() => setDiscoverFilters({ ...filters, availableOn: undefined })}
-          />
-        ) : (
-          <Chip
-            label="Available today"
-            onPress={() => setDiscoverFilters({ ...filters, availableOn: todayIso() })}
-          />
-        )}
-        {filters.minRating ? (
-          <Chip
-            label={`${filters.minRating}★+ ✕`}
-            selected
-            onPress={() => setDiscoverFilters({ ...filters, minRating: undefined })}
-          />
-        ) : (
-          <Chip label="4★+" onPress={() => setDiscoverFilters({ ...filters, minRating: 4 })} />
-        )}
-        {filters.location ? (
-          <Chip
-            label={`${filters.location} ✕`}
-            selected
-            onPress={() => setDiscoverFilters({ ...filters, location: undefined })}
-          />
-        ) : null}
+      <Box flexDirection="row" flexWrap="wrap" gap="200">
+        <Chip
+          label="Available today"
+          selected={!!filters.availableOn}
+          onPress={() =>
+            setDiscoverFilters({
+              ...filters,
+              availableOn: filters.availableOn ? undefined : todayIso(),
+            })
+          }
+        />
+        <Chip
+          label={filters.location ?? 'Lagos'}
+          selected={!!filters.location}
+          onPress={() =>
+            setDiscoverFilters({ ...filters, location: filters.location ? undefined : 'Lagos' })
+          }
+        />
+        <Chip
+          label="4.5+"
+          selected={!!filters.minRating}
+          onPress={() =>
+            setDiscoverFilters({ ...filters, minRating: filters.minRating ? undefined : 4.5 })
+          }
+        />
         {filters.maxRate ? (
           <Chip
-            label={`≤ ${money(filters.maxRate)} ✕`}
+            label={`≤ ${money(filters.maxRate)}`}
             selected
             onPress={() => setDiscoverFilters({ ...filters, maxRate: undefined })}
           />
         ) : null}
-        <Box style={{ width: 20 }} />
-      </ScrollView>
+      </Box>
+      <Box flexDirection="row" alignItems="center" justifyContent="space-between" gap="200">
+        <Text variant="bodySm" color="inkMuted">
+          {ushers.isLoading
+            ? 'Finding ushers…'
+            : ushers.isError
+              ? 'Results unavailable'
+              : `${data.length} verified usher${data.length === 1 ? '' : 's'}`}
+        </Text>
+        <Pressable
+          onPress={() => router.push('/(modals)/filters')}
+          accessibilityRole="button"
+          accessibilityLabel="Open discovery filters"
+          style={{ minHeight: 44, justifyContent: 'center' }}
+        >
+          <Text variant="label">
+            {filterCount ? `${filterCount} filter${filterCount === 1 ? '' : 's'}` : 'Filters'}
+          </Text>
+        </Pressable>
+      </Box>
     </Box>
   );
 
@@ -260,7 +255,11 @@ export default function Discover(): React.JSX.Element {
             </Text>
           )
         }
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 }}
+        contentContainerStyle={{
+          paddingHorizontal: screenTokens.gutter,
+          paddingTop: screenTokens.top,
+          paddingBottom: screenTokens.bottom,
+        }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       />

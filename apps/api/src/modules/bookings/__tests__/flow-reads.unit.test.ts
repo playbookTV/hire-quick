@@ -73,6 +73,7 @@ const booking = {
   event: {
     eventDate: new Date('2026-09-22T00:00:00Z'),
     startTime: '10:00',
+    endTime: '18:00',
     client: { userId: 'client-user' },
   },
   usher: { userId: 'usher-user' },
@@ -90,16 +91,19 @@ beforeEach(() => {
 });
 afterEach(() => vi.useRealTimers());
 describe('participant booking flow reads', () => {
-  it('quotes the exact 48-hour boundary in Lagos time without offering unsupported split settlement', async () => {
+  it('quotes the approved split at the exact 48-hour boundary in Lagos time', async () => {
     expect(await read('/bookings/:id/cancellation-quote')).toMatchObject({
       actor: 'CLIENT',
       window: 'BETWEEN_12_48H',
       clientRefundPct: 50,
       eligible: true,
-      selfServe: false,
+      selfServe: true,
+      platformFeeKobo: 150_000,
+      usherPayoutKobo: 850_000,
+      requiresApproval: false,
       gross: 2_000_000,
     });
-    expect(mocks.refund).not.toHaveBeenCalled();
+    expect(mocks.refund).toHaveBeenCalled();
   });
   it('quotes the same booking by actor and allows the existing full usher cancellation', async () => {
     expect(await read('/bookings/:id/cancellation-quote', 'usher-user', 'USHER')).toMatchObject({
@@ -146,7 +150,14 @@ describe('participant booking flow reads', () => {
     );
     expect(mocks.refund).toHaveBeenCalledWith({
       where: { dedupeKey: 'BOOKING_REFUND:booking' },
-      select: { id: true, status: true, providerRef: true, createdAt: true, updatedAt: true },
+      select: {
+        id: true,
+        status: true,
+        providerRef: true,
+        createdAt: true,
+        updatedAt: true,
+        payload: true,
+      },
     });
   });
   it.each([

@@ -1,0 +1,20 @@
+[
+  {
+    "eventId": "cdc2444ee5944d1aa2f881bee4c85adb",
+    "flushed": true,
+    "deployment": "56da2342-9c65-47bb-b34b-06aa6852ce1c",
+    "service": "prolific-love",
+    "receivedInSentry": true,
+    "issue": "HIREQUICK-API-1",
+    "smokeIssueResolved": true
+  },
+  {
+    "eventId": "ff49d1afa2184a8e94f709d452462eb4",
+    "flushed": true,
+    "deployment": "9e641bbb-e0d4-49af-8609-677ee497979c",
+    "service": "hirequick-worker",
+    "receivedInSentry": true,
+    "issue": "HIREQUICK-WORKER-1",
+    "smokeIssueResolved": true
+  }
+]

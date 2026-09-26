@@ -1,3 +1,4 @@
+import { cancellationView, releaseInformation } from '../payments/cancellation.js';
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '@hq/database';
@@ -7,7 +8,9 @@ import {
   cancelBookingSchema,
   eventInstant,
   cancelWindow,
-  cancellationAmounts,
+  cancellationSettlement,
+  MONEY_APPROVAL_THRESHOLD_KOBO,
+  disputeWindowOpen,
   policyForCancellation,
 } from '@hq/shared';
 import { ApiError } from '../../app.js';
@@ -23,7 +26,7 @@ import {
   cancelBookingByClient,
   cancelBookingByUsher,
 } from './service.js';
-import { listMessages, sendMessage, unreadCount, markSeen } from '../../realtime/messages.js';
+import { listMessages, listMessagePage, sendMessage, unreadCount, markSeen } from '../../realtime/messages.js';
 import type { RealtimeGateway } from '../../realtime/gateway.js';
 import type { PaystackPort } from '../payments/port/paystack-port.js';
 import { RT } from '../../realtime/events.js';
@@ -147,12 +150,31 @@ export function bookingsRouter(deps: {
       }
       const refund = await prisma.paymentOperation.findUnique({
         where: { dedupeKey: `BOOKING_REFUND:${booking.id}` },
-        select: { id: true, status: true, providerRef: true, createdAt: true, updatedAt: true },
+        select: {
+          id: true,
+          status: true,
+          providerRef: true,
+          createdAt: true,
+          updatedAt: true,
+          payload: true,
+        },
       });
+      const cancellation = await cancellationView(prisma, refund);
+      const settlement = {
+        ...releaseInformation(booking.event),
+        cancellation,
+        canDispute:
+          ['CONFIRMED', 'CHECKED_IN', 'COMPLETED'].includes(booking.status) &&
+          booking.payment?.escrowStatus === 'HELD' &&
+          (!refund || refund.status === 'FAILED') &&
+          (booking.event.client.userId === uid || !!booking.checkedInAt) &&
+          disputeWindowOpen(booking.event.eventDate, booking.event.endTime, new Date()),
+      };
       if (booking.event.client.userId === uid) {
         res.json({
           ...booking,
-          refund,
+          ...settlement,
+          refund: refund ? { ...refund, payload: undefined } : null,
           myReview: booking.reviews[0] ?? null,
           event: serializeEventVenue(booking.event, { role: 'CLIENT' }),
         });
@@ -161,7 +183,8 @@ export function bookingsRouter(deps: {
       const unlocked = await venueUnlockedEventIds(booking.usherId, [booking.eventId]);
       res.json({
         ...booking,
-        refund,
+        ...settlement,
+        refund: refund ? { ...refund, payload: undefined } : null,
         myReview: booking.reviews[0] ?? null,
         event: serializeEventVenue(booking.event, {
           role: 'USHER',
@@ -181,6 +204,10 @@ export function bookingsRouter(deps: {
       const uid = req.auth.userId;
       if (booking.event.client.userId !== uid && booking.usher.userId !== uid)
         throw new ApiError(403, 'FORBIDDEN', 'not your booking');
+      const reserved = await prisma.paymentOperation.findUnique({
+        where: { dedupeKey: `BOOKING_REFUND:${booking.id}` },
+        select: { id: true },
+      });
       const actor = booking.usher.userId === uid ? 'USHER' : 'CLIENT';
       const window = cancelWindow(
         eventInstant(booking.event.eventDate, booking.event.startTime),
@@ -191,10 +218,11 @@ export function bookingsRouter(deps: {
         actor,
         window,
         ...outcome,
-        ...cancellationAmounts(booking.amount, outcome),
+        ...cancellationSettlement(booking.amount, outcome),
         gross: booking.amount,
-        eligible: booking.status === 'CONFIRMED',
-        selfServe: booking.status === 'CONFIRMED' && outcome.clientRefundPct === 100,
+        eligible: booking.status === 'CONFIRMED' && !reserved,
+        selfServe: booking.status === 'CONFIRMED' && !reserved,
+        requiresApproval: actor === 'CLIENT' && booking.amount > MONEY_APPROVAL_THRESHOLD_KOBO,
         quotedAt: new Date().toISOString(),
       });
     }),
@@ -228,15 +256,14 @@ export function bookingsRouter(deps: {
     }),
   );
 
-  // client confirms completion → release payout to wallet (★ idempotency key
+  // client confirms completion → held earnings until the dispute deadline (★ idempotency key
   // required for consistency with all other money-mutating routes; the ledger
   // itself already guards against double-release via FOR UPDATE + state machine).
   r.post(
     '/bookings/:id/complete',
     requireIdempotencyKey,
     wrap(async (req, res) => {
-      await completeBooking(String(req.params.id), req.auth.userId, deps.realtime);
-      res.json({ status: 'PAID' });
+      res.json(await completeBooking(String(req.params.id), req.auth.userId, deps.realtime));
     }),
   );
 
@@ -280,7 +307,7 @@ export function bookingsRouter(deps: {
     '/bookings/:id/cancel',
     requireIdempotencyKey,
     wrap(async (req, res) => {
-      cancelBookingSchema.parse(req.body ?? {});
+      const confirmation = cancelBookingSchema.parse(req.body ?? {});
       if (!deps.paystack)
         throw new ApiError(503, 'PAYMENTS_UNAVAILABLE', 'payments are not configured');
       const ledgerDeps = { prisma, paystack: deps.paystack, realtime: deps.realtime };
@@ -297,12 +324,16 @@ export function bookingsRouter(deps: {
               String(req.params.id),
               req.auth.userId,
               deps.realtime,
+              confirmation,
             );
       res.json(out);
     }),
   );
 
   // booking chat (REST; realtime is Socket.IO) — party-only, unlocks once CONFIRMED
+  r.get('/bookings/:id/messages/page', wrap(async (req, res) => {
+    res.json(await listMessagePage(String(req.params.id), req.auth.userId, req.query));
+  }));
   r.get(
     '/bookings/:id/messages',
     wrap(async (req, res) => {
@@ -312,11 +343,12 @@ export function bookingsRouter(deps: {
   r.post(
     '/bookings/:id/messages',
     wrap(async (req, res) => {
-      const { content, contentType } = chatMessageBody.parse(req.body);
+      const { content, contentType, clientMessageId } = chatMessageBody.parse(req.body);
       const msg = await sendMessage({
         bookingId: String(req.params.id),
         senderId: req.auth.userId,
         content,
+        ...(clientMessageId ? { clientMessageId } : {}),
         ...(contentType ? { contentType } : {}),
       });
       // Broadcast so socket-connected peers get the REST-sent message in realtime too.

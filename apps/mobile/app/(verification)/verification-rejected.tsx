@@ -18,18 +18,26 @@ export default function VerificationRejected(): React.JSX.Element {
   const reasonSuffix = reason ? ` (reason: ${reason})` : '';
 
   return (
-    <Box flex={1} backgroundColor="bgCanvas" alignItems="center" justifyContent="center" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
+    <Box
+      flex={1}
+      backgroundColor="bgCanvas"
+      alignItems="center"
+      justifyContent="center"
+      style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}
+    >
       <EmptyState
         icon="lock"
         tone="danger"
         title="We couldn’t verify your ID"
-        subtitle="The photo was unclear or didn’t match your details. Please resubmit a clear photo of a valid government ID."
+        subtitle="Your identity check didn’t pass. Confirm the names and number on your ID, then try again with Smile ID. Contact support if you need help."
         reason={reason ? `Reason: ${reason}` : undefined}
-        actionLabel="Resubmit ID"
+        actionLabel="Try verification again"
         onAction={() => router.replace('/(verification)/id-verification')}
         secondaryLabel="Contact support"
         onSecondary={() => {
-          void openSupport(`Hi HireQuick support, my ID verification was rejected${reasonSuffix} and I need help.`);
+          void openSupport(
+            `Hi HireQuick support, my ID verification was rejected${reasonSuffix} and I need help.`,
+          );
         }}
       />
     </Box>

@@ -1,0 +1,36 @@
+{
+  "action": "charge",
+  "schema": "hq_validation_cert_da0f42d91c174d589daedb5550956a86",
+  "openingBalanceKobo": 2200000,
+  "currentBalanceKobo": 2400000,
+  "result": {
+    "walletBalanceKobo": 85000,
+    "withdrawals": [],
+    "operations": [],
+    "entries": [
+      {
+        "_sum": {
+          "amount": -85000
+        },
+        "_count": 1,
+        "entryType": "RELEASE"
+      },
+      {
+        "_sum": {
+          "amount": 200000
+        },
+        "_count": 2,
+        "entryType": "HOLD"
+      },
+      {
+        "_sum": {
+          "amount": -15000
+        },
+        "_count": 1,
+        "entryType": "FEE"
+      }
+    ]
+  },
+  "cleaned": false,
+  "evidence": "actual TEST calls; synthetic historical attendance; polling recovery; no live approval or provider callback-delivery certification"
+}

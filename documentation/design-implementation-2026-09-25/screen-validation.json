@@ -1,0 +1,21 @@
+{
+  "date": "2026-09-25",
+  "screenDestinationsUpdated": 18,
+  "previewedScreenDestinations": 17,
+  "compactWidth": 320,
+  "stateCombinationsChecked": 21,
+  "nativeChatInteractionTested": false,
+  "checks": {
+    "mobileTypecheck": "passed",
+    "mobileLint": "passed",
+    "diffWhitespace": "passed",
+    "iosExport": "passed",
+    "androidExport": "passed",
+    "zeroBalanceWithdrawalDisabled": "passed"
+  },
+  "exportDirectory": "/private/tmp/hq-screen-redesign-export",
+  "preview": "http://127.0.0.1:4188/",
+  "previewData": "fixtures; actual production screen components",
+  "deviceValidation": "Not run; no iOS simulator or Android SDK available",
+  "assetsSource": "Figma Ep6MkJEc079aM6I0pQbwhw / 2126:6189"
+}

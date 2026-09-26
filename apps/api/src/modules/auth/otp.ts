@@ -9,7 +9,9 @@ import { ApiError } from '../../app.js';
 import { env } from '../../env.js';
 import { generateOtp, hashOtp, verifyOtpHash, OTP_TTL_MS, OTP_MAX_ATTEMPTS } from './hash.js';
 import { signAccessToken, signRefreshToken } from './tokens.js';
-import { sendSms, sendWhatsAppOtp } from '../notifications/brevo.js';
+import { sendSms } from '../notifications/brevo.js';
+import { sendWhatsAppOtp, whatsappConfigured } from '../notifications/twilio.js';
+import { kudiSmsConfigured, sendKudiSmsOtp } from '../notifications/kudisms.js';
 import { writeAudit } from '../audit.js';
 import { qaSubject, stagingQaCode } from './staging-qa.js';
 
@@ -57,13 +59,16 @@ export async function requestOtp(phone: string): Promise<{ sent: boolean; devCod
 
   if (qaLogin) return { sent: true, devCode: code };
 
-  // Prefer WhatsApp when a sender + approved template are configured (better fit
-  // for the Lagos market and avoids SMS sender-ID/credit friction); otherwise
-  // fall back to SMS / dev stub.
-  const whatsappReady = !!env.BREVO_WHATSAPP_SENDER && env.BREVO_WHATSAPP_OTP_TEMPLATE_ID > 0;
-  const sent = whatsappReady
-    ? await sendWhatsAppOtp(phone, code)
-    : await sendSms(phone, `Your HireQuick code is ${code}. It expires in 10 minutes.`);
+  // KudiSMS takes priority when configured. Do not retry another provider after
+  // rejection or timeout: this could duplicate delivery and incur higher fees.
+  let sent: boolean;
+  if (kudiSmsConfigured()) {
+    sent = await sendKudiSmsOtp(phone, code);
+  } else {
+    // Preserve existing deployments until their KudiSMS key is installed.
+    sent = whatsappConfigured() && await sendWhatsAppOtp(phone, code);
+    if (!sent) sent = await sendSms(phone, `Your HireQuick code is ${code}. It expires in 10 minutes.`);
+  }
   // All other deployed accounts require delivery through the real transport.
   const echo = env.NODE_ENV === 'test';
   return echo ? { sent, devCode: code } : { sent };

@@ -1,5 +1,7 @@
 # HireQuick — Executive Summary
 
+> **Policy amendment — approved 21 September 2026:** completion keeps funds in escrow until event end + 72 hours; undisputed completed bookings then become eligible for wallet release. Client cancellations use 100% / 50% / 0% refunds at >48h / 12–48h inclusive / <12h, with 15% commission within the remaining usher allocation and no processing-fee deduction from the refund. See the [approved decision and implementation criteria](payments/approved-settlement-policy-2026-09-21.md). Local implementation is tracked in OVA-136/137; see the [implementation and validation record](payments/settlement-implementation-2026-09-21.md). Deployment remains separately recorded.
+
 **Version:** 2.1
 **v2.1 changes:** payout lands in an usher wallet (withdraw-to-bank is separate); commission becomes revenue via a scheduled sweep; client-passive auto-complete protects the usher's guaranteed payout; fee shown to the client is informational only. Flagged inline as **[v2.1]**.
 **Prepared for:** HireQuick
@@ -13,7 +15,7 @@
 
 HireQuick is a mobile-first staffing marketplace that lets event organizers in Lagos discover, hire, coordinate, verify, and pay professional ushers and event staff in a single trusted flow.
 
-It replaces the informal channels the market runs on today — WhatsApp broadcast groups, Instagram pages, spreadsheets, and personal referrals — with a structured booking experience that holds payment in escrow until attendance is verified. That escrow-on-attendance mechanism is the core of the product: clients only release funds once staff have actually shown up, and staff get a reliable payout for work completed.
+It replaces the informal channels the market runs on today — WhatsApp broadcast groups, Instagram pages, spreadsheets, and personal referrals — with a structured booking experience that holds payment in escrow until attendance is verified, work is completed and the 72-hour window after event end has elapsed without an unresolved dispute. That escrow-on-attendance mechanism is the core of the product: clients only release funds once staff have actually shown up, and staff get a reliable payout for work completed.
 
 HireQuick supports two complementary hiring models. In **event-based hiring**, a client posts an event with its staffing requirements and receives applications from matching ushers. In **direct discovery**, a client browses profiles and invites specific people. Both run on the same booking, payment, and verification rails.
 
@@ -95,8 +97,8 @@ The initial wedge is **event planners and wedding coordinators in Lagos** — th
 Payments run on **Paystack** using a **wallet/escrow model**, not instant split settlement.
 
 1. On confirmation, the client is charged the full booking amount into HireQuick's Paystack balance, recorded against the booking in an internal ledger.
-2. Funds are **held in escrow** — neither released to the usher nor reconciled as revenue — until attendance is verified.
-3. On verified attendance — or auto-completion if the client is passive (see below) — the ledger releases each usher's share **into their wallet** and records HireQuick's commission. The usher later **withdraws** the wallet balance to their bank; that withdrawal is when the Paystack Transfer actually fires.
+2. Funds are **held in escrow** — neither released to the usher nor reconciled as revenue — until attendance is verified, work is completed and the 72-hour window after event end has elapsed without an unresolved dispute.
+3. After verified or automatic completion and event end + 72 hours, if no unresolved dispute exists, the ledger releases each usher's share **into their wallet** and records HireQuick's commission. The usher later **withdraws** the wallet balance to their bank; that withdrawal is when the Paystack Transfer actually fires.
 4. HireQuick's accumulated 15% commission is moved out of the Paystack Balance to its operating bank by a scheduled **commission sweep** — only then is it recognised revenue. **[v2.1]**
 5. On cancellation or dispute, the ledger drives refund or partial-release outcomes per the cancellation policy (see PRD §13).
 

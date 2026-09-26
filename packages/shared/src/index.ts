@@ -6,3 +6,4 @@ export * from './dto.js';
 export * from './withdrawal.js';
 export * from './checkout.js';
 export * from './booking-flow.js';
+export type { MonitoringSnapshot, MonitorCheck, MonitorStatus } from './observability.js';

@@ -1,0 +1,16 @@
+{
+  "id": "d86b6ad2-ecca-4308-aff3-f0d24ee32d7a",
+  "status": "FINISHED",
+  "platform": "IOS",
+  "appVersion": "0.0.1",
+  "appBuildVersion": "3",
+  "buildProfile": "ios-archive",
+  "distribution": "STORE",
+  "createdAt": "2026-09-25T18:22:22.993Z",
+  "completedAt": "2026-09-25T18:30:08.404Z",
+  "gitCommitHash": "2765756b5be7fd7e8e9125343cbde0f14d6f3926",
+  "artifacts": {
+    "buildUrl": "https://expo.dev/artifacts/eas/C-uDc-kY0pCKT9oAgG9d48MDK9dE0aL1YlYI83V3iLg.ipa",
+    "applicationArchiveUrl": "https://expo.dev/artifacts/eas/C-uDc-kY0pCKT9oAgG9d48MDK9dE0aL1YlYI83V3iLg.ipa"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "testedWith": "Intercepted API fixtures; Better Stack states based on live adapter response",
+  "passed": [
+    "desktop rendering",
+    "four paused monitors",
+    "missing Sentry token state",
+    "manual refresh",
+    "disable automatic refresh",
+    "failed refresh retains stale snapshot",
+    "retry recovery",
+    "Sentry issue links",
+    "old snapshot warning",
+    "mobile navigation",
+    "390px no horizontal overflow"
+  ],
+  "pageErrors": [],
+  "requests": 7
+}

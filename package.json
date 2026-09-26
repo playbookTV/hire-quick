@@ -9,8 +9,8 @@
   "scripts": {
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
-    "typecheck:tests": "turbo run typecheck:tests",
-    "lint:tests": "eslint --config eslint.tests.config.mjs apps/api/src packages/shared/src",
+    "typecheck:tests": "turbo run typecheck:tests && tsc -p scripts/validation/tsconfig.json",
+    "lint:tests": "eslint --config eslint.tests.config.mjs apps/api/src packages/shared/src scripts/validation",
     "lint": "turbo run lint",
     "test": "turbo run test",
     "dev": "pnpm --filter @hq/api dev",
@@ -21,14 +21,18 @@
     "db:generate": "pnpm --filter @hq/database generate",
     "db:push": "pnpm --filter @hq/database push",
     "db:migrate": "pnpm --filter @hq/database migrate",
-    "db:deploy": "pnpm --filter @hq/database deploy",
+    "db:deploy": "pnpm --filter @hq/database run deploy",
     "db:seed": "pnpm --filter @hq/database seed",
     "db:studio": "pnpm --filter @hq/database studio"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["@prisma/client", "@prisma/engines", "prisma", "esbuild"],
+    "onlyBuiltDependencies": ["@prisma/client", "@prisma/engines", "@sentry/cli", "prisma", "esbuild"],
     "comment-overrides": "Dedupe @types/react to ONE copy so react-native + restyle + the mobile app share identical ReactNode types. Mixed copies intersect to a ReactNode missing bigint → children type errors. admin (React 18 runtime) compiles fine against these types. postcss/js-yaml pinned to patched same-major versions to clear transitive NDPR advisories (expo metro-config / babel-jest paths) without a risky major bump.",
+    "packageExtensions": {
+      "@hookform/resolvers@3": { "peerDependencies": { "zod": "^3.24.1" } }
+    },
     "overrides": {
+      "@smileid/kamera": "1.0.5",
       "@types/react": "~19.2.0",
       "postcss": ">=8.5.10",
       "js-yaml": ">=4.2.0"

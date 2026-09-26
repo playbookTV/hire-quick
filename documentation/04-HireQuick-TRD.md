@@ -1,5 +1,7 @@
 # HireQuick — Technical Requirements Document (TRD)
 
+> **Policy amendment — approved 21 September 2026:** completion keeps funds in escrow until event end + 72 hours; undisputed completed bookings then become eligible for wallet release. Client cancellations use 100% / 50% / 0% refunds at >48h / 12–48h inclusive / <12h, with 15% commission within the remaining usher allocation and no processing-fee deduction from the refund. See the [approved decision and implementation criteria](payments/approved-settlement-policy-2026-09-21.md). Local implementation is tracked in OVA-136/137; see the [implementation and validation record](payments/settlement-implementation-2026-09-21.md). Deployment remains separately recorded.
+
 **Version:** 2.1
 **Prepared for:** HireQuick
 **Prepared by:** Leslie Williams
@@ -122,6 +124,9 @@ The central correction: **events and bookings are separate**, an event has a hea
 | rating_count | int | |
 
 ### usher_verifications **[v2]**
+
+Smile ID v3 / mobile v12 handles new biometric checks. The provider reference is an API-generated attempt ID; the ORM maps `providerReferenceId` to the existing `dojahReferenceId` column to retain history without a destructive rename. Only authenticated callbacks with a per-attempt secret URL and a matching server-fetched job result may settle the latest pending Smile attempt. `govLookup` stores only curated job/status signals, never raw IDs, photos, or provider payloads. See [integration details](../docs/SMILE-ID.md).
+
 | field | type | notes |
 |---|---|---|
 | id | uuid (pk) | |
@@ -264,7 +269,7 @@ The central correction: **events and bookings are separate**, an event has a hea
 > An event filled incrementally ("4 of 6") produces **one order per confirmation batch** — multiple orders per event are expected. Per-booking refunds/disputes resolve as **partial refunds against the order's charge** (see §10).
 
 ### wallets **[v2.1]**
-*Held-balance model: usher payouts land here on COMPLETED; usher withdraws to bank. Pending (in-escrow) is derived from bookings, not stored here.*
+*Held-balance model: completed usher payouts land here after event end + 72 hours, provided no unresolved dispute exists; usher withdraws to bank. Pending (in-escrow), including completed earnings before release, is derived from bookings, not stored here.*
 | field | type | notes |
 |---|---|---|
 | id | uuid (pk) | |
@@ -400,6 +405,8 @@ API → DB: order PAID; per booking → CONFIRMED, payment escrow_status HELD
 API → escrow_ledger: append HOLD entries (one allocation per booking)
         … funds held in Balance; not revenue, not paid out …
 [event day] attendance verified/auto-completed per booking → CHECKED_IN → COMPLETED
+        … escrow remains HELD through event end + 72 hours …
+[deadline reached, no unresolved dispute]
 API → escrow_ledger: append RELEASE (→ usher wallet) + FEE entries   [v2.1]
 API → DB: payment escrow_status RELEASED; booking PAID;
          wallet_ledger CREDIT (usher available_balance += payout)     [v2.1]
@@ -411,7 +418,7 @@ Paystack → API: transfer.success → withdrawal PAID, wallet_ledger DEBIT
 API → Paystack Transfers API: accumulated FEE balance → HireQuick operating bank
 ```
 
-**Payout is to an internal wallet, not straight to bank [v2.1].** On COMPLETED the booking's payout is *released into the usher's wallet* (a held balance still sitting in our Paystack Balance); the Paystack Transfer to the usher's bank fires only when the usher **withdraws** (see `withdrawals`). This matches the wallet UX (UXRD §7.6) and keeps one explicit "available vs pending" model. *Trade-off flagged:* holding usher balances is heavier regulatory ground than pass-through — this design is **pending the §23 Q7 answer** (with Q1 as the umbrella regulatory question); if counsel/Paystack require pass-through, collapse "withdraw" into an automatic transfer-to-bank on COMPLETED (booking → PAID lands in bank, `wallets`/`withdrawals` retire).
+**Payout is to an internal wallet, not straight to bank [v2.1].** After COMPLETED and event end + 72 hours, with no unresolved dispute, the booking's payout is *released into the usher's wallet* (a held balance still sitting in our Paystack Balance); the Paystack Transfer to the usher's bank fires only when the usher **withdraws** (see `withdrawals`). This matches the wallet UX (UXRD §7.6) and keeps one explicit "available vs pending" model. *Trade-off flagged:* holding usher balances is heavier regulatory ground than pass-through — this design is **pending the §23 Q7 answer** (with Q1 as the umbrella regulatory question); if counsel/Paystack require pass-through, collapse "withdraw" into an automatic transfer-to-bank on COMPLETED (booking → PAID lands in bank, `wallets`/`withdrawals` retire).
 
 **Commission extraction [v2.1].** The 15% `platform_fee` recorded at RELEASE accumulates in the Paystack Balance — Manual Payouts means it does not auto-settle. A scheduled **commission sweep** transfers accumulated fees to HireQuick's operating bank and writes a `COMMISSION_SWEEP` ledger entry. The sweep is itself a Transfer, so it interacts with the 90-day rule and the regulatory position (§23 Q1); its mechanics are §23 Q8 — it is on the Paystack agenda, not assumed.
 
@@ -435,13 +442,21 @@ A booking cancellation evaluates time-to-event against the policy matrix (PRD §
 cancel(booking):
   window = event_start − now
   (refund_pct, payout_pct, reputation_delta) = policy(window, who_cancelled)
-  ledger.append(REFUND, refund_pct × amount)   → Paystack refund
-  ledger.append(RELEASE, payout_pct × amount)  → Paystack transfer (if any)
+  refund = floor(refund_pct × amount / 100)
+  allocation = amount − refund
+  fee = floor(allocation × 15 / 100)
+  payout = allocation − fee
+  reserve immutable settlement; apply existing approval/audit controls
+  confirm Paystack refund if refund > 0; recover uncertain outcomes
+  ledger.append(REFUND, −refund)
+  ledger.append(RELEASE, −payout); wallet CREDIT payout
+  ledger.append(FEE, −fee)
+  assert refund + payout + fee == amount
   apply reputation_delta to usher.reliability_score
   booking.status = CANCELLED | NO_SHOW | REFUNDED
 ```
 
-**Dispute:** opening a dispute sets the booking's payment `escrow_status = FROZEN` (no release, no refund) until an admin resolves it; resolution writes the deciding ledger entries and records the outcome. Chat and attendance logs are linked automatically as evidence.
+**Dispute:** before event end + 72 hours, opening a dispute on a held booking (including `COMPLETED`) sets the booking's payment `escrow_status = FROZEN` (no release, no refund) until an admin resolves it; resolution records the outcome under existing approval/audit controls. An usher-favour decision before the deadline restores `COMPLETED` / `HELD`; it does not bypass the deadline. Release and dispute admission must check the deadline and current state under the same lifecycle lock. Existing released funds are not clawed back or credited again. Chat and attendance logs are linked automatically as evidence.
 
 ---
 
@@ -452,7 +467,7 @@ cancel(booking):
 
 **Usher self-check-in & client-passive auto-complete [v2.1].** Attendance must not depend solely on the client acting, or a passive/withholding client could deny a working usher their payout (the core "guaranteed payout" promise). So:
 - The usher can **assert arrival** ("I've arrived" → `arrival_asserted_at`) independently of the client's OTP/QR.
-- If a booking has an asserted arrival (or a verified `CHECKED_IN`) and the client never confirms completion, the booking **auto-completes at `event.end_time + grace` (default 60 min)** with `attendance_method = AUTO`, releasing the payout into the usher's wallet.
+- If a booking has an asserted arrival (or a verified `CHECKED_IN`) and the client never confirms completion, the booking **auto-completes at `event.end_time + grace` (default 60 min)** with `attendance_method = AUTO`, retaining escrow until event end + 72 hours. The release worker then credits the wallet only if no unresolved dispute exists.
 - The client's recourse against a false arrival claim is the **existing 72h dispute flow** (§11) — escrow frozen, evidence reviewed — *not* silent withholding. This flips the default from "no payout unless the client acts" to "payout unless the client disputes."
 
 **No-show** is the inverse and anchors on **start**: a `CONFIRMED` booking with **no** verified check-in and **no** asserted arrival by `event.start_time + grace` → `NO_SHOW`, client refunded 100%, usher penalised (§11). (Two distinct windows: no-show is judged at *start + grace* — they didn't turn up to work; auto-complete fires at *end + grace* — work done, client passive. `end_time` exists to drive the latter.)
@@ -582,7 +597,7 @@ Take these to the Paystack conversation as a structured agenda:
 | 1 | Given we hold client funds in our Balance via Manual Payouts and release per attendance, what is our **regulatory/merchant-of-record position**? Do we operate within your licence, or do we need our own (e.g. CBN PSP/PSSP) authorisation? | Determines whether the whole hold-then-release model is permitted as designed, or needs restructuring. | **Blocking** |
 | 2 | Confirm **Manual Payouts** can be enabled for our Registered Business in Nigeria, and confirm the **90-day** active-transfer rule and any balance ceiling. | Confirms the core hold mechanism exists for us and bounds how long escrow can sit. | **Blocking** |
 | 3 | For **Transfers API** payouts to ushers: what **KYC/recipient verification** is required before an usher can receive a transfer (BVN, account-name match, limits)? | Shapes usher onboarding — a transfer that can't land breaks the payout promise. | High |
-| 4 | **Refund** timing and fees on `refund.processed`: are the original processing fees recoverable on refund? | Decides whether the "less non-refundable processing fee" cancellation copy (PRD §13) is accurate. | High |
+| 4 | **Refund** timing and fees on `refund.processed`: are the original processing fees recoverable on refund? | Determines provider costs and reconciliation treatment. Product approved no deduction from client refunds on 21 September 2026; fee recovery does not change that refund promise. | High |
 | 5 | Transfer **fees and per-transfer/daily limits** at our expected volume. | Feeds unit economics on the 15% commission. | Medium |
 | 6 | Is there a **Paystack-native marketplace/escrow** product on the roadmap we should evaluate instead of building the ledger ourselves? | Could simplify the build if a managed option exists for our case. | Medium |
 | 7 | **Holding usher balances (wallet model):** is it acceptable under your licence for usher payouts to sit as a *withdrawable balance* in our Balance until the usher withdraws, or must each payout transfer straight to the usher's bank on release? **[v2.1]** | Decides D2 — whether the held-wallet design stands or collapses to pass-through transfer on completion. | **Blocking** |

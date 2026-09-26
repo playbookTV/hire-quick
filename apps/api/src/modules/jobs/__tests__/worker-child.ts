@@ -7,6 +7,7 @@ const handlers: JobHandlers = {
   reconcile: noop,
   checkouts: noop,
   resumeOps: noop,
+  storageCleanup: noop,
   retentionPurge: noop,
   auditVerify: noop,
   commission: async () => {

@@ -4,7 +4,12 @@
  * of an existing PENDING order.
  */
 import { type PrismaClient, type PaymentOperation } from '@hq/database';
-import { MAX_INT32_KOBO, withdrawalResponseSchema, type WithdrawalResponse, type CheckoutResponse } from '@hq/shared';
+import {
+  MAX_INT32_KOBO,
+  withdrawalResponseSchema,
+  type WithdrawalResponse,
+  type CheckoutResponse,
+} from '@hq/shared';
 import { ApiError } from '../../app.js';
 import { env } from '../../env.js';
 import { logger } from '../../logger.js';
@@ -16,6 +21,7 @@ import {
   requestWithdrawal,
   completeWithdrawal,
   assertRefundable,
+  settleClientCancellation,
   failWithdrawal,
   commissionSweep,
   refundBooking,
@@ -24,8 +30,22 @@ import {
 } from './ledger/ledger.js';
 import type { PaystackPort } from './port/paystack-port.js';
 import type { RealtimeGateway } from '../../realtime/gateway.js';
-import { driveWithdrawalReversal, isWithdrawalReversal, recordWithdrawalReversal } from './withdrawal-reversal.js';
-import { claimTransferDispatch, ownsTransferDispatch, releaseTransferDispatch } from './transfer-dispatch.js';
+import {
+  driveWithdrawalReversal,
+  isWithdrawalReversal,
+  recordWithdrawalReversal,
+} from './withdrawal-reversal.js';
+import {
+  claimTransferDispatch,
+  ownsTransferDispatch,
+  releaseTransferDispatch,
+} from './transfer-dispatch.js';
+
+import {
+  cancellationApproved,
+  cancellationSnapshot,
+  type CancellationSnapshot,
+} from './cancellation-policy.js';
 
 const TX = { timeout: 30_000, maxWait: 30_000 };
 
@@ -40,6 +60,7 @@ export interface RefundPayload {
   amountKobo: number;
   precursor: 'CANCEL' | 'NO_SHOW' | null;
   chargeReference: string | null;
+  cancellation?: CancellationSnapshot;
   disputeResolution?: { disputeId: string; resolution: string; adminId: string };
 }
 
@@ -65,6 +86,7 @@ export async function refundBookingToClient(
     if (existing) {
       const saved = existing.payload as unknown as RefundPayload;
       if (
+        saved.cancellation ||
         saved.amountKobo !== params.amountKobo ||
         (params.precursor !== undefined && saved.precursor !== params.precursor)
       ) {
@@ -99,6 +121,18 @@ export async function refundBookingToClient(
 
 export async function driveRefund(deps: Deps, op: PaymentOperation, readOnly = false) {
   let payload = op.payload as unknown as RefundPayload;
+  if (payload.cancellation) {
+    const current = await deps.prisma.paymentOperation.findUniqueOrThrow({ where: { id: op.id } });
+    if (current.status === 'RECORDED' || current.status === 'FAILED')
+      return { status: current.status, result: null };
+    payload = current.payload as unknown as RefundPayload;
+    const quote = cancellationSnapshot(payload.cancellation);
+    if (
+      payload.amountKobo !== quote.refundKobo ||
+      !(await cancellationApproved(deps.prisma, op.id, quote.grossAmount))
+    )
+      return { status: 'PENDING' as const, result: null };
+  }
   // Older runners could dispatch and roll back attempts. Treat legacy pending
   // refunds as already attempted; never blindly send them again on deployment.
   if (!('chargeReference' in payload)) {
@@ -132,6 +166,10 @@ export async function driveRefund(deps: Deps, op: PaymentOperation, readOnly = f
       provider: () => check(!readOnly),
       reconcile: () => check(false),
       onSuccess: async (tx) => {
+        if (payload.cancellation) {
+          await settleClientCancellation(tx, payload.bookingId, op.id, payload.cancellation);
+          return true;
+        }
         const booking = await tx.booking.findUniqueOrThrow({ where: { id: payload.bookingId } });
         if (booking.status === 'REFUNDED') return false;
         if (payload.precursor === 'CANCEL') await cancelBooking(tx, payload.bookingId);
@@ -168,19 +206,29 @@ class PendingTransferReversal extends Error {
 export async function driveTransfer(deps: Deps, op: PaymentOperation) {
   if (isWithdrawalReversal(op)) {
     const reversed = await driveWithdrawalReversal(deps.prisma, op);
-    return { status: reversed.status, result: reversed.result ? (op.payload as unknown as TransferPayload).amountKobo : null };
+    return {
+      status: reversed.status,
+      result: reversed.result ? (op.payload as unknown as TransferPayload).amountKobo : null,
+    };
   }
   let p = op.payload as unknown as TransferPayload;
-  const knownReversal = async () => p.withdrawalId ? deps.prisma.paymentOperation.findUnique({
-    where: { dedupeKey: `WITHDRAWAL_REVERSAL:${p.withdrawalId}` },
-  }) : null;
+  const knownReversal = async () =>
+    p.withdrawalId
+      ? deps.prisma.paymentOperation.findUnique({
+          where: { dedupeKey: `WITHDRAWAL_REVERSAL:${p.withdrawalId}` },
+        })
+      : null;
   const reversal = await knownReversal();
   if (reversal) {
     const reversed = await driveWithdrawalReversal(deps.prisma, reversal);
     return { status: reversed.status, result: reversed.result ? p.amountKobo : null };
   }
   if (!Number.isSafeInteger(p.amountKobo) || p.amountKobo <= 0 || p.amountKobo > MAX_INT32_KOBO)
-    throw new ApiError(409, 'AMOUNT_LIMIT', 'transfer amount cannot be recorded safely; operator review required');
+    throw new ApiError(
+      409,
+      'AMOUNT_LIMIT',
+      'transfer amount cannot be recorded safely; operator review required',
+    );
   const claim = await claimTransferDispatch(deps.prisma, op.id);
   if (claim.state === 'busy') return { status: 'PENDING' as const, result: null };
   op = claim.op;
@@ -188,14 +236,19 @@ export async function driveTransfer(deps: Deps, op: PaymentOperation) {
   const owner = claim.state === 'claimed' ? claim.owner : null;
   try {
     if (!Number.isSafeInteger(p.amountKobo) || p.amountKobo <= 0 || p.amountKobo > MAX_INT32_KOBO)
-      throw new ApiError(409, 'AMOUNT_LIMIT', 'transfer amount cannot be recorded safely; operator review required');
+      throw new ApiError(
+        409,
+        'AMOUNT_LIMIT',
+        'transfer amount cannot be recorded safely; operator review required',
+      );
     const persistFailure = async (status: string) => {
       if (status === 'failed' && p.withdrawalId)
         await recordWithdrawalReversal(deps.prisma, p.withdrawalId, p.reference);
     };
     const send = async () => {
       if (await knownReversal()) return { status: 'failed' as const, providerRef: p.reference };
-      if (!owner || !await ownsTransferDispatch(deps.prisma, op.id, owner)) return { status: 'pending' as const };
+      if (!owner || !(await ownsTransferDispatch(deps.prisma, op.id, owner)))
+        return { status: 'pending' as const };
       const verified = await deps.paystack.verifyTransfer(p.reference);
       if (await knownReversal()) return { status: 'failed' as const, providerRef: p.reference };
       if (verified.status !== 'unknown') {
@@ -204,7 +257,8 @@ export async function driveTransfer(deps: Deps, op: PaymentOperation) {
       }
       // A callback can record terminal failure while verification is in flight.
       if (await knownReversal()) return { status: 'failed' as const, providerRef: p.reference };
-      if (!await ownsTransferDispatch(deps.prisma, op.id, owner)) return { status: 'pending' as const };
+      if (!(await ownsTransferDispatch(deps.prisma, op.id, owner)))
+        return { status: 'pending' as const };
       const issued = await deps.paystack.transfer({
         amountKobo: p.amountKobo,
         recipientCode: p.recipientCode,
@@ -228,8 +282,7 @@ export async function driveTransfer(deps: Deps, op: PaymentOperation) {
             });
             if (reversal) throw new PendingTransferReversal(reversal);
             await completeWithdrawal(tx, p.withdrawalId, p.reference);
-          }
-          else {
+          } else {
             await tx.$queryRaw`SELECT pg_advisory_xact_lock(74011001)::text`;
             await commissionSweep(tx, p.amountKobo);
           }
@@ -255,11 +308,15 @@ export async function driveTransfer(deps: Deps, op: PaymentOperation) {
     return { status: reversed.status, result: reversed.result ? p.amountKobo : null };
   } finally {
     if (owner) {
-      try { await releaseTransferDispatch(deps.prisma, op.id, owner); }
-      catch {
+      try {
+        await releaseTransferDispatch(deps.prisma, op.id, owner);
+      } catch {
         // An expired lease is reclaimable; cleanup must not obscure a committed
         // payment outcome or initiate compensation after provider success.
-        logger.warn({ operationId: op.id }, 'Transfer dispatch lease cleanup failed; expiry will permit recovery');
+        logger.warn(
+          { operationId: op.id },
+          'Transfer dispatch lease cleanup failed; expiry will permit recovery',
+        );
       }
     }
   }
@@ -375,16 +432,29 @@ export async function initWithdrawal(
     },
     {
       callerId: params.usherId,
-      requestFingerprint: JSON.stringify([params.walletId, params.bankAccountId, params.amountKobo]),
+      requestFingerprint: JSON.stringify([
+        params.walletId,
+        params.bankAccountId,
+        params.amountKobo,
+      ]),
       legacyReplay: async (tx, withdrawalId) => {
         if (typeof withdrawalId !== 'string') {
-          throw new ApiError(409, 'WITHDRAWAL_CONFLICT', 'withdrawal requires operator reconciliation');
+          throw new ApiError(
+            409,
+            'WITHDRAWAL_CONFLICT',
+            'withdrawal requires operator reconciliation',
+          );
         }
         const saved = await tx.withdrawal.findUnique({ where: { id: withdrawalId } });
-        if (!saved) throw new ApiError(409, 'WITHDRAWAL_CONFLICT', 'withdrawal result is unavailable');
+        if (!saved)
+          throw new ApiError(409, 'WITHDRAWAL_CONFLICT', 'withdrawal result is unavailable');
         if (saved.walletId !== params.walletId) return false;
         if (saved.bankAccountId !== params.bankAccountId || saved.amount !== params.amountKobo) {
-          throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'this idempotency key was used for a different request');
+          throw new ApiError(
+            409,
+            'IDEMPOTENCY_CONFLICT',
+            'this idempotency key was used for a different request',
+          );
         }
         return true;
       },
@@ -393,7 +463,11 @@ export async function initWithdrawal(
   if (!result) throw new ApiError(409, 'WITHDRAWAL_CONFLICT', 'withdrawal result is unavailable');
   // Check replay ownership before any operation is repaired or dispatched.
   const saved = await deps.prisma.withdrawal.findUniqueOrThrow({ where: { id: result } });
-  if (saved.walletId !== params.walletId || saved.bankAccountId !== params.bankAccountId || saved.amount !== params.amountKobo) {
+  if (
+    saved.walletId !== params.walletId ||
+    saved.bankAccountId !== params.bankAccountId ||
+    saved.amount !== params.amountKobo
+  ) {
     throw new ApiError(409, 'WITHDRAWAL_CONFLICT', 'withdrawal does not match this request');
   }
   const op = await ensureWithdrawalOperation(deps, result);
@@ -406,12 +480,19 @@ export async function initWithdrawal(
     const withdrawal = await tx.withdrawal.findUniqueOrThrow({ where: { id: result } });
     const currentWallet = await tx.wallet.findUniqueOrThrow({ where: { id: params.walletId } });
     const outcome = withdrawalResponseSchema.safeParse({
-      withdrawalId: withdrawal.id, duplicate, status: withdrawal.status,
-      amountKobo: withdrawal.amount, bankAccountId: withdrawal.bankAccountId,
+      withdrawalId: withdrawal.id,
+      duplicate,
+      status: withdrawal.status,
+      amountKobo: withdrawal.amount,
+      bankAccountId: withdrawal.bankAccountId,
       availableBalance: currentWallet.availableBalance,
     });
     if (!outcome.success) {
-      throw new ApiError(500, 'WITHDRAWAL_OUTCOME_UNAVAILABLE', 'withdrawal outcome is unavailable; retry the same request');
+      throw new ApiError(
+        500,
+        'WITHDRAWAL_OUTCOME_UNAVAILABLE',
+        'withdrawal outcome is unavailable; retry the same request',
+      );
     }
     return outcome.data;
   }, TX);
@@ -493,7 +574,12 @@ export async function runCommissionSweep(
       0,
     );
     const available = -(fees._sum.amount ?? 0) + (sweeps._sum.amount ?? 0) - reserved;
-    if (!Number.isSafeInteger(available)) throw new ApiError(409, 'AMOUNT_LIMIT', 'commission aggregate requires operator reconciliation');
+    if (!Number.isSafeInteger(available))
+      throw new ApiError(
+        409,
+        'AMOUNT_LIMIT',
+        'commission aggregate requires operator reconciliation',
+      );
     // Each provider dispatch must fit the eventual signed Int32 ledger row.
     // Unswept fees remain available for a subsequent period.
     const amount = Math.min(available, MAX_INT32_KOBO);

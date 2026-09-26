@@ -15,6 +15,7 @@ import { EmptyState } from '../../components/EmptyState.js';
 import { Screen } from '../../components/Screen.js';
 import { StepIndicator } from '../../components/StepIndicator.js';
 import { useAuth } from '../../lib/auth-context.js';
+import { openSupport } from '../../lib/support.js';
 import { useMyVerifications } from '../../lib/hooks.js';
 
 type StepState = 'done' | 'active' | 'todo';
@@ -107,6 +108,7 @@ export default function AwaitingApproval(): React.JSX.Element {
   }, [latest?.status, router]);
 
   const approved = latest?.status === 'APPROVED';
+  const needsReview = ['attention', 'error'].includes(latest?.govLookup?.providerStatus ?? '');
   useEffect(() => {
     if (approved && user?.usher?.verificationStatus !== 'VERIFIED') void refreshMe();
   }, [approved, user?.usher?.verificationStatus, refreshMe]);
@@ -117,15 +119,18 @@ export default function AwaitingApproval(): React.JSX.Element {
         query={verifications}
         isEmpty={(items) =>
           !items[0] ||
-          (items[0].status === 'PENDING' && !items[0].idDocumentUrl && !items[0].selfieUrl)
+          (items[0].method !== 'BIOMETRIC' &&
+            items[0].status === 'PENDING' &&
+            !items[0].idDocumentUrl &&
+            !items[0].selfieUrl)
         }
         errorTitle="Couldn’t load your verification"
         empty={
           <EmptyState
             icon="alert-circle"
             title="Finish your identity check"
-            subtitle="Upload your ID and selfie to submit them for review."
-            actionLabel="Upload documents"
+            subtitle="Complete your identity and selfie check with Smile ID."
+            actionLabel="Verify with Smile ID"
             onAction={() => router.replace('/(verification)/id-verification')}
           />
         }
@@ -133,6 +138,24 @@ export default function AwaitingApproval(): React.JSX.Element {
         {() => (
           <>
             <Screen scroll>
+              {!approved && (
+                <Button
+                  variant="ghost"
+                  label="Return to identity check"
+                  onPress={() => router.replace('/(verification)/id-verification')}
+                />
+              )}
+              {needsReview && (
+                <Button
+                  variant="ghost"
+                  label="Contact support"
+                  onPress={() => {
+                    void openSupport(
+                      'My Smile ID identity check needs review. Please help me complete verification.',
+                    );
+                  }}
+                />
+              )}
               <Button
                 label={verifications.isFetching ? 'Checking…' : 'Check latest status'}
                 variant="ghost"
@@ -161,12 +184,18 @@ export default function AwaitingApproval(): React.JSX.Element {
                   iconColor={approved ? 'statusSuccess' : 'accentGoldStrong'}
                 />
                 <Text variant="h1" style={{ textAlign: 'center' }}>
-                  {approved ? 'You’re verified' : 'Verification in review'}
+                  {approved
+                    ? 'You’re verified'
+                    : needsReview
+                      ? 'Your identity check needs review'
+                      : 'Verification in progress'}
                 </Text>
                 <Text variant="body" color="inkMuted" style={{ textAlign: 'center' }}>
                   {approved
                     ? 'You can now apply to jobs and get paid into your wallet.'
-                    : 'We’re checking your ID — usually within 1–2 business days. We’ll notify you the moment you’re approved.'}
+                    : needsReview
+                      ? 'Your Smile ID check needs a closer look. Our team can help you complete verification.'
+                      : 'We’re waiting for your identity check to finish. If you closed the camera before submitting, return to verification to complete it.'}
                 </Text>
                 <Box
                   backgroundColor="bgSurface"
@@ -176,7 +205,15 @@ export default function AwaitingApproval(): React.JSX.Element {
                   padding="400"
                   style={{ gap: 12, width: '100%' }}
                 >
-                  <StatusStep state="done" title="Submitted" subtitle="Documents received" />
+                  <StatusStep
+                    state="done"
+                    title="Submitted"
+                    subtitle={
+                      latest?.method === 'BIOMETRIC'
+                        ? 'Identity check started'
+                        : 'Documents received'
+                    }
+                  />
                   <StatusStep
                     state={approved ? 'done' : 'active'}
                     title="Under review"

@@ -169,6 +169,7 @@ export function createSocketGateway(opts: { redisUrl?: string } = {}): SocketGat
         const input = socketMessageInput.parse(payload);
         const message = await sendMessage({
           bookingId: input.bookingId, content: input.content, senderId: principal.userId,
+          ...(input.clientMessageId ? { clientMessageId: input.clientMessageId } : {}),
           ...(input.contentType === undefined ? {} : { contentType: input.contentType }),
         });
         base.emitToBooking(input.bookingId, RT.MESSAGE_NEW, message);

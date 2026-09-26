@@ -2,7 +2,12 @@ import type { BookingStatus, Event, EventStatus, Prisma } from '@hq/database';
 
 type Tx = Prisma.TransactionClient;
 export const VACATED_BOOKING_STATUSES: BookingStatus[] = ['CANCELLED', 'REFUNDED', 'NO_SHOW'];
-const TERMINAL_BOOKING_STATUSES: BookingStatus[] = ['PAID', ...VACATED_BOOKING_STATUSES];
+// Event completion tracks finished work; COMPLETED earnings may still be held.
+const FINISHED_BOOKING_STATUSES: BookingStatus[] = [
+  'COMPLETED',
+  'PAID',
+  ...VACATED_BOOKING_STATUSES,
+];
 
 import { eventInstant } from '@hq/shared';
 export { eventInstant } from '@hq/shared';
@@ -16,7 +21,7 @@ export function staffingStatus(
   if (['DRAFT', 'CANCELLED', 'COMPLETED'].includes(event.status)) return event.status;
   if (
     now >= eventInstant(event.eventDate, event.endTime) &&
-    bookings.every((s) => TERMINAL_BOOKING_STATUSES.includes(s))
+    bookings.every((s) => FINISHED_BOOKING_STATUSES.includes(s))
   )
     return 'COMPLETED';
   if (event.status === 'IN_PROGRESS' || now >= eventInstant(event.eventDate, event.startTime))

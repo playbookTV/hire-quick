@@ -20,7 +20,7 @@ Root `Dockerfile` installs pnpm 10.27.0, generates Prisma, and builds the API wi
 1. Select the exact revision; run [CI-equivalent checks](TESTING.md) and relevant device/browser acceptance tests.
 2. Review schema changes and old/new process compatibility. Plan forward repair for destructive migrations; application rollback does not undo a migration.
 3. Confirm a recoverable database backup/restore point and a tested restoration procedure. Record the actual recovery owner, target recovery time, and data-loss tolerance in the deployment record; the repository does not configure these.
-4. Configure environment using [Configuration](CONFIGURATION.md). Staging/production require strong JWT/OTP secrets and payment, delivery, storage, and Dojah values. Explicitly set CORS, proxy hops, provider mode, Redis, and client API origins.
+4. Configure environment using [Configuration](CONFIGURATION.md). Staging/production require strong JWT/OTP secrets and payment, delivery, storage, and Smile ID values. Explicitly set CORS, proxy hops, provider mode, Redis, and client API origins.
 5. Check the merchant/payment operating assumptions and outstanding TRD §23 questions for any live-money release. Documentation does not grant provider or regulatory approval.
 6. Verify storage privacy, client upload access, OTP delivery, and webhook reachability in the intended environment. Do not use fixture identities as real admin accounts.
 

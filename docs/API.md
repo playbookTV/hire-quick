@@ -27,7 +27,7 @@ Most errors follow:
 | Inactive account                      | `403 ACCOUNT_INACTIVE`                                                           |
 | Wrong role/owner                      | `403 FORBIDDEN` or feature-specific code; some resources deliberately return 404 |
 | Missing/short idempotency key         | `400 IDEMPOTENCY_REQUIRED`                                                       |
-| Unsupported late client cancellation  | `409 PARTIAL_CANCEL_UNSUPPORTED`                                                 |
+| Unconfirmed or changed cancellation quote | `409 CANCELLATION_QUOTE_REQUIRED` / `CANCELLATION_QUOTE_CHANGED` |
 | Conflicting request/state             | `409` with feature-specific code                                                 |
 | Missing injected payment/storage port | `503 PAYMENTS_UNAVAILABLE` / `STORAGE_UNAVAILABLE` where guarded                 |
 | Rate limit                            | `429 RATE_LIMITED`                                                               |
@@ -62,11 +62,12 @@ All routes below require authentication. Source: [profile router](../apps/api/sr
 | ------ | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | GET    | `/api/me`                         | Own identity/profile; usher includes wallet, milestones, avatar, portfolio                                                                  |
 | PATCH  | `/api/me`                         | Optional `displayName`, `businessName`, `bio`, `yearsExperience`, `state`, `city`, `languages`, `dayRateKobo`; fields apply by profile role |
-| POST   | `/api/me/verification/kyc/start`  | Usher biometric session; result from KYC service                                                                                            |
-| POST   | `/api/me/verification/upload-url` | Usher; `{kind: "id" or "selfie", contentType}` → `{url,key}`; storage required                                                              |
+| POST   | `/api/me/verification/kyc/start`  | Usher; `{idType: "NIN" or "BVN",idNumber,givenNames,lastName,referenceId?}` → Smile session/token; optional reference refreshes the active session                                                                                            |
+| POST   | `/api/me/verification/upload-url` | Usher; `{kind: "id" or "selfie", contentType, byteSize}` → `{url,key}`; storage required                                                              |
+| POST   | `/api/me/uploads/finalize` | Upload owner; `{key}` → `{key}` after existence, size, MIME/signature checks and conditional copy |
 | POST   | `/api/me/verification`            | Usher; `{idDocumentUrl,selfieUrl}` containing server-issued keys when storage configured                                                    |
 | GET    | `/api/me/verification`            | Usher's submissions, newest first; private download URLs                                                                                    |
-| POST   | `/api/me/photos/upload-url`       | Usher; `{kind: "avatar" or "portfolio",contentType}` → `{url,key}`                                                                          |
+| POST   | `/api/me/photos/upload-url`       | Usher; `{kind: "avatar" or "portfolio",contentType,byteSize}` → `{url,key}`                                                                          |
 | PUT    | `/api/me/photos/avatar`           | Usher; `{key}` → `{avatarUrl}`                                                                                                              |
 | POST   | `/api/me/photos/portfolio`        | Usher; `{key}` → `{id,imageUrl}`; maximum five photos                                                                                       |
 | DELETE | `/api/me/photos/portfolio/:id`    | Usher owns photo; → `{deleted:true}`                                                                                                        |
@@ -74,7 +75,9 @@ All routes below require authentication. Source: [profile router](../apps/api/sr
 | GET    | `/api/me/availability`            | Usher; optional `from`/`to` query dates (`YYYY-MM-DD`)                                                                                      |
 | PUT    | `/api/me/availability`            | Usher; `{date,status}` per shared schema; conflicts with existing bookings can return `409 SCHEDULE_CONFLICT`                               |
 
-Upload flow: request a URL, PUT bytes directly to storage with matching content type, then submit the returned **key** to the profile/verification route. Do not save a temporary signed URL as a key. Photos permit raster JPEG/PNG/WebP/HEIC/HEIF variants; KYC additionally permits PDF. See the route schemas for exact MIME strings.
+Upload flow: request a URL with the exact file `byteSize`, PUT bytes directly to storage with the matching content type, call `/api/me/uploads/finalize`, then submit the verified **key** to the profile/verification/message route. Never save a signed URL as a key. URLs expire after five minutes; unconsumed verified files expire after 24 hours. Limits are 10 MiB for photos/documents and 20 MiB for voice. Photos permit JPEG/PNG/WebP/HEIC/HEIF variants; only ID documents additionally permit PDF. The API checks a bounded format signature, not malware or complete decoding. Final keys cannot be overwritten with the staging PUT URL. Reference reuse across purposes, owners, scopes or distinct records is rejected; an exact same-reference retry is idempotent. Existing saved files remain readable, but new submissions must follow finalization. See [upload implementation and rollout](../documentation/uploads-2026-09-22.md).
+
+Replacement/removal commits the new reference and a deletion intent atomically. Cleanup retries with backoff and defers while any known reference remains. Erasure queues cleanup asynchronously and returns `objectsDeleted: 0` with `objectsPending` for queued final keys; temporary uploads are cleaned separately after their grace period.
 
 `dayRateKobo` is a discovery/display value. Order pricing comes from the event budget captured at confirmation.
 
@@ -186,12 +189,14 @@ Source: [booking routes](../apps/api/src/modules/bookings/routes.ts). All requir
 | POST   | `/api/bookings/:id/checkin/generate` | Client party; attendance code result                          | —   |
 | POST   | `/api/bookings/:id/checkin/verify`   | Usher party; `{code}` → `{status:"CHECKED_IN"}`               | —   |
 | POST   | `/api/bookings/:id/arrived`          | Usher party; `{arrived:true}`                                 | —   |
-| POST   | `/api/bookings/:id/complete`         | Client party; release to wallet → `{status:"PAID"}`           | Yes |
+| POST   | `/api/bookings/:id/complete`         | Client party; `{status:"COMPLETED"}` while held, `PAID` only after eligible wallet release           | Yes |
 | POST   | `/api/bookings/:id/cancel`           | Booking party; cancellation DTO; policy/state/provider checks | Yes |
 | POST   | `/api/bookings/:id/disputes`         | Booking party; `{reason,note?}`; freeze eligible escrow       | —   |
 | POST   | `/api/bookings/:id/reviews`          | Booking party after payout; `{rating,comment?}`               | —   |
 
-Client cancellation requiring a split refund/payout is currently rejected with `PARTIAL_CANCEL_UNSUPPORTED`. Completed/paid bookings cannot enter dispute under current state tables. These limits qualify the broader product policy; see [Status](STATUS.md).
+`GET /api/bookings/:id/cancellation-quote` returns the cancellation window, refund, gross usher allocation, platform fee, net payout, processing fee (zero), eligibility and `requiresApproval`. Client cancellation accepts `{reason?, expectedWindow?, expectedRefundKobo?}`; the latter two fields are required for late cancellation. An accepted request returns `operationId`, `outcome`, `settlement` and status `RECORDED`, `PROCESSING`, `AWAITING_APPROVAL` or `FAILED`. Retry preserves the original intent even if the event/time/preview changes. A previously failed request returns `409 CANCELLATION_FAILED` for support review.
+
+Booking detail includes `payoutAvailableAt` (earliest release time, ISO), authoritative `canDispute`, and a safe `cancellation` summary. COMPLETED/HELD bookings remain disputable strictly before scheduled event end + 72 hours. At/after that deadline, release requires completion and no unresolved dispute. PAID/historical released funds are never disputed through this path. Wallet pending totals include HELD/FROZEN allocations and use the reserved cancellation net payout where applicable.
 
 ## Chat and media
 
@@ -199,14 +204,19 @@ Sources: [booking routes](../apps/api/src/modules/bookings/routes.ts), [media ro
 
 | Method | Path                                              | Contract                                                   |
 | ------ | ------------------------------------------------- | ---------------------------------------------------------- |
-| GET    | `/api/bookings/:id/messages`                      | Authorized party's booking messages                        |
-| POST   | `/api/bookings/:id/messages`                      | `{content,contentType?}`; `TEXT`, `IMAGE`, or `VOICE`      |
+| GET    | `/api/bookings/:id/messages`                      | Legacy array: latest 100 authorized messages, oldest first |
+| GET    | `/api/bookings/:id/messages/page`                 | `{items,hasMore,oldestCursor,newestCursor,receipts}`; bounded history and incremental sync |
+| POST   | `/api/bookings/:id/messages`                      | `{content,contentType?,clientMessageId?}`; `TEXT`, `IMAGE`, or `VOICE` |
 | GET    | `/api/bookings/:id/messages/unread`               | `{unread}`                                                 |
 | POST   | `/api/bookings/:id/messages/seen`                 | `{upToMessageId?}` → `{seen}`                              |
-| POST   | `/api/bookings/:id/media/upload-url`              | `{contentType: "IMAGE" or "VOICE",mimeType}` → `{key,url}` |
+| POST   | `/api/bookings/:id/media/upload-url`              | `{contentType: "IMAGE" or "VOICE",mimeType,byteSize}` → `{key,url}` |
 | GET    | `/api/bookings/:id/messages/:messageId/media-url` | Authorized private download → `{url}`                      |
 
 Chat requires party membership and a messageable booking state. UUID and content validation is shared across REST/socket paths. Text content is 1–4,000 characters. Media messages reference server-issued private keys; use the authorized media route for downloads.
+
+History pages accept `limit` (default 50, maximum 100) and either `before` or `after` (message UUIDs from the same conversation). Without a cursor, the page contains the newest messages; `before` loads older history, while `after` reads forward through missed messages. Every page returns items oldest-first. `hasMore` refers to the requested direction. Optional `receiptIds` is a comma-separated list of at most 100 outgoing message UUIDs; `receipts` returns only the requesting sender's read messages in this conversation. Cursors outside the conversation return `400 INVALID_MESSAGE_CURSOR`.
+
+New clients generate one UUID `clientMessageId` per outgoing message and retain it across retries. REST and Socket.IO use it as the persisted message ID. Matching repeats return the original message; a changed sender, conversation, content, or type returns `409 MESSAGE_ID_CONFLICT`. Appends are serialized per conversation and receive strictly increasing timestamps. A history response may overlap a send acknowledgement or socket event: clients must merge by message ID. Deploy the API page endpoint before distributing the updated mobile build.
 
 ## Usher discovery
 
@@ -227,12 +237,15 @@ Source: [admin routes](../apps/api/src/modules/admin/routes.ts). Every route req
 | Method | Path                                   | Contract                                                                               |
 | ------ | -------------------------------------- | -------------------------------------------------------------------------------------- |
 | GET    | `/api/admin/stats`                     | Queue counts, users, held escrow, approval threshold                                   |
+| GET | `/api/admin/observability` | Safe service probes, selected Better Stack statuses and recent Sentry issue summaries; server cache 30 seconds, browser `no-store`. See [Observability](OBSERVABILITY.md#admin-observability-view). |
 | GET    | `/api/admin/verifications`             | `status`: PENDING (default), APPROVED, REJECTED; sensitive reads audited               |
 | POST   | `/api/admin/verifications/:id/approve` | Approve submission                                                                     |
 | POST   | `/api/admin/verifications/:id/reject`  | `{reason,reasonCode?}`                                                                 |
 | GET    | `/api/admin/disputes`                  | Open/under-review by default; `status=ALL` includes closed                             |
 | POST   | `/api/admin/disputes/:id/resolve`      | `{outcome: "RELEASE" or "REFUND",resolution}`                                          |
 | POST   | `/api/admin/refunds`                   | `{bookingId,amountKobo,reason}`; current service supports full eligible booking refund |
+| GET | `/api/admin/cancellations` | Paginated pending cancellation reservations and safe settlement summaries |
+| POST | `/api/admin/bookings/:id/cancellation-approval` | `{reason}`; propose the immutable reserved cancellation to a distinct checker |
 | GET    | `/api/admin/approvals`                 | `status`: PENDING (default), APPROVED, REJECTED, EXECUTED                              |
 | POST   | `/api/admin/approvals/:id`             | `{decision: "approve" or "reject"}`; checker must differ from maker                    |
 | GET    | `/api/admin/ledger`                    | Latest escrow rows; default limit 100, capped at 250                                   |
@@ -246,15 +259,16 @@ Source: [admin routes](../apps/api/src/modules/admin/routes.ts). Every route req
 | GET    | `/api/admin/milestones`                | Physical reward queue; UNLOCKED default or `status=FULFILLED`                          |
 | POST   | `/api/admin/milestones/:id/fulfill`    | Mark an unlocked reward fulfilled                                                      |
 
-Amounts **greater than** 5,000,000 kobo (₦50,000) require a different admin to approve. An approval decision does not itself establish provider settlement: `APPROVED` remains until execution completes. Re-read state and consult [Operations](OPERATIONS.md).
+Amounts **greater than** 5,000,000 kobo (₦50,000) require a different admin to approve. For client cancellations this threshold applies to the original gross allocation, including a zero-refund cancellation, and the first accepted quote survives delayed approval. An early usher-favour dispute resolution retains HELD funds until the shared deadline. An approval decision does not itself establish provider settlement: `APPROVED` remains until execution completes. Re-read state and consult [Operations](OPERATIONS.md).
 
 ## Webhooks and realtime
 
 | Method | Path                 | Authentication                                         |
 | ------ | -------------------- | ------------------------------------------------------ |
 | POST   | `/webhooks/paystack` | HMAC-SHA512 over raw body using `x-paystack-signature` |
-| POST   | `/webhooks/dojah`    | Raw-body verification by the configured KYC adapter    |
+| POST   | `/webhooks/kudisms` | Unsigned delivery-status telemetry only; never changes authentication or triggers SMS. JSON, maximum 16 KiB. |
+| POST   | `/webhooks/smile-id/:referenceId/:callbackKey`    | Smile signed headers + secret attempt callback; server retrieves the authoritative job status    |
 
-Provider payloads are not user-authenticated requests. Do not synthesize a successful payment callback to resolve uncertain money. Paystack callbacks deduplicate effects and can return 500 while authoritative evidence is unavailable, allowing retry. Dojah unknown/duplicate/superseded references do not overwrite current identity state.
+Provider payloads are not user-authenticated requests. Do not synthesize a successful payment callback to resolve uncertain money. Paystack callbacks deduplicate effects and can return 500 while authoritative evidence is unavailable, allowing retry. Smile ID unknown/duplicate/superseded references do not overwrite current identity state.
 
 Socket.IO runs on the API HTTP server. Session-bound tokens, authorization on private delivery, rate limits, payload limits, and rollout compatibility are documented in the [realtime note](../apps/api/src/realtime/README.md). The [event catalogue](../apps/api/src/realtime/events.ts) defines lifecycle events such as `booking.confirmed`, `order.paid`, `withdrawal.completed`, and chat events such as `message:new`. Receiving a signal should trigger reconciliation/refetch; absence of a signal proves nothing about committed state.

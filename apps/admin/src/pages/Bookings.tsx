@@ -1,3 +1,4 @@
+import type { CancellationSummary } from '@hq/shared';
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api, naira } from '../lib/api';
@@ -46,10 +47,48 @@ export function Bookings() {
           </BookingReview>
         </ReviewPanel>
       ) : null}
+      <PendingCancellations onSelect={setSelected} />
       <BookingRecords key={filter} filter={filter} onSelect={setSelected} />
     </Page>
   );
 }
+function PendingCancellations({ onSelect }: { onSelect: (id: string) => void }) {
+  const q = useRecords<{ id: string; bookingId: string; cancellation: CancellationSummary }>(
+    '/api/admin/cancellations',
+    '',
+  );
+  return (
+    <>
+      <h2>Cancellation requests</h2>
+      <State loading={q.loading} error={q.error} onRetry={q.reload} />
+      <Table head={['Status', 'Client refund', 'Net usher payout', 'Action']}>
+        {q.data?.items.map((row) => (
+          <tr key={row.id}>
+            <td>{row.cancellation.status.replaceAll('_', ' ')}</td>
+            <td>{naira(row.cancellation.refundKobo)}</td>
+            <td>{naira(row.cancellation.usherPayoutKobo)}</td>
+            <td>
+              <Btn onClick={() => onSelect(row.bookingId)}>Review cancellation</Btn>
+            </td>
+          </tr>
+        ))}
+        {q.data?.items.length === 0 && (
+          <tr>
+            <td colSpan={4}>No pending cancellation requests.</td>
+          </tr>
+        )}
+      </Table>
+      <Pagination
+        hasNext={!!q.data?.nextCursor && !q.error}
+        hasPrevious={q.hasPrevious}
+        loading={q.loading}
+        onNext={q.next}
+        onPrevious={q.previous}
+      />
+    </>
+  );
+}
+
 function BookingRecords({ filter, onSelect }: { filter: string; onSelect: (id: string) => void }) {
   const q = useRecords<BookingRow>('/api/admin/bookings', filter);
   return (
@@ -92,24 +131,33 @@ function RefundAction({ booking }: { booking: ReviewBooking }) {
   const [outcome, setOutcome] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [uncertain, setUncertain] = useState(false);
+  const cancellationEligible =
+    booking.cancellation?.status === 'AWAITING_APPROVAL' &&
+    !booking.refundApprovals?.some((a) => ['PENDING', 'APPROVED'].includes(a.status));
   const eligible =
     ['CONFIRMED', 'CANCELLED', 'NO_SHOW'].includes(booking.status) &&
     booking.payment?.escrowStatus === 'HELD' &&
     !booking.refund &&
     !booking.refundApprovals?.some((a) => ['PENDING', 'APPROVED'].includes(a.status));
   async function refund() {
-    if (!eligible || busy || uncertain || outcome || !booking.payment) return;
+    if ((!eligible && !cancellationEligible) || busy || uncertain || outcome || !booking.payment)
+      return;
     setBusy(true);
     setError(null);
     try {
-      const result = await api<{ executed: boolean; approvalId?: string }>('/api/admin/refunds', {
-        method: 'POST',
-        body: {
-          bookingId: booking.id,
-          amountKobo: booking.payment.grossAmount,
-          reason: reason.trim(),
+      const result = await api<{ executed: boolean; approvalId?: string }>(
+        cancellationEligible
+          ? `/api/admin/bookings/${booking.id}/cancellation-approval`
+          : '/api/admin/refunds',
+        {
+          method: 'POST',
+          body: {
+            bookingId: booking.id,
+            amountKobo: booking.payment.grossAmount,
+            reason: reason.trim(),
+          },
         },
-      });
+      );
       setOutcome(
         result.approvalId
           ? `Awaiting a second admin. Approval reference: ${result.approvalId}`
@@ -128,15 +176,17 @@ function RefundAction({ booking }: { booking: ReviewBooking }) {
   }
   return (
     <div className="notice">
-      <h3>Full booking refund</h3>
+      <h3>{booking.cancellation ? 'Cancellation settlement' : 'Full booking refund'}</h3>
       <p>
-        Only a full held allocation can be refunded here. Disputed bookings must be resolved through
-        the dispute case.
+        {booking.cancellation
+          ? 'Review the reserved client refund, net usher payout and commission above. Propose this exact settlement for a different admin to approve.'
+          : 'Only a full held allocation can be refunded here. Disputed bookings must be resolved through the dispute case.'}
       </p>
-      {eligible ? (
+      {eligible || cancellationEligible ? (
         <>
           <p>
-            Refund amount: <strong>{naira(booking.payment!.grossAmount)}</strong>
+            {cancellationEligible ? 'Total allocation under review' : 'Refund amount'}:{' '}
+            <strong>{naira(booking.payment!.grossAmount)}</strong>
           </p>
           <label>
             Reason
@@ -163,7 +213,11 @@ function RefundAction({ booking }: { booking: ReviewBooking }) {
               void refund();
             }}
           >
-            {busy ? 'Submitting…' : 'Request full refund'}
+            {busy
+              ? 'Submitting…'
+              : cancellationEligible
+                ? 'Propose cancellation settlement'
+                : 'Request full refund'}
           </Btn>
         </>
       ) : (

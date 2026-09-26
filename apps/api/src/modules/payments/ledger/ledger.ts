@@ -5,12 +5,24 @@
  * (SELECT … FOR UPDATE) so escrow and wallet stay atomic and concurrency-safe.
  */
 import type { MilestoneTier, Prisma } from '@hq/database';
-import { splitFee, PLATFORM_FEE_BPS, type AttendanceMethod } from '@hq/shared';
+import {
+  splitFee,
+  PLATFORM_FEE_BPS,
+  bookingReleaseAt,
+  disputeWindowOpen,
+  type AttendanceMethod,
+} from '@hq/shared';
 import {
   assertBookingTransition,
   assertOrderTransition,
   assertWithdrawalTransition,
 } from '@hq/shared';
+import {
+  cancellationApproved,
+  cancellationSnapshot,
+  type CancellationSnapshot,
+} from '../cancellation-policy.js';
+import { writeAudit } from '../../audit.js';
 import { evaluateMilestones } from '../../rewards/service.js';
 import {
   lockBookingLifecycle,
@@ -289,89 +301,106 @@ export async function holdExpiredOrderForRefund(
   await recordOrderHold(tx, order, chargeRef, false);
 }
 
-/**
- * Completion (client-verified or AUTO): release the usher's payout into their
- * wallet and record the platform fee. After this the booking's escrow entries
- * sum to 0 (HOLD − RELEASE − FEE). Blocks if escrow is FROZEN (disputed).
- */
+/** Record completion without moving any money (approved PRD §13 hold policy). */
+export async function completeBookingHeld(
+  tx: Tx,
+  bookingId: string,
+  method: AttendanceMethod,
+  now: Date = new Date(),
+): Promise<void> {
+  await lockBooking(tx, bookingId);
+  await assertNoRefundReservation(tx, bookingId);
+  const booking = await tx.booking.findUniqueOrThrow({
+    where: { id: bookingId },
+    include: { payment: true },
+  });
+  if (booking.payment?.escrowStatus !== 'HELD')
+    throw new LedgerError('NOT_HELD', 'completion requires held escrow');
+  assertPaymentAllocation(booking.amount, booking.payment);
+  if ((await escrowBalance(tx, bookingId)) !== booking.amount)
+    throw new LedgerError('ALLOCATION_MISMATCH', 'held escrow does not equal booking gross');
+  if (booking.status === 'COMPLETED') return;
+  assertBookingTransition(booking.status, 'COMPLETED');
+  await tx.booking.update({
+    where: { id: bookingId },
+    data: {
+      status: 'COMPLETED',
+      completedAt: now,
+      attendanceMethod: method,
+    },
+  });
+  await refreshEventStaffing(tx, booking.eventId, now);
+}
+
+/** Release completed earnings only after the deadline, under the lifecycle lock. */
 export async function releaseBooking(
   tx: Tx,
   bookingId: string,
   method: AttendanceMethod,
+  now: Date = new Date(),
 ): Promise<MilestoneTier[]> {
   await lockBooking(tx, bookingId);
   await assertNoRefundReservation(tx, bookingId);
   const booking = await tx.booking.findUniqueOrThrow({
     where: { id: bookingId },
-    include: { payment: true, usher: { include: { wallet: true } } },
+    include: { event: true, payment: true, usher: { include: { wallet: true } } },
   });
   const payment = booking.payment;
   if (!payment) throw new LedgerError('NO_PAYMENT', 'booking has no payment');
-  if (payment.escrowStatus === 'FROZEN') {
-    throw new LedgerError('FROZEN', 'cannot release a frozen (disputed) booking');
-  }
-  if (payment.escrowStatus !== 'HELD') {
-    throw new LedgerError('NOT_HELD', `escrow not HELD (is ${payment.escrowStatus})`);
-  }
+  if (payment.escrowStatus === 'FROZEN')
+    throw new LedgerError('FROZEN', 'cannot release disputed funds');
+  if (payment.escrowStatus !== 'HELD') throw new LedgerError('NOT_HELD', 'escrow is not held');
+  if (now.getTime() < bookingReleaseAt(booking.event.eventDate, booking.event.endTime).getTime())
+    throw new LedgerError(
+      'DISPUTE_WINDOW_OPEN',
+      'earnings remain held until 72 hours after event end',
+    );
+  if (
+    await tx.dispute.findFirst({ where: { bookingId, status: { in: ['OPEN', 'UNDER_REVIEW'] } } })
+  )
+    throw new LedgerError('FROZEN', 'an unresolved dispute blocks release');
   const wallet = booking.usher.wallet;
   if (!wallet) throw new LedgerError('NO_WALLET', 'usher has no wallet');
-
   assertPaymentAllocation(booking.amount, payment);
   if ((await escrowBalance(tx, bookingId)) !== payment.grossAmount)
     throw new LedgerError('ALLOCATION_MISMATCH', 'held escrow does not equal payment gross');
-  assertBookingTransition(booking.status, 'COMPLETED');
+  // Preserve the internal attendance→release API for already-mature bookings.
+  if (booking.status !== 'COMPLETED') await completeBookingHeld(tx, bookingId, method, now);
+  assertBookingTransition('COMPLETED', 'PAID');
   await appendEscrow(tx, bookingId, 'RELEASE', -payment.usherPayout);
   await appendEscrow(tx, bookingId, 'FEE', -payment.platformFee);
-  await tx.payment.update({ where: { bookingId }, data: { escrowStatus: 'RELEASED' } });
   await appendWallet(tx, wallet.id, 'CREDIT', payment.usherPayout, { bookingId });
-
-  await tx.booking.update({
-    where: { id: bookingId },
-    data: { status: 'COMPLETED', completedAt: new Date(), attendanceMethod: method },
-  });
+  await tx.payment.update({ where: { bookingId }, data: { escrowStatus: 'RELEASED' } });
   const unlocked = await evaluateMilestones(tx, booking.usherId);
-  assertBookingTransition('COMPLETED', 'PAID');
   await tx.booking.update({ where: { id: bookingId }, data: { status: 'PAID' } });
-  await refreshEventStaffing(tx, booking.eventId);
+  await refreshEventStaffing(tx, booking.eventId, now);
   return unlocked;
 }
 
-/**
- * Admin dispute resolution in the usher's favour: unfreeze and release the
- * payout to the wallet (TRD §11/§15). REFUND-in-client's-favour reuses
- * refundBooking (DISPUTED → REFUNDED is already legal).
- */
-export async function resolveDisputeRelease(tx: Tx, bookingId: string): Promise<MilestoneTier[]> {
+/** Resolve in the usher's favour by restoring held completion, never bypassing time. */
+export async function resolveDisputeRelease(tx: Tx, bookingId: string): Promise<void> {
   await lockBooking(tx, bookingId);
   await assertNoRefundReservation(tx, bookingId);
   const booking = await tx.booking.findUniqueOrThrow({
     where: { id: bookingId },
-    include: { payment: true, usher: { include: { wallet: true } } },
+    include: { payment: true },
   });
-  if (booking.status !== 'DISPUTED')
-    throw new LedgerError('NOT_DISPUTED', 'booking is not disputed');
-  const payment = booking.payment;
-  if (!payment) throw new LedgerError('NO_PAYMENT', 'booking has no payment');
-  const wallet = booking.usher.wallet;
-  if (!wallet) throw new LedgerError('NO_WALLET', 'usher has no wallet');
-
-  assertPaymentAllocation(booking.amount, payment);
-  if ((await escrowBalance(tx, bookingId)) !== payment.grossAmount)
+  if (booking.status !== 'DISPUTED' || booking.payment?.escrowStatus !== 'FROZEN')
+    throw new LedgerError('NOT_DISPUTED', 'resolution requires disputed, frozen funds');
+  assertPaymentAllocation(booking.amount, booking.payment);
+  if ((await escrowBalance(tx, bookingId)) !== booking.amount)
     throw new LedgerError('ALLOCATION_MISMATCH', 'held escrow does not equal payment gross');
   assertBookingTransition('DISPUTED', 'COMPLETED');
-  await appendEscrow(tx, bookingId, 'RELEASE', -payment.usherPayout);
-  await appendEscrow(tx, bookingId, 'FEE', -payment.platformFee);
-  await tx.payment.update({ where: { bookingId }, data: { escrowStatus: 'RELEASED' } });
-  await appendWallet(tx, wallet.id, 'CREDIT', payment.usherPayout, { bookingId });
   await tx.booking.update({
     where: { id: bookingId },
-    data: { status: 'COMPLETED', completedAt: new Date(), attendanceMethod: 'AUTO' },
+    data: {
+      status: 'COMPLETED',
+      completedAt: booking.completedAt ?? new Date(),
+      attendanceMethod: booking.attendanceMethod ?? 'AUTO',
+    },
   });
-  const unlocked = await evaluateMilestones(tx, booking.usherId);
-  assertBookingTransition('COMPLETED', 'PAID');
-  await tx.booking.update({ where: { id: bookingId }, data: { status: 'PAID' } });
+  await tx.payment.update({ where: { bookingId }, data: { escrowStatus: 'HELD' } });
   await refreshEventStaffing(tx, booking.eventId);
-  return unlocked;
 }
 
 /** Move a confirmed booking to CANCELLED (precursor to a refund). */
@@ -473,13 +502,111 @@ export async function refundBooking(tx: Tx, bookingId: string, amountKobo: numbe
   await refreshEventStaffing(tx, booking.eventId);
 }
 
+/** Validate the entire cancellation allocation before reserving or dispatching a refund. */
+export async function assertCancellationSettlement(
+  tx: Tx,
+  bookingId: string,
+  raw: CancellationSnapshot,
+): Promise<void> {
+  const p = cancellationSnapshot(raw);
+  await lockBooking(tx, bookingId);
+  const b = await tx.booking.findUniqueOrThrow({
+    where: { id: bookingId },
+    include: {
+      payment: true,
+      event: { include: { client: true } },
+      usher: { include: { wallet: true } },
+    },
+  });
+  if (
+    b.event.client.userId !== p.clientUserId ||
+    b.amount !== p.grossAmount ||
+    b.payment?.escrowStatus !== 'HELD'
+  )
+    throw new LedgerError('INVALID_CANCELLATION', 'cancellation does not match the held booking');
+  await assertRefundable(tx, bookingId, p.grossAmount, 'CANCEL');
+  assertPaymentAllocation(b.amount, b.payment);
+  if (p.usherPayoutKobo > 0) {
+    if (!b.usher.wallet) throw new LedgerError('NO_WALLET', 'usher has no wallet');
+    checkedLedgerBalance(b.usher.wallet.availableBalance, p.usherPayoutKobo, 'wallet');
+  }
+}
+
+/** Provider-confirmed cancellation settlement, append-only and atomic with its intent. */
+export async function settleClientCancellation(
+  tx: Tx,
+  bookingId: string,
+  operationId: string,
+  raw: CancellationSnapshot,
+): Promise<void> {
+  const p = cancellationSnapshot(raw);
+  await assertCancellationSettlement(tx, bookingId, p);
+  const op = await tx.paymentOperation.findUniqueOrThrow({ where: { id: operationId } });
+  const payload = op.payload as { cancellation?: unknown; amountKobo?: unknown };
+  if (
+    op.kind !== 'BOOKING_REFUND' ||
+    op.dedupeKey !== `BOOKING_REFUND:${bookingId}` ||
+    op.status !== 'PROVIDER_OK' ||
+    payload.amountKobo !== p.refundKobo ||
+    JSON.stringify(cancellationSnapshot(payload.cancellation)) !== JSON.stringify(p)
+  )
+    throw new LedgerError(
+      'INVALID_CANCELLATION',
+      'settlement requires its confirmed cancellation intent',
+    );
+  if (!(await cancellationApproved(tx, operationId, p.grossAmount)))
+    throw new LedgerError(
+      'APPROVAL_REQUIRED',
+      'cancellation requires two distinct admin approvals',
+    );
+  const b = await tx.booking.findUniqueOrThrow({
+    where: { id: bookingId },
+    include: { usher: { include: { wallet: true } } },
+  });
+  await cancelBooking(tx, bookingId);
+  if (p.usherCompensationKobo === 0) {
+    await refundBooking(tx, bookingId, p.refundKobo);
+  } else {
+    if (p.refundKobo > 0) await appendEscrow(tx, bookingId, 'REFUND', -p.refundKobo);
+    if (p.usherPayoutKobo > 0) {
+      await appendEscrow(tx, bookingId, 'RELEASE', -p.usherPayoutKobo);
+      await appendWallet(tx, b.usher.wallet!.id, 'CREDIT', p.usherPayoutKobo, { bookingId });
+    }
+    if (p.platformFeeKobo > 0) await appendEscrow(tx, bookingId, 'FEE', -p.platformFeeKobo);
+    await tx.payment.update({ where: { bookingId }, data: { escrowStatus: 'RELEASED' } });
+    if (p.refundKobo > 0 && b.orderId) {
+      const order = await tx.order.findUniqueOrThrow({ where: { id: b.orderId } });
+      assertOrderTransition(order.status, 'PARTIALLY_REFUNDED');
+      await tx.order.update({ where: { id: b.orderId }, data: { status: 'PARTIALLY_REFUNDED' } });
+    }
+  }
+  if ((await escrowBalance(tx, bookingId)) !== 0)
+    throw new LedgerError(
+      'ALLOCATION_MISMATCH',
+      'cancellation must consume exactly its held allocation',
+    );
+  await tx.paymentOperation.update({
+    where: { id: operationId },
+    data: { quarantinedAt: null, nextAttemptAt: null },
+  });
+  await writeAudit(
+    {
+      actorId: p.clientUserId,
+      action: 'booking.cancellation.settled',
+      target: bookingId,
+      metadata: { operationId, ...p },
+    },
+    tx,
+  );
+}
+
 /** Freeze a booking's escrow when a dispute opens (blocks release/refund). */
-export async function freezeBooking(tx: Tx, bookingId: string): Promise<void> {
+export async function freezeBooking(tx: Tx, bookingId: string, now?: Date): Promise<void> {
   await lockBooking(tx, bookingId);
   await assertNoRefundReservation(tx, bookingId);
   const booking = await tx.booking.findUniqueOrThrow({
     where: { id: bookingId },
-    include: { payment: true },
+    include: { payment: true, event: true },
   });
   // Money-safety gate: a dispute may only be opened while the booking's funds are
   // still escrowed (HELD). Disputing after payout (RELEASED) would let resolution
@@ -491,6 +618,8 @@ export async function freezeBooking(tx: Tx, bookingId: string): Promise<void> {
       'a dispute can only be opened while funds are in escrow',
     );
   }
+  if (!disputeWindowOpen(booking.event.eventDate, booking.event.endTime, now ?? new Date()))
+    throw new LedgerError('DISPUTE_WINDOW_CLOSED', 'the 72-hour dispute window has closed');
   assertBookingTransition(booking.status, 'DISPUTED');
   await tx.booking.update({ where: { id: bookingId }, data: { status: 'DISPUTED' } });
   await tx.payment.update({ where: { bookingId }, data: { escrowStatus: 'FROZEN' } });

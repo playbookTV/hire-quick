@@ -1,14 +1,11 @@
-/**
- * My Jobs — matches Figma `Usher / 02 Browse Jobs` (45:86), extended with three
- * segments. Available = the OPEN/PARTIALLY_STAFFED feed (`useEvents`), with a
- * bookmark toggle and an "Applied" badge. Applied = the usher's own applications
- * (`useMyApplications`) with status. Saved = bookmarked jobs (`useSavedJobs`).
- */
 import { useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { ScrollView, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Box, Text } from '../../theme/restyle.js';
+import { kobo, splitFee, PLATFORM_FEE_BPS } from '@hq/shared';
+import { screenTokens } from '../../theme/token-manager.js';
+import { ScreenHeading } from '../../components/ScreenHeading.js';
 import { Button } from '../../components/Button.js';
 import { Segmented } from '../../components/Segmented.js';
 import { JobCard } from '../../components/JobCard.js';
@@ -21,7 +18,7 @@ import {
   useSaveJob,
   useUnsaveJob,
 } from '../../lib/hooks.js';
-import { money, shortDate } from '../../lib/format.js';
+import { money, dateTime } from '../../lib/format.js';
 import type { ApplicationStatus, EventResource } from '../../lib/types.js';
 
 type Tab = 'available' | 'applied' | 'saved';
@@ -80,8 +77,9 @@ export default function Jobs(): React.JSX.Element {
       <JobCard
         key={e.id}
         title={e.title}
-        pay={money(e.budgetPerHead)}
-        date={shortDate(e.eventDate)}
+        pay={money(splitFee(kobo(e.budgetPerHead), PLATFORM_FEE_BPS).payout)}
+        date={dateTime(e.eventDate, e.startTime)}
+        slots={e.staffing ? `${e.staffing.available} of ${e.headcount} slots left` : undefined}
         distance={e.venue}
         dress={e.dressCode ?? e.category}
         badge={opts?.badge}
@@ -113,21 +111,32 @@ export default function Jobs(): React.JSX.Element {
     <Box flex={1} backgroundColor="bgCanvas" style={{ paddingTop: insets.top }}>
       <ScrollView
         contentContainerStyle={{
-          paddingHorizontal: 20,
-          paddingTop: 16,
+          paddingHorizontal: screenTokens.gutter,
+          paddingTop: screenTokens.top,
           paddingBottom: 24,
           gap: 16,
         }}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={active.isFetching} onRefresh={onRefresh} />}
       >
-        <Text variant="h2">My jobs</Text>
-        <Button
-          label="My bookings & history"
-          variant="secondary"
-          onPress={() => router.push('/(modals)/my-bookings')}
-        />
+        <ScreenHeading title="Jobs" />
         <Segmented options={TABS} value={tab} onChange={setTab} />
+        <Box flexDirection="row" alignItems="center" justifyContent="space-between" gap="200">
+          <Text variant="bodySm" color="inkMuted">
+            {active.isLoading
+              ? 'Finding jobs…'
+              : active.isError
+                ? 'Results unavailable'
+                : `${active.data?.length ?? 0} ${tab === 'applied' ? 'application' : 'job'}${active.data?.length === 1 ? '' : 's'}`}
+          </Text>
+          <Button
+            label="My bookings"
+            variant="ghost"
+            size="md"
+            fullWidth={false}
+            onPress={() => router.push('/(modals)/my-bookings')}
+          />
+        </Box>
 
         {active.isLoading ? (
           <Box style={{ gap: 12 }}>

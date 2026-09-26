@@ -1,5 +1,5 @@
 /** Local provider transport integration; this is NOT Paystack TEST certification. */
-import { createServer, type Server } from 'node:http';
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { afterEach, describe, expect, it } from 'vitest';
 import { prisma } from '../../packages/database/src/index.js';
@@ -8,7 +8,8 @@ import {
   type PaystackPort,
 } from '../../apps/api/src/modules/payments/port/paystack-port.js';
 import { HttpPaystack } from '../../apps/api/src/modules/payments/port/http-paystack.js';
-import { holdOrder, releaseBooking } from '../../apps/api/src/modules/payments/ledger/ledger.js';
+import { releaseBooking } from '../../apps/api/src/modules/payments/ledger/ledger.js';
+import { recordCheckoutCharge } from '../../apps/api/src/modules/payments/checkout.js';
 import { idempotencyStorageKey } from '../../apps/api/src/modules/payments/ledger/idempotency.js';
 import { reconcile } from '../../apps/api/src/modules/payments/ledger/reconciliation.js';
 import {
@@ -64,7 +65,7 @@ async function httpProvider(): Promise<{
   >();
   const refunds: { merchant_note: string; amount: number; currency: string; status: string }[] = [];
   const requests: string[] = [];
-  server = createServer(async (req, res) => {
+  const handle = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     const url = new URL(req.url!, 'http://localhost');
     requests.push(`${req.method} ${url.pathname}`);
     const chunks: Buffer[] = [];
@@ -119,6 +120,11 @@ async function httpProvider(): Promise<{
     }
     res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify({ status, data }));
+  };
+  server = createServer((req, res) => {
+    void handle(req, res).catch((error: unknown) => {
+      res.destroy(error instanceof Error ? error : new Error('Local provider fixture failed'));
+    });
   });
   await new Promise<void>((resolve) => server!.listen(0, '127.0.0.1', resolve));
   const address = server.address();
@@ -158,18 +164,46 @@ describe.each(['InMemoryPaystack', 'HttpPaystack loopback transport'])(
           : await httpProvider();
       const deps = { prisma, paystack: provider.port };
       scenario = await createScenario({ headcount: 2, amountKobo: 2_000_000 });
+      // New orders now carry a durable CREATED checkout. An order without one
+      // is legacy/uncertain and must not dispatch a fresh charge initialization.
+      const reference = `hq-${scenario.orderId}`;
+      await prisma.$transaction(
+        async (tx) => {
+          await tx.order.update({
+            where: { id: scenario!.orderId },
+            data: { paystackChargeRef: reference },
+          });
+          await tx.checkout.create({
+            data: {
+              orderId: scenario!.orderId,
+              reference,
+              email: 'validation@example.invalid',
+              state: 'CREATED',
+              expiresAt: new Date(Date.now() + 60 * 60_000),
+            },
+          });
+        },
+        { timeout: 30_000, maxWait: 30_000 },
+      );
       const charge = await initChargeForOrder(deps, {
         orderId: scenario.orderId,
         email: 'validation@example.invalid',
         clientUserId: scenario.clientUserId,
       });
+      expect(charge.state).toBe('READY');
       const verified = await provider.port.verifyChargeKobo(charge.reference);
       expect(verified).toEqual({ status: 'success', amountKobo: 4_000_000 });
       provider.credit(verified.amountKobo);
-      await prisma.$transaction((tx) => holdOrder(tx, scenario!.orderId, charge.reference));
+      await prisma.$transaction(
+        (tx) => recordCheckoutCharge(tx, scenario!.orderId, charge.reference),
+        { timeout: 30_000, maxWait: 30_000 },
+      );
       const [paidBooking, refundedBooking] = scenario.bookingIds;
       await prisma.booking.update({ where: { id: paidBooking! }, data: { status: 'CHECKED_IN' } });
-      await prisma.$transaction((tx) => releaseBooking(tx, paidBooking!, 'OTP'));
+      await prisma.$transaction((tx) => releaseBooking(tx, paidBooking!, 'OTP'), {
+        timeout: 30_000,
+        maxWait: 30_000,
+      });
       const refundParams = {
         bookingId: refundedBooking!,
         amountKobo: 2_000_000,
@@ -221,9 +255,12 @@ describe.each(['InMemoryPaystack', 'HttpPaystack loopback transport'])(
         ok: true,
       });
       if (implementation.startsWith('HttpPaystack')) {
+        expect(provider.requests.filter((r) => r === 'POST /transaction/initialize')).toHaveLength(
+          1,
+        );
         expect(provider.requests.filter((r) => r === 'POST /refund')).toHaveLength(1);
         expect(provider.requests.filter((r) => r === 'POST /transfer')).toHaveLength(2);
       }
-    });
+    }, 300_000);
   },
 );

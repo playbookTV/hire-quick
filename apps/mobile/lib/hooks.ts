@@ -4,7 +4,13 @@ import { useRef } from 'react';
  * verify screen feeds the result into `useAuth().login`.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { CreateEventInput, UpdateEventInput, UserRole } from '@hq/shared';
+import type {
+  CreateEventInput,
+  UpdateEventInput,
+  UserRole,
+  CancelBookingInput,
+  CancelWindow,
+} from '@hq/shared';
 import { checkoutStore } from './checkout-store.js';
 import type { WithdrawalInput } from './withdrawal.js';
 import { withdrawalStore } from './withdrawal-store.js';
@@ -15,7 +21,6 @@ import type {
   EventResource,
   AuthResult,
   Booking,
-  Message,
   Application,
   MyApplication,
   UsherListItem,
@@ -158,27 +163,6 @@ export function useBooking(id: string) {
   });
 }
 
-export function useBookingMessages(id: string) {
-  return useQuery({
-    queryKey: queryKeys.bookingMessages(id),
-    queryFn: () => api.get<Message[]>(`/api/bookings/${id}/messages`),
-    enabled: !!id,
-    refetchInterval: 5000, // light polling until Socket.IO is wired
-  });
-}
-
-export function useSendMessage(bookingId: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (input: string | { content: string; contentType: 'IMAGE' | 'VOICE' }) =>
-      api.post<Message>(
-        `/api/bookings/${bookingId}/messages`,
-        typeof input === 'string' ? { content: input } : input,
-      ),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.bookingMessages(bookingId) }),
-  });
-}
-
 export function useGenerateCheckin(bookingId: string) {
   const qc = useQueryClient();
   return useMutation({
@@ -241,10 +225,10 @@ export function useCancelBooking(bookingId: string) {
   const qc = useQueryClient();
   const idemKey = useRef(newIdempotencyKey());
   return useMutation({
-    mutationFn: (reason?: string) =>
-      api.post<{ status: string }>(
+    mutationFn: (confirmation?: CancelBookingInput) =>
+      api.post<{ status: string; settlement?: { refundKobo: number } }>(
         `/api/bookings/${bookingId}/cancel`,
-        { reason },
+        confirmation ?? {},
         { idempotencyKey: idemKey.current },
       ),
     onSuccess: () => {
@@ -510,16 +494,9 @@ export function useMyVerifications() {
           idDocumentUrl: string | null;
           selfieUrl: string | null;
           method: string;
+          govLookup: { providerStatus?: string } | null;
         }[]
       >('/api/me/verification'),
-  });
-}
-
-/** Start a biometric KYC session (Dojah). Returns the widget id + reference id the device launches. */
-export function useKycStart() {
-  return useMutation({
-    mutationFn: () =>
-      api.post<{ widgetId: string; referenceId: string }>('/api/me/verification/kyc/start'),
   });
 }
 
@@ -666,10 +643,13 @@ export function useCancellationQuote(id: string) {
     queryFn: () =>
       api.get<{
         actor: 'CLIENT' | 'USHER';
-        window: string;
+        window: CancelWindow;
         refundKobo: number;
         usherCompensationKobo: number;
         processingFeeKobo: number;
+        platformFeeKobo: number;
+        usherPayoutKobo: number;
+        requiresApproval: boolean;
         clientRefundPct: number;
         usherPayoutPct: number;
         gross: number;

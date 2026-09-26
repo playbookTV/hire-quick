@@ -1,8 +1,11 @@
+import type { CancellationSummary } from '@hq/shared';
 import type { ReactNode } from 'react';
 import { api, naira, shortDate } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
 import { State } from './ui';
 export interface ReviewBooking {
+  payoutAvailableAt?: string;
+  cancellation?: CancellationSummary | null;
   id: string;
   status: string;
   amount: number;
@@ -98,14 +101,43 @@ export function BookingReview({
             </dd>
             {q.data.payment && (
               <>
-                <dt>Usher payout</dt>
+                <dt>Net usher payout</dt>
                 <dd>
-                  {naira(q.data.payment.usherPayout)} after {naira(q.data.payment.platformFee)}{' '}
+                  {naira(q.data.cancellation?.usherPayoutKobo ?? q.data.payment.usherPayout)} after{' '}
+                  {naira(q.data.cancellation?.platformFeeKobo ?? q.data.payment.platformFee)}{' '}
                   platform fee
                 </dd>
               </>
             )}
           </dl>
+          {q.data.payoutAvailableAt &&
+            ['HELD', 'FROZEN'].includes(q.data.payment?.escrowStatus ?? '') && (
+              <p className="notice">
+                Completed work remains held until{' '}
+                {new Date(q.data.payoutAvailableAt).toLocaleString('en-NG', {
+                  timeZone: 'Africa/Lagos',
+                })}{' '}
+                WAT. Unresolved disputes delay wallet release.
+              </p>
+            )}
+          {q.data.cancellation && (
+            <div className="notice">
+              <strong>
+                Client cancellation · {q.data.cancellation.status.replaceAll('_', ' ')}
+              </strong>
+              <p>
+                Requested {shortDate(q.data.cancellation.requestedAt)}. The original time and split
+                remain reserved during review.
+              </p>
+              <p>
+                Client refund: {naira(q.data.cancellation.refundKobo)}. Gross usher allocation:{' '}
+                {naira(q.data.cancellation.usherCompensationKobo)}. Platform commission:{' '}
+                {naira(q.data.cancellation.platformFeeKobo)}. Net usher payout:{' '}
+                {naira(q.data.cancellation.usherPayoutKobo)}.
+              </p>
+              <p>No processing fee is deducted from the client refund.</p>
+            </div>
+          )}
           {q.data.disputes.map((d) => (
             <div className="notice" key={d.id}>
               <strong>
@@ -118,7 +150,7 @@ export function BookingReview({
               {d.resolution && <p>Resolution: {d.resolution}</p>}
             </div>
           ))}
-          {q.data.refund ? (
+          {q.data.refund && !q.data.cancellation ? (
             <p className="notice">
               Refund {q.data.refund.status} · {q.data.refund.providerRef ?? q.data.refund.id} ·{' '}
               {shortDate(q.data.refund.updatedAt)}

@@ -1,8 +1,4 @@
-/**
- * KeyValueRow — matches Figma `KeyValueRow` (124:93): label (Body/M, ink/muted)
- * left, value (Label/L, SemiBold) right; tone sets the value colour. Muted tones
- * both label + value.
- */
+/** Figma value row: wrapping label and amount with semantic typography. */
 import { Box, Text } from '../theme/restyle.js';
 import type { Theme } from '../theme/theme.js';
 
@@ -23,20 +19,28 @@ interface KeyValueRowProps {
   emphasize?: boolean;
 }
 
-export function KeyValueRow({ label, value, tone = 'default', emphasize = false }: KeyValueRowProps): React.JSX.Element {
+export function KeyValueRow({
+  label,
+  value,
+  tone = 'default',
+  emphasize = false,
+}: KeyValueRowProps): React.JSX.Element {
   return (
-    <Box flexDirection="row" alignItems="center" justifyContent="space-between" paddingVertical="200">
-      <Text variant="body" color={tone === 'muted' ? 'inkMuted' : 'inkMuted'}>
+    <Box
+      flexDirection="row"
+      alignItems="center"
+      justifyContent="space-between"
+      paddingVertical="200"
+      flexWrap="wrap"
+      gap="200"
+    >
+      <Text variant="body" color="inkMuted" style={{ flexShrink: 1 }}>
         {label}
       </Text>
       <Text
         color={VALUE_COLOR[tone]}
-        style={{
-          fontFamily: emphasize ? 'PlusJakartaSans_700Bold' : 'PlusJakartaSans_600SemiBold',
-          fontSize: emphasize ? 17 : 15,
-          lineHeight: emphasize ? 22 : 20,
-          letterSpacing: emphasize ? -0.2 : 0,
-        }}
+        variant={emphasize ? 'amountM' : 'labelLg'}
+        style={{ flexShrink: 1 }}
       >
         {value}
       </Text>

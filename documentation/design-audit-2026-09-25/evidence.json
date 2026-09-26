@@ -1,0 +1,6431 @@
+{
+  "fileKey": "Ep6MkJEc079aM6I0pQbwhw",
+  "date": "2026-09-25",
+  "method": "Read-only Figma Plugin API inspection across nine pages; representative screenshots visually inspected. Contrast measured using sRGB relative luminance and resolved semantic aliases for both color modes. Group opacity excluded, not treated as failures. Prototype reachability inferred from recorded reactions, not a live usability test.",
+  "limitations": [
+    "No live app or assistive technology testing.",
+    "No resizing or modifications to original frames.",
+    "Ancestor-fill contrast cannot establish all effects, sibling overlays or runtime accessibility.",
+    "Solid fill count includes duplicate screens and component instances.",
+    "Clipping candidates include duplicate dark frames and prototypes; not unique defects."
+  ],
+  "stats": {
+    "nodes": 12050,
+    "text": 3816,
+    "styled": 3815,
+    "pairs": 7470,
+    "paints": 6788,
+    "layoutValues": 12017,
+    "boundLayouts": 11935
+  },
+  "pages": [
+    {
+      "page": "① Foundations & Components",
+      "nodes": 815,
+      "top": [
+        {
+          "id": "5:2",
+          "name": "Foundations",
+          "type": "FRAME",
+          "w": 630,
+          "h": 2548
+        },
+        {
+          "id": "6:2",
+          "name": "BUTTON",
+          "type": "TEXT",
+          "w": 48,
+          "h": 14
+        },
+        {
+          "id": "6:27",
+          "name": "Button",
+          "type": "COMPONENT_SET",
+          "w": 191,
+          "h": 628
+        },
+        {
+          "id": "6:28",
+          "name": "STATUS PILL",
+          "type": "TEXT",
+          "w": 71,
+          "h": 14
+        },
+        {
+          "id": "6:62",
+          "name": "StatusPill",
+          "type": "COMPONENT_SET",
+          "w": 179,
+          "h": 395
+        },
+        {
+          "id": "6:63",
+          "name": "AVATAR",
+          "type": "TEXT",
+          "w": 43,
+          "h": 14
+        },
+        {
+          "id": "6:70",
+          "name": "Avatar",
+          "type": "COMPONENT_SET",
+          "w": 220,
+          "h": 104
+        },
+        {
+          "id": "6:71",
+          "name": "CHIP",
+          "type": "TEXT",
+          "w": 28,
+          "h": 14
+        },
+        {
+          "id": "6:76",
+          "name": "Chip",
+          "type": "COMPONENT_SET",
+          "w": 294,
+          "h": 84
+        },
+        {
+          "id": "6:77",
+          "name": "TEXT FIELD",
+          "type": "TEXT",
+          "w": 63,
+          "h": 14
+        },
+        {
+          "id": "6:95",
+          "name": "TextField",
+          "type": "COMPONENT_SET",
+          "w": 360,
+          "h": 520
+        },
+        {
+          "id": "6:96",
+          "name": "DEVICE CHROME",
+          "type": "TEXT",
+          "w": 94,
+          "h": 14
+        },
+        {
+          "id": "6:97",
+          "name": "StatusBar",
+          "type": "COMPONENT",
+          "w": 390,
+          "h": 54
+        },
+        {
+          "id": "6:100",
+          "name": "HomeIndicator",
+          "type": "COMPONENT",
+          "w": 390,
+          "h": 34
+        },
+        {
+          "id": "7:2",
+          "name": "MONEY STATE ROW · ref: Upwork Reports",
+          "type": "TEXT",
+          "w": 257,
+          "h": 14
+        },
+        {
+          "id": "7:27",
+          "name": "MoneyStateRow",
+          "type": "COMPONENT_SET",
+          "w": 382,
+          "h": 275
+        },
+        {
+          "id": "7:28",
+          "name": "BALANCE HERO",
+          "type": "TEXT",
+          "w": 87,
+          "h": 14
+        },
+        {
+          "id": "7:29",
+          "name": "BalanceHero",
+          "type": "COMPONENT",
+          "w": 342,
+          "h": 157
+        },
+        {
+          "id": "7:38",
+          "name": "STEP TRACKER · ref: MoonPay order status",
+          "type": "TEXT",
+          "w": 272,
+          "h": 14
+        },
+        {
+          "id": "7:39",
+          "name": "StepTracker",
+          "type": "COMPONENT",
+          "w": 342,
+          "h": 203
+        },
+        {
+          "id": "7:59",
+          "name": "JOB CARD · ref: Airtasker browse tasks",
+          "type": "TEXT",
+          "w": 253,
+          "h": 14
+        },
+        {
+          "id": "7:60",
+          "name": "JobCard",
+          "type": "COMPONENT",
+          "w": 342,
+          "h": 208
+        },
+        {
+          "id": "7:85",
+          "name": "STAFF CARD",
+          "type": "TEXT",
+          "w": 69,
+          "h": 14
+        },
+        {
+          "id": "7:86",
+          "name": "StaffCard",
+          "type": "COMPONENT",
+          "w": 342,
+          "h": 100
+        },
+        {
+          "id": "7:100",
+          "name": "APP BAR",
+          "type": "TEXT",
+          "w": 48,
+          "h": 14
+        },
+        {
+          "id": "7:101",
+          "name": "AppBar",
+          "type": "COMPONENT",
+          "w": 390,
+          "h": 56
+        },
+        {
+          "id": "7:105",
+          "name": "BOTTOM NAV",
+          "type": "TEXT",
+          "w": 75,
+          "h": 14
+        },
+        {
+          "id": "9:135",
+          "name": "BottomNav/Client",
+          "type": "COMPONENT_SET",
+          "w": 430,
+          "h": 468
+        },
+        {
+          "id": "9:266",
+          "name": "BottomNav/Usher",
+          "type": "COMPONENT_SET",
+          "w": 430,
+          "h": 468
+        },
+        {
+          "id": "32:2",
+          "name": "SKELETON",
+          "type": "TEXT",
+          "w": 59,
+          "h": 14
+        },
+        {
+          "id": "32:3",
+          "name": "Skeleton",
+          "type": "COMPONENT",
+          "w": 342,
+          "h": 90
+        },
+        {
+          "id": "32:7",
+          "name": "EMPTY STATE",
+          "type": "TEXT",
+          "w": 77,
+          "h": 14
+        },
+        {
+          "id": "32:39",
+          "name": "EmptyState",
+          "type": "COMPONENT_SET",
+          "w": 382,
+          "h": 838
+        },
+        {
+          "id": "32:40",
+          "name": "TOAST",
+          "type": "TEXT",
+          "w": 38,
+          "h": 14
+        },
+        {
+          "id": "32:57",
+          "name": "Toast",
+          "type": "COMPONENT_SET",
+          "w": 382,
+          "h": 197
+        },
+        {
+          "id": "32:58",
+          "name": "BANNER",
+          "type": "TEXT",
+          "w": 47,
+          "h": 14
+        },
+        {
+          "id": "32:68",
+          "name": "Banner",
+          "type": "COMPONENT_SET",
+          "w": 382,
+          "h": 267
+        },
+        {
+          "id": "32:69",
+          "name": "MODAL / BOTTOM SHEET",
+          "type": "TEXT",
+          "w": 139,
+          "h": 14
+        },
+        {
+          "id": "32:70",
+          "name": "Modal/Confirm",
+          "type": "COMPONENT",
+          "w": 342,
+          "h": 170
+        },
+        {
+          "id": "32:78",
+          "name": "BottomSheet",
+          "type": "COMPONENT",
+          "w": 390,
+          "h": 248
+        },
+        {
+          "id": "32:89",
+          "name": "STEP INDICATOR",
+          "type": "TEXT",
+          "w": 94,
+          "h": 14
+        },
+        {
+          "id": "32:90",
+          "name": "StepIndicator",
+          "type": "COMPONENT",
+          "w": 342,
+          "h": 5
+        }
+      ],
+      "counts": {
+        "text": 268,
+        "styledText": 268,
+        "instances": 5,
+        "components": 75,
+        "frames": 308,
+        "autoLayout": 181,
+        "boundNodes": 748,
+        "reactions": 0
+      },
+      "fontSizes": {
+        "11": 76,
+        "13": 136,
+        "15": 32,
+        "17": 14,
+        "20": 2,
+        "24": 1,
+        "27": 1,
+        "30": 1,
+        "36": 2,
+        "40": 2,
+        "44": 1
+      },
+      "sets": [
+        {
+          "id": "6:27",
+          "name": "Button",
+          "properties": {
+            "Label#6:0": {
+              "type": "TEXT",
+              "defaultValue": "Confirm & pay"
+            },
+            "Variant": {
+              "type": "VARIANT",
+              "defaultValue": "Primary",
+              "variantOptions": [
+                "Primary",
+                "Secondary",
+                "Ghost",
+                "Danger",
+                "Disabled"
+              ]
+            },
+            "Size": {
+              "type": "VARIANT",
+              "defaultValue": "Large",
+              "variantOptions": [
+                "Large",
+                "Medium"
+              ]
+            }
+          },
+          "variants": [
+            "Variant=Primary, Size=Large",
+            "Variant=Primary, Size=Medium",
+            "Variant=Secondary, Size=Large",
+            "Variant=Secondary, Size=Medium",
+            "Variant=Ghost, Size=Large",
+            "Variant=Ghost, Size=Medium",
+            "Variant=Danger, Size=Large",
+            "Variant=Danger, Size=Medium",
+            "Variant=Disabled, Size=Large",
+            "Variant=Disabled, Size=Medium"
+          ]
+        },
+        {
+          "id": "6:62",
+          "name": "StatusPill",
+          "properties": {
+            "Status": {
+              "type": "VARIANT",
+              "defaultValue": "Awaiting payment",
+              "variantOptions": [
+                "Awaiting payment",
+                "Confirmed",
+                "Checked in",
+                "Work completed",
+                "Funds held",
+                "Released",
+                "Withdrawn",
+                "Cancelled",
+                "No-show",
+                "Disputed",
+                "Refunded"
+              ]
+            }
+          },
+          "variants": [
+            "Status=Awaiting payment",
+            "Status=Confirmed",
+            "Status=Checked in",
+            "Status=Work completed",
+            "Status=Funds held",
+            "Status=Released",
+            "Status=Withdrawn",
+            "Status=Cancelled",
+            "Status=No-show",
+            "Status=Disputed",
+            "Status=Refunded"
+          ]
+        },
+        {
+          "id": "6:70",
+          "name": "Avatar",
+          "properties": {
+            "Initials#6:9": {
+              "type": "TEXT",
+              "defaultValue": "AO"
+            },
+            "Size": {
+              "type": "VARIANT",
+              "defaultValue": "Large",
+              "variantOptions": [
+                "Large",
+                "Medium",
+                "Small"
+              ]
+            }
+          },
+          "variants": [
+            "Size=Large",
+            "Size=Medium",
+            "Size=Small"
+          ]
+        },
+        {
+          "id": "6:76",
+          "name": "Chip",
+          "properties": {
+            "Label#6:13": {
+              "type": "TEXT",
+              "defaultValue": "Available today"
+            },
+            "Selected": {
+              "type": "VARIANT",
+              "defaultValue": "true",
+              "variantOptions": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          "variants": [
+            "Selected=true",
+            "Selected=false"
+          ]
+        },
+        {
+          "id": "6:95",
+          "name": "TextField",
+          "properties": {
+            "State": {
+              "type": "VARIANT",
+              "defaultValue": "Default",
+              "variantOptions": [
+                "Default",
+                "Focus",
+                "Error",
+                "Filled",
+                "Disabled"
+              ]
+            }
+          },
+          "variants": [
+            "State=Default",
+            "State=Focus",
+            "State=Error",
+            "State=Filled",
+            "State=Disabled"
+          ]
+        },
+        {
+          "id": "7:27",
+          "name": "MoneyStateRow",
+          "properties": {
+            "Tone": {
+              "type": "VARIANT",
+              "defaultValue": "Available",
+              "variantOptions": [
+                "Available",
+                "Held",
+                "Pending"
+              ]
+            }
+          },
+          "variants": [
+            "Tone=Available",
+            "Tone=Held",
+            "Tone=Pending"
+          ]
+        },
+        {
+          "id": "9:135",
+          "name": "BottomNav/Client",
+          "properties": {
+            "Active": {
+              "type": "VARIANT",
+              "defaultValue": "Home",
+              "variantOptions": [
+                "Home",
+                "Discover",
+                "Events",
+                "Messages",
+                "Profile"
+              ]
+            }
+          },
+          "variants": [
+            "Active=Home",
+            "Active=Discover",
+            "Active=Events",
+            "Active=Messages",
+            "Active=Profile"
+          ]
+        },
+        {
+          "id": "9:266",
+          "name": "BottomNav/Usher",
+          "properties": {
+            "Active": {
+              "type": "VARIANT",
+              "defaultValue": "Home",
+              "variantOptions": [
+                "Home",
+                "Jobs",
+                "Messages",
+                "Wallet",
+                "Profile"
+              ]
+            }
+          },
+          "variants": [
+            "Active=Home",
+            "Active=Jobs",
+            "Active=Messages",
+            "Active=Wallet",
+            "Active=Profile"
+          ]
+        },
+        {
+          "id": "32:39",
+          "name": "EmptyState",
+          "properties": {
+            "Tone": {
+              "type": "VARIANT",
+              "defaultValue": "Empty",
+              "variantOptions": [
+                "Empty",
+                "Error",
+                "Offline"
+              ]
+            }
+          },
+          "variants": [
+            "Tone=Empty",
+            "Tone=Error",
+            "Tone=Offline"
+          ]
+        },
+        {
+          "id": "32:57",
+          "name": "Toast",
+          "properties": {
+            "Tone": {
+              "type": "VARIANT",
+              "defaultValue": "Success",
+              "variantOptions": [
+                "Success",
+                "Error",
+                "Info"
+              ]
+            }
+          },
+          "variants": [
+            "Tone=Success",
+            "Tone=Error",
+            "Tone=Info"
+          ]
+        },
+        {
+          "id": "32:68",
+          "name": "Banner",
+          "properties": {
+            "Tone": {
+              "type": "VARIANT",
+              "defaultValue": "Info",
+              "variantOptions": [
+                "Info",
+                "Warning",
+                "Danger"
+              ]
+            }
+          },
+          "variants": [
+            "Tone=Info",
+            "Tone=Warning",
+            "Tone=Danger"
+          ]
+        }
+      ],
+      "notes": [
+        "BUTTON",
+        "STATUS PILL",
+        "AVATAR",
+        "CHIP",
+        "TEXT FIELD",
+        "DEVICE CHROME",
+        "MONEY STATE ROW  ·  ref: Upwork Reports",
+        "BALANCE HERO",
+        "STEP TRACKER  ·  ref: MoonPay order status",
+        "JOB CARD  ·  ref: Airtasker browse tasks",
+        "STAFF CARD",
+        "APP BAR",
+        "BOTTOM NAV",
+        "SKELETON",
+        "EMPTY STATE",
+        "TOAST",
+        "BANNER",
+        "MODAL / BOTTOM SHEET",
+        "STEP INDICATOR"
+      ]
+    },
+    {
+      "page": "② Account & Verification",
+      "nodes": 567,
+      "top": [
+        {
+          "id": "14:2",
+          "name": "B01 / Profile setup / Default",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "14:59",
+          "name": "B02 / Identity verification / Default",
+          "type": "FRAME",
+          "w": 390,
+          "h": 862
+        },
+        {
+          "id": "14:116",
+          "name": "B03 / Awaiting approval / Default",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "14:151",
+          "name": "B04 / Verification rejected / Default",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "22:48",
+          "name": "A01 / Welcome / Default",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "22:75",
+          "name": "A02 / Choose role / Default",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "22:104",
+          "name": "A03 / Phone entry / Default",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "22:134",
+          "name": "A04 / Verify OTP / Default",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "22:168",
+          "name": "A04 / Verify OTP / Incorrect code",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "22:212",
+          "name": "A05 / Complete client profile / Default",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "45:747",
+          "name": "A01 / Welcome / Default · Dark",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "45:762",
+          "name": "B02 / Identity verification / Default · Dark",
+          "type": "FRAME",
+          "w": 390,
+          "h": 862
+        },
+        {
+          "id": "59:143",
+          "name": "A03 / Phone entry / Invalid number",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "59:178",
+          "name": "A04 / Verify OTP / Code expired",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "59:213",
+          "name": "A04 / Verify OTP / Number locked",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        }
+      ],
+      "counts": {
+        "text": 160,
+        "styledText": 160,
+        "instances": 48,
+        "components": 0,
+        "frames": 225,
+        "autoLayout": 199,
+        "boundNodes": 541,
+        "reactions": 0
+      },
+      "fontSizes": {
+        "11": 2,
+        "13": 60,
+        "15": 58,
+        "17": 16,
+        "27": 9,
+        "30": 13,
+        "44": 2
+      },
+      "sets": [],
+      "notes": []
+    },
+    {
+      "page": "③ Client",
+      "nodes": 1275,
+      "top": [
+        {
+          "id": "23:2",
+          "name": "C01 / Home / Default",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "23:106",
+          "name": "C02 / Discover staff / Default",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "23:207",
+          "name": "C03 / Events / Default",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "23:296",
+          "name": "C04 / Event detail / Default",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "23:405",
+          "name": "C05 / Messages / Default",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "23:471",
+          "name": "C06 / Profile / Default",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "41:258",
+          "name": "C03 / Events / No events yet",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "41:307",
+          "name": "C05 / Messages / No confirmed bookings",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "41:357",
+          "name": "C01 / Home / Loading",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "41:419",
+          "name": "C02 / Discover staff / No matches",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "41:483",
+          "name": "C04 / Event detail / Started under-staffed",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "45:391",
+          "name": "C01 / Home / Default · Dark",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "45:444",
+          "name": "C04 / Event detail / Default · Dark",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "45:540",
+          "name": "C02 / Discover staff / Default · Dark",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "55:564",
+          "name": "C04 / Event detail / Failed to load",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "55:591",
+          "name": "C03 / Events / Failed to load",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "55:642",
+          "name": "C05 / Messages / Refresh failed",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        }
+      ],
+      "counts": {
+        "text": 319,
+        "styledText": 319,
+        "instances": 90,
+        "components": 0,
+        "frames": 500,
+        "autoLayout": 356,
+        "boundNodes": 1131,
+        "reactions": 0
+      },
+      "fontSizes": {
+        "11": 75,
+        "13": 140,
+        "15": 64,
+        "17": 23,
+        "20": 2,
+        "30": 3,
+        "36": 12
+      },
+      "sets": [],
+      "notes": []
+    },
+    {
+      "page": "④ Usher",
+      "nodes": 2117,
+      "top": [
+        {
+          "id": "8:2",
+          "name": "D05 / Wallet / Loaded",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "8:94",
+          "name": "D02 / Jobs / Available",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "12:177",
+          "name": "D01 / Home / Verified",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "12:261",
+          "name": "D03 / Availability / Month",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "12:425",
+          "name": "D06 / Profile / Verified",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "31:264",
+          "name": "D04 / Messages / Default",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "31:329",
+          "name": "G03 / Edit usher profile / Default",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "33:315",
+          "name": "D02 / Jobs / Loading",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "33:376",
+          "name": "D02 / Jobs / Empty",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "33:433",
+          "name": "D02 / Jobs / Failed to load",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "33:492",
+          "name": "D02 / Jobs / Offline stale",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "40:497",
+          "name": "D05 / Wallet / Balance unavailable",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "40:555",
+          "name": "D05 / Wallet / No earnings yet",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "40:608",
+          "name": "D01 / Home / Verification pending",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "40:677",
+          "name": "G01 / Notifications / Permission denied",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "41:2597",
+          "name": "Dark mode — same components, mode switched on the frame",
+          "type": "TEXT",
+          "w": 845,
+          "h": 34
+        },
+        {
+          "id": "41:2598",
+          "name": "D01 / Home / Verified · Dark",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "41:2643",
+          "name": "D02 / Jobs / Available · Dark",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "41:2660",
+          "name": "D05 / Wallet / Loaded · Dark",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "41:2694",
+          "name": "D06 / Profile / Verified · Dark",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "41:2775",
+          "name": "D03 / Availability / Month · Dark",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "60:885",
+          "name": "D03 / Availability / Save failed",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "60:1044",
+          "name": "D06 / Profile / Loading",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "64:943",
+          "name": "D05 / Wallet / Offline",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        }
+      ],
+      "counts": {
+        "text": 559,
+        "styledText": 559,
+        "instances": 131,
+        "components": 0,
+        "frames": 919,
+        "autoLayout": 732,
+        "boundNodes": 1946,
+        "reactions": 0
+      },
+      "fontSizes": {
+        "11": 118,
+        "13": 299,
+        "15": 68,
+        "17": 38,
+        "20": 7,
+        "27": 6,
+        "30": 1,
+        "36": 15,
+        "40": 7
+      },
+      "sets": [],
+      "notes": [
+        "Dark mode — same components, mode switched on the frame"
+      ]
+    },
+    {
+      "page": "⑤ Shared Booking & Money",
+      "nodes": 3483,
+      "top": [
+        {
+          "id": "24:2",
+          "name": "E06 / Create event / 1 Basics",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "24:60",
+          "name": "E06 / Create event / 2 Staffing",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "24:115",
+          "name": "E06 / Create event / 3 Review",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "24:169",
+          "name": "E09 / Applications / Selecting",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "24:239",
+          "name": "E10 / Confirm & pay / Default",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "24:307",
+          "name": "E11 / Payment status / Needs checking",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "24:365",
+          "name": "E11 / Payment status / Confirmed",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "24:401",
+          "name": "E11 / Payment status / Reservation expired",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "24:439",
+          "name": "E12 / Payment failed / Default",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "26:124",
+          "name": "F01 / My bookings / Active",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "26:177",
+          "name": "F02 / Booking details / Confirmed",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "26:251",
+          "name": "F03 / Event day / Roster",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "26:320",
+          "name": "F04 / Check in / Code entry",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "26:359",
+          "name": "F05 / Booking chat / Default",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "26:411",
+          "name": "F06 / Cancellation / Quote",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "26:458",
+          "name": "F07 / Open a dispute / Default",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "26:500",
+          "name": "F08 / Review counterpart / Default",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "27:233",
+          "name": "G01 / Notifications / Default",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "27:296",
+          "name": "G02 / Account settings / Default",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "27:352",
+          "name": "G04 / Privacy & data / Default",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "27:404",
+          "name": "G05 / Withdraw / Amount",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "27:447",
+          "name": "G05 / Withdraw / Review",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "27:487",
+          "name": "G05 / Withdraw / Processing",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "27:528",
+          "name": "G06 / Withdrawal history / Default",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "27:579",
+          "name": "G07 / Withdrawal details / Default",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "27:622",
+          "name": "G08 / Privacy policy / Default",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "28:338",
+          "name": "E01 / Staff profile / Default",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "28:395",
+          "name": "E02 / Discover filters / Default",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "28:446",
+          "name": "E03 / Invite to an event / Default",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "28:481",
+          "name": "E04 / Invitations / Usher",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "28:529",
+          "name": "E05 / Invitation detail / Default",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "28:593",
+          "name": "E07 / Event published / Default",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "28:620",
+          "name": "E08 / Edit event / Partly locked",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "28:677",
+          "name": "E13 / Job details / Can apply",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "28:745",
+          "name": "H01 / Not found / Default",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "38:463",
+          "name": "E13 / Job details / Filled while viewing",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "38:509",
+          "name": "E13 / Job details / Already applied",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "38:556",
+          "name": "F04 / Check in / Not yet open",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "38:594",
+          "name": "F04 / Check in / Code incorrect",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "38:641",
+          "name": "F04 / Check in / Already checked in",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "38:672",
+          "name": "F04 / Check in / Completed, held",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "38:707",
+          "name": "F02 / Booking details / Client cancelled",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "38:752",
+          "name": "F05 / Booking chat / Send failed",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "38:801",
+          "name": "E09 / Applications / Capacity reached",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "38:864",
+          "name": "F02 / Booking details / Disputed",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "43:586",
+          "name": "ANNOTATION — E10 / Confirm & pay",
+          "type": "FRAME",
+          "w": 390,
+          "h": 339
+        },
+        {
+          "id": "43:600",
+          "name": "ANNOTATION — E11 / Payment status / Needs checking",
+          "type": "FRAME",
+          "w": 390,
+          "h": 258
+        },
+        {
+          "id": "43:611",
+          "name": "ANNOTATION — F02 / Booking details / Confirmed",
+          "type": "FRAME",
+          "w": 390,
+          "h": 301
+        },
+        {
+          "id": "43:625",
+          "name": "ANNOTATION — F03 / Event day / Roster",
+          "type": "FRAME",
+          "w": 390,
+          "h": 239
+        },
+        {
+          "id": "43:636",
+          "name": "ANNOTATION — F04 / Check in / Code entry",
+          "type": "FRAME",
+          "w": 390,
+          "h": 239
+        },
+        {
+          "id": "43:647",
+          "name": "ANNOTATION — F06 / Cancellation / Quote",
+          "type": "FRAME",
+          "w": 390,
+          "h": 277
+        },
+        {
+          "id": "43:658",
+          "name": "ANNOTATION — F07 / Open a dispute",
+          "type": "FRAME",
+          "w": 390,
+          "h": 258
+        },
+        {
+          "id": "45:565",
+          "name": "E10 / Confirm & pay / Default · Dark",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "45:622",
+          "name": "E11 / Payment status / Confirmed · Dark",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "45:646",
+          "name": "F02 / Booking details / Confirmed · Dark",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "45:705",
+          "name": "F05 / Booking chat / Default · Dark",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "53:634",
+          "name": "E10 / Confirm & pay / Submitting",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "53:665",
+          "name": "E10 / Confirm & pay / Selection changed",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "53:711",
+          "name": "G05 / Withdraw / Failed",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "53:752",
+          "name": "G05 / Withdraw / No bank account",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "53:786",
+          "name": "B03 / Awaiting approval / Status unavailable",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "53:824",
+          "name": "F03 / Event day / Roster out of date",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "53:877",
+          "name": "F01 / My bookings / None yet",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "53:902",
+          "name": "G06 / Withdrawal history / None yet",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "54:736",
+          "name": "F08 / Review / Locked until release",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "54:783",
+          "name": "F08 / Review / Already submitted",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "54:821",
+          "name": "E09 / Applications / None yet",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "54:853",
+          "name": "F05 / Booking chat / Loading history",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "54:895",
+          "name": "E11 / Payment status / Late payment refund",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "54:952",
+          "name": "F02 / Booking details / Refund in progress",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "63:837",
+          "name": "F04 / Check in / Offline",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "63:882",
+          "name": "F03 / Event day / Offline",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "63:944",
+          "name": "F02 / Booking details / Offline",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "63:1002",
+          "name": "G05 / Withdraw / Offline",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "63:1043",
+          "name": "G02 / Account settings / Save failed",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "63:1081",
+          "name": "G04 / Privacy & data / Consent not saved",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "76:920",
+          "name": "F06 / Cancellation / Band changed",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "76:970",
+          "name": "E05 / Invitation detail / Closed",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        }
+      ],
+      "counts": {
+        "text": 1060,
+        "styledText": 1060,
+        "instances": 268,
+        "components": 0,
+        "frames": 1392,
+        "autoLayout": 1199,
+        "boundNodes": 3297,
+        "reactions": 0
+      },
+      "fontSizes": {
+        "11": 58,
+        "13": 473,
+        "15": 339,
+        "17": 118,
+        "20": 4,
+        "27": 15,
+        "30": 49,
+        "40": 3,
+        "44": 1
+      },
+      "sets": [],
+      "notes": []
+    },
+    {
+      "page": "⑥ Admin",
+      "nodes": 1308,
+      "top": [
+        {
+          "id": "29:2",
+          "name": "AD01 / Admin login / Default",
+          "type": "FRAME",
+          "w": 1440,
+          "h": 900
+        },
+        {
+          "id": "29:17",
+          "name": "AD02 / Dashboard / Default",
+          "type": "FRAME",
+          "w": 1440,
+          "h": 900
+        },
+        {
+          "id": "29:94",
+          "name": "AD03 / Verifications / Default",
+          "type": "FRAME",
+          "w": 1440,
+          "h": 900
+        },
+        {
+          "id": "29:163",
+          "name": "AD04 / Disputes / Default",
+          "type": "FRAME",
+          "w": 1440,
+          "h": 900
+        },
+        {
+          "id": "29:241",
+          "name": "AD05 / Approvals / Default",
+          "type": "FRAME",
+          "w": 1440,
+          "h": 900
+        },
+        {
+          "id": "29:324",
+          "name": "AD06 / Bookings & refunds / Default",
+          "type": "FRAME",
+          "w": 1440,
+          "h": 900
+        },
+        {
+          "id": "29:400",
+          "name": "AD07 / Payment ops / Default",
+          "type": "FRAME",
+          "w": 1440,
+          "h": 900
+        },
+        {
+          "id": "29:469",
+          "name": "AD08 / Escrow ledger / Default",
+          "type": "FRAME",
+          "w": 1440,
+          "h": 900
+        },
+        {
+          "id": "29:541",
+          "name": "AD09 / Users / Default",
+          "type": "FRAME",
+          "w": 1440,
+          "h": 900
+        },
+        {
+          "id": "45:52",
+          "name": "AD02 / Dashboard / Loading",
+          "type": "FRAME",
+          "w": 1440,
+          "h": 900
+        },
+        {
+          "id": "45:105",
+          "name": "AD03 / Verifications / Queue clear",
+          "type": "FRAME",
+          "w": 1440,
+          "h": 900
+        },
+        {
+          "id": "45:145",
+          "name": "AD04 / Disputes / None open",
+          "type": "FRAME",
+          "w": 1440,
+          "h": 900
+        },
+        {
+          "id": "45:185",
+          "name": "AD06 / Bookings & refunds / No results",
+          "type": "FRAME",
+          "w": 1440,
+          "h": 900
+        },
+        {
+          "id": "45:231",
+          "name": "AD07 / Payment ops / All balanced",
+          "type": "FRAME",
+          "w": 1440,
+          "h": 900
+        },
+        {
+          "id": "45:287",
+          "name": "AD08 / Escrow ledger / No entries for filter",
+          "type": "FRAME",
+          "w": 1440,
+          "h": 900
+        },
+        {
+          "id": "45:327",
+          "name": "AD05 / Approvals / Cannot self-approve",
+          "type": "FRAME",
+          "w": 1440,
+          "h": 900
+        },
+        {
+          "id": "45:805",
+          "name": "AD08 / Escrow ledger / Default · Dark",
+          "type": "FRAME",
+          "w": 1440,
+          "h": 900
+        },
+        {
+          "id": "58:66",
+          "name": "AD09 / Users / Loading",
+          "type": "FRAME",
+          "w": 1440,
+          "h": 900
+        },
+        {
+          "id": "58:150",
+          "name": "AD03 / Verifications / Evidence unavailable",
+          "type": "FRAME",
+          "w": 1440,
+          "h": 900
+        },
+        {
+          "id": "58:223",
+          "name": "AD05 / Approvals / Execution uncertain",
+          "type": "FRAME",
+          "w": 1440,
+          "h": 900
+        },
+        {
+          "id": "58:288",
+          "name": "AD02 / Dashboard / Failed to load",
+          "type": "FRAME",
+          "w": 1440,
+          "h": 900
+        }
+      ],
+      "counts": {
+        "text": 595,
+        "styledText": 595,
+        "instances": 47,
+        "components": 0,
+        "frames": 517,
+        "autoLayout": 484,
+        "boundNodes": 1275,
+        "reactions": 0
+      },
+      "fontSizes": {
+        "11": 64,
+        "13": 415,
+        "15": 65,
+        "17": 12,
+        "24": 29,
+        "30": 1,
+        "40": 8,
+        "44": 1
+      },
+      "sets": [],
+      "notes": []
+    },
+    {
+      "page": "⑦ Marketing",
+      "nodes": 165,
+      "top": [
+        {
+          "id": "30:2",
+          "name": "Marketing / Desktop 1440",
+          "type": "FRAME",
+          "w": 1440,
+          "h": 3274
+        },
+        {
+          "id": "30:128",
+          "name": "Marketing / Mobile 390",
+          "type": "FRAME",
+          "w": 390,
+          "h": 1178.8070068359375
+        }
+      ],
+      "counts": {
+        "text": 85,
+        "styledText": 84,
+        "instances": 8,
+        "components": 0,
+        "frames": 57,
+        "autoLayout": 53,
+        "boundNodes": 159,
+        "reactions": 0
+      },
+      "fontSizes": {
+        "11": 8,
+        "13": 12,
+        "15": 34,
+        "17": 17,
+        "20": 3,
+        "30": 1,
+        "36": 5,
+        "40": 3,
+        "44": 1,
+        "76": 1
+      },
+      "sets": [],
+      "notes": []
+    },
+    {
+      "page": "⑧ Prototypes",
+      "nodes": 1983,
+      "top": [
+        {
+          "id": "37:7",
+          "name": "Client journey — signup to event day",
+          "type": "TEXT",
+          "w": 496,
+          "h": 34
+        },
+        {
+          "id": "37:8",
+          "name": "A01 / Welcome",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:23",
+          "name": "A02 / Choose role",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:41",
+          "name": "A03 / Phone entry",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:60",
+          "name": "A04 / Verify OTP",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:83",
+          "name": "A05 / Complete client profile",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:103",
+          "name": "C01 / Home",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:156",
+          "name": "E06 / Create event / 1 Basics",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:203",
+          "name": "E06 / Create event / 2 Staffing",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:247",
+          "name": "E06 / Create event / 3 Review",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:290",
+          "name": "E07 / Event published",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:305",
+          "name": "C04 / Event detail",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:401",
+          "name": "E09 / Applications / Selecting",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:460",
+          "name": "E10 / Confirm & pay",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:517",
+          "name": "E11 / Payment status / Needs checking",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:544",
+          "name": "E11 / Payment status / Confirmed",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:568",
+          "name": "F03 / Event day / Roster",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:618",
+          "name": "Usher journey — onboarding to withdrawal",
+          "type": "TEXT",
+          "w": 581,
+          "h": 34
+        },
+        {
+          "id": "37:619",
+          "name": "A02 / Choose role",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:637",
+          "name": "A03 / Phone entry",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:656",
+          "name": "A04 / Verify OTP",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:679",
+          "name": "B01 / Profile setup",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:725",
+          "name": "B02 / Identity verification",
+          "type": "FRAME",
+          "w": 390,
+          "h": 862
+        },
+        {
+          "id": "37:768",
+          "name": "B03 / Awaiting approval",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:791",
+          "name": "D01 / Home / Verified",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:836",
+          "name": "D02 / Jobs / Available",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:853",
+          "name": "E13 / Job details / Can apply",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:907",
+          "name": "F02 / Booking details / Confirmed",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:966",
+          "name": "F04 / Check in / Code entry",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:993",
+          "name": "D05 / Wallet / Loaded",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:1027",
+          "name": "G05 / Withdraw / Amount",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:1059",
+          "name": "G05 / Withdraw / Review",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:1087",
+          "name": "G05 / Withdraw / Processing",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:1116",
+          "name": "Failure & recovery branches",
+          "type": "TEXT",
+          "w": 385,
+          "h": 34
+        },
+        {
+          "id": "37:1117",
+          "name": "E12 / Payment failed",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:1143",
+          "name": "E11 / Payment status / Reservation expired",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:1169",
+          "name": "B04 / Verification rejected",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:1200",
+          "name": "F06 / Cancellation / Quote",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:1235",
+          "name": "F07 / Open a dispute",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        },
+        {
+          "id": "37:1266",
+          "name": "D02 / Jobs / Failed to load",
+          "type": "FRAME",
+          "w": 390,
+          "h": 844
+        }
+      ],
+      "counts": {
+        "text": 596,
+        "styledText": 596,
+        "instances": 155,
+        "components": 0,
+        "frames": 775,
+        "autoLayout": 656,
+        "boundNodes": 1864,
+        "reactions": 30
+      },
+      "fontSizes": {
+        "11": 43,
+        "13": 269,
+        "15": 163,
+        "17": 67,
+        "27": 12,
+        "30": 33,
+        "36": 5,
+        "40": 3,
+        "44": 1
+      },
+      "sets": [],
+      "notes": [
+        "Client journey — signup to event day",
+        "Usher journey — onboarding to withdrawal",
+        "Failure & recovery branches"
+      ]
+    },
+    {
+      "page": "⑨ Coverage & Handoff",
+      "nodes": 337,
+      "top": [
+        {
+          "id": "18:2",
+          "name": "System Map",
+          "type": "FRAME",
+          "w": 1048,
+          "h": 2231
+        },
+        {
+          "id": "34:7",
+          "name": "Coverage & Handoff",
+          "type": "FRAME",
+          "w": 932,
+          "h": 2692
+        }
+      ],
+      "counts": {
+        "text": 174,
+        "styledText": 174,
+        "instances": 0,
+        "components": 0,
+        "frames": 123,
+        "autoLayout": 123,
+        "boundNodes": 337,
+        "reactions": 0
+      },
+      "fontSizes": {
+        "11": 36,
+        "13": 93,
+        "15": 43,
+        "36": 2
+      },
+      "sets": [],
+      "notes": []
+    }
+  ],
+  "tokens": {
+    "colors": [
+      {
+        "name": "bg/canvas",
+        "id": "VariableID:2:41",
+        "light": "#f4f2ed",
+        "dark": "#0f1011"
+      },
+      {
+        "name": "bg/surface",
+        "id": "VariableID:2:42",
+        "light": "#ffffff",
+        "dark": "#232426"
+      },
+      {
+        "name": "bg/surface-alt",
+        "id": "VariableID:2:43",
+        "light": "#eae7e0",
+        "dark": "#292a2c"
+      },
+      {
+        "name": "bg/inverse",
+        "id": "VariableID:2:44",
+        "light": "#17181a",
+        "dark": "#ffffff"
+      },
+      {
+        "name": "ink/strong",
+        "id": "VariableID:2:45",
+        "light": "#17181a",
+        "dark": "#f4f2ed"
+      },
+      {
+        "name": "ink/body",
+        "id": "VariableID:2:46",
+        "light": "#444547",
+        "dark": "#c2c4c7"
+      },
+      {
+        "name": "ink/muted",
+        "id": "VariableID:2:47",
+        "light": "#535559",
+        "dark": "#b3b4b6"
+      },
+      {
+        "name": "ink/inverse",
+        "id": "VariableID:2:48",
+        "light": "#f4f2ed",
+        "dark": "#17181a"
+      },
+      {
+        "name": "ink/on-accent",
+        "id": "VariableID:2:49",
+        "light": "#17181a",
+        "dark": "#17181a"
+      },
+      {
+        "name": "brand/accent",
+        "id": "VariableID:2:50",
+        "light": "#36a511",
+        "dark": "#36a511"
+      },
+      {
+        "name": "brand/accent-hover",
+        "id": "VariableID:2:51",
+        "light": "#a6e28c",
+        "dark": "#5fc93a"
+      },
+      {
+        "name": "brand/accent-subtle",
+        "id": "VariableID:2:52",
+        "light": "#e9f7e2",
+        "dark": "#0e2e04"
+      },
+      {
+        "name": "border/subtle",
+        "id": "VariableID:2:53",
+        "light": "#dbd7ce",
+        "dark": "#323335"
+      },
+      {
+        "name": "border/strong",
+        "id": "VariableID:2:54",
+        "light": "#c2c4c7",
+        "dark": "#444547"
+      },
+      {
+        "name": "border/focus",
+        "id": "VariableID:2:55",
+        "light": "#2885ef",
+        "dark": "#60a5fa"
+      },
+      {
+        "name": "status/success",
+        "id": "VariableID:2:56",
+        "light": "#0a5a28",
+        "dark": "#4ade80"
+      },
+      {
+        "name": "status/success-bg",
+        "id": "VariableID:2:57",
+        "light": "#dcfce7",
+        "dark": "#292a2c"
+      },
+      {
+        "name": "status/warning",
+        "id": "VariableID:2:58",
+        "light": "#8a4008",
+        "dark": "#fbbf24"
+      },
+      {
+        "name": "status/warning-bg",
+        "id": "VariableID:2:59",
+        "light": "#fef3c7",
+        "dark": "#292a2c"
+      },
+      {
+        "name": "status/danger",
+        "id": "VariableID:2:60",
+        "light": "#a51b1b",
+        "dark": "#f87171"
+      },
+      {
+        "name": "status/danger-bg",
+        "id": "VariableID:2:61",
+        "light": "#fee2e2",
+        "dark": "#292a2c"
+      },
+      {
+        "name": "status/info",
+        "id": "VariableID:2:62",
+        "light": "#1558b0",
+        "dark": "#60a5fa"
+      },
+      {
+        "name": "status/info-bg",
+        "id": "VariableID:2:63",
+        "light": "#dbeafe",
+        "dark": "#292a2c"
+      },
+      {
+        "name": "money/available",
+        "id": "VariableID:2:64",
+        "light": "#17181a",
+        "dark": "#f4f2ed"
+      },
+      {
+        "name": "money/held",
+        "id": "VariableID:2:65",
+        "light": "#8a4008",
+        "dark": "#fbbf24"
+      },
+      {
+        "name": "money/pending",
+        "id": "VariableID:2:66",
+        "light": "#535559",
+        "dark": "#b3b4b6"
+      },
+      {
+        "name": "bg/elevated",
+        "id": "VariableID:42:7",
+        "light": "#17181a",
+        "dark": "#292a2c"
+      },
+      {
+        "name": "ink/on-elevated",
+        "id": "VariableID:46:7",
+        "light": "#f4f2ed",
+        "dark": "#f4f2ed"
+      },
+      {
+        "name": "ink/on-elevated-muted",
+        "id": "VariableID:46:8",
+        "light": "#b3b4b6",
+        "dark": "#b3b4b6"
+      },
+      {
+        "name": "brand/accent-text",
+        "id": "VariableID:49:7",
+        "light": "#227f08",
+        "dark": "#5fc93a"
+      },
+      {
+        "name": "brand/accent-on-elevated",
+        "id": "VariableID:49:8",
+        "light": "#5fc93a",
+        "dark": "#5fc93a"
+      },
+      {
+        "name": "money/held-on-elevated",
+        "id": "VariableID:49:9",
+        "light": "#fbbf24",
+        "dark": "#fbbf24"
+      },
+      {
+        "name": "brand/accent-on-inverse",
+        "id": "VariableID:50:7",
+        "light": "#5fc93a",
+        "dark": "#227f08"
+      },
+      {
+        "name": "money/held-on-inverse",
+        "id": "VariableID:50:8",
+        "light": "#fbbf24",
+        "dark": "#8a4008"
+      },
+      {
+        "name": "status/danger-on-elevated",
+        "id": "VariableID:50:9",
+        "light": "#f87171",
+        "dark": "#f87171"
+      }
+    ],
+    "scales": [
+      {
+        "name": "space/2",
+        "value": 2
+      },
+      {
+        "name": "space/4",
+        "value": 4
+      },
+      {
+        "name": "space/6",
+        "value": 6
+      },
+      {
+        "name": "space/8",
+        "value": 8
+      },
+      {
+        "name": "space/12",
+        "value": 12
+      },
+      {
+        "name": "space/16",
+        "value": 16
+      },
+      {
+        "name": "space/20",
+        "value": 20
+      },
+      {
+        "name": "space/24",
+        "value": 24
+      },
+      {
+        "name": "space/32",
+        "value": 32
+      },
+      {
+        "name": "space/40",
+        "value": 40
+      },
+      {
+        "name": "space/48",
+        "value": 48
+      },
+      {
+        "name": "space/64",
+        "value": 64
+      },
+      {
+        "name": "radius/sm",
+        "value": 8
+      },
+      {
+        "name": "radius/md",
+        "value": 12
+      },
+      {
+        "name": "radius/lg",
+        "value": 16
+      },
+      {
+        "name": "radius/xl",
+        "value": 24
+      },
+      {
+        "name": "radius/pill",
+        "value": 999
+      }
+    ],
+    "textStyles": [
+      {
+        "id": "S:319777937b980f59ce29a471dd23ceded9d7b990,",
+        "name": "Display/XL",
+        "font": {
+          "family": "Archivo",
+          "style": "ExtraBold",
+          "variationSettings": {
+            "wght": 800,
+            "wdth": 100
+          }
+        },
+        "size": 44,
+        "line": {
+          "unit": "PIXELS",
+          "value": 46
+        },
+        "tracking": {
+          "unit": "PERCENT",
+          "value": -2.5
+        }
+      },
+      {
+        "id": "S:3afa60756245e610694ecb3c218e70b0842e52b3,",
+        "name": "Display/L",
+        "font": {
+          "family": "Archivo",
+          "style": "ExtraBold",
+          "variationSettings": {
+            "wght": 800,
+            "wdth": 100
+          }
+        },
+        "size": 36,
+        "line": {
+          "unit": "PIXELS",
+          "value": 39
+        },
+        "tracking": {
+          "unit": "PERCENT",
+          "value": -2.200000047683716
+        }
+      },
+      {
+        "id": "S:39f90e00740008457b3d4ae37596f693a4288cac,",
+        "name": "Display/M",
+        "font": {
+          "family": "Archivo",
+          "style": "Bold",
+          "variationSettings": {
+            "wght": 700,
+            "wdth": 100
+          }
+        },
+        "size": 30,
+        "line": {
+          "unit": "PIXELS",
+          "value": 34
+        },
+        "tracking": {
+          "unit": "PERCENT",
+          "value": -1.7999999523162842
+        }
+      },
+      {
+        "id": "S:b42c67c1a16b643e0defa9383f18bf34a0ee6fcc,",
+        "name": "Heading/L",
+        "font": {
+          "family": "Archivo",
+          "style": "Bold",
+          "variationSettings": {
+            "wght": 700,
+            "wdth": 100
+          }
+        },
+        "size": 24,
+        "line": {
+          "unit": "PIXELS",
+          "value": 30
+        },
+        "tracking": {
+          "unit": "PERCENT",
+          "value": -1
+        }
+      },
+      {
+        "id": "S:223456d83d8f2ba870aa9cabec0c6d47a21f689d,",
+        "name": "Heading/M",
+        "font": {
+          "family": "Archivo",
+          "style": "SemiBold",
+          "variationSettings": {
+            "wght": 600,
+            "wdth": 100
+          }
+        },
+        "size": 20,
+        "line": {
+          "unit": "PIXELS",
+          "value": 26
+        },
+        "tracking": {
+          "unit": "PERCENT",
+          "value": -0.5
+        }
+      },
+      {
+        "id": "S:d06b29a8cd6cde8c7c41d0a90cdb102339bcd539,",
+        "name": "Heading/S",
+        "font": {
+          "family": "Archivo",
+          "style": "SemiBold",
+          "variationSettings": {
+            "wght": 600,
+            "wdth": 100
+          }
+        },
+        "size": 17,
+        "line": {
+          "unit": "PIXELS",
+          "value": 24
+        },
+        "tracking": {
+          "unit": "PERCENT",
+          "value": -0.5
+        }
+      },
+      {
+        "id": "S:6595205fb60baf2b0e7548eb1c4b6b03c4a7f519,",
+        "name": "Body/L",
+        "font": {
+          "family": "Manrope",
+          "style": "Regular",
+          "variationSettings": {
+            "wght": 400
+          }
+        },
+        "size": 17,
+        "line": {
+          "unit": "PIXELS",
+          "value": 26
+        },
+        "tracking": {
+          "unit": "PERCENT",
+          "value": 0
+        }
+      },
+      {
+        "id": "S:eb7dbea8ac9b3ba1df88278bf4598a9904da89e0,",
+        "name": "Body/M",
+        "font": {
+          "family": "Manrope",
+          "style": "Regular",
+          "variationSettings": {
+            "wght": 400
+          }
+        },
+        "size": 15,
+        "line": {
+          "unit": "PIXELS",
+          "value": 23
+        },
+        "tracking": {
+          "unit": "PERCENT",
+          "value": 0
+        }
+      },
+      {
+        "id": "S:04ed1438ec8488de3059a9be171960778b01a566,",
+        "name": "Body/S",
+        "font": {
+          "family": "Manrope",
+          "style": "Regular",
+          "variationSettings": {
+            "wght": 400
+          }
+        },
+        "size": 13,
+        "line": {
+          "unit": "PIXELS",
+          "value": 19
+        },
+        "tracking": {
+          "unit": "PERCENT",
+          "value": 0
+        }
+      },
+      {
+        "id": "S:cee73e6e079ba847d7b4f969ce7fa4b0eb6d2474,",
+        "name": "Label/L",
+        "font": {
+          "family": "Manrope",
+          "style": "SemiBold",
+          "variationSettings": {
+            "wght": 600
+          }
+        },
+        "size": 15,
+        "line": {
+          "unit": "PIXELS",
+          "value": 20
+        },
+        "tracking": {
+          "unit": "PERCENT",
+          "value": 0
+        }
+      },
+      {
+        "id": "S:20dc6c6b3deaf94db6f83056137ce62e723551ea,",
+        "name": "Label/M",
+        "font": {
+          "family": "Manrope",
+          "style": "SemiBold",
+          "variationSettings": {
+            "wght": 600
+          }
+        },
+        "size": 13,
+        "line": {
+          "unit": "PIXELS",
+          "value": 17
+        },
+        "tracking": {
+          "unit": "PERCENT",
+          "value": 0
+        }
+      },
+      {
+        "id": "S:c4072c2fb13550d3914d13c8381de46f55fc6bf1,",
+        "name": "Label/S",
+        "font": {
+          "family": "Manrope",
+          "style": "Bold",
+          "variationSettings": {
+            "wght": 700
+          }
+        },
+        "size": 11,
+        "line": {
+          "unit": "PIXELS",
+          "value": 14
+        },
+        "tracking": {
+          "unit": "PERCENT",
+          "value": 4
+        }
+      },
+      {
+        "id": "S:26fed195c9d11077fed0182597d8fe8589320626,",
+        "name": "Amount/XL",
+        "font": {
+          "family": "Archivo",
+          "style": "ExtraBold",
+          "variationSettings": {
+            "wght": 800,
+            "wdth": 100
+          }
+        },
+        "size": 40,
+        "line": {
+          "unit": "PIXELS",
+          "value": 42
+        },
+        "tracking": {
+          "unit": "PERCENT",
+          "value": -2
+        }
+      },
+      {
+        "id": "S:cced2d9ec732826e21818e206a244c21561487b3,",
+        "name": "Amount/L",
+        "font": {
+          "family": "Archivo",
+          "style": "Bold",
+          "variationSettings": {
+            "wght": 700,
+            "wdth": 100
+          }
+        },
+        "size": 27,
+        "line": {
+          "unit": "PIXELS",
+          "value": 30
+        },
+        "tracking": {
+          "unit": "PERCENT",
+          "value": -1.399999976158142
+        }
+      },
+      {
+        "id": "S:3e6d9a065b9f68705728f240841be933d3320cb7,",
+        "name": "Amount/M",
+        "font": {
+          "family": "Archivo",
+          "style": "SemiBold",
+          "variationSettings": {
+            "wght": 600,
+            "wdth": 100
+          }
+        },
+        "size": 17,
+        "line": {
+          "unit": "PIXELS",
+          "value": 22
+        },
+        "tracking": {
+          "unit": "PERCENT",
+          "value": -0.5
+        }
+      },
+      {
+        "id": "S:fabe002769d0ff825255e4e3175fa73da76a46e3,",
+        "name": "Amount/S",
+        "font": {
+          "family": "Archivo",
+          "style": "Medium",
+          "variationSettings": {
+            "wght": 500,
+            "wdth": 100
+          }
+        },
+        "size": 13,
+        "line": {
+          "unit": "PIXELS",
+          "value": 18
+        },
+        "tracking": {
+          "unit": "PERCENT",
+          "value": 0
+        }
+      }
+    ],
+    "effectStyles": [
+      {
+        "name": "Shadow/sm",
+        "effects": [
+          {
+            "type": "DROP_SHADOW",
+            "visible": true,
+            "radius": 6,
+            "boundVariables": {},
+            "color": {
+              "r": 0.09000000357627869,
+              "g": 0.09000000357627869,
+              "b": 0.10000000149011612,
+              "a": 0.10000000149011612
+            },
+            "offset": {
+              "x": 0,
+              "y": 2
+            },
+            "spread": 0,
+            "blendMode": "NORMAL",
+            "showShadowBehindNode": true
+          }
+        ]
+      },
+      {
+        "name": "Shadow/md",
+        "effects": [
+          {
+            "type": "DROP_SHADOW",
+            "visible": true,
+            "radius": 12,
+            "boundVariables": {},
+            "color": {
+              "r": 0.09000000357627869,
+              "g": 0.09000000357627869,
+              "b": 0.10000000149011612,
+              "a": 0.07999999821186066
+            },
+            "offset": {
+              "x": 0,
+              "y": 4
+            },
+            "spread": 0,
+            "blendMode": "NORMAL",
+            "showShadowBehindNode": true
+          }
+        ]
+      },
+      {
+        "name": "Shadow/lg",
+        "effects": [
+          {
+            "type": "DROP_SHADOW",
+            "visible": true,
+            "radius": 28,
+            "boundVariables": {},
+            "color": {
+              "r": 0.09000000357627869,
+              "g": 0.09000000357627869,
+              "b": 0.10000000149011612,
+              "a": 0.11999999731779099
+            },
+            "offset": {
+              "x": 0,
+              "y": 12
+            },
+            "spread": 0,
+            "blendMode": "NORMAL",
+            "showShadowBehindNode": true
+          }
+        ]
+      }
+    ]
+  },
+  "contrast": [
+    {
+      "page": "① Foundations & Components",
+      "textTotal": 268,
+      "tested": 448,
+      "failCount": 0,
+      "fails": [],
+      "skips": {
+        "noBackground": 84,
+        "groupOpacity": 2
+      },
+      "paints": 422,
+      "boundPaints": 422,
+      "rawPaints": [],
+      "layoutValues": 528,
+      "boundLayouts": 517
+    },
+    {
+      "page": "② Account & Verification",
+      "textTotal": 152,
+      "tested": 300,
+      "failCount": 0,
+      "fails": [],
+      "skips": {
+        "groupOpacity": 2
+      },
+      "paints": 338,
+      "boundPaints": 338,
+      "rawPaints": [],
+      "layoutValues": 584,
+      "boundLayouts": 582
+    },
+    {
+      "page": "③ Client",
+      "textTotal": 319,
+      "tested": 638,
+      "failCount": 0,
+      "fails": [],
+      "skips": {},
+      "paints": 583,
+      "boundPaints": 583,
+      "rawPaints": [],
+      "layoutValues": 997,
+      "boundLayouts": 997
+    },
+    {
+      "page": "④ Usher",
+      "textTotal": 559,
+      "tested": 1112,
+      "failCount": 0,
+      "fails": [],
+      "skips": {
+        "groupOpacity": 2,
+        "noBackground": 2
+      },
+      "paints": 975,
+      "boundPaints": 975,
+      "rawPaints": [],
+      "layoutValues": 1817,
+      "boundLayouts": 1817
+    },
+    {
+      "page": "⑤ Shared Booking & Money",
+      "textTotal": 1056,
+      "tested": 2098,
+      "failCount": 0,
+      "fails": [],
+      "skips": {
+        "groupOpacity": 7
+      },
+      "paints": 2027,
+      "boundPaints": 2027,
+      "rawPaints": [],
+      "layoutValues": 3685,
+      "boundLayouts": 3680
+    },
+    {
+      "page": "⑥ Admin",
+      "textTotal": 595,
+      "tested": 1184,
+      "failCount": 0,
+      "fails": [],
+      "skips": {
+        "groupOpacity": 3
+      },
+      "paints": 931,
+      "boundPaints": 931,
+      "rawPaints": [],
+      "layoutValues": 1947,
+      "boundLayouts": 1938
+    },
+    {
+      "page": "⑦ Marketing",
+      "textTotal": 85,
+      "tested": 170,
+      "failCount": 0,
+      "fails": [],
+      "skips": {},
+      "paints": 136,
+      "boundPaints": 136,
+      "rawPaints": [],
+      "layoutValues": 200,
+      "boundLayouts": 157
+    },
+    {
+      "page": "⑧ Prototypes",
+      "textTotal": 589,
+      "tested": 1172,
+      "failCount": 0,
+      "fails": [],
+      "skips": {
+        "noBackground": 6
+      },
+      "paints": 1108,
+      "boundPaints": 1108,
+      "rawPaints": [],
+      "layoutValues": 1896,
+      "boundLayouts": 1894
+    },
+    {
+      "page": "⑨ Coverage & Handoff",
+      "textTotal": 174,
+      "tested": 348,
+      "failCount": 0,
+      "fails": [],
+      "skips": {},
+      "paints": 268,
+      "boundPaints": 268,
+      "rawPaints": [],
+      "layoutValues": 363,
+      "boundLayouts": 353
+    }
+  ],
+  "contrastPairs": [
+    {
+      "mode": "light",
+      "a": "border/strong",
+      "b": "bg/surface",
+      "ratio": 1.747881839842622
+    },
+    {
+      "mode": "light",
+      "a": "border/strong",
+      "b": "bg/canvas",
+      "ratio": 1.562303110482513
+    },
+    {
+      "mode": "light",
+      "a": "border/focus",
+      "b": "bg/surface",
+      "ratio": 3.689626006878703
+    },
+    {
+      "mode": "light",
+      "a": "brand/accent-text",
+      "b": "bg/canvas",
+      "ratio": 4.570030805658419
+    },
+    {
+      "mode": "light",
+      "a": "brand/accent-text",
+      "b": "bg/surface-alt",
+      "ratio": 4.140270480062204
+    },
+    {
+      "mode": "light",
+      "a": "ink/on-accent",
+      "b": "brand/accent",
+      "ratio": 5.538911311912012
+    },
+    {
+      "mode": "dark",
+      "a": "border/strong",
+      "b": "bg/surface",
+      "ratio": 1.6185959946545503
+    },
+    {
+      "mode": "dark",
+      "a": "border/strong",
+      "b": "bg/canvas",
+      "ratio": 1.9845622085596009
+    },
+    {
+      "mode": "dark",
+      "a": "border/focus",
+      "b": "bg/surface",
+      "ratio": 6.11023536277004
+    },
+    {
+      "mode": "dark",
+      "a": "brand/accent-text",
+      "b": "bg/canvas",
+      "ratio": 8.981528459514546
+    },
+    {
+      "mode": "dark",
+      "a": "brand/accent-text",
+      "b": "bg/surface-alt",
+      "ratio": 6.773888935844916
+    },
+    {
+      "mode": "dark",
+      "a": "ink/on-accent",
+      "b": "brand/accent",
+      "ratio": 5.538911311912012
+    }
+  ],
+  "geometry": [
+    {
+      "page": "② Account & Verification",
+      "clippingCount": 0,
+      "clipping": [],
+      "scrollNodes": [],
+      "screenWidths": [
+        390
+      ],
+      "opacity": [
+        {
+          "id": "59:176",
+          "name": "Button",
+          "opacity": 0.4000000059604645,
+          "screen": "A03 / Phone entry / Invalid number"
+        },
+        {
+          "id": "59:241",
+          "name": "Button",
+          "opacity": 0.4000000059604645,
+          "screen": "A04 / Verify OTP / Number locked"
+        }
+      ],
+      "calendar": []
+    },
+    {
+      "page": "③ Client",
+      "clippingCount": 14,
+      "clipping": [
+        {
+          "id": "I23:65;7:99",
+          "text": "₦18,000 / day indicative",
+          "screen": "C01 / Home / Default",
+          "container": "23:13",
+          "containerName": "content",
+          "rect": {
+            "x": 109,
+            "y": 720,
+            "width": 140,
+            "height": 19
+          },
+          "clip": {
+            "x": 0,
+            "y": 56,
+            "width": 390,
+            "height": 674
+          }
+        },
+        {
+          "id": "23:380",
+          "text": "Sent invitations",
+          "screen": "C04 / Event detail / Default",
+          "container": "23:311",
+          "containerName": "content",
+          "rect": {
+            "x": 1409,
+            "y": 755,
+            "width": 254,
+            "height": 20
+          },
+          "clip": {
+            "x": 1350,
+            "y": 94,
+            "width": 390,
+            "height": 636
+          }
+        },
+        {
+          "id": "23:381",
+          "text": "3",
+          "screen": "C04 / Event detail / Default",
+          "container": "23:311",
+          "containerName": "content",
+          "rect": {
+            "x": 1675,
+            "y": 755.5,
+            "width": 8,
+            "height": 19
+          },
+          "clip": {
+            "x": 1350,
+            "y": 94,
+            "width": 390,
+            "height": 636
+          }
+        },
+        {
+          "id": "23:388",
+          "text": "Bookings",
+          "screen": "C04 / Event detail / Default",
+          "container": "23:311",
+          "containerName": "content",
+          "rect": {
+            "x": 1409,
+            "y": 807,
+            "width": 254,
+            "height": 20
+          },
+          "clip": {
+            "x": 1350,
+            "y": 94,
+            "width": 390,
+            "height": 636
+          }
+        },
+        {
+          "id": "23:389",
+          "text": "4",
+          "screen": "C04 / Event detail / Default",
+          "container": "23:311",
+          "containerName": "content",
+          "rect": {
+            "x": 1675,
+            "y": 807.5,
+            "width": 8,
+            "height": 19
+          },
+          "clip": {
+            "x": 1350,
+            "y": 94,
+            "width": 390,
+            "height": 636
+          }
+        },
+        {
+          "id": "23:396",
+          "text": "Event day",
+          "screen": "C04 / Event detail / Default",
+          "container": "23:311",
+          "containerName": "content",
+          "rect": {
+            "x": 1409,
+            "y": 859,
+            "width": 241,
+            "height": 20
+          },
+          "clip": {
+            "x": 1350,
+            "y": 94,
+            "width": 390,
+            "height": 636
+          }
+        },
+        {
+          "id": "23:397",
+          "text": "Sat",
+          "screen": "C04 / Event detail / Default",
+          "container": "23:311",
+          "containerName": "content",
+          "rect": {
+            "x": 1662,
+            "y": 859.5,
+            "width": 21,
+            "height": 19
+          },
+          "clip": {
+            "x": 1350,
+            "y": 94,
+            "width": 390,
+            "height": 636
+          }
+        },
+        {
+          "id": "I45:441;7:99",
+          "text": "₦18,000 / day indicative",
+          "screen": "C01 / Home / Default · Dark",
+          "container": "45:393",
+          "containerName": "content",
+          "rect": {
+            "x": 109,
+            "y": 2620,
+            "width": 140,
+            "height": 19
+          },
+          "clip": {
+            "x": 0,
+            "y": 1956,
+            "width": 390,
+            "height": 674
+          }
+        },
+        {
+          "id": "45:517",
+          "text": "Sent invitations",
+          "screen": "C04 / Event detail / Default · Dark",
+          "container": "45:450",
+          "containerName": "content",
+          "rect": {
+            "x": 509,
+            "y": 2655,
+            "width": 254,
+            "height": 20
+          },
+          "clip": {
+            "x": 450,
+            "y": 1994,
+            "width": 390,
+            "height": 636
+          }
+        },
+        {
+          "id": "45:518",
+          "text": "3",
+          "screen": "C04 / Event detail / Default · Dark",
+          "container": "45:450",
+          "containerName": "content",
+          "rect": {
+            "x": 775,
+            "y": 2655.5,
+            "width": 8,
+            "height": 19
+          },
+          "clip": {
+            "x": 450,
+            "y": 1994,
+            "width": 390,
+            "height": 636
+          }
+        },
+        {
+          "id": "45:525",
+          "text": "Bookings",
+          "screen": "C04 / Event detail / Default · Dark",
+          "container": "45:450",
+          "containerName": "content",
+          "rect": {
+            "x": 509,
+            "y": 2707,
+            "width": 254,
+            "height": 20
+          },
+          "clip": {
+            "x": 450,
+            "y": 1994,
+            "width": 390,
+            "height": 636
+          }
+        },
+        {
+          "id": "45:526",
+          "text": "4",
+          "screen": "C04 / Event detail / Default · Dark",
+          "container": "45:450",
+          "containerName": "content",
+          "rect": {
+            "x": 775,
+            "y": 2707.5,
+            "width": 8,
+            "height": 19
+          },
+          "clip": {
+            "x": 450,
+            "y": 1994,
+            "width": 390,
+            "height": 636
+          }
+        }
+      ],
+      "scrollNodes": [],
+      "screenWidths": [
+        390
+      ],
+      "opacity": [],
+      "calendar": []
+    },
+    {
+      "page": "④ Usher",
+      "clippingCount": 36,
+      "clipping": [
+        {
+          "id": "8:53",
+          "text": "Wedding — Victoria Island",
+          "container": "8:6"
+        },
+        {
+          "id": "8:54",
+          "text": "Released 12 Mar",
+          "container": "8:6"
+        },
+        {
+          "id": "8:55",
+          "text": "+₦17,000",
+          "container": "8:6"
+        },
+        {
+          "id": "8:58",
+          "text": "Corporate launch — Ikoyi",
+          "container": "8:6"
+        },
+        {
+          "id": "8:59",
+          "text": "Held until 15 Mar",
+          "container": "8:6"
+        },
+        {
+          "id": "8:60",
+          "text": "₦17,000",
+          "container": "8:6"
+        },
+        {
+          "id": "8:63",
+          "text": "Withdrawal to GTBank ••4821",
+          "container": "8:6"
+        },
+        {
+          "id": "8:64",
+          "text": "Paid 08 Mar",
+          "container": "8:6"
+        },
+        {
+          "id": "8:65",
+          "text": "−₦35,000",
+          "container": "8:6"
+        },
+        {
+          "id": "I8:161;7:72",
+          "text": "Sun 22 Mar · 2:00 PM WAT",
+          "container": "8:98"
+        },
+        {
+          "id": "I8:161;7:77",
+          "text": "Lekki Phase 1, Lagos",
+          "container": "8:98"
+        },
+        {
+          "id": "I8:161;7:82",
+          "text": "Smart casual",
+          "container": "8:98"
+        },
+        {
+          "id": "I8:161;7:84",
+          "text": "3 of 4 slots left",
+          "container": "8:98"
+        },
+        {
+          "id": "12:495",
+          "text": "Availability",
+          "container": "12:436"
+        },
+        {
+          "id": "12:503",
+          "text": "Wallet",
+          "container": "12:436"
+        },
+        {
+          "id": "12:504",
+          "text": "₦17,000",
+          "container": "12:436"
+        },
+        {
+          "id": "12:512",
+          "text": "Sign out",
+          "container": "12:436"
+        },
+        {
+          "id": "I41:2657;7:72",
+          "text": "Sun 22 Mar · 2:00 PM WAT",
+          "container": "41:2645"
+        },
+        {
+          "id": "I41:2657;7:77",
+          "text": "Lekki Phase 1, Lagos",
+          "container": "41:2645"
+        },
+        {
+          "id": "I41:2657;7:82",
+          "text": "Smart casual",
+          "container": "41:2645"
+        },
+        {
+          "id": "I41:2657;7:84",
+          "text": "3 of 4 slots left",
+          "container": "41:2645"
+        },
+        {
+          "id": "41:2679",
+          "text": "Wedding — Victoria Island",
+          "container": "41:2662"
+        },
+        {
+          "id": "41:2680",
+          "text": "Released 12 Mar",
+          "container": "41:2662"
+        },
+        {
+          "id": "41:2681",
+          "text": "+₦17,000",
+          "container": "41:2662"
+        },
+        {
+          "id": "41:2684",
+          "text": "Corporate launch — Ikoyi",
+          "container": "41:2662"
+        },
+        {
+          "id": "41:2685",
+          "text": "Held until 15 Mar",
+          "container": "41:2662"
+        },
+        {
+          "id": "41:2686",
+          "text": "₦17,000",
+          "container": "41:2662"
+        },
+        {
+          "id": "41:2689",
+          "text": "Withdrawal to GTBank ••4821",
+          "container": "41:2662"
+        },
+        {
+          "id": "41:2690",
+          "text": "Paid 08 Mar",
+          "container": "41:2662"
+        },
+        {
+          "id": "41:2691",
+          "text": "−₦35,000",
+          "container": "41:2662"
+        },
+        {
+          "id": "41:2753",
+          "text": "Availability",
+          "container": "41:2696"
+        },
+        {
+          "id": "41:2761",
+          "text": "Wallet",
+          "container": "41:2696"
+        },
+        {
+          "id": "41:2762",
+          "text": "₦17,000",
+          "container": "41:2696"
+        },
+        {
+          "id": "41:2770",
+          "text": "Sign out",
+          "container": "41:2696"
+        },
+        {
+          "id": "64:1000",
+          "text": "Withdrawals need a confirmed balance. We will not let you send money we cannot verify.",
+          "container": "64:954"
+        },
+        {
+          "id": "I64:1001;6:10",
+          "text": "Retry connection",
+          "container": "64:954"
+        }
+      ],
+      "scrollNodes": []
+    },
+    {
+      "page": "⑤ Shared Booking & Money",
+      "clippingCount": 5,
+      "clipping": [
+        {
+          "id": "24:357",
+          "text": "You can safely close this screen — we’ll notify you when it completes.",
+          "screen": "E11 / Payment status / Needs checking",
+          "container": "24:322",
+          "containerName": "content",
+          "rect": {
+            "x": 2274,
+            "y": 670,
+            "width": 342,
+            "height": 38
+          },
+          "clip": {
+            "x": 2250,
+            "y": 94,
+            "width": 390,
+            "height": 584
+          }
+        },
+        {
+          "id": "26:241",
+          "text": "Booking reference  ·  HQ-BK-2026-0314-0031",
+          "screen": "F02 / Booking details / Confirmed",
+          "container": "26:192",
+          "containerName": "content",
+          "rect": {
+            "x": 474,
+            "y": 1579,
+            "width": 342,
+            "height": 19
+          },
+          "clip": {
+            "x": 450,
+            "y": 1044,
+            "width": 390,
+            "height": 532
+          }
+        },
+        {
+          "id": "45:699",
+          "text": "Booking reference  ·  HQ-BK-2026-0314-0031",
+          "screen": "F02 / Booking details / Confirmed · Dark",
+          "container": "45:652",
+          "containerName": "content",
+          "rect": {
+            "x": 5874,
+            "y": 629,
+            "width": 342,
+            "height": 19
+          },
+          "clip": {
+            "x": 5850,
+            "y": 94,
+            "width": 390,
+            "height": 532
+          }
+        },
+        {
+          "id": "54:945",
+          "text": "These ushers are not booked",
+          "screen": "E11 / Payment status / Late payment refund",
+          "container": "54:910",
+          "containerName": "content",
+          "rect": {
+            "x": 1840,
+            "y": 6407,
+            "width": 310,
+            "height": 20
+          },
+          "clip": {
+            "x": 1800,
+            "y": 5794,
+            "width": 390,
+            "height": 620
+          }
+        },
+        {
+          "id": "54:946",
+          "text": "Do not treat this as a confirmed event. If you still need staff, select again — ",
+          "screen": "E11 / Payment status / Late payment refund",
+          "container": "54:910",
+          "containerName": "content",
+          "rect": {
+            "x": 1840,
+            "y": 6433,
+            "width": 310,
+            "height": 57
+          },
+          "clip": {
+            "x": 1800,
+            "y": 5794,
+            "width": 390,
+            "height": 620
+          }
+        }
+      ],
+      "scrollNodes": [],
+      "screenWidths": [
+        390
+      ],
+      "opacity": [
+        {
+          "id": "38:589",
+          "name": "Button",
+          "opacity": 0.4000000059604645,
+          "screen": "F04 / Check in / Not yet open"
+        },
+        {
+          "id": "53:662",
+          "name": "Button",
+          "opacity": 0.5,
+          "screen": "E10 / Confirm & pay / Submitting"
+        },
+        {
+          "id": "53:784",
+          "name": "Button",
+          "opacity": 0.4000000059604645,
+          "screen": "G05 / Withdraw / No bank account"
+        },
+        {
+          "id": "54:768",
+          "name": "stars",
+          "opacity": 0.3499999940395355,
+          "screen": "F08 / Review / Locked until release"
+        },
+        {
+          "id": "54:780",
+          "name": "Button",
+          "opacity": 0.4000000059604645,
+          "screen": "F08 / Review / Locked until release"
+        },
+        {
+          "id": "63:875",
+          "name": "Button",
+          "opacity": 0.3499999940395355,
+          "screen": "F04 / Check in / Offline"
+        },
+        {
+          "id": "63:995",
+          "name": "Button",
+          "opacity": 0.3499999940395355,
+          "screen": "F02 / Booking details / Offline"
+        },
+        {
+          "id": "63:1039",
+          "name": "Button",
+          "opacity": 0.3499999940395355,
+          "screen": "G05 / Withdraw / Offline"
+        }
+      ],
+      "calendar": []
+    },
+    {
+      "page": "⑥ Admin",
+      "clippingCount": 0,
+      "clipping": [],
+      "scrollNodes": [],
+      "screenWidths": [
+        1440
+      ],
+      "opacity": [
+        {
+          "id": "45:386",
+          "name": "Button",
+          "opacity": 0.3499999940395355,
+          "screen": "AD05 / Approvals / Cannot self-approve"
+        },
+        {
+          "id": "45:388",
+          "name": "Button",
+          "opacity": 0.3499999940395355,
+          "screen": "AD05 / Approvals / Cannot self-approve"
+        },
+        {
+          "id": "58:218",
+          "name": "Button",
+          "opacity": 0.3499999940395355,
+          "screen": "AD03 / Verifications / Evidence unavailable"
+        }
+      ],
+      "calendar": []
+    },
+    {
+      "page": "⑦ Marketing",
+      "clippingCount": 0,
+      "clipping": [],
+      "scrollNodes": [],
+      "screenWidths": [
+        1440,
+        390
+      ],
+      "opacity": [],
+      "calendar": []
+    },
+    {
+      "page": "⑧ Prototypes",
+      "clippingCount": 22,
+      "clipping": [
+        {
+          "id": "I37:153;7:99",
+          "text": "₦18,000 / day indicative",
+          "screen": "C01 / Home",
+          "container": "37:105",
+          "containerName": "content",
+          "rect": {
+            "x": 2359,
+            "y": 720,
+            "width": 140,
+            "height": 19
+          },
+          "clip": {
+            "x": 2250,
+            "y": 56,
+            "width": 390,
+            "height": 674
+          }
+        },
+        {
+          "id": "37:378",
+          "text": "Sent invitations",
+          "screen": "C04 / Event detail",
+          "container": "37:311",
+          "containerName": "content",
+          "rect": {
+            "x": 4559,
+            "y": 755,
+            "width": 254,
+            "height": 20
+          },
+          "clip": {
+            "x": 4500,
+            "y": 94,
+            "width": 390,
+            "height": 636
+          }
+        },
+        {
+          "id": "37:379",
+          "text": "3",
+          "screen": "C04 / Event detail",
+          "container": "37:311",
+          "containerName": "content",
+          "rect": {
+            "x": 4825,
+            "y": 755.5,
+            "width": 8,
+            "height": 19
+          },
+          "clip": {
+            "x": 4500,
+            "y": 94,
+            "width": 390,
+            "height": 636
+          }
+        },
+        {
+          "id": "37:386",
+          "text": "Bookings",
+          "screen": "C04 / Event detail",
+          "container": "37:311",
+          "containerName": "content",
+          "rect": {
+            "x": 4559,
+            "y": 807,
+            "width": 254,
+            "height": 20
+          },
+          "clip": {
+            "x": 4500,
+            "y": 94,
+            "width": 390,
+            "height": 636
+          }
+        },
+        {
+          "id": "37:387",
+          "text": "4",
+          "screen": "C04 / Event detail",
+          "container": "37:311",
+          "containerName": "content",
+          "rect": {
+            "x": 4825,
+            "y": 807.5,
+            "width": 8,
+            "height": 19
+          },
+          "clip": {
+            "x": 4500,
+            "y": 94,
+            "width": 390,
+            "height": 636
+          }
+        },
+        {
+          "id": "37:394",
+          "text": "Event day",
+          "screen": "C04 / Event detail",
+          "container": "37:311",
+          "containerName": "content",
+          "rect": {
+            "x": 4559,
+            "y": 859,
+            "width": 241,
+            "height": 20
+          },
+          "clip": {
+            "x": 4500,
+            "y": 94,
+            "width": 390,
+            "height": 636
+          }
+        },
+        {
+          "id": "37:395",
+          "text": "Sat",
+          "screen": "C04 / Event detail",
+          "container": "37:311",
+          "containerName": "content",
+          "rect": {
+            "x": 4812,
+            "y": 859.5,
+            "width": 21,
+            "height": 19
+          },
+          "clip": {
+            "x": 4500,
+            "y": 94,
+            "width": 390,
+            "height": 636
+          }
+        },
+        {
+          "id": "37:539",
+          "text": "You can safely close this screen — we’ll notify you when it completes.",
+          "screen": "E11 / Payment status / Needs checking",
+          "container": "37:523",
+          "containerName": "content",
+          "rect": {
+            "x": 5874,
+            "y": 670,
+            "width": 342,
+            "height": 38
+          },
+          "clip": {
+            "x": 5850,
+            "y": 94,
+            "width": 390,
+            "height": 584
+          }
+        },
+        {
+          "id": "I37:850;7:72",
+          "text": "Sun 22 Mar · 2:00 PM WAT",
+          "screen": "D02 / Jobs / Available",
+          "container": "37:838",
+          "containerName": "content",
+          "rect": {
+            "x": 3214,
+            "y": 1834,
+            "width": 153,
+            "height": 19
+          },
+          "clip": {
+            "x": 3150,
+            "y": 1156,
+            "width": 390,
+            "height": 674
+          }
+        },
+        {
+          "id": "I37:850;7:77",
+          "text": "Lekki Phase 1, Lagos",
+          "screen": "D02 / Jobs / Available",
+          "container": "37:838",
+          "containerName": "content",
+          "rect": {
+            "x": 3214,
+            "y": 1865,
+            "width": 120,
+            "height": 19
+          },
+          "clip": {
+            "x": 3150,
+            "y": 1156,
+            "width": 390,
+            "height": 674
+          }
+        },
+        {
+          "id": "I37:850;7:82",
+          "text": "Smart casual",
+          "screen": "D02 / Jobs / Available",
+          "container": "37:838",
+          "containerName": "content",
+          "rect": {
+            "x": 3214,
+            "y": 1896,
+            "width": 78,
+            "height": 19
+          },
+          "clip": {
+            "x": 3150,
+            "y": 1156,
+            "width": 390,
+            "height": 674
+          }
+        },
+        {
+          "id": "I37:850;7:84",
+          "text": "3 of 4 slots left",
+          "screen": "D02 / Jobs / Available",
+          "container": "37:838",
+          "containerName": "content",
+          "rect": {
+            "x": 3191,
+            "y": 1931,
+            "width": 91,
+            "height": 17
+          },
+          "clip": {
+            "x": 3150,
+            "y": 1156,
+            "width": 390,
+            "height": 674
+          }
+        }
+      ],
+      "scrollNodes": [],
+      "screenWidths": [
+        390
+      ],
+      "opacity": [],
+      "calendar": []
+    }
+  ],
+  "prototype": {
+    "edges": [
+      {
+        "from": "37:8",
+        "fromName": "A01 / Welcome",
+        "triggerNode": "37:19",
+        "label": "Get started",
+        "to": "37:23"
+      },
+      {
+        "from": "37:23",
+        "fromName": "A02 / Choose role",
+        "triggerNode": "37:39",
+        "label": "Continue",
+        "to": "37:41"
+      },
+      {
+        "from": "37:41",
+        "fromName": "A03 / Phone entry",
+        "triggerNode": "37:58",
+        "label": "Send code",
+        "to": "37:60"
+      },
+      {
+        "from": "37:60",
+        "fromName": "A04 / Verify OTP",
+        "triggerNode": "37:81",
+        "label": "Verify",
+        "to": "37:83"
+      },
+      {
+        "from": "37:83",
+        "fromName": "A05 / Complete client profile",
+        "triggerNode": "37:101",
+        "label": "Continue",
+        "to": "37:103"
+      },
+      {
+        "from": "37:103",
+        "fromName": "C01 / Home",
+        "triggerNode": "37:103",
+        "label": "C01 / Home",
+        "to": "37:156"
+      },
+      {
+        "from": "37:156",
+        "fromName": "E06 / Create event / 1 Basics",
+        "triggerNode": "37:201",
+        "label": "Next",
+        "to": "37:203"
+      },
+      {
+        "from": "37:203",
+        "fromName": "E06 / Create event / 2 Staffing",
+        "triggerNode": "37:245",
+        "label": "Next",
+        "to": "37:247"
+      },
+      {
+        "from": "37:247",
+        "fromName": "E06 / Create event / 3 Review",
+        "triggerNode": "37:288",
+        "label": "Publish event",
+        "to": "37:290"
+      },
+      {
+        "from": "37:290",
+        "fromName": "E07 / Event published",
+        "triggerNode": "37:302",
+        "label": "View event",
+        "to": "37:305"
+      },
+      {
+        "from": "37:305",
+        "fromName": "C04 / Event detail",
+        "triggerNode": "37:399",
+        "label": "Select staff & pay",
+        "to": "37:401"
+      },
+      {
+        "from": "37:401",
+        "fromName": "E09 / Applications / Selecting",
+        "triggerNode": "37:458",
+        "label": "Continue to payment",
+        "to": "37:460"
+      },
+      {
+        "from": "37:460",
+        "fromName": "E10 / Confirm & pay",
+        "triggerNode": "37:515",
+        "label": "Pay ₦80,000 with Paystack",
+        "to": "37:1117"
+      },
+      {
+        "from": "37:517",
+        "fromName": "E11 / Payment status / Needs checking",
+        "triggerNode": "37:541",
+        "label": "Check status again",
+        "to": "37:1143"
+      },
+      {
+        "from": "37:544",
+        "fromName": "E11 / Payment status / Confirmed",
+        "triggerNode": "37:565",
+        "label": "View bookings",
+        "to": "37:568"
+      },
+      {
+        "from": "37:568",
+        "fromName": "F03 / Event day / Roster",
+        "triggerNode": "37:568",
+        "label": "F03 / Event day / Roster",
+        "to": "37:1235"
+      },
+      {
+        "from": "37:619",
+        "fromName": "A02 / Choose role",
+        "triggerNode": "37:635",
+        "label": "Continue",
+        "to": "37:637"
+      },
+      {
+        "from": "37:637",
+        "fromName": "A03 / Phone entry",
+        "triggerNode": "37:654",
+        "label": "Send code",
+        "to": "37:656"
+      },
+      {
+        "from": "37:656",
+        "fromName": "A04 / Verify OTP",
+        "triggerNode": "37:677",
+        "label": "Verify",
+        "to": "37:679"
+      },
+      {
+        "from": "37:679",
+        "fromName": "B01 / Profile setup",
+        "triggerNode": "37:723",
+        "label": "Continue to verification",
+        "to": "37:725"
+      },
+      {
+        "from": "37:725",
+        "fromName": "B02 / Identity verification",
+        "triggerNode": "37:766",
+        "label": "Continue with Smile ID",
+        "to": "37:1169"
+      },
+      {
+        "from": "37:768",
+        "fromName": "B03 / Awaiting approval",
+        "triggerNode": "37:788",
+        "label": "Check latest status",
+        "to": "37:791"
+      },
+      {
+        "from": "37:791",
+        "fromName": "D01 / Home / Verified",
+        "triggerNode": "37:791",
+        "label": "D01 / Home / Verified",
+        "to": "37:836"
+      },
+      {
+        "from": "37:836",
+        "fromName": "D02 / Jobs / Available",
+        "triggerNode": "37:836",
+        "label": "D02 / Jobs / Available",
+        "to": "37:1266"
+      },
+      {
+        "from": "37:853",
+        "fromName": "E13 / Job details / Can apply",
+        "triggerNode": "37:904",
+        "label": "Apply for this job",
+        "to": "37:907"
+      },
+      {
+        "from": "37:907",
+        "fromName": "F02 / Booking details / Confirmed",
+        "triggerNode": "37:962",
+        "label": "Check in",
+        "to": "37:1200"
+      },
+      {
+        "from": "37:966",
+        "fromName": "F04 / Check in / Code entry",
+        "triggerNode": "37:990",
+        "label": "Check in",
+        "to": "37:993"
+      },
+      {
+        "from": "37:993",
+        "fromName": "D05 / Wallet / Loaded",
+        "triggerNode": "37:993",
+        "label": "D05 / Wallet / Loaded",
+        "to": "37:1027"
+      },
+      {
+        "from": "37:1027",
+        "fromName": "G05 / Withdraw / Amount",
+        "triggerNode": "37:1057",
+        "label": "Review withdrawal",
+        "to": "37:1059"
+      },
+      {
+        "from": "37:1059",
+        "fromName": "G05 / Withdraw / Review",
+        "triggerNode": "37:1084",
+        "label": "Withdraw ₦17,000",
+        "to": "37:1087"
+      }
+    ],
+    "roots": [
+      "37:8",
+      "37:619",
+      "37:517"
+    ],
+    "reachable": 22,
+    "unreachable": [
+      {
+        "id": "37:544",
+        "name": "E11 / Payment status / Confirmed"
+      },
+      {
+        "id": "37:568",
+        "name": "F03 / Event day / Roster"
+      },
+      {
+        "id": "37:768",
+        "name": "B03 / Awaiting approval"
+      },
+      {
+        "id": "37:791",
+        "name": "D01 / Home / Verified"
+      },
+      {
+        "id": "37:836",
+        "name": "D02 / Jobs / Available"
+      },
+      {
+        "id": "37:853",
+        "name": "E13 / Job details / Can apply"
+      },
+      {
+        "id": "37:907",
+        "name": "F02 / Booking details / Confirmed"
+      },
+      {
+        "id": "37:966",
+        "name": "F04 / Check in / Code entry"
+      },
+      {
+        "id": "37:993",
+        "name": "D05 / Wallet / Loaded"
+      },
+      {
+        "id": "37:1027",
+        "name": "G05 / Withdraw / Amount"
+      },
+      {
+        "id": "37:1059",
+        "name": "G05 / Withdraw / Review"
+      },
+      {
+        "id": "37:1087",
+        "name": "G05 / Withdraw / Processing"
+      },
+      {
+        "id": "37:1200",
+        "name": "F06 / Cancellation / Quote"
+      },
+      {
+        "id": "37:1235",
+        "name": "F07 / Open a dispute"
+      },
+      {
+        "id": "37:1266",
+        "name": "D02 / Jobs / Failed to load"
+      }
+    ],
+    "screenCount": 37
+  },
+  "componentDetails": [
+    {
+      "id": "6:78",
+      "name": "State=Default",
+      "w": 320,
+      "h": 75,
+      "fills": [],
+      "strokes": [],
+      "children": [
+        {
+          "id": "6:79",
+          "name": "Phone number",
+          "type": "TEXT",
+          "w": 91,
+          "h": 17,
+          "text": "Phone number",
+          "size": 13
+        },
+        {
+          "id": "6:80",
+          "name": "box",
+          "type": "FRAME",
+          "w": 320,
+          "h": 52,
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 1,
+                "g": 1,
+                "b": 1
+              },
+              "boundVariables": {
+                "color": {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:2:42"
+                }
+              }
+            }
+          ],
+          "strokes": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.7607843279838562,
+                "g": 0.7686274647712708,
+                "b": 0.7803921699523926
+              },
+              "boundVariables": {
+                "color": {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:2:54"
+                }
+              }
+            }
+          ],
+          "strokeWeight": 1.5
+        },
+        {
+          "id": "6:81",
+          "name": "+234 800 000 0000",
+          "type": "TEXT",
+          "w": 135,
+          "h": 23,
+          "text": "+234 800 000 0000",
+          "size": 15
+        }
+      ]
+    },
+    {
+      "id": "6:82",
+      "name": "State=Focus",
+      "w": 320,
+      "h": 75,
+      "fills": [],
+      "strokes": [],
+      "children": [
+        {
+          "id": "6:83",
+          "name": "Phone number",
+          "type": "TEXT",
+          "w": 91,
+          "h": 17,
+          "text": "Phone number",
+          "size": 13
+        },
+        {
+          "id": "6:84",
+          "name": "box",
+          "type": "FRAME",
+          "w": 320,
+          "h": 52,
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 1,
+                "g": 1,
+                "b": 1
+              },
+              "boundVariables": {
+                "color": {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:2:42"
+                }
+              }
+            }
+          ],
+          "strokes": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.1568627506494522,
+                "g": 0.5215686559677124,
+                "b": 0.9372549057006836
+              },
+              "boundVariables": {
+                "color": {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:2:55"
+                }
+              }
+            }
+          ],
+          "strokeWeight": 2
+        },
+        {
+          "id": "6:85",
+          "name": "+234 803 123 4567",
+          "type": "TEXT",
+          "w": 127,
+          "h": 23,
+          "text": "+234 803 123 4567",
+          "size": 15
+        }
+      ]
+    },
+    {
+      "id": "6:86",
+      "name": "State=Error",
+      "w": 320,
+      "h": 100,
+      "fills": [],
+      "strokes": [],
+      "children": [
+        {
+          "id": "6:87",
+          "name": "Phone number",
+          "type": "TEXT",
+          "w": 91,
+          "h": 17,
+          "text": "Phone number",
+          "size": 13
+        },
+        {
+          "id": "6:88",
+          "name": "box",
+          "type": "FRAME",
+          "w": 320,
+          "h": 52,
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 1,
+                "g": 1,
+                "b": 1
+              },
+              "boundVariables": {
+                "color": {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:2:42"
+                }
+              }
+            }
+          ],
+          "strokes": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.6470588445663452,
+                "g": 0.10588235408067703,
+                "b": 0.10588235408067703
+              },
+              "boundVariables": {
+                "color": {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:2:60"
+                }
+              }
+            }
+          ],
+          "strokeWeight": 2
+        },
+        {
+          "id": "6:89",
+          "name": "+234 800 000 0000",
+          "type": "TEXT",
+          "w": 135,
+          "h": 23,
+          "text": "+234 800 000 0000",
+          "size": 15
+        },
+        {
+          "id": "6:90",
+          "name": "Enter a valid Nigerian mobile number",
+          "type": "TEXT",
+          "w": 217,
+          "h": 19,
+          "text": "Enter a valid Nigerian mobile number",
+          "size": 13
+        }
+      ]
+    },
+    {
+      "id": "6:23",
+      "name": "Variant=Danger, Size=Large",
+      "w": 148,
+      "h": 52,
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.6470588445663452,
+            "g": 0.10588235408067703,
+            "b": 0.10588235408067703
+          },
+          "boundVariables": {
+            "color": {
+              "type": "VARIABLE_ALIAS",
+              "id": "VariableID:2:60"
+            }
+          }
+        }
+      ],
+      "strokes": [],
+      "children": [
+        {
+          "id": "6:22",
+          "name": "Confirm & pay",
+          "type": "TEXT",
+          "w": 100,
+          "h": 20,
+          "text": "Confirm & pay",
+          "size": 15
+        }
+      ]
+    },
+    {
+      "id": "6:5",
+      "name": "Variant=Primary, Size=Large",
+      "w": 148,
+      "h": 52,
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.21176470816135406,
+            "g": 0.6470588445663452,
+            "b": 0.06666667014360428
+          },
+          "boundVariables": {
+            "color": {
+              "type": "VARIABLE_ALIAS",
+              "id": "VariableID:2:50"
+            }
+          }
+        }
+      ],
+      "strokes": [],
+      "children": [
+        {
+          "id": "6:4",
+          "name": "Confirm & pay",
+          "type": "TEXT",
+          "w": 100,
+          "h": 20,
+          "text": "Confirm & pay",
+          "size": 15
+        }
+      ]
+    },
+    {
+      "id": "7:101",
+      "name": "AppBar",
+      "w": 390,
+      "h": 56,
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.95686274766922,
+            "g": 0.9490196108818054,
+            "b": 0.929411768913269
+          },
+          "boundVariables": {
+            "color": {
+              "type": "VARIABLE_ALIAS",
+              "id": "VariableID:2:41"
+            }
+          }
+        }
+      ],
+      "strokes": [],
+      "children": [
+        {
+          "id": "7:102",
+          "name": "chevron-right",
+          "type": "FRAME",
+          "w": 22,
+          "h": 22,
+          "fills": [],
+          "strokes": [],
+          "strokeWeight": 0.9166666865348816
+        },
+        {
+          "id": "7:103",
+          "name": "Vector",
+          "type": "VECTOR",
+          "w": 5.5,
+          "h": 11,
+          "fills": [],
+          "strokes": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.09019608050584793,
+                "g": 0.0941176488995552,
+                "b": 0.10196078568696976
+              },
+              "boundVariables": {
+                "color": {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:2:45"
+                }
+              }
+            }
+          ],
+          "strokeWeight": 1.8333333730697632
+        },
+        {
+          "id": "7:104",
+          "name": "Booking details",
+          "type": "TEXT",
+          "w": 316,
+          "h": 24,
+          "text": "Booking details",
+          "size": 17
+        }
+      ]
+    },
+    {
+      "id": "9:10",
+      "name": "Active=Home",
+      "w": 390,
+      "h": 76,
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          },
+          "boundVariables": {
+            "color": {
+              "type": "VARIABLE_ALIAS",
+              "id": "VariableID:2:42"
+            }
+          }
+        }
+      ],
+      "strokes": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.8588235378265381,
+            "g": 0.843137264251709,
+            "b": 0.8078431487083435
+          },
+          "boundVariables": {
+            "color": {
+              "type": "VARIABLE_ALIAS",
+              "id": "VariableID:2:53"
+            }
+          }
+        }
+      ],
+      "children": [
+        {
+          "id": "9:11",
+          "name": "Home",
+          "type": "FRAME",
+          "w": 34,
+          "h": 40,
+          "fills": [],
+          "strokes": [],
+          "strokeWeight": 1
+        },
+        {
+          "id": "9:12",
+          "name": "home",
+          "type": "FRAME",
+          "w": 22,
+          "h": 22,
+          "fills": [],
+          "strokes": [],
+          "strokeWeight": 0.9166666865348816
+        },
+        {
+          "id": "9:13",
+          "name": "Vector",
+          "type": "VECTOR",
+          "w": 16.5,
+          "h": 18.33333396911621,
+          "fills": [],
+          "strokes": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.09019608050584793,
+                "g": 0.0941176488995552,
+                "b": 0.10196078568696976
+              },
+              "boundVariables": {
+                "color": {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:2:45"
+                }
+              }
+            }
+          ],
+          "strokeWeight": 1.8333333730697632
+        },
+        {
+          "id": "9:14",
+          "name": "Vector",
+          "type": "VECTOR",
+          "w": 5.5,
+          "h": 9.166666984558105,
+          "fills": [],
+          "strokes": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.09019608050584793,
+                "g": 0.0941176488995552,
+                "b": 0.10196078568696976
+              },
+              "boundVariables": {
+                "color": {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:2:45"
+                }
+              }
+            }
+          ],
+          "strokeWeight": 1.8333333730697632
+        },
+        {
+          "id": "9:15",
+          "name": "Home",
+          "type": "TEXT",
+          "w": 34,
+          "h": 14,
+          "text": "Home",
+          "size": 11
+        },
+        {
+          "id": "9:16",
+          "name": "Discover",
+          "type": "FRAME",
+          "w": 58,
+          "h": 40,
+          "fills": [],
+          "strokes": [],
+          "strokeWeight": 1
+        },
+        {
+          "id": "9:17",
+          "name": "search",
+          "type": "FRAME",
+          "w": 22,
+          "h": 22,
+          "fills": [],
+          "strokes": [],
+          "strokeWeight": 0.9166666865348816
+        },
+        {
+          "id": "9:18",
+          "name": "Vector",
+          "type": "VECTOR",
+          "w": 14.666666984558105,
+          "h": 14.666666984558105,
+          "fills": [],
+          "strokes": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.32549020648002625,
+                "g": 0.3333333432674408,
+                "b": 0.3490196168422699
+              },
+              "boundVariables": {
+                "color": {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:2:47"
+                }
+              }
+            }
+          ],
+          "strokeWeight": 1.8333333730697632
+        },
+        {
+          "id": "9:19",
+          "name": "Vector",
+          "type": "VECTOR",
+          "w": 3.9875004291534424,
+          "h": 3.9875004291534424,
+          "fills": [],
+          "strokes": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.32549020648002625,
+                "g": 0.3333333432674408,
+                "b": 0.3490196168422699
+              },
+              "boundVariables": {
+                "color": {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:2:47"
+                }
+              }
+            }
+          ],
+          "strokeWeight": 1.8333333730697632
+        },
+        {
+          "id": "9:20",
+          "name": "Discover",
+          "type": "TEXT",
+          "w": 58,
+          "h": 14,
+          "text": "Discover",
+          "size": 11
+        },
+        {
+          "id": "9:21",
+          "name": "Events",
+          "type": "FRAME",
+          "w": 44,
+          "h": 40,
+          "fills": [],
+          "strokes": [],
+          "strokeWeight": 1
+        },
+        {
+          "id": "9:22",
+          "name": "calendar-days",
+          "type": "FRAME",
+          "w": 22,
+          "h": 22,
+          "fills": [],
+          "strokes": [],
+          "strokeWeight": 0.9166666865348816
+        },
+        {
+          "id": "9:23",
+          "name": "Vector",
+          "type": "VECTOR",
+          "w": 16.5,
+          "h": 16.5,
+          "fills": [],
+          "strokes": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.32549020648002625,
+                "g": 0.3333333432674408,
+                "b": 0.3490196168422699
+              },
+              "boundVariables": {
+                "color": {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:2:47"
+                }
+              }
+            }
+          ],
+          "strokeWeight": 1.8333333730697632
+        },
+        {
+          "id": "9:24",
+          "name": "Vector",
+          "type": "VECTOR",
+          "w": 16.5,
+          "h": 0,
+          "fills": [],
+          "strokes": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.32549020648002625,
+                "g": 0.3333333432674408,
+                "b": 0.3490196168422699
+              },
+              "boundVariables": {
+                "color": {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:2:47"
+                }
+              }
+            }
+          ],
+          "strokeWeight": 1.8333333730697632
+        },
+        {
+          "id": "9:25",
+          "name": "Events",
+          "type": "TEXT",
+          "w": 44,
+          "h": 14,
+          "text": "Events",
+          "size": 11
+        },
+        {
+          "id": "9:26",
+          "name": "Messages",
+          "type": "FRAME",
+          "w": 63,
+          "h": 40,
+          "fills": [],
+          "strokes": [],
+          "strokeWeight": 1
+        },
+        {
+          "id": "9:27",
+          "name": "message",
+          "type": "FRAME",
+          "w": 22,
+          "h": 22,
+          "fills": [],
+          "strokes": [],
+          "strokeWeight": 0.9166666865348816
+        },
+        {
+          "id": "9:28",
+          "name": "Vector",
+          "type": "VECTOR",
+          "w": 16.50002670288086,
+          "h": 16.50002670288086,
+          "fills": [],
+          "strokes": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.32549020648002625,
+                "g": 0.3333333432674408,
+                "b": 0.3490196168422699
+              },
+              "boundVariables": {
+                "color": {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:2:47"
+                }
+              }
+            }
+          ],
+          "strokeWeight": 1.8333333730697632
+        },
+        {
+          "id": "9:29",
+          "name": "Messages",
+          "type": "TEXT",
+          "w": 63,
+          "h": 14,
+          "text": "Messages",
+          "size": 11
+        },
+        {
+          "id": "9:30",
+          "name": "Profile",
+          "type": "FRAME",
+          "w": 47,
+          "h": 40,
+          "fills": [],
+          "strokes": [],
+          "strokeWeight": 1
+        },
+        {
+          "id": "9:31",
+          "name": "user",
+          "type": "FRAME",
+          "w": 22,
+          "h": 22,
+          "fills": [],
+          "strokes": [],
+          "strokeWeight": 0.9166666865348816
+        },
+        {
+          "id": "9:32",
+          "name": "Vector",
+          "type": "VECTOR",
+          "w": 14.666666984558105,
+          "h": 5.5,
+          "fills": [],
+          "strokes": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.32549020648002625,
+                "g": 0.3333333432674408,
+                "b": 0.3490196168422699
+              },
+              "boundVariables": {
+                "color": {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:2:47"
+                }
+              }
+            }
+          ],
+          "strokeWeight": 1.8333333730697632
+        },
+        {
+          "id": "9:33",
+          "name": "Vector",
+          "type": "VECTOR",
+          "w": 7.333333492279053,
+          "h": 7.333333492279053,
+          "fills": [],
+          "strokes": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.32549020648002625,
+                "g": 0.3333333432674408,
+                "b": 0.3490196168422699
+              },
+              "boundVariables": {
+                "color": {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:2:47"
+                }
+              }
+            }
+          ],
+          "strokeWeight": 1.8333333730697632
+        },
+        {
+          "id": "9:34",
+          "name": "Profile",
+          "type": "TEXT",
+          "w": 47,
+          "h": 14,
+          "text": "Profile",
+          "size": 11
+        }
+      ]
+    },
+    {
+      "id": "6:72",
+      "name": "Selected=true",
+      "w": 121,
+      "h": 44,
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.09019608050584793,
+            "g": 0.0941176488995552,
+            "b": 0.10196078568696976
+          },
+          "boundVariables": {
+            "color": {
+              "type": "VARIABLE_ALIAS",
+              "id": "VariableID:2:44"
+            }
+          }
+        }
+      ],
+      "strokes": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "color": {
+            "r": 0.09019608050584793,
+            "g": 0.0941176488995552,
+            "b": 0.10196078568696976
+          },
+          "boundVariables": {
+            "color": {
+              "type": "VARIABLE_ALIAS",
+              "id": "VariableID:2:44"
+            }
+          }
+        }
+      ],
+      "children": [
+        {
+          "id": "6:73",
+          "name": "Available today",
+          "type": "TEXT",
+          "w": 94,
+          "h": 17,
+          "text": "Available today",
+          "size": 13
+        }
+      ]
+    }
+  ],
+  "componentDocumentation": {
+    "components": [
+      {
+        "id": "7:101",
+        "name": "AppBar",
+        "description": "",
+        "children": [
+          {
+            "id": "7:102",
+            "name": "chevron-right",
+            "type": "FRAME",
+            "width": 22,
+            "height": 22
+          },
+          {
+            "id": "7:104",
+            "name": "Booking details",
+            "type": "TEXT",
+            "width": 316,
+            "height": 24
+          }
+        ]
+      },
+      {
+        "id": "9:10",
+        "name": "Active=Home",
+        "description": "",
+        "children": [
+          {
+            "id": "9:11",
+            "name": "Home",
+            "type": "FRAME",
+            "width": 34,
+            "height": 40
+          },
+          {
+            "id": "9:16",
+            "name": "Discover",
+            "type": "FRAME",
+            "width": 58,
+            "height": 40
+          },
+          {
+            "id": "9:21",
+            "name": "Events",
+            "type": "FRAME",
+            "width": 44,
+            "height": 40
+          },
+          {
+            "id": "9:26",
+            "name": "Messages",
+            "type": "FRAME",
+            "width": 63,
+            "height": 40
+          },
+          {
+            "id": "9:30",
+            "name": "Profile",
+            "type": "FRAME",
+            "width": 47,
+            "height": 40
+          }
+        ]
+      },
+      {
+        "id": "9:136",
+        "name": "Active=Home",
+        "description": "",
+        "children": [
+          {
+            "id": "9:137",
+            "name": "Home",
+            "type": "FRAME",
+            "width": 34,
+            "height": 40
+          },
+          {
+            "id": "9:142",
+            "name": "Jobs",
+            "type": "FRAME",
+            "width": 30,
+            "height": 40
+          },
+          {
+            "id": "9:147",
+            "name": "Messages",
+            "type": "FRAME",
+            "width": 63,
+            "height": 40
+          },
+          {
+            "id": "9:151",
+            "name": "Wallet",
+            "type": "FRAME",
+            "width": 45,
+            "height": 40
+          },
+          {
+            "id": "9:157",
+            "name": "Profile",
+            "type": "FRAME",
+            "width": 47,
+            "height": 40
+          }
+        ]
+      },
+      {
+        "id": "6:27",
+        "name": "Button",
+        "description": "Primary = brand yellow (dark ink on accent). Secondary = outlined. Ghost = bare. Danger = destructive only.",
+        "children": [
+          {
+            "id": "6:5",
+            "name": "Variant=Primary, Size=Large",
+            "type": "COMPONENT",
+            "width": 148,
+            "height": 52
+          },
+          {
+            "id": "6:8",
+            "name": "Variant=Primary, Size=Medium",
+            "type": "COMPONENT",
+            "width": 127,
+            "height": 44
+          },
+          {
+            "id": "6:11",
+            "name": "Variant=Secondary, Size=Large",
+            "type": "COMPONENT",
+            "width": 151,
+            "height": 52
+          },
+          {
+            "id": "6:14",
+            "name": "Variant=Secondary, Size=Medium",
+            "type": "COMPONENT",
+            "width": 130,
+            "height": 44
+          },
+          {
+            "id": "6:17",
+            "name": "Variant=Ghost, Size=Large",
+            "type": "COMPONENT",
+            "width": 148,
+            "height": 52
+          },
+          {
+            "id": "6:20",
+            "name": "Variant=Ghost, Size=Medium",
+            "type": "COMPONENT",
+            "width": 127,
+            "height": 44
+          },
+          {
+            "id": "6:23",
+            "name": "Variant=Danger, Size=Large",
+            "type": "COMPONENT",
+            "width": 148,
+            "height": 52
+          },
+          {
+            "id": "6:26",
+            "name": "Variant=Danger, Size=Medium",
+            "type": "COMPONENT",
+            "width": 127,
+            "height": 44
+          },
+          {
+            "id": "80:3552",
+            "name": "Variant=Disabled, Size=Large",
+            "type": "COMPONENT",
+            "width": 148,
+            "height": 52
+          },
+          {
+            "id": "80:3554",
+            "name": "Variant=Disabled, Size=Medium",
+            "type": "COMPONENT",
+            "width": 127,
+            "height": 44
+          }
+        ]
+      },
+      {
+        "id": "6:95",
+        "name": "TextField",
+        "description": "Label + box + optional helper. Error shows a reason, never a bare red border.",
+        "children": [
+          {
+            "id": "6:78",
+            "name": "State=Default",
+            "type": "COMPONENT",
+            "width": 320,
+            "height": 75
+          },
+          {
+            "id": "6:82",
+            "name": "State=Focus",
+            "type": "COMPONENT",
+            "width": 320,
+            "height": 75
+          },
+          {
+            "id": "6:86",
+            "name": "State=Error",
+            "type": "COMPONENT",
+            "width": 320,
+            "height": 100
+          },
+          {
+            "id": "6:91",
+            "name": "State=Filled",
+            "type": "COMPONENT",
+            "width": 320,
+            "height": 75
+          },
+          {
+            "id": "80:3556",
+            "name": "State=Disabled",
+            "type": "COMPONENT",
+            "width": 320,
+            "height": 75
+          }
+        ]
+      }
+    ],
+    "styles": [
+      {
+        "name": "Display/XL",
+        "description": ""
+      },
+      {
+        "name": "Display/L",
+        "description": ""
+      },
+      {
+        "name": "Display/M",
+        "description": ""
+      },
+      {
+        "name": "Heading/L",
+        "description": ""
+      },
+      {
+        "name": "Heading/M",
+        "description": ""
+      },
+      {
+        "name": "Heading/S",
+        "description": ""
+      },
+      {
+        "name": "Body/L",
+        "description": ""
+      },
+      {
+        "name": "Body/M",
+        "description": ""
+      },
+      {
+        "name": "Body/S",
+        "description": ""
+      },
+      {
+        "name": "Label/L",
+        "description": ""
+      },
+      {
+        "name": "Label/M",
+        "description": ""
+      },
+      {
+        "name": "Label/S",
+        "description": ""
+      },
+      {
+        "name": "Amount/XL",
+        "description": ""
+      },
+      {
+        "name": "Amount/L",
+        "description": ""
+      },
+      {
+        "name": "Amount/M",
+        "description": ""
+      },
+      {
+        "name": "Amount/S",
+        "description": ""
+      }
+    ]
+  },
+  "handoff": [
+    {
+      "id": "18:4",
+      "text": "HireQuick — System Map"
+    },
+    {
+      "id": "18:5",
+      "text": "Transcribed from code, not invented. Booking transitions: packages/shared/src/state-machines.ts · Event derivation: apps/api/src/modules/events/staffing.ts"
+    },
+    {
+      "id": "18:7",
+      "text": "BOOKING LIFECYCLE — AUTHORITATIVE, ENFORCED"
+    },
+    {
+      "id": "18:8",
+      "text": "Illegal transitions throw IllegalTransition. Money column shows where the escrow sits at that state."
+    },
+    {
+      "id": "18:14",
+      "text": "PENDING_PAYMENT"
+    },
+    {
+      "id": "18:15",
+      "text": "No funds held"
+    },
+    {
+      "id": "18:18",
+      "text": "CLIENT SEES"
+    },
+    {
+      "id": "18:19",
+      "text": "Awaiting your payment to confirm these staff"
+    },
+    {
+      "id": "18:21",
+      "text": "USHER SEES"
+    },
+    {
+      "id": "18:22",
+      "text": "Client has not paid yet — not confirmed"
+    },
+    {
+      "id": "18:24",
+      "text": "CAN MOVE TO"
+    },
+    {
+      "id": "18:25",
+      "text": "CONFIRMED · CANCELLED"
+    },
+    {
+      "id": "18:29",
+      "text": "CONFIRMED"
+    },
+    {
+      "id": "18:30",
+      "text": "HOLD placed"
+    },
+    {
+      "id": "18:33",
+      "text": "CLIENT SEES"
+    },
+    {
+      "id": "18:34",
+      "text": "Staff confirmed for your event"
+    },
+    {
+      "id": "18:36",
+      "text": "USHER SEES"
+    },
+    {
+      "id": "18:37",
+      "text": "Job confirmed — check in on the day"
+    },
+    {
+      "id": "18:39",
+      "text": "CAN MOVE TO"
+    },
+    {
+      "id": "18:40",
+      "text": "CHECKED_IN · CANCELLED · NO_SHOW · DISPUTED"
+    },
+    {
+      "id": "18:44",
+      "text": "CHECKED_IN"
+    },
+    {
+      "id": "18:45",
+      "text": "Still held"
+    },
+    {
+      "id": "18:48",
+      "text": "CLIENT SEES"
+    },
+    {
+      "id": "18:49",
+      "text": "Checked in at 4:02 PM WAT"
+    },
+    {
+      "id": "18:51",
+      "text": "USHER SEES"
+    },
+    {
+      "id": "18:52",
+      "text": "You are checked in"
+    },
+    {
+      "id": "18:54",
+      "text": "CAN MOVE TO"
+    },
+    {
+      "id": "18:55",
+      "text": "COMPLETED · DISPUTED"
+    },
+    {
+      "id": "18:60",
+      "text": "COMPLETED"
+    },
+    {
+      "id": "18:61",
+      "text": "Still held — 72h rule"
+    },
+    {
+      "id": "18:64",
+      "text": "CLIENT SEES"
+    },
+    {
+      "id": "18:65",
+      "text": "Work completed"
+    },
+    {
+      "id": "18:67",
+      "text": "USHER SEES"
+    },
+    {
+      "id": "18:68",
+      "text": "Completed — releases 72h after event end"
+    },
+    {
+      "id": "18:70",
+      "text": "CAN MOVE TO"
+    },
+    {
+      "id": "18:71",
+      "text": "PAID · DISPUTED"
+    },
+    {
+      "id": "18:75",
+      "text": "PAID"
+    },
+    {
+      "id": "18:76",
+      "text": "RELEASE + FEE, wallet credited"
+    },
+    {
+      "id": "18:79",
+      "text": "CLIENT SEES"
+    },
+    {
+      "id": "18:80",
+      "text": "Settled"
+    },
+    {
+      "id": "18:82",
+      "text": "USHER SEES"
+    },
+    {
+      "id": "18:83",
+      "text": "Released to your wallet"
+    },
+    {
+      "id": "18:85",
+      "text": "CAN MOVE TO"
+    },
+    {
+      "id": "18:86",
+      "text": "terminal"
+    },
+    {
+      "id": "18:90",
+      "text": "DISPUTED"
+    },
+    {
+      "id": "18:91",
+      "text": "FROZEN"
+    },
+    {
+      "id": "18:94",
+      "text": "CLIENT SEES"
+    },
+    {
+      "id": "18:95",
+      "text": "Under review"
+    },
+    {
+      "id": "18:97",
+      "text": "USHER SEES"
+    },
+    {
+      "id": "18:98",
+      "text": "Under review — funds frozen"
+    },
+    {
+      "id": "18:100",
+      "text": "CAN MOVE TO"
+    },
+    {
+      "id": "18:101",
+      "text": "COMPLETED · REFUNDED · CANCELLED"
+    },
+    {
+      "id": "18:106",
+      "text": "CANCELLED"
+    },
+    {
+      "id": "18:107",
+      "text": "Refund per policy matrix"
+    },
+    {
+      "id": "18:110",
+      "text": "CLIENT SEES"
+    },
+    {
+      "id": "18:111",
+      "text": "Cancelled — refund quoted before you commit"
+    },
+    {
+      "id": "18:113",
+      "text": "USHER SEES"
+    },
+    {
+      "id": "18:114",
+      "text": "Cancelled"
+    },
+    {
+      "id": "18:116",
+      "text": "CAN MOVE TO"
+    },
+    {
+      "id": "18:117",
+      "text": "REFUNDED"
+    },
+    {
+      "id": "18:121",
+      "text": "NO_SHOW"
+    },
+    {
+      "id": "18:122",
+      "text": "Refund per policy"
+    },
+    {
+      "id": "18:125",
+      "text": "CLIENT SEES"
+    },
+    {
+      "id": "18:126",
+      "text": "Did not attend"
+    },
+    {
+      "id": "18:128",
+      "text": "USHER SEES"
+    },
+    {
+      "id": "18:129",
+      "text": "Marked no-show"
+    },
+    {
+      "id": "18:131",
+      "text": "CAN MOVE TO"
+    },
+    {
+      "id": "18:132",
+      "text": "REFUNDED"
+    },
+    {
+      "id": "18:136",
+      "text": "REFUNDED"
+    },
+    {
+      "id": "18:137",
+      "text": "REFUND written"
+    },
+    {
+      "id": "18:140",
+      "text": "CLIENT SEES"
+    },
+    {
+      "id": "18:141",
+      "text": "Refunded"
+    },
+    {
+      "id": "18:143",
+      "text": "USHER SEES"
+    },
+    {
+      "id": "18:144",
+      "text": "Refunded"
+    },
+    {
+      "id": "18:146",
+      "text": "CAN MOVE TO"
+    },
+    {
+      "id": "18:147",
+      "text": "terminal"
+    },
+    {
+      "id": "18:149",
+      "text": "EVENT LIFECYCLE — DERIVED, NOT TRANSITIONED"
+    },
+    {
+      "id": "18:150",
+      "text": "There is no event transition table. staffingStatus() recomputes status from bookings + clock on every booking write. Designs must not imply a client can move an event between these by hand."
+    },
+    {
+      "id": "18:152",
+      "text": "DERIVATION ORDER"
+    },
+    {
+      "id": "18:153",
+      "text": "1.  DRAFT · CANCELLED · COMPLETED are sticky — returned unchanged."
+    },
+    {
+      "id": "18:154",
+      "text": "2.  now ≥ event end AND every booking finished → COMPLETED."
+    },
+    {
+      "id": "18:155",
+      "text": "3.  status is IN_PROGRESS, or now ≥ event start → IN_PROGRESS."
+    },
+    {
+      "id": "18:156",
+      "text": "4.  occupied = bookings NOT in (CANCELLED, REFUNDED, NO_SHOW)."
+    },
+    {
+      "id": "18:157",
+      "text": "5.  occupied ≥ headcount → FULLY_STAFFED · occupied > 0 → PARTIALLY_STAFFED · else OPEN."
+    },
+    {
+      "id": "18:158",
+      "text": "Recruitment never reopens after start — even if cancellations free capacity."
+    },
+    {
+      "id": "18:161",
+      "text": "DRAFT"
+    },
+    {
+      "id": "18:162",
+      "text": "sticky"
+    },
+    {
+      "id": "18:164",
+      "text": "OPEN"
+    },
+    {
+      "id": "18:165",
+      "text": "0 booked"
+    },
+    {
+      "id": "18:167",
+      "text": "PARTIALLY_STAFFED"
+    },
+    {
+      "id": "18:168",
+      "text": "1..n-1"
+    },
+    {
+      "id": "18:170",
+      "text": "FULLY_STAFFED"
+    },
+    {
+      "id": "18:171",
+      "text": "n booked"
+    },
+    {
+      "id": "18:173",
+      "text": "IN_PROGRESS"
+    },
+    {
+      "id": "18:174",
+      "text": "clock-driven"
+    },
+    {
+      "id": "18:176",
+      "text": "COMPLETED"
+    },
+    {
+      "id": "18:177",
+      "text": "sticky"
+    },
+    {
+      "id": "18:179",
+      "text": "CANCELLED"
+    },
+    {
+      "id": "18:180",
+      "text": "sticky"
+    },
+    {
+      "id": "18:182",
+      "text": "OPEN PRODUCT DECISIONS — NOT DESIGNED, BY INSTRUCTION"
+    },
+    {
+      "id": "18:183",
+      "text": "The goal asks these to be flagged rather than invented. Each is a gap between the requested scope and what exists in code today."
+    },
+    {
+      "id": "18:187",
+      "text": "QR check-in does not exist"
+    },
+    {
+      "id": "18:188",
+      "text": "\"QR\" is an unused value in ATTENDANCE_METHODS. There is no scanner, route, or verification anywhere in apps/ or packages/. The real mechanism is a 6-digit ATTENDANCE code. Build QR, or design OTP only?"
+    },
+    {
+      "id": "18:192",
+      "text": "Event states Published / Recruiting / Upcoming are not real"
+    },
+    {
+      "id": "18:193",
+      "text": "Published and Recruiting both collapse to OPEN. Upcoming and Live are not stored — IN_PROGRESS is derived from the clock. Rename the design language to match code, or add states?"
+    },
+    {
+      "id": "18:197",
+      "text": "EXPIRED / UNFILLED / INTERRUPTED do not exist"
+    },
+    {
+      "id": "18:198",
+      "text": "An under-staffed event simply becomes IN_PROGRESS with fewer bookings, then COMPLETED. There is no expiry job and no interrupted state. Do these need building?"
+    },
+    {
+      "id": "18:202",
+      "text": "\"Shift\" is not a product object"
+    },
+    {
+      "id": "18:203",
+      "text": "The model is Event → Booking (one per usher). No shift entity, no per-worker shift duration. Treat shift as a synonym for booking, or introduce a new object?"
+    },
+    {
+      "id": "18:207",
+      "text": "Notification coverage is thin"
+    },
+    {
+      "id": "18:208",
+      "text": "Only 6 NOTIFICATION_TYPES exist. Shift reminders, check-in failure, client cancellation and dispute updates are all requested but unmodelled."
+    },
+    {
+      "id": "18:212",
+      "text": "Escrow is under-specified in this goal"
+    },
+    {
+      "id": "18:213",
+      "text": "Payment is listed as \"where applicable\", but escrow is the product: 15% commission, 72h hold, disputes freeze funds. Designs will keep money central unless told otherwise."
+    },
+    {
+      "id": "34:9",
+      "text": "Coverage & Handoff"
+    },
+    {
+      "id": "34:10",
+      "text": "What exists in this file, and the rules an engineer needs that the components cannot express on their own."
+    },
+    {
+      "id": "61:3388",
+      "text": "SCREEN COVERAGE"
+    },
+    {
+      "id": "61:3391",
+      "text": "② Account & Verification"
+    },
+    {
+      "id": "61:3392",
+      "text": "15 frames"
+    },
+    {
+      "id": "61:3394",
+      "text": "③ Client"
+    },
+    {
+      "id": "61:3395",
+      "text": "17 frames"
+    },
+    {
+      "id": "61:3397",
+      "text": "④ Usher"
+    },
+    {
+      "id": "61:3398",
+      "text": "23 frames"
+    },
+    {
+      "id": "61:3400",
+      "text": "⑤ Shared Booking & Money"
+    },
+    {
+      "id": "61:3401",
+      "text": "78 frames"
+    },
+    {
+      "id": "61:3403",
+      "text": "⑥ Admin"
+    },
+    {
+      "id": "61:3404",
+      "text": "21 frames"
+    },
+    {
+      "id": "61:3406",
+      "text": "⑦ Marketing"
+    },
+    {
+      "id": "61:3407",
+      "text": "2 frames"
+    },
+    {
+      "id": "61:3409",
+      "text": "① Foundations & Components"
+    },
+    {
+      "id": "61:3410",
+      "text": "22 components"
+    },
+    {
+      "id": "77:8",
+      "text": "⑧ Prototypes (clones of journey screens)"
+    },
+    {
+      "id": "77:9",
+      "text": "37 frames"
+    },
+    {
+      "id": "61:3412",
+      "text": "TOTAL SCREENS"
+    },
+    {
+      "id": "61:3413",
+      "text": "156 frames"
+    },
+    {
+      "id": "77:10",
+      "text": "61 base screens · 39 carry more than one state · 132 light + 15 dark + 7 annotation frames"
+    },
+    {
+      "id": "34:36",
+      "text": "RULES THE COMPONENTS CANNOT EXPRESS"
+    },
+    {
+      "id": "34:40",
+      "text": "Commission never inflates the client total"
+    },
+    {
+      "id": "34:41",
+      "text": "The client pays budget × headcount. The 15% comes out of the usher allocation. A ₦20,000 booking is ₦20,000 to the client and ₦17,000 to the usher."
+    },
+    {
+      "id": "34:45",
+      "text": "Acceptance is not confirmation"
+    },
+    {
+      "id": "34:46",
+      "text": "Applying, shortlisting and accepting an invitation all leave the booking at PENDING_PAYMENT. Only a received payment moves it to CONFIRMED."
+    },
+    {
+      "id": "34:50",
+      "text": "Completion is not payment"
+    },
+    {
+      "id": "34:51",
+      "text": "COMPLETED still holds the money. Release happens no earlier than 72 hours after the scheduled event end, and only with no open dispute."
+    },
+    {
+      "id": "34:55",
+      "text": "Auto-completion does not shorten the hold"
+    },
+    {
+      "id": "34:56",
+      "text": "Eligible bookings auto-complete 60 minutes after event end. The 72-hour release clock is unaffected."
+    },
+    {
+      "id": "34:60",
+      "text": "Event status is derived, never set"
+    },
+    {
+      "id": "34:61",
+      "text": "staffingStatus() recomputes it from bookings plus the clock. No screen may offer a control that moves an event between states directly."
+    },
+    {
+      "id": "34:65",
+      "text": "Recruitment never reopens"
+    },
+    {
+      "id": "34:66",
+      "text": "Once the event start passes, a cancellation that frees a slot does not return the event to OPEN."
+    },
+    {
+      "id": "34:70",
+      "text": "Cancellation refunds are time-banded"
+    },
+    {
+      "id": "34:71",
+      "text": "100% above 48h, 50% from 12 through 48h inclusive, 0% below 12h. No processing fee is deducted from the client refund."
+    },
+    {
+      "id": "34:75",
+      "text": "A dispute freezes, it does not resolve"
+    },
+    {
+      "id": "34:76",
+      "text": "An eligible dispute freezes held funds. A decision for the usher before the deadline still does not release early."
+    },
+    {
+      "id": "34:80",
+      "text": "Never invent a zero"
+    },
+    {
+      "id": "34:81",
+      "text": "A failed balance fetch is not ₦0, a failed list is not \"no results\", and a dismissed browser is not a failed payment. Preserve the transaction and offer recovery."
+    },
+    {
+      "id": "34:85",
+      "text": "Status never rests on colour alone"
+    },
+    {
+      "id": "34:86",
+      "text": "Every StatusPill carries a dot plus a text label. Attendance, money and verification states must survive greyscale."
+    },
+    {
+      "id": "51:14",
+      "text": "SURFACE-AWARE COLOUR — READ BEFORE ADDING A SCREEN"
+    },
+    {
+      "id": "51:18",
+      "text": "bg/inverse flips. bg/elevated does not."
+    },
+    {
+      "id": "51:19",
+      "text": "bg/inverse means \"opposite of canvas\" — in Dark it becomes white, which is correct for an avatar and wrong for a hero panel. Large contrast panels use bg/elevated (dark in both modes). Small elements that should genuinely invert keep bg/inverse."
+    },
+    {
+      "id": "51:23",
+      "text": "Text follows its panel, not the page."
+    },
+    {
+      "id": "51:24",
+      "text": "On bg/elevated use ink/on-elevated and ink/on-elevated-muted — they stay light in both modes. ink/inverse on an always-dark panel goes dark-on-dark in Dark mode."
+    },
+    {
+      "id": "51:28",
+      "text": "Accent and held money have three variants each."
+    },
+    {
+      "id": "51:29",
+      "text": "brand/accent-text (on light), brand/accent-on-elevated (on always-dark), brand/accent-on-inverse (on a flipping panel). Same pattern for money/held. Picking the wrong one is the single easiest way to fail contrast here."
+    },
+    {
+      "id": "51:33",
+      "text": "Status colours are tuned for text, not decoration."
+    },
+    {
+      "id": "51:34",
+      "text": "status/success, /warning, /danger and /info were darkened so they clear 4.5:1 on their own tint backgrounds. Do not lighten them back for aesthetics without re-running the audit."
+    },
+    {
+      "id": "77:14",
+      "text": "Stale is a label, not a dimmer."
+    },
+    {
+      "id": "77:15",
+      "text": "Never dim content a person still has to read — a card at 0.6 opacity drops body text to 2.6:1. Say the condition in words (“Showing saved data from 12 minutes ago”), mark the block with a dashed border/subtle outline, and disable only the actions."
+    },
+    {
+      "id": "77:19",
+      "text": "A disabled ghost button needs a fill."
+    },
+    {
+      "id": "77:20",
+      "text": "Dimming a filled button is safe: its label sits on the button’s own colour. Dimming a transparent button leaves the label on the page background, where 0.35 opacity reads 2.2:1. Give an inert ghost button bg/surface, border/subtle and an ink/muted label at full opacity."
+    },
+    {
+      "id": "61:3415",
+      "text": "MEASURED AUDIT — EVERY NODE ACCOUNTED"
+    },
+    {
+      "id": "61:3416",
+      "text": "Text nodes scanned: 3812 · evaluated 3747 · 7494 pairs measured across Light and Dark."
+    },
+    {
+      "id": "61:3417",
+      "text": "Skipped 65, all accounted: 46 sit on no opaque background (canvas section labels and transparent component definitions, whose instances are measured in place), 19 are empty strings."
+    },
+    {
+      "id": "61:3418",
+      "text": "Contrast failures: 0.   Unbound fills: 0.   Touch targets below 44×44: 0."
+    },
+    {
+      "id": "61:3419",
+      "text": "Opacity dimming appears on 14 inactive buttons only, every one a filled variant. No readable content is dimmed anywhere in the file."
+    }
+  ],
+  "references": [
+    [
+      {
+        "screens": [
+          {
+            "index": 0,
+            "id": "64beb5c3-d021-4f30-86db-f8710a90c554",
+            "image_url": "https://mobbin.com/api/mcp/short/LiudyDzw",
+            "mobbin_url": "https://mobbin.com/screens/64beb5c3-d021-4f30-86db-f8710a90c554",
+            "app_name": "Upwork",
+            "platform": "ios"
+          },
+          {
+            "index": 1,
+            "id": "78d6e600-7316-4af5-83f2-c246c30dc198",
+            "image_url": "https://mobbin.com/api/mcp/short/WrhYInL7",
+            "mobbin_url": "https://mobbin.com/screens/78d6e600-7316-4af5-83f2-c246c30dc198",
+            "app_name": "Fiverr",
+            "platform": "ios"
+          },
+          {
+            "index": 2,
+            "id": "35ede26c-78c5-4829-b6b4-97700a2ec762",
+            "image_url": "https://mobbin.com/api/mcp/short/bKYV8Rnj",
+            "mobbin_url": "https://mobbin.com/screens/35ede26c-78c5-4829-b6b4-97700a2ec762",
+            "app_name": "Peerspace",
+            "platform": "ios"
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "screens": [
+          {
+            "index": 0,
+            "id": "fc807bd4-3a05-44a1-b5dd-62fcdb6efcfd",
+            "image_url": "https://mobbin.com/api/mcp/short/9dP9CWAg",
+            "mobbin_url": "https://mobbin.com/screens/fc807bd4-3a05-44a1-b5dd-62fcdb6efcfd",
+            "app_name": "Fiverr",
+            "platform": "ios"
+          },
+          {
+            "index": 1,
+            "id": "63f22cfd-d488-4c4a-9e89-8299ca8ec389",
+            "image_url": "https://mobbin.com/api/mcp/short/HEMZagL1",
+            "mobbin_url": "https://mobbin.com/screens/63f22cfd-d488-4c4a-9e89-8299ca8ec389",
+            "app_name": "DoorDash Dasher",
+            "platform": "ios"
+          },
+          {
+            "index": 2,
+            "id": "304ac9ba-26c6-4263-ad55-a9767a209de5",
+            "image_url": "https://mobbin.com/api/mcp/short/RTUhPi4e",
+            "mobbin_url": "https://mobbin.com/screens/304ac9ba-26c6-4263-ad55-a9767a209de5",
+            "app_name": "Turo",
+            "platform": "ios"
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "flows": [
+          {
+            "index": 0,
+            "id": "8cbcaf23-5bb1-4f0c-8efa-05806e484b0d",
+            "name": "Reserving a service",
+            "actions": [
+              "Booking & Reserving"
+            ],
+            "screen_count": 8,
+            "mobbin_url": "https://mobbin.com/flows/8cbcaf23-5bb1-4f0c-8efa-05806e484b0d",
+            "app_name": "Airbnb",
+            "platform": "ios",
+            "screens": [
+              {
+                "screen_id": "5cb6a351-a529-4893-b311-4ab4debf897a",
+                "image_url": "https://mobbin.com/api/mcp/short/ZkX8dfUF",
+                "position": 1
+              },
+              {
+                "screen_id": "59baec91-c776-4e10-8a44-1d0cf0f639aa",
+                "image_url": "https://mobbin.com/api/mcp/short/Y4iylN3k",
+                "position": 2
+              },
+              {
+                "screen_id": "e69ab53d-633c-4d51-bd6a-072daec7140a",
+                "image_url": "https://mobbin.com/api/mcp/short/TP4Gpshc",
+                "position": 3
+              },
+              {
+                "screen_id": "e9da847d-3b16-4b23-a21c-d750ea9dbf06",
+                "image_url": "https://mobbin.com/api/mcp/short/CVTJwnzN",
+                "position": 4
+              },
+              {
+                "screen_id": "4379c3ee-9796-4e45-a03b-ef100454134d",
+                "image_url": "https://mobbin.com/api/mcp/short/fNhzZLkB",
+                "position": 5
+              },
+              {
+                "screen_id": "eab5a289-47ce-4cc3-a8f8-6c66dd161db8",
+                "image_url": "https://mobbin.com/api/mcp/short/H4cl0482",
+                "position": 6
+              },
+              {
+                "screen_id": "5072ddf8-8a38-4737-813e-e1ccb6ad452f",
+                "image_url": "https://mobbin.com/api/mcp/short/OQrMLZ4j",
+                "position": 7
+              },
+              {
+                "screen_id": "8c6d6c12-6992-4c5e-9c31-e0d27cbc4257",
+                "image_url": "https://mobbin.com/api/mcp/short/LHd8HVCZ",
+                "position": 8
+              }
+            ]
+          },
+          {
+            "index": 1,
+            "id": "8dd92276-1cb7-466e-b404-9f58be7328e1",
+            "name": "Checking out a space",
+            "actions": [
+              "Purchasing & Ordering"
+            ],
+            "screen_count": 11,
+            "mobbin_url": "https://mobbin.com/flows/8dd92276-1cb7-466e-b404-9f58be7328e1",
+            "app_name": "Peerspace",
+            "platform": "ios",
+            "screens": [
+              {
+                "screen_id": "6e440ddf-0c26-4ca1-a633-f73ed12e5b0e",
+                "image_url": "https://mobbin.com/api/mcp/short/bzGpzvTN",
+                "position": 1
+              },
+              {
+                "screen_id": "e27f1642-0b7a-457b-84d5-1a3fdc77fdae",
+                "image_url": "https://mobbin.com/api/mcp/short/8IGVVaEP",
+                "position": 2
+              },
+              {
+                "screen_id": "ef3f76a3-305e-437f-928f-f48b7a64c795",
+                "image_url": "https://mobbin.com/api/mcp/short/L4qxdb4x",
+                "position": 3
+              },
+              {
+                "screen_id": "256f7e76-ce9b-4dd1-91da-62644c18abfd",
+                "image_url": "https://mobbin.com/api/mcp/short/J9hB0uwj",
+                "position": 4
+              },
+              {
+                "screen_id": "c346f17d-5d0b-48c7-90b8-04972ec8fe59",
+                "image_url": "https://mobbin.com/api/mcp/short/YhfxYkO1",
+                "position": 5
+              },
+              {
+                "screen_id": "5b4cf756-b36e-4237-8628-075d593bcb27",
+                "image_url": "https://mobbin.com/api/mcp/short/pwvPaYbj",
+                "position": 6
+              },
+              {
+                "screen_id": "e929e673-b219-436e-82ef-a89d0b0855cb",
+                "image_url": "https://mobbin.com/api/mcp/short/lFA39eFu",
+                "position": 7
+              },
+              {
+                "screen_id": "afe2414e-5288-45d0-a03c-fa025cf74233",
+                "image_url": "https://mobbin.com/api/mcp/short/0ocgQr4J",
+                "position": 8
+              },
+              {
+                "screen_id": "e1411a0f-56fd-4eb0-8525-905a00dceca7",
+                "image_url": "https://mobbin.com/api/mcp/short/tK6iuxHd",
+                "position": 9
+              },
+              {
+                "screen_id": "5a4d7565-327c-40ca-b33a-20c5d5239343",
+                "image_url": "https://mobbin.com/api/mcp/short/rNlRQZA5",
+                "position": 10
+              },
+              {
+                "screen_id": "347d680e-5500-45a4-8ad3-2dc25f0d4d51",
+                "image_url": "https://mobbin.com/api/mcp/short/20TuoseN",
+                "position": 11
+              }
+            ]
+          }
+        ],
+        "page": 1,
+        "has_next_page": true
+      },
+      "Flow 0: screen 1/8",
+      "Flow 0: screen 5/8",
+      "Flow 0: screen 8/8",
+      "Flow 1: screen 1/11",
+      "Flow 1: screen 4/11",
+      "Flow 1: screen 8/11",
+      "Flow 1: screen 11/11"
+    ],
+    [
+      {
+        "screens": [
+          {
+            "index": 0,
+            "id": "d26ca2e3-e436-4e1a-aec0-f16febdaf4e1",
+            "image_url": "https://mobbin.com/api/mcp/short/jWZuHt6d",
+            "mobbin_url": "https://mobbin.com/screens/d26ca2e3-e436-4e1a-aec0-f16febdaf4e1",
+            "app_name": "Mercor",
+            "platform": "web"
+          },
+          {
+            "index": 1,
+            "id": "4dd590d8-61e7-4435-93df-78b9506d2672",
+            "image_url": "https://mobbin.com/api/mcp/short/bxjEt9Li",
+            "mobbin_url": "https://mobbin.com/screens/4dd590d8-61e7-4435-93df-78b9506d2672",
+            "app_name": "Fiverr",
+            "platform": "web"
+          }
+        ]
+      }
+    ]
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "deployment": "56da2342-9c65-47bb-b34b-06aa6852ce1c",
+  "environment": "staging",
+  "processType": "api",
+  "release": "hq-20260925T223233Z",
+  "sentryConfigured": true,
+  "hashes": {
+    "apps/api/src/app.ts": "57d7806e73554929e415be596e557c8483b45cb4af20d540525ca5e152104868",
+    "apps/api/src/worker.ts": "6d0317932c9be9ad39329f0292488d9590d33c196be14e03a3080eef1d463474",
+    "apps/api/src/observability/dashboard.ts": "8dd5c0d270a8faa7c64c38e321d69cb81eb4e0d42bc3b7fe6b6d9c64dc9f1be6",
+    "apps/api/src/observability/init.ts": "2247cbfa2c1be31b52cf74cea7516dd5d4a999055c9a065de80669617f24a150",
+    "apps/api/src/modules/jobs/jobs.ts": "b9fb7aa47717eb4f3bcf11794a24771f3f20a384daae0fe85ce54ca972755975"
+  },
+  "database": "up",
+  "redis": "PONG",
+  "observability": {
+    "services": [
+      {
+        "key": "api",
+        "status": "up"
+      },
+      {
+        "key": "database",
+        "status": "up"
+      },
+      {
+        "key": "redis",
+        "status": "up"
+      }
+    ],
+    "betterStack": [
+      {
+        "key": "api",
+        "status": "up"
+      },
+      {
+        "key": "checkouts",
+        "status": "up"
+      },
+      {
+        "key": "reconciliation",
+        "status": "pending"
+      },
+      {
+        "key": "audit",
+        "status": "pending"
+      }
+    ],
+    "sentry": {
+      "status": "connected",
+      "projects": [
+        "react-native",
+        "hirequick-api",
+        "hirequick-worker"
+      ],
+      "issueCount": 2
+    }
+  },
+  "service": "prolific-love",
+  "sourceMatches": true
+}

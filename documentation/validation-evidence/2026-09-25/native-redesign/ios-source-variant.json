@@ -1,0 +1,32 @@
+{
+  "baseManifest": "source-manifest.json",
+  "platform": "ios",
+  "approvedBundleIdentifier": "com.ovalay.hirequick",
+  "changedFiles": [
+    {
+      "path": "apps/mobile/app.json",
+      "sha256": "64d2b8a74a04e0b2855f440e5739694e2390d074a5663b427ffa8723dfc102fe"
+    },
+    {
+      "path": "apps/mobile/eas.json",
+      "sha256": "561f4b1010e0f79011d26347aa51298598213b0aa69f4d4fb9fa29044966ca2c"
+    },
+    {
+      "path": "apps/mobile/package.json",
+      "sha256": "4e3938574eac979eaec667ea396f770c09e9e4dae2eb0799202667ec76a9ca65"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "sha256": "b16747c32742518abb2e080e6dcd249e85d1bcc7e4b230018559f06cbe765166"
+    },
+    {
+      "path": "package.json",
+      "sha256": "cc7705ddb26acc1dab7e0ee7972e5cf6691f85ab537ca7a5af38191b9f87342d"
+    }
+  ],
+  "profile": "ios-archive",
+  "distribution": "store",
+  "storeSubmission": false,
+  "snapshotCommit": "2765756b5be7fd7e8e9125343cbde0f14d6f3926",
+  "buildId": "d86b6ad2-ecca-4308-aff3-f0d24ee32d7a"
+}

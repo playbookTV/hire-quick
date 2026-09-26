@@ -10,6 +10,41 @@ datasource db {
   directUrl = env("DIRECT_URL") // direct for migrations + concurrency tests
 }
 
+// Upload keys are single-use references. Clients can PUT only the staging key;
+// finalization copies verified bytes to the immutable key before attachment.
+model UploadIntent {
+  key             String   @id
+  stagingKey      String   @unique
+  ownerId         String   @db.Uuid
+  scopeId         String   @db.Uuid
+  purpose         String
+  contentType     String
+  byteSize        Int
+  expiresAt       DateTime @db.Timestamptz(6)
+  attachExpiresAt DateTime @db.Timestamptz(6)
+  finalizedAt     DateTime? @db.Timestamptz(6)
+  consumedBy      String?
+  consumedAt      DateTime? @db.Timestamptz(6)
+  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([ownerId])
+  @@index([consumedAt, attachExpiresAt])
+  @@map("upload_intents")
+}
+
+// Retain successful tombstones too: a deleted key can never be reattached.
+model StorageDeletion {
+  key           String   @id
+  attempts      Int      @default(0)
+  nextAttemptAt DateTime @default(now()) @db.Timestamptz(6)
+  completedAt   DateTime? @db.Timestamptz(6)
+  lastError     String?
+  createdAt     DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([completedAt, nextAttemptAt])
+  @@map("storage_deletions")
+}
+
 // ---------- enums ----------
 enum UserRole {
   CLIENT
@@ -36,7 +71,7 @@ enum VerificationStatus {
   REJECTED
 }
 
-/** How an usher proved identity. BIOMETRIC = Dojah (NIN/BVN + liveness + face-match). */
+/** How an usher proved identity. BIOMETRIC = Smile ID (NIN/BVN + liveness + face-match). */
 enum VerificationMethod {
   DOCUMENT
   BIOMETRIC
@@ -324,11 +359,10 @@ model UsherVerification {
   reviewedBy    User?               @relation("VerificationReviewer", fields: [reviewedById], references: [id])
   reason        String?
   reasonCode    VerificationRejectReason?
-  // Biometric KYC (Dojah). NIN/BVN are sensitive PII — encrypt at rest / store
-  // minimal (NDPR §); never log raw. The returned government photo is a storage
-  // key (presigned), never inlined. govLookup keeps the raw provider payload.
+  // Smile ID biometric KYC. Legacy Dojah history is retained. No raw IDs/photos
+  // are stored by the provider adapter; govLookup contains curated status only.
   provider         String?
-  dojahReferenceId String?
+  providerReferenceId String? @map("dojahReferenceId")
   nin              String?
   bvn              String?
   livenessPassed   Boolean?
@@ -343,7 +377,7 @@ model UsherVerification {
   reviewedAt       DateTime?          @db.Timestamptz(6)
 
   @@index([usherId])
-  @@index([dojahReferenceId])
+  @@index([providerReferenceId], map: "usher_verifications_dojahReferenceId_idx")
   @@map("usher_verifications")
 }
 

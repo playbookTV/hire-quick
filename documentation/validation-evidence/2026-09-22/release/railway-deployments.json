@@ -1,0 +1,50 @@
+[
+  {
+    "service": "Redis",
+    "id": "2dbb70c4-a61f-4c1e-bf3e-c2116d531c9f",
+    "deployment": "c819707d-de20-42cb-9855-9970da27208d",
+    "status": "SUCCESS",
+    "active": [
+      {
+        "id": "c819707d-de20-42cb-9855-9970da27208d",
+        "status": "SUCCESS"
+      }
+    ]
+  },
+  {
+    "service": "hirequick-worker",
+    "id": "2640683c-6796-4015-92f1-26075852b05c",
+    "deployment": "a5d51c88-4a1b-4093-867c-58fffc80a7e1",
+    "status": "SUCCESS",
+    "active": [
+      {
+        "id": "a5d51c88-4a1b-4093-867c-58fffc80a7e1",
+        "status": "SUCCESS"
+      }
+    ]
+  },
+  {
+    "service": "prolific-love",
+    "id": "85b4bcff-3dbc-48a9-882c-17da83ed20ef",
+    "deployment": "72ec1c14-365d-4f5e-8bb6-520a607defc8",
+    "status": "SUCCESS",
+    "active": [
+      {
+        "id": "72ec1c14-365d-4f5e-8bb6-520a607defc8",
+        "status": "SUCCESS"
+      }
+    ]
+  },
+  {
+    "service": "hirequick-admin",
+    "id": "42070d14-5076-4a76-855f-1edd118f5485",
+    "deployment": "ddfbfa33-088a-4337-9908-ce1be80dcc61",
+    "status": "SUCCESS",
+    "active": [
+      {
+        "id": "ddfbfa33-088a-4337-9908-ce1be80dcc61",
+        "status": "SUCCESS"
+      }
+    ]
+  }
+]

@@ -1,0 +1,255 @@
+{
+  "compactScreenChecks": [
+    {
+      "screen": "client/home",
+      "scrollWidth": 320,
+      "text": "32 jobs · Lekki Phase 1\n₦18,000.00 / day indicative\nTB\nTunde Balogun\n\n\n4.8 · 24 jobs · Ikoyi\n₦18,000.00 / day indicative\nHome\nDiscover\nEvents\nMessages\nProfile",
+      "width": 320
+    },
+    {
+      "screen": "client/discover",
+      "scrollWidth": 320,
+      "text": "n\n\n\n4.8 · 24 jobs · Ikoyi\n₦18,000.00 / day indicative\nNE\nNgozi Eze\n\n\n4.7 · 18 jobs · Lekki\n₦18,000.00 / day indicative\nHome\nDiscover\nEvents\nMessages\nProfile",
+      "width": 320
+    },
+    {
+      "screen": "client/events",
+      "scrollWidth": 320,
+      "text": "0 of 8 confirmed\n8 to fill\nRecruiting\nBirthday party — Lekki\nWed 14 Oct · 4:00 PM\n4 of 4 confirmed\n0 to fill\nFully staffed\nHome\nDiscover\nEvents\nMessages\nProfile",
+      "width": 320
+    },
+    {
+      "screen": "client/messages",
+      "scrollWidth": 320,
+      "text": "hat opens once a booking is confirmed.\nAO\nAdaeze Okonkwo\nWedding — Victoria Island\n2\nNE\nNgozi Eze\nBirthday party — Lekki\n1\nHome\nDiscover\nEvents\nMessages\nProfile",
+      "width": 320
+    },
+    {
+      "screen": "client/profile",
+      "scrollWidth": 320,
+      "text": "\nLagos Events Co.\n+234 803 123 4567\n\nMy bookings\n\n\nAccount settings\n\n\nNotifications\n\n\nHelp & support\n\n\nSign out\n\nHome\nDiscover\nEvents\nMessages\nProfile",
+      "width": 320
+    },
+    {
+      "screen": "usher/home",
+      "scrollWidth": 320,
+      "text": "roduct launch — Ikoyi\nTue 20 Oct · 4:00 PM\nAwaiting payment\nClient has not paid yet\n\nAvailability\nSet the days you can work\n\nHome\nJobs\nMessages\nWallet\nProfile",
+      "width": 320
+    },
+    {
+      "screen": "usher/jobs",
+      "scrollWidth": 320,
+      "text": "ngs\n₦17,000.00\n\nWed 14 Oct · 4:00 PM\n\n12 Ozumba Mbadiwe Ave, Victoria Island, Lagos\n\nFormal · Black tie\n0 of 4 slots left\n\nHome\nJobs\nMessages\nWallet\nProfile",
+      "width": 320
+    },
+    {
+      "screen": "usher/messages",
+      "scrollWidth": 320,
+      "text": "ens once a booking is confirmed.\nCN\nChidi Nwosu\nWedding — Victoria Island\n2\nBP\nBirthday party — Lekki\nBirthday party — Lekki\n1\nHome\nJobs\nMessages\nWallet\nProfile",
+      "width": 320
+    },
+    {
+      "screen": "usher/wallet",
+      "scrollWidth": 320,
+      "text": "\nWedding — Victoria Island\n+₦17,000.00\nReleased · 12 Mar\nBank withdrawal\n−₦15,000.00\nPaid · 10 Mar\nLifetime earned\n₦285,000.00\nHome\nJobs\nMessages\nWallet\nProfile",
+      "width": 320
+    },
+    {
+      "screen": "usher/profile",
+      "scrollWidth": 320,
+      "text": "arrivals, cancellations and no-shows across your jobs.\nRecent reviews\nReviews appear after your first completed job.\nHome\nJobs\nMessages\nWallet\nProfile",
+      "width": 320
+    },
+    {
+      "screen": "client/event-detail",
+      "scrollWidth": 320,
+      "text": "e 30 minutes early. Welcome guests and support the event coordinator.\nInvitations\nBookings\nEvent day\nMessage all\nCancel booking\nSelect staff & pay (8)",
+      "width": 320
+    },
+    {
+      "screen": "modals/event-details",
+      "scrollWidth": 320,
+      "text": " and with no open dispute.\nRequirements\n\nArrive 30 minutes early. Welcome guests and support the event coordinator.\nApply for this job\nSave for later",
+      "width": 320
+    },
+    {
+      "screen": "modals/staff-profile",
+      "scrollWidth": 320,
+      "text": "ce for a booking.\nLanguages\nEnglish\nIgbo\nYoruba\nREVIEWS\nNo reviews yet.\nInvite to an event\nMessaging opens once you have a confirmed booking together.",
+      "width": 320
+    },
+    {
+      "screen": "auth/welcome",
+      "scrollWidth": 320,
+      "text": "s Lagos. Payment is held securely until work is completed and the dispute window closes.\nGet started\nI already have an account\nRead our Privacy policy",
+      "width": 320
+    },
+    {
+      "screen": "auth/role",
+      "scrollWidth": 320,
+      "text": " needs support.\nI’m hiring staff\nCreate events and book verified ushers for them.\nI’m an usher\nFind event work and get paid into your wallet.\nContinue",
+      "width": 320
+    },
+    {
+      "screen": "auth/phone",
+      "scrollWidth": 320,
+      "text": "\nloading\nerror\nDark\n\nWhat’s your number?\nWe’ll send a 6-digit code to confirm it’s you.\nPhone number\n+234\nStandard message rates may apply.\nSend code",
+      "width": 320
+    },
+    {
+      "screen": "auth/otp",
+      "scrollWidth": 320,
+      "text": "ome\nauth/role\nauth/phone\nauth/otp\nready\nempty\nloading\nerror\nDark\n\nEnter your code\nSent to +2348031234567.\nVerification code\nResend code in 30s\nVerify",
+      "width": 320
+    }
+  ],
+  "stateChecks": [
+    {
+      "screen": "client/home",
+      "state": "empty",
+      "error": false,
+      "scrollWidth": 320,
+      "width": 320
+    },
+    {
+      "screen": "client/home",
+      "state": "loading",
+      "error": false,
+      "scrollWidth": 320,
+      "width": 320
+    },
+    {
+      "screen": "client/home",
+      "state": "error",
+      "error": false,
+      "scrollWidth": 320,
+      "width": 320
+    },
+    {
+      "screen": "client/discover",
+      "state": "empty",
+      "error": false,
+      "scrollWidth": 320,
+      "width": 320
+    },
+    {
+      "screen": "client/discover",
+      "state": "loading",
+      "error": false,
+      "scrollWidth": 320,
+      "width": 320
+    },
+    {
+      "screen": "client/discover",
+      "state": "error",
+      "error": false,
+      "scrollWidth": 320,
+      "width": 320
+    },
+    {
+      "screen": "client/events",
+      "state": "empty",
+      "error": false,
+      "scrollWidth": 320,
+      "width": 320
+    },
+    {
+      "screen": "client/events",
+      "state": "loading",
+      "error": false,
+      "scrollWidth": 320,
+      "width": 320
+    },
+    {
+      "screen": "client/events",
+      "state": "error",
+      "error": false,
+      "scrollWidth": 320,
+      "width": 320
+    },
+    {
+      "screen": "client/messages",
+      "state": "empty",
+      "error": false,
+      "scrollWidth": 320,
+      "width": 320
+    },
+    {
+      "screen": "client/messages",
+      "state": "loading",
+      "error": false,
+      "scrollWidth": 320,
+      "width": 320
+    },
+    {
+      "screen": "client/messages",
+      "state": "error",
+      "error": false,
+      "scrollWidth": 320,
+      "width": 320
+    },
+    {
+      "screen": "usher/home",
+      "state": "empty",
+      "error": false,
+      "scrollWidth": 320,
+      "width": 320
+    },
+    {
+      "screen": "usher/home",
+      "state": "loading",
+      "error": false,
+      "scrollWidth": 320,
+      "width": 320
+    },
+    {
+      "screen": "usher/home",
+      "state": "error",
+      "error": false,
+      "scrollWidth": 320,
+      "width": 320
+    },
+    {
+      "screen": "usher/jobs",
+      "state": "empty",
+      "error": false,
+      "scrollWidth": 320,
+      "width": 320
+    },
+    {
+      "screen": "usher/jobs",
+      "state": "loading",
+      "error": false,
+      "scrollWidth": 320,
+      "width": 320
+    },
+    {
+      "screen": "usher/jobs",
+      "state": "error",
+      "error": false,
+      "scrollWidth": 320,
+      "width": 320
+    },
+    {
+      "screen": "usher/wallet",
+      "state": "empty",
+      "error": false,
+      "scrollWidth": 320,
+      "width": 320
+    },
+    {
+      "screen": "usher/wallet",
+      "state": "loading",
+      "error": false,
+      "scrollWidth": 320,
+      "width": 320
+    },
+    {
+      "screen": "usher/wallet",
+      "state": "error",
+      "error": false,
+      "scrollWidth": 320,
+      "width": 320
+    }
+  ]
+}

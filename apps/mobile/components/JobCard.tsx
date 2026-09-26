@@ -1,17 +1,12 @@
-/**
- * JobCard — matches Figma `JobCard` (91:21): title (Title/M) + pay (Amount/M,
- * emerald) on one row; a date/distance meta row; then a dress chip + star/rating
- * with a trailing primary "Apply" button.
- */
+/** Figma JobCard: earnings and three readable metadata rows. */
 import { Pressable } from 'react-native';
-import { useTheme, Box, Text } from '../theme/restyle.js';
+import { Box, Text } from '../theme/restyle.js';
 import { Button } from './Button.js';
 import { Icon } from './Icon.js';
-import { AnimatedPressable } from './Pressable.js';
-import { shadowSm } from '../theme/shadows.js';
+import { MetaRow } from './MetaRow.js';
+import { StatusPill } from './StatusPill.js';
 
 type BadgeTone = 'gold' | 'emerald' | 'danger' | 'muted';
-
 interface JobCardProps {
   title: string;
   pay: string;
@@ -26,114 +21,91 @@ interface JobCardProps {
   actionLabel?: string;
   onAction?: () => void;
   onPress?: () => void;
+  slots?: string;
 }
-
-const BADGE_COLORS: Record<BadgeTone, { bg: keyof ReturnType<typeof useTheme>['colors']; fg: keyof ReturnType<typeof useTheme>['colors'] }> = {
-  gold: { bg: 'accentGoldTint', fg: 'accentGoldStrong' },
-  emerald: { bg: 'brandEmeraldTintWeak', fg: 'brandEmerald' },
-  danger: { bg: 'bgSubtle', fg: 'statusDanger' },
-  muted: { bg: 'bgSubtle', fg: 'inkMuted' },
-};
-
 export function JobCard({
   title,
   pay,
   date,
   distance,
   dress,
-  rating,
   badge,
-  badgeTone = 'gold',
+  badgeTone = 'muted',
   saved,
   onToggleSave,
-  actionLabel = 'Apply',
+  actionLabel = 'View',
   onAction,
   onPress,
+  slots,
 }: JobCardProps): React.JSX.Element {
-  const theme = useTheme();
-  const badgeColor = BADGE_COLORS[badgeTone];
-  const card = (
-    <Box
-      backgroundColor="bgSurface"
-      borderWidth={1}
-      borderColor="borderDefault"
-      borderRadius="lg"
-      padding="400"
-      style={[{ gap: 12 }, shadowSm]}
-    >
-        <Box flexDirection="row" alignItems="center" justifyContent="space-between" style={{ gap: 8 }}>
-          <Text variant="titleM" style={{ flex: 1 }} numberOfLines={1}>
+  return (
+    <Box backgroundColor="bgSurface" borderWidth={1} borderColor="borderDefault" borderRadius="lg">
+      <Pressable
+        onPress={onPress ?? onAction}
+        accessibilityRole="button"
+        accessibilityLabel={`View ${title}`}
+        style={({ pressed }) => ({ padding: 16, opacity: pressed ? 0.75 : 1 })}
+      >
+        <Box gap="300">
+          <Text variant="headingS" style={{ paddingRight: onToggleSave ? 36 : 0 }}>
             {title}
           </Text>
-          {onToggleSave ? (
-            <Pressable onPress={onToggleSave} hitSlop={8}>
-              <Icon name="bookmark" size={18} color={saved ? 'brandEmerald' : 'inkFaint'} />
-            </Pressable>
-          ) : null}
-          <Text variant="amountM" color="brandEmerald">
-            {pay}
-          </Text>
-        </Box>
-
-        {badge ? (
-          <Box style={{ alignSelf: 'flex-start', backgroundColor: theme.colors[badgeColor.bg], paddingHorizontal: 10, paddingVertical: 3, borderRadius: theme.borderRadii.pill }}>
-            <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 11, lineHeight: 14, letterSpacing: 1 }} color={badgeColor.fg}>
-              {badge}
+          <Box flexDirection="row" flexWrap="wrap" justifyContent="space-between" gap="200">
+            <Text variant="bodySm" color="inkMuted">
+              Estimated earnings
             </Text>
+            <Text variant="amountM">{pay}</Text>
           </Box>
-        ) : null}
-
-        <Box flexDirection="row" alignItems="center" style={{ gap: 8 }}>
-          <Icon name="calendar" size={15} color="inkMuted" />
-          <Text variant="bodySm" color="inkMuted">
-            {date}
-          </Text>
-          <Icon name="map-pin" size={15} color="inkMuted" />
-          <Text variant="bodySm" color="inkMuted">
-            {distance}
-          </Text>
-        </Box>
-
-        <Box flexDirection="row" alignItems="center" justifyContent="space-between">
-          <Box flexDirection="row" alignItems="center" style={{ gap: 8 }}>
-            {dress ? (
-              <Box
-                style={{
-                  backgroundColor: theme.colors.bgSubtle,
-                  paddingHorizontal: 12,
-                  paddingVertical: 4,
-                  borderRadius: theme.borderRadii.pill,
-                }}
-              >
-                <Text
-                  style={{
-                    fontFamily: 'PlusJakartaSans_600SemiBold',
-                    fontSize: 13,
-                    lineHeight: 16,
-                    letterSpacing: 0.2,
-                    color: theme.colors.inkDefault,
-                  }}
-                >
-                  {dress}
-                </Text>
-              </Box>
-            ) : null}
-            {rating ? (
-              <Box flexDirection="row" alignItems="center" style={{ gap: 3 }}>
-                <Icon name="star" size={14} color="accentGold" />
-                <Text variant="bodySm" color="inkMuted">
-                  {rating}
-                </Text>
-              </Box>
-            ) : null}
+          <Box>
+            <MetaRow icon="calendar" text={date} />
+            <MetaRow icon="map-pin" text={distance} />
+            {dress ? <MetaRow icon="briefcase" text={dress} /> : null}
           </Box>
-          {onAction ? (
-            <Button label={actionLabel} variant="primary" size="md" fullWidth={false} onPress={onAction} />
+          {slots ? (
+            <Text variant="label" color="inkMuted">
+              {slots}
+            </Text>
+          ) : null}
+          {badge ? (
+            <StatusPill
+              status={
+                badgeTone === 'emerald'
+                  ? 'CONFIRMED'
+                  : badgeTone === 'gold'
+                    ? 'PENDING_PAYMENT'
+                    : badgeTone === 'danger'
+                      ? 'NO_SHOW'
+                      : ''
+              }
+              label={badge}
+            />
           ) : null}
         </Box>
-      </Box>
+      </Pressable>
+      {onToggleSave ? (
+        <Pressable
+          onPress={onToggleSave}
+          accessibilityRole="button"
+          accessibilityState={{ selected: !!saved }}
+          accessibilityLabel={saved ? `Unsave ${title}` : `Save ${title}`}
+          style={{
+            position: 'absolute',
+            top: 4,
+            right: 4,
+            width: 44,
+            height: 44,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Icon name="bookmark" size={19} color={saved ? 'brandAccentText' : 'inkMuted'} />
+        </Pressable>
+      ) : null}
+      {!onPress && onAction ? (
+        <Box paddingHorizontal="400" paddingBottom="300">
+          <Button label={actionLabel} variant="ghost" size="md" onPress={onAction} />
+        </Box>
+      ) : null}
+    </Box>
   );
-
-  if (!onPress) return card;
-  return <AnimatedPressable onPress={onPress}>{card}</AnimatedPressable>;
 }

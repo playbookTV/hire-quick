@@ -3,13 +3,21 @@ import type { BookingStatus, EventStatus } from '@hq/database';
 import { eventInstant, staffingStatus } from '../staffing.js';
 import { invitationCanReply } from '../recruitment.js';
 
-const event = { status: 'FULLY_STAFFED' as EventStatus, headcount: 2, eventDate: new Date('2027-06-01'), startTime: '10:00', endTime: '18:00' };
+const event = {
+  status: 'FULLY_STAFFED' as EventStatus,
+  headcount: 2,
+  eventDate: new Date('2027-06-01'),
+  startTime: '10:00',
+  endTime: '18:00',
+};
 const before = new Date('2027-06-01T08:00:00Z');
 const during = new Date('2027-06-01T09:00:00Z');
 const after = new Date('2027-06-01T17:00:00Z');
 describe('event staffing rules', () => {
   it('uses Lagos time and closes recruitment at the start instant', () => {
-    expect(eventInstant(event.eventDate, event.startTime).toISOString()).toBe('2027-06-01T09:00:00.000Z');
+    expect(eventInstant(event.eventDate, event.startTime).toISOString()).toBe(
+      '2027-06-01T09:00:00.000Z',
+    );
     expect(staffingStatus(event, [], during)).toBe('IN_PROGRESS');
   });
   it('counts pending checkout as occupied and reopens only vacated future slots', () => {
@@ -24,11 +32,21 @@ describe('event staffing rules', () => {
     expect(staffingStatus({ ...event, status: 'IN_PROGRESS' }, [], before)).toBe('IN_PROGRESS');
     expect(staffingStatus(event, ['PAID', 'REFUNDED'], during)).toBe('IN_PROGRESS');
     expect(staffingStatus(event, [], after)).toBe('COMPLETED');
-    expect(staffingStatus(event, ['PAID', 'CANCELLED', 'NO_SHOW', 'REFUNDED'], after)).toBe('COMPLETED');
+    expect(staffingStatus(event, ['PAID', 'CANCELLED', 'NO_SHOW', 'REFUNDED'], after)).toBe(
+      'COMPLETED',
+    );
   });
-  it.each(['PENDING_PAYMENT', 'CONFIRMED', 'CHECKED_IN', 'COMPLETED', 'DISPUTED'] as BookingStatus[])('keeps unresolved %s event open for resolution', (status) => {
-    expect(staffingStatus(event, [status], after)).toBe('IN_PROGRESS');
+  it('finishes completed work at event end while earnings remain held', () => {
+    expect(staffingStatus(event, ['COMPLETED', 'PAID'], during)).toBe('IN_PROGRESS');
+    expect(staffingStatus(event, ['COMPLETED', 'PAID'], after)).toBe('COMPLETED');
+    expect(staffingStatus(event, ['COMPLETED', 'CONFIRMED'], after)).toBe('IN_PROGRESS');
   });
+  it.each(['PENDING_PAYMENT', 'CONFIRMED', 'CHECKED_IN', 'DISPUTED'] as BookingStatus[])(
+    'keeps unresolved %s event open for resolution',
+    (status) => {
+      expect(staffingStatus(event, [status], after)).toBe('IN_PROGRESS');
+    },
+  );
   it('permits reply replay and pre-booking withdrawal, with declined/expired cycles closed', () => {
     expect(invitationCanReply('SENT', 'ACCEPTED')).toBe(true);
     expect(invitationCanReply('SENT', 'DECLINED')).toBe(true);

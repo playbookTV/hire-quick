@@ -13,6 +13,7 @@ export const SCHEDULES = [
   { name: 'commission', pattern: '23 4 * * *', attempts: 3 },
   { name: 'checkouts', pattern: '2-59/5 * * * *', attempts: 3 },
   { name: 'resumeOps', pattern: '*/15 * * * *', attempts: 3 },
+  { name: 'storageCleanup', pattern: '4-59/5 * * * *', attempts: 3 },
   { name: 'retentionPurge', pattern: '41 2 * * *', attempts: 1 },
   { name: 'auditVerify', pattern: '47 2 * * *', attempts: 3 },
 ] as const;
@@ -58,6 +59,7 @@ export function createScheduledRuntime(options: {
   queueName?: string;
   startupTimeoutMs?: number;
   log: (message: string) => void;
+  onError?: (error: unknown) => void;
   dispose?: () => void | Promise<void>;
 }): ScheduledRuntime {
   const prefix = options.queueName ?? QUEUE_NAME;
@@ -89,7 +91,10 @@ export function createScheduledRuntime(options: {
     const queue = new Queue(name, {
       connection: { ...options.connection, maxRetriesPerRequest: 1 },
     });
-    queue.on('error', () => options.log(`[worker] queue connection error: ${name}`));
+    queue.on('error', (error) => {
+      options.log(`[worker] queue connection error: ${name}`);
+      options.onError?.(error);
+    });
     queues.push(queue);
     return queue;
   }
@@ -100,7 +105,10 @@ export function createScheduledRuntime(options: {
       autorun: false,
       concurrency: 1,
     });
-    worker.on('error', () => options.log(`[worker] worker connection/runtime error: ${name}`));
+    worker.on('error', (error) => {
+      options.log(`[worker] worker connection/runtime error: ${name}`);
+      options.onError?.(error);
+    });
     worker.on('failed', (job) =>
       options.log(`[worker] ${name} job failed (attempt ${String(job?.attemptsMade ?? 0)})`),
     );
@@ -173,7 +181,10 @@ export function createScheduledRuntime(options: {
       for (const worker of workers) {
         void worker
           .run()
-          .catch(() => options.log(`[worker] processing loop failed: ${worker.name}`));
+          .catch((error: unknown) => {
+            options.log(`[worker] processing loop failed: ${worker.name}`);
+            options.onError?.(error);
+          });
       }
     } catch {
       await close();

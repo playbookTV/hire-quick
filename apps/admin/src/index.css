@@ -447,3 +447,49 @@ a.stat-card:hover {
       border-color 120ms ease;
   }
 }
+
+/* Monitoring uses the same quiet surfaces and status language as operations. */
+.monitor-intro { margin: -12px 0 28px; }
+.monitor-auto { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 13px; }
+.monitor-auto input { min-height: auto; width: 16px; height: 16px; accent-color: #17664d; }
+.monitor-summary { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 24px; padding: 24px 28px; background: #e9f0e8; border-radius: 12px; }
+.monitor-summary-attention { background: #fff0df; }
+.monitor-eyebrow { font-size: 11px; font-weight: 650; letter-spacing: .1em; }
+.monitor-summary h2 { margin: 10px 0 8px; font-size: clamp(20px, 2vw, 26px); letter-spacing: -.025em; }
+.monitor-summary p { font-size: 14px; margin: 0; }
+.monitor-updated { display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+.monitor-updated strong { font-size: 13px; font-variant-numeric: tabular-nums; }
+.monitor-section { margin-top: 36px; }
+.monitor-section-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.monitor-section-heading h2 { margin: 0 0 6px; }
+.monitor-section-heading p { margin: 0; font-size: 14px; }
+.monitor-services, .monitor-checks { display: grid; gap: 16px; }
+.monitor-services { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.monitor-checks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.monitor-card, .monitor-errors { background: white; border-radius: 12px; box-shadow: 0 1px 3px #1733270c, 0 0 0 1px #17332716; }
+.monitor-card { padding: 22px; min-width: 0; }
+.monitor-card-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.monitor-card h3 { font-size: 15px; font-weight: 650; margin: 0; }
+.monitor-card p { margin: 14px 0 0; font-size: 13px; line-height: 1.6; }
+.monitor-status { display: inline-flex; align-items: center; gap: 6px; padding: 5px 8px; border-radius: 6px; background: #eef1ee; color: #4d5e53; font-size: 12px; font-weight: 600; }
+.monitor-status > span { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.monitor-status-up { background: #e8f3e9; color: #24613a; }
+.monitor-status-down { background: #ffebe6; color: #992d24; }
+.monitor-status-paused, .monitor-status-pending, .monitor-status-unavailable, .monitor-status-not_configured, .monitor-status-unknown { background: #fff1d9; color: #795318; }
+.monitor-metadata { display: flex; flex-wrap: wrap; gap: 16px 24px; font-size: 12px; margin: 20px 0 0; padding-top: 16px; border-top: 1px solid #edf0eb; }
+.monitor-metadata dt { color: #56635b; margin-bottom: 6px; }
+.monitor-metadata dd { margin: 0; font-variant-numeric: tabular-nums; }
+.monitor-link { display: inline-flex; align-items: center; min-height: 44px; color: #17664d; font-size: 13px; font-weight: 600; text-underline-offset: 4px; }
+.monitor-link:hover { text-decoration: underline; }
+.monitor-footnote { font-size: 12px; line-height: 1.7; margin-top: 14px; }
+.monitor-errors > .monitor-footnote { padding: 18px 22px 0; margin: 0; }
+.monitor-empty { padding: 28px; }
+.monitor-empty h3 { font-size: 16px; margin: 12px 0 8px; }
+.monitor-empty p { font-size: 14px; max-width: 70ch; line-height: 1.6; }
+.monitor-issues { list-style: none; padding: 0 22px; margin: 0; }
+.monitor-issues li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; padding: 16px 0; }
+.monitor-issues li + li { border-top: 1px solid #edf0eb; }
+.monitor-issues p { margin: 0; font-size: 12px; }
+.monitor-issue-count { display: flex; flex-direction: column; justify-content: center; gap: 8px; font-size: 12px; font-variant-numeric: tabular-nums; }
+@media (max-width: 1050px) { .monitor-services { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .monitor-checks { grid-template-columns: 1fr; } .monitor-summary { padding: 22px; } }

@@ -1,0 +1,11 @@
+{
+  "checkedAt": "2026-09-24T17:56:49.731Z",
+  "mode": "test",
+  "kind": "withdrawal",
+  "reference": "wd_e03a562a-9a30-4f49-9be3-72d7426a5977",
+  "amountKobo": 85000,
+  "beforeStatus": "otp",
+  "afterStatus": "success",
+  "finalizePosts": 1,
+  "newTransferPosts": 0
+}

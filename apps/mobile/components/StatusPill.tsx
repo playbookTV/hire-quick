@@ -1,12 +1,8 @@
-/**
- * StatusPill — matches Figma `StatusPill` (84:32). Each booking/event status has
- * an intrinsic bg + text colour + label (Label/M, px12/py5, radius pill).
- * Booking colours are taken verbatim from the file; event statuses extend the
- * same palette.
- */
+/** Figma StatusPill; payment labels distinguish wallet release from bank withdrawal. */
 import { useTheme, Box, Text } from '../theme/restyle.js';
 import type { Theme } from '../theme/theme.js';
-import { fonts } from '../theme/fonts.js';
+import { Image } from 'expo-image';
+import statusDot from '../assets/icons/status-dot.svg';
 
 type C = keyof Theme['colors'];
 interface Entry {
@@ -16,17 +12,30 @@ interface Entry {
 }
 
 const STATUS: Record<string, Entry> = {
+  VERIFIED: { label: 'Identity verified', bg: 'statusSuccessTint', fg: 'statusSuccess' },
+  VERIFICATION_PENDING: {
+    label: 'Verification pending',
+    bg: 'statusWarningTint',
+    fg: 'statusWarning',
+  },
+  VERIFICATION_REJECTED: {
+    label: 'Verification rejected',
+    bg: 'statusDangerTint',
+    fg: 'statusDanger',
+  },
   // booking lifecycle (exact Figma mapping)
-  CONFIRMED: { label: 'Booked', bg: 'statusSuccessTint', fg: 'statusSuccess' },
+  CONFIRMED: { label: 'Confirmed', bg: 'statusSuccessTint', fg: 'statusSuccess' },
   CHECKED_IN: { label: 'Checked in', bg: 'statusInfoTint', fg: 'statusInfo' },
-  COMPLETED: { label: 'Completed', bg: 'brandEmeraldTint', fg: 'brandEmerald' },
-  PAID: { label: 'Paid', bg: 'brandSurface', fg: 'inverseInk' },
-  PENDING_PAYMENT: { label: 'Awaiting payment', bg: 'bgSubtle', fg: 'inkMuted' },
-  CANCELLED: { label: 'Cancelled', bg: 'statusDangerTint', fg: 'statusDanger' },
+  COMPLETED: { label: 'Work completed', bg: 'statusSuccessTint', fg: 'statusSuccess' },
+  PAID: { label: 'Paid', bg: 'statusSuccessTint', fg: 'moneyAvailable' },
+  PENDING_PAYMENT: { label: 'Awaiting payment', bg: 'statusWarningTint', fg: 'statusWarning' },
+  CANCELLED: { label: 'Cancelled', bg: 'bgSubtle', fg: 'inkMuted' },
   NO_SHOW: { label: 'No-show', bg: 'statusDangerTint', fg: 'statusDanger' },
-  DISPUTED: { label: 'Disputed', bg: 'accentGoldTint', fg: 'accentGoldStrong' },
-  REFUNDED: { label: 'Refunded', bg: 'bgSubtle', fg: 'inkMuted' },
-  HELD: { label: 'Held', bg: 'accentGoldTint', fg: 'statusHeld' },
+  DISPUTED: { label: 'Disputed', bg: 'statusDangerTint', fg: 'statusDanger' },
+  REFUNDED: { label: 'Refunded', bg: 'statusInfoTint', fg: 'statusInfo' },
+  HELD: { label: 'Funds held', bg: 'accentGoldTint', fg: 'statusHeld' },
+  RELEASED: { label: 'Released', bg: 'statusSuccessTint', fg: 'moneyAvailable' },
+  WITHDRAWN: { label: 'Withdrawn', bg: 'bgSubtle', fg: 'inkDefault' },
   // event lifecycle (same palette)
   DRAFT: { label: 'Draft', bg: 'bgSubtle', fg: 'inkMuted' },
   OPEN: { label: 'Open', bg: 'statusInfoTint', fg: 'statusInfo' },
@@ -55,21 +64,22 @@ export function StatusPill({ status, label }: StatusPillProps): React.JSX.Elemen
     <Box
       style={{
         alignSelf: 'flex-start',
-        paddingHorizontal: 12,
-        paddingVertical: 5,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: theme.spacing['150'],
+        paddingHorizontal: theme.spacing['200'],
+        paddingVertical: theme.spacing['100'],
         borderRadius: theme.borderRadii.pill,
         backgroundColor: theme.colors[entry.bg],
       }}
     >
-      <Text
-        style={{
-          fontFamily: fonts.sansSemibold,
-          fontSize: 13,
-          lineHeight: 16,
-          letterSpacing: 0.2,
-          color: theme.colors[entry.fg],
-        }}
-      >
+      <Image
+        source={statusDot}
+        tintColor={theme.colors[entry.fg]}
+        style={{ width: 6, height: 6 }}
+        accessible={false}
+      />
+      <Text variant="label" color={entry.fg} style={{ flexShrink: 1 }}>
         {label ?? entry.label}
       </Text>
     </Box>

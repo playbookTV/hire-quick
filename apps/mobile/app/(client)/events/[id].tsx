@@ -1,9 +1,3 @@
-/**
- * Event detail — matches Figma `Client / 13 Event Management` (30:291):
- * title + StatusPill + meta, a confirmed/slots progress card with dots, the
- * staffing economics, quick action chips, and a "Review applications" CTA. Live
- * from GET /api/events/:id (roster detail lands with the bookings API).
- */
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,13 +6,11 @@ import { Screen } from '../../../components/Screen.js';
 import { AppBar } from '../../../components/AppBar.js';
 import { Card } from '../../../components/Card.js';
 import { StatusPill } from '../../../components/StatusPill.js';
-import { CoverImage } from '../../../components/CoverImage.js';
-import { CategoryBadge } from '../../../components/CategoryBadge.js';
-import { MetaRow } from '../../../components/MetaRow.js';
+import { Icon } from '../../../components/Icon.js';
+import { screenTokens } from '../../../theme/token-manager.js';
 import { KeyValueRow } from '../../../components/KeyValueRow.js';
 import { SectionHeader } from '../../../components/SectionHeader.js';
 import { Button } from '../../../components/Button.js';
-import { Dot } from '../../../components/Dot.js';
 import { EmptyState } from '../../../components/EmptyState.js';
 import { Loading } from '../../../components/Loading.js';
 import { useTheme, Box, Text } from '../../../theme/restyle.js';
@@ -40,9 +32,11 @@ function ActionChip({
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
       style={{
         paddingHorizontal: 16,
-        paddingVertical: 8,
+        paddingVertical: 12,
+        minHeight: 44,
         borderRadius: theme.borderRadii.pill,
         borderWidth: 1.5,
         borderColor: danger ? theme.colors.statusDanger : theme.colors.borderStrong,
@@ -104,7 +98,6 @@ export default function EventDetail(): React.JSX.Element {
   const confirmed = event.staffing?.confirmed ?? 0;
   const open = event.staffing?.available ?? 0;
   const requirements = event.preferences?.requirements;
-  const dots = Math.min(event.headcount, 12);
   // Editable only before any booking is confirmed (mirrors the PATCH guard).
   const editable =
     (event.status === 'OPEN' || event.status === 'PARTIALLY_STAFFED') &&
@@ -114,76 +107,77 @@ export default function EventDetail(): React.JSX.Element {
     <Box flex={1} backgroundColor="bgCanvas">
       <AppBar showBack inset title="Event" />
       <Screen scroll>
-        {/* hero */}
-        <Box marginBottom="400">
-          <CoverImage category={event.category} height={110}>
-            <CategoryBadge category={event.category} size="sm" />
-          </CoverImage>
-        </Box>
-
-        {/* header */}
-        <Box
-          flexDirection="row"
-          alignItems="center"
-          justifyContent="space-between"
-          style={{ gap: 12 }}
-          marginBottom="200"
-        >
-          <Text variant="h1" style={{ flex: 1 }} numberOfLines={2}>
-            {event.title}
-          </Text>
-          <StatusPill status={event.status} />
-        </Box>
-        <MetaRow
-          icon="calendar"
-          text={`${formatEventDate(event.eventDate)} · ${formatTimeRange(event.startTime, event.endTime)}`}
-        />
-        <MetaRow
-          icon="map-pin"
-          text={event.state ? `${event.venue} · ${event.state}` : event.venue}
-        />
-
-        {/* progress */}
-        <Box height={20} />
-        <Card>
-          <Box
-            flexDirection="row"
-            alignItems="center"
-            justifyContent="space-between"
-            marginBottom="300"
-          >
-            <Text variant="titleM">
-              {confirmed} of {event.headcount} confirmed
-            </Text>
-            <Text variant="bodySm" color="inkMuted">
-              {open} slot{open === 1 ? '' : 's'} open
-            </Text>
-          </Box>
-          <Text variant="bodySm" color="inkMuted">
-            {event.staffing?.reserved ?? 0} awaiting payment
-          </Text>
-          <Box flexDirection="row" style={{ gap: 4 }}>
-            {Array.from({ length: dots }).map((_, i) => (
-              <Dot key={i} filled={i < confirmed} />
-            ))}
-          </Box>
-        </Card>
-
-        {/* staffing */}
-        <Box height={20} />
-        <SectionHeader title="Staffing" />
-        <Card>
-          <KeyValueRow label="Staff needed" value={String(event.headcount)} />
-          <KeyValueRow label="Budget / head" value={formatNaira(kobo(event.budgetPerHead))} />
-          {event.dressCode ? <KeyValueRow label="Dress code" value={event.dressCode} /> : null}
-          <Box height={1} backgroundColor="borderDefault" marginVertical="200" />
-          <KeyValueRow
-            label="Estimated staffing budget"
-            value={formatNaira(total)}
-            tone="brand"
-            emphasize
+        <Box gap="400">
+          <Text variant="h1">{event.title}</Text>
+          <StatusPill
+            status={event.status}
+            label={event.status === 'OPEN' ? 'Recruiting' : undefined}
           />
-        </Card>
+          <Card>
+            <Box gap="400">
+              {(
+                [
+                  [
+                    'calendar',
+                    'Date & time',
+                    `${formatEventDate(event.eventDate)} · ${formatTimeRange(event.startTime, event.endTime)}`,
+                  ],
+                  [
+                    'map-pin',
+                    'Venue',
+                    event.state ? `${event.venue}, ${event.state}` : event.venue,
+                  ],
+                  ['user', 'Headcount', `${event.headcount} ushers`],
+                  ['briefcase', 'Dress code', event.dressCode ?? event.category],
+                ] as const
+              ).map(([icon, label, value]) => (
+                <Box key={label} flexDirection="row" alignItems="flex-start" gap="300">
+                  <Icon name={icon} size={18} color="inkMuted" />
+                  <Box flex={1} gap="100">
+                    <Text variant="bodySm" color="inkMuted">
+                      {label}
+                    </Text>
+                    <Text variant="label">{value}</Text>
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          </Card>
+          <Card>
+            <Text variant="overline" color="inkMuted" marginBottom="200">
+              BUDGET
+            </Text>
+            <KeyValueRow label="Per usher" value={formatNaira(kobo(event.budgetPerHead))} />
+            <KeyValueRow label={`${event.headcount} ushers`} value={formatNaira(total)} emphasize />
+            <Text variant="bodySm" color="inkMuted" marginTop="200">
+              Payments and held funds are shown per booking.
+            </Text>
+          </Card>
+          <Box gap="200">
+            <Box flexDirection="row" flexWrap="wrap" justifyContent="space-between" gap="100">
+              <Text variant="label">
+                {confirmed} of {event.headcount} confirmed
+              </Text>
+              <Text variant="bodySm" color="inkMuted">
+                {open} slots open
+              </Text>
+            </Box>
+            <Box height={6} backgroundColor="bgSubtle" borderRadius="pill" overflow="hidden">
+              <Box
+                height={6}
+                backgroundColor="brandAccent"
+                style={{
+                  width: `${event.headcount ? Math.min(100, (confirmed / event.headcount) * 100) : 0}%`,
+                }}
+              />
+            </Box>
+            {(event.staffing?.reserved ?? 0) > 0 ? (
+              <Text variant="bodySm" color="moneyHeld">
+                {event.staffing?.reserved} awaiting payment
+              </Text>
+            ) : null}
+          </Box>
+        </Box>
 
         {requirements ? (
           <>
@@ -196,13 +190,6 @@ export default function EventDetail(): React.JSX.Element {
             </Card>
           </>
         ) : null}
-
-        {/* primary action */}
-        <Box height={20} />
-        <Button
-          label={`Review applications${applicants ? ` (${applicants})` : ''}`}
-          onPress={() => router.push({ pathname: '/(modals)/applications', params: { id } })}
-        />
 
         {/* secondary actions */}
         <Box height={16} />
@@ -255,6 +242,23 @@ export default function EventDetail(): React.JSX.Element {
         </Box>
         <Box style={{ height: insets.bottom }} />
       </Screen>
+      <Box
+        backgroundColor="bgCanvas"
+        style={{
+          paddingHorizontal: screenTokens.gutter,
+          paddingTop: 12,
+          paddingBottom: insets.bottom + 12,
+        }}
+      >
+        <Button
+          label={
+            ['OPEN', 'PARTIALLY_STAFFED'].includes(event.status)
+              ? `Select staff & pay${applicants ? ` (${applicants})` : ''}`
+              : 'View applications'
+          }
+          onPress={() => router.push({ pathname: '/(modals)/applications', params: { id } })}
+        />
+      </Box>
     </Box>
   );
 }

@@ -1,64 +1,27 @@
 /**
- * KYC document upload (TRD §14). Two-step, server-issued presigned flow:
+ * KYC document upload (TRD §14). Verified, server-issued presigned flow:
  *   1. POST /api/me/verification/upload-url → { url, key } (server-owned key)
  *   2. PUT the file bytes straight to object storage (R2) at that URL
- * The API never sees the bytes; we then submit the returned `key` to
- * POST /api/me/verification. Native uploads aren't subject to browser CORS.
+ *   3. POST /api/me/uploads/finalize checks the uploaded file and copies it to a saved key.
+ * Submit that verified key to the profile or message endpoint. Native uploads aren't subject to browser CORS.
  */
 import * as ImagePicker from 'expo-image-picker';
 import { api } from './client.js';
+import { transferUpload } from './upload-transfer.js';
 
 export type DocKind = 'id' | 'selfie';
 export type PickSource = 'library' | 'camera';
 
 export interface PickedAsset {
   uri: string;
+  fileSize?: number | undefined;
   mimeType?: string | undefined;
   fileName?: string | null | undefined;
 }
 
-const EXT_BY_TYPE: Record<string, string> = {
-  'image/jpeg': 'jpg',
-  'image/jpg': 'jpg',
-  'image/png': 'png',
-  'image/webp': 'webp',
-  'image/heic': 'heic',
-  'image/heif': 'heif',
-};
-
-function extFor(asset: PickedAsset, contentType: string): string {
-  const fromName = asset.fileName?.split('.').pop();
-  if (fromName && /^[a-z0-9]{1,5}$/i.test(fromName)) return fromName.toLowerCase();
-  return EXT_BY_TYPE[contentType] ?? 'jpg';
-}
-
-/** PUT the picked bytes straight to storage at the presigned URL. */
-async function putBytes(url: string, contentType: string, asset: PickedAsset): Promise<void> {
-  const fileRes = await fetch(asset.uri);
-  const blob = await fileRes.blob();
-  const put = await fetch(url, {
-    method: 'PUT',
-    headers: { 'content-type': contentType },
-    body: blob,
-  });
-  if (!put.ok) throw new Error(`Upload failed (${put.status})`);
-}
-
-/**
- * Two-step presigned upload: ask `path` for a presigned PUT URL + server-owned
- * key, PUT the bytes straight to storage, return the key. Shared by KYC docs and
- * profile/portfolio photos — they differ only in the endpoint and `kind`.
- */
 async function presignAndPut(path: string, kind: string, asset: PickedAsset): Promise<string> {
   const contentType = asset.mimeType ?? 'image/jpeg';
-  const ext = extFor(asset, contentType);
-  const { url, key } = await api.post<{ url: string; key: string }>(path, {
-    kind,
-    contentType,
-    ext,
-  });
-  await putBytes(url, contentType, asset);
-  return key;
+  return transferUpload(path, { kind, contentType }, contentType, asset, api.post);
 }
 
 /** Presign, PUT the bytes to storage, and return the server-owned object key. */
@@ -88,7 +51,12 @@ export async function pickImageAsset(source: PickSource): Promise<PickedAsset | 
       : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
   const asset = result.canceled ? undefined : result.assets[0];
   if (!asset) return null;
-  return { uri: asset.uri, mimeType: asset.mimeType, fileName: asset.fileName };
+  return {
+    uri: asset.uri,
+    mimeType: asset.mimeType,
+    fileName: asset.fileName,
+    fileSize: asset.fileSize,
+  };
 }
 
 /**
@@ -108,7 +76,12 @@ export async function pickImageAssets(limit: number): Promise<PickedAsset[]> {
     selectionLimit: Math.max(1, limit),
   });
   if (result.canceled) return [];
-  return result.assets.map((a) => ({ uri: a.uri, mimeType: a.mimeType, fileName: a.fileName }));
+  return result.assets.map((a) => ({
+    uri: a.uri,
+    mimeType: a.mimeType,
+    fileName: a.fileName,
+    fileSize: a.fileSize,
+  }));
 }
 
 export type PhotoKind = 'avatar' | 'portfolio';
@@ -125,10 +98,11 @@ export async function uploadChatPhoto(bookingId: string, asset: PickedAsset): Pr
   const mimeType = asset.mimeType ?? 'image/jpeg';
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(mimeType))
     throw new Error('Choose a JPEG, PNG or WebP photo.');
-  const { url, key } = await api.post<{ url: string; key: string }>(
+  return transferUpload(
     `/api/bookings/${bookingId}/media/upload-url`,
     { contentType: 'IMAGE', mimeType },
+    mimeType,
+    asset,
+    api.post,
   );
-  await putBytes(url, mimeType, asset);
-  return key;
 }

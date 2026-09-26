@@ -1,0 +1,58 @@
+[
+  {
+    "service": "hirequick-worker",
+    "deployment": "a5d51c88-4a1b-4093-867c-58fffc80a7e1",
+    "mode": "staging",
+    "kyc": "manual",
+    "paystackTest": true,
+    "database": "SELECT 1 passed",
+    "migrations": 8,
+    "redis": "PONG",
+    "deadline": "2026-09-24T17:00:00.000Z",
+    "split": {
+      "refundKobo": 5000,
+      "usherCompensationKobo": 5001,
+      "processingFeeKobo": 0,
+      "platformFeeKobo": 750,
+      "usherPayoutKobo": 4251
+    },
+    "hashes": {
+      "apps/api/src/modules/payments/ledger/ledger.ts": "1a8e6a033d5ff131fee4923d0f9585b00ffb648b51933d3e8863291a4a6f4898",
+      "apps/api/src/modules/payments/cancellation.ts": "6495515751552b47d134b8e3a47c2ae40b97663b45a1a859c075f8923f49a57f",
+      "apps/api/src/modules/payments/cancellation-policy.ts": "718f68e9a7342a11164ffeea88c161a6caeab5f13b098a700cccba9a0f29316d",
+      "apps/api/src/modules/bookings/service.ts": "e9d0154cfea31510a99f0f601f5f5d8b3fb353d8abdd2adb60d9213103ba6b9a",
+      "apps/api/src/modules/events/staffing.ts": "8c0e568b3705b360d9a246cefe81e6c72fe7b4a097838ca4cebc651e94552d8f",
+      "apps/api/src/modules/admin/service.ts": "17a78926fd67293685c614ea77a0edc2cb0c78771d2476ca804ae6505d124f32",
+      "packages/shared/src/policy.ts": "5d3d5d37c59ed8191d166049e9e6d40875de235f32c2bee68c34a96053f5a949",
+      "packages/database/prisma/schema.prisma": "e5fea40a326577f2b15efac3dd48a233a5e1face38769e63a3eab7da7e1a9564"
+    }
+  },
+  {
+    "service": "prolific-love",
+    "deployment": "72ec1c14-365d-4f5e-8bb6-520a607defc8",
+    "mode": "staging",
+    "kyc": "manual",
+    "paystackTest": true,
+    "database": "SELECT 1 passed",
+    "migrations": 8,
+    "redis": "PONG",
+    "deadline": "2026-09-24T17:00:00.000Z",
+    "split": {
+      "refundKobo": 5000,
+      "usherCompensationKobo": 5001,
+      "processingFeeKobo": 0,
+      "platformFeeKobo": 750,
+      "usherPayoutKobo": 4251
+    },
+    "hashes": {
+      "apps/api/src/modules/payments/ledger/ledger.ts": "1a8e6a033d5ff131fee4923d0f9585b00ffb648b51933d3e8863291a4a6f4898",
+      "apps/api/src/modules/payments/cancellation.ts": "6495515751552b47d134b8e3a47c2ae40b97663b45a1a859c075f8923f49a57f",
+      "apps/api/src/modules/payments/cancellation-policy.ts": "718f68e9a7342a11164ffeea88c161a6caeab5f13b098a700cccba9a0f29316d",
+      "apps/api/src/modules/bookings/service.ts": "e9d0154cfea31510a99f0f601f5f5d8b3fb353d8abdd2adb60d9213103ba6b9a",
+      "apps/api/src/modules/events/staffing.ts": "8c0e568b3705b360d9a246cefe81e6c72fe7b4a097838ca4cebc651e94552d8f",
+      "apps/api/src/modules/admin/service.ts": "17a78926fd67293685c614ea77a0edc2cb0c78771d2476ca804ae6505d124f32",
+      "packages/shared/src/policy.ts": "5d3d5d37c59ed8191d166049e9e6d40875de235f32c2bee68c34a96053f5a949",
+      "packages/database/prisma/schema.prisma": "e5fea40a326577f2b15efac3dd48a233a5e1face38769e63a3eab7da7e1a9564"
+    }
+  }
+]

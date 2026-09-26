@@ -1,0 +1,43 @@
+{
+  "id": "5053b236-c4a3-446c-857f-f2f04483372d",
+  "status": "FINISHED",
+  "platform": "ANDROID",
+  "artifacts": {
+    "buildUrl": "https://expo.dev/artifacts/eas/eyMRJB7KotATIdDnH1VlY5TBJZrzfKFOl_Si4NjIcJA.apk",
+    "applicationArchiveUrl": "https://expo.dev/artifacts/eas/eyMRJB7KotATIdDnH1VlY5TBJZrzfKFOl_Si4NjIcJA.apk"
+  },
+  "fingerprint": {
+    "id": "01a0ca11-a3ca-741a-a95c-17c5b60ba79a",
+    "hash": "a678809343ebd75c61174b4d3ed980f9957b83f8"
+  },
+  "initiatingActor": {
+    "id": "8b56743a-e257-454a-b2d6-4eec58eea21c",
+    "displayName": "alphaknight"
+  },
+  "project": {
+    "id": "2b9864f5-7637-4151-983b-8a1bc1c29459",
+    "name": "hirequick",
+    "slug": "hirequick",
+    "ownerAccount": {
+      "id": "2886c3c8-d402-4481-995b-55e41919246a",
+      "name": "ovalay-studios"
+    }
+  },
+  "distribution": "INTERNAL",
+  "buildProfile": "preview",
+  "sdkVersion": "57.0.0",
+  "appVersion": "0.0.1",
+  "appBuildVersion": "6",
+  "priority": "HIGH",
+  "createdAt": "2026-09-22T17:02:28.743Z",
+  "updatedAt": "2026-09-22T17:21:49.533Z",
+  "message": "Owner-approved fresh APK rebuild; current mobile source",
+  "completedAt": "2026-09-22T17:21:49.216Z",
+  "expirationDate": "2026-12-21T17:02:28.801Z",
+  "isForIosSimulator": false,
+  "metrics": {
+    "buildWaitTime": 3400,
+    "buildQueueTime": 9976,
+    "buildDuration": 1147097
+  }
+}

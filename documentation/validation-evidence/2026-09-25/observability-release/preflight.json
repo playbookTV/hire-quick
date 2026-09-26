@@ -1,0 +1,71 @@
+[
+  {
+    "service": "prolific-love",
+    "environment": "staging",
+    "hasBetterToken": false,
+    "hasSentryRead": false,
+    "hasSentryDsn": false,
+    "heartbeats": [
+      {
+        "name": "CHECKOUTS",
+        "present": false
+      },
+      {
+        "name": "RECONCILIATION",
+        "present": false
+      },
+      {
+        "name": "AUDIT",
+        "present": false
+      }
+    ],
+    "configurationValid": true,
+    "migrationsCurrent": true
+  },
+  {
+    "service": "hirequick-worker",
+    "environment": "staging",
+    "processType": "worker",
+    "hasBetterToken": false,
+    "hasSentryRead": false,
+    "hasSentryDsn": false,
+    "heartbeats": [
+      {
+        "name": "CHECKOUTS",
+        "present": true
+      },
+      {
+        "name": "RECONCILIATION",
+        "present": true
+      },
+      {
+        "name": "AUDIT",
+        "present": true
+      }
+    ],
+    "configurationValid": true,
+    "migrationsCurrent": true
+  },
+  {
+    "service": "hirequick-admin",
+    "dockerfile": "Dockerfile.admin",
+    "apiUrl": "https://prolific-love-production-2775.up.railway.app",
+    "hasBetterToken": false,
+    "hasSentryRead": false,
+    "hasSentryDsn": false,
+    "heartbeats": [
+      {
+        "name": "CHECKOUTS",
+        "present": false
+      },
+      {
+        "name": "RECONCILIATION",
+        "present": false
+      },
+      {
+        "name": "AUDIT",
+        "present": false
+      }
+    ]
+  }
+]

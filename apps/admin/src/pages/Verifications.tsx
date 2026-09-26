@@ -5,6 +5,9 @@ import { useAsync } from '../lib/useAsync';
 import { Page, State, Table, Btn, EmptyRow } from '../components/ui';
 interface Verif {
   id: string;
+  method: string;
+  provider: string | null;
+  govLookup: { providerJobId?: string; providerStatus?: string } | null;
   createdAt: string;
   idDocumentUrl: string | null;
   selfieUrl: string | null;
@@ -83,7 +86,9 @@ export function Verifications() {
         </Btn>
       }
     >
-      <p className="muted mb-5">Compare the ID and selfie, then record your decision.</p>
+      <p className="muted mb-5">
+        Review uploaded evidence or the Smile ID job before recording your decision.
+      </p>
       <State loading={q.loading} error={q.error} onRetry={q.reload} />
       {error && (
         <p className="notice notice-error" role="alert">
@@ -102,10 +107,35 @@ export function Verifications() {
             Submitted {shortDate(selected.createdAt)} ·{' '}
             {selected.usher.user.email ?? 'No email supplied'}
           </p>
-          <div className="evidence-grid">
-            <Evidence key={`${selected.id}-id`} url={selected.idDocumentUrl} label="ID document" />
-            <Evidence key={`${selected.id}-selfie`} url={selected.selfieUrl} label="Selfie" />
-          </div>
+          {selected.provider === 'SMILE_ID' ? (
+            <div className="notice">
+              <p>
+                Smile ID ·{' '}
+                {selected.govLookup?.providerStatus ?? 'Waiting for capture and provider result'}
+              </p>
+              {selected.govLookup?.providerJobId && (
+                <p>
+                  Job: <code>{selected.govLookup.providerJobId}</code>
+                </p>
+              )}
+              <p>
+                Biometric images stay with Smile ID. Inspect this job in the{' '}
+                <a href="https://portal.usesmileid.com" target="_blank" rel="noreferrer">
+                  Smile ID dashboard
+                </a>{' '}
+                before making a manual decision.
+              </p>
+            </div>
+          ) : (
+            <div className="evidence-grid">
+              <Evidence
+                key={`${selected.id}-id`}
+                url={selected.idDocumentUrl}
+                label="ID document"
+              />
+              <Evidence key={`${selected.id}-selfie`} url={selected.selfieUrl} label="Selfie" />
+            </div>
+          )}
           <label className="action-row">
             <input
               type="checkbox"
@@ -113,7 +143,9 @@ export function Verifications() {
               disabled={busy}
               onChange={(e) => setInspected(e.target.checked)}
             />{' '}
-            I have inspected both documents and verified that they match.
+            {selected.provider === 'SMILE_ID'
+              ? 'I have inspected this Smile ID job and confirmed the identity evidence.'
+              : 'I have inspected both documents and verified that they match.'}
           </label>
           <label htmlFor="reason">Reason if rejecting</label>
           <textarea
@@ -131,8 +163,9 @@ export function Verifications() {
                 q.loading ||
                 !!q.error ||
                 uncertain ||
-                !selected.idDocumentUrl ||
-                !selected.selfieUrl ||
+                !(selected.provider === 'SMILE_ID'
+                  ? selected.govLookup?.providerJobId
+                  : selected.idDocumentUrl && selected.selfieUrl) ||
                 !inspected
               }
               onClick={() => void act(selected, 'approve')}
@@ -154,7 +187,11 @@ export function Verifications() {
           <tr key={v.id}>
             <td>{v.usher.user.phone}</td>
             <td>
-              {v.idDocumentUrl && v.selfieUrl ? 'ID and selfie available' : 'Documents incomplete'}
+              {v.provider === 'SMILE_ID'
+                ? `Smile ID · ${v.govLookup?.providerStatus ?? 'Awaiting capture'}`
+                : v.idDocumentUrl && v.selfieUrl
+                  ? 'ID and selfie available'
+                  : 'Documents incomplete'}
             </td>
             <td>{shortDate(v.createdAt)}</td>
             <td>

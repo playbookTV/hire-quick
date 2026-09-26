@@ -9,6 +9,13 @@ const files = [
   'CONTRIBUTING.md',
   'SECURITY.md',
   'documentation/README.md',
+  'documentation/01-HireQuick-Executive-Summary.md',
+  'documentation/02-HireQuick-PRD.md',
+  'documentation/03-HireQuick-UXRD.md',
+  'documentation/04-HireQuick-TRD.md',
+  ...readdirSync(resolve(root, 'documentation/payments'))
+    .filter((name) => name.endsWith('.md'))
+    .map((name) => `documentation/payments/${name}`),
   ...readdirSync(resolve(root, 'docs'))
     .filter((name) => name.endsWith('.md'))
     .map((name) => `docs/${name}`),

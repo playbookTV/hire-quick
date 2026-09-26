@@ -5,6 +5,15 @@
  * presigned GET URLs. With storage unconfigured (dev/test) the legacy
  * URL-passthrough behavior is preserved.
  */
+import { randomUUID } from 'node:crypto';
+import {
+  issueUpload,
+  finalizeUpload,
+  consumeUpload,
+  lockUploadOwner,
+  scheduleDeletion,
+  STORAGE_TX,
+} from '../storage/uploads.js';
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '@hq/database';
@@ -16,14 +25,7 @@ import { writeAudit } from '../audit.js';
 import { submitDocumentVerification } from '../verification/service.js';
 import { lockUsherSchedules } from '../events/eligibility.js';
 import { VACATED_BOOKING_STATUSES } from '../events/staffing.js';
-import {
-  type StoragePort,
-  verificationKey,
-  ownsVerificationKey,
-  photoKey,
-  ownsPhotoKey,
-  presignDoc,
-} from '../storage/storage.js';
+import { type StoragePort, verificationKey, photoKey, presignDoc } from '../storage/storage.js';
 
 type Handler = (req: AuthedRequest, res: Response) => Promise<void>;
 const wrap =
@@ -57,7 +59,7 @@ const verificationSchema = z.object({
 // Accepting an arbitrary contentType/ext lets a caller mint a presigned PUT for
 // text/html or image/svg+xml; that object is later served from the bucket to
 // admins (KYC) and clients (avatars) and would execute as stored XSS. Raster
-// images + PDF (KYC only) don't run script.
+// images are rendered as media. PDF is restricted to IDs and downloaded as an attachment.
 // Raster image formats the mobile picker can emit (incl. iOS HEIC) — none of
 // these execute script. SVG and any text/* or application/* (except PDF for KYC)
 // are deliberately excluded.
@@ -73,13 +75,30 @@ const KYC_CONTENT_TYPES = { ...PHOTO_CONTENT_TYPES, 'application/pdf': 'pdf' } a
 
 const uploadUrlSchema = z.object({
   kind: z.enum(['id', 'selfie']),
-  contentType: z.enum(['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'application/pdf']),
+  byteSize: z.number().int().positive(),
+  contentType: z.enum([
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/webp',
+    'image/heic',
+    'image/heif',
+    'application/pdf',
+  ]),
 });
 
 // Profile photo + portfolio (UXRD §7). Same presigned-key flow as verification.
 const photoUploadUrlSchema = z.object({
   kind: z.enum(['avatar', 'portfolio']),
-  contentType: z.enum(['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif']),
+  byteSize: z.number().int().positive(),
+  contentType: z.enum([
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/webp',
+    'image/heic',
+    'image/heif',
+  ]),
 });
 
 const photoKeySchema = z.object({ key: z.string().min(1) });
@@ -87,6 +106,14 @@ const photoKeySchema = z.object({ key: z.string().min(1) });
 export function profileRouter(storage?: StoragePort): Router {
   const r = Router();
   r.use(requireAuth);
+  r.post(
+    '/uploads/finalize',
+    wrap(async (req, res) => {
+      if (!storage) throw new ApiError(503, 'STORAGE_UNAVAILABLE', 'file storage not configured');
+      const { key } = photoKeySchema.parse(req.body);
+      res.json(await finalizeUpload(storage, req.auth.userId, key));
+    }),
+  );
 
   r.get(
     '/',
@@ -115,7 +142,10 @@ export function profileRouter(storage?: StoragePort): Router {
           ...user.usher,
           avatarUrl: user.usher.avatarKey ? await presignDoc(storage, user.usher.avatarKey) : null,
           portfolio: await Promise.all(
-            photos.map(async (p) => ({ id: p.id, imageUrl: await presignDoc(storage, p.imageUrl) })),
+            photos.map(async (p) => ({
+              id: p.id,
+              imageUrl: await presignDoc(storage, p.imageUrl),
+            })),
           ),
         };
       }
@@ -139,13 +169,35 @@ export function profileRouter(storage?: StoragePort): Router {
         where: { id: req.auth.userId },
         include: { client: true, usher: true },
       });
-      if (user.client && (body.displayName !== undefined || body.businessName !== undefined)) {
+      // Use the persisted role: selecting an onboarding role never changes an existing account.
+      if (user.role !== 'CLIENT' && user.role !== 'USHER') {
+        throw new ApiError(
+          403,
+          'PROFILE_ROLE_UNSUPPORTED',
+          'This phone number belongs to an admin account. Sign out and use a different phone number to join as an usher or client.',
+        );
+      }
+      if ((user.role === 'CLIENT' && !user.client) || (user.role === 'USHER' && !user.usher)) {
+        throw new ApiError(
+          409,
+          'PROFILE_MISSING',
+          'Your profile is missing. Contact support for help.',
+        );
+      }
+      let updated = false;
+      if (
+        user.role === 'CLIENT' &&
+        user.client &&
+        (body.displayName !== undefined || body.businessName !== undefined)
+      ) {
         const data: { displayName?: string; businessName?: string } = {};
         if (body.displayName !== undefined) data.displayName = body.displayName;
         if (body.businessName !== undefined) data.businessName = body.businessName;
         await prisma.client.update({ where: { id: user.client.id }, data });
+        updated = true;
       }
       if (
+        user.role === 'USHER' &&
         user.usher &&
         (body.bio !== undefined ||
           body.yearsExperience !== undefined ||
@@ -172,7 +224,10 @@ export function profileRouter(storage?: StoragePort): Router {
         if (body.languages !== undefined) data.languages = body.languages;
         if (body.dayRateKobo !== undefined) data.dayRateKobo = body.dayRateKobo;
         await prisma.usher.update({ where: { id: user.usher.id }, data });
+        updated = true;
       }
+      if (!updated)
+        throw new ApiError(400, 'NO_PROFILE_CHANGES', 'No editable profile details were provided.');
       res.json({ updated: true });
     }),
   );
@@ -182,13 +237,24 @@ export function profileRouter(storage?: StoragePort): Router {
   r.post(
     '/verification/upload-url',
     wrap(async (req, res) => {
-      if (!storage) throw new ApiError(503, 'STORAGE_UNAVAILABLE', 'document storage not configured');
+      if (!storage)
+        throw new ApiError(503, 'STORAGE_UNAVAILABLE', 'document storage not configured');
       const usher = await prisma.usher.findFirst({ where: { userId: req.auth.userId } });
       if (!usher) throw new ApiError(403, 'NOT_AN_USHER', 'only ushers submit verification');
-      const { kind, contentType } = uploadUrlSchema.parse(req.body);
+      const { kind, contentType, byteSize } = uploadUrlSchema.parse(req.body);
+      if (kind === 'selfie' && contentType === 'application/pdf')
+        throw new ApiError(400, 'INVALID_MEDIA_TYPE', 'Choose an image for your selfie.');
       const key = verificationKey(usher.id, kind, KYC_CONTENT_TYPES[contentType]);
-      const url = await storage.presignUpload(key, contentType);
-      res.status(201).json({ url, key });
+      res.status(201).json(
+        await issueUpload(storage, {
+          key,
+          contentType,
+          byteSize,
+          purpose: kind,
+          ownerId: req.auth.userId,
+          scopeId: usher.id,
+        }),
+      );
     }),
   );
 
@@ -198,12 +264,12 @@ export function profileRouter(storage?: StoragePort): Router {
       const usher = await prisma.usher.findFirst({ where: { userId: req.auth.userId } });
       if (!usher) throw new ApiError(403, 'NOT_AN_USHER', 'only ushers submit verification');
       const body = verificationSchema.parse(req.body);
-      // With storage on, documents must be server-issued keys under the caller's
-      // own prefix — never an arbitrary client-supplied URL.
-      if (storage && (!ownsVerificationKey(usher.id, body.idDocumentUrl) || !ownsVerificationKey(usher.id, body.selfieUrl))) {
-        throw new ApiError(400, 'INVALID_DOCUMENT_KEY', 'documents must be uploaded via /verification/upload-url');
-      }
-      const v = await submitDocumentVerification(prisma, usher.id, body);
+      const v = await submitDocumentVerification(
+        prisma,
+        usher.id,
+        body,
+        storage ? req.auth.userId : undefined,
+      );
       res.status(201).json({ id: v.id, status: v.status });
     }),
   );
@@ -242,27 +308,47 @@ export function profileRouter(storage?: StoragePort): Router {
       if (!storage) throw new ApiError(503, 'STORAGE_UNAVAILABLE', 'photo storage not configured');
       const usher = await prisma.usher.findFirst({ where: { userId: req.auth.userId } });
       if (!usher) throw new ApiError(403, 'NOT_AN_USHER', 'only ushers upload photos');
-      const { kind, contentType } = photoUploadUrlSchema.parse(req.body);
+      const { kind, contentType, byteSize } = photoUploadUrlSchema.parse(req.body);
       const key = photoKey(usher.id, kind, PHOTO_CONTENT_TYPES[contentType]);
-      const url = await storage.presignUpload(key, contentType);
-      res.status(201).json({ url, key });
+      res.status(201).json(
+        await issueUpload(storage, {
+          key,
+          contentType,
+          byteSize,
+          purpose: kind,
+          ownerId: req.auth.userId,
+          scopeId: usher.id,
+        }),
+      );
     }),
   );
 
-  // Set (or replace) the profile photo. Best-effort delete of the old object.
+  // Replace the reference atomically with its durable cleanup intent.
   r.put(
     '/photos/avatar',
     wrap(async (req, res) => {
       const usher = await prisma.usher.findFirst({ where: { userId: req.auth.userId } });
       if (!usher) throw new ApiError(403, 'NOT_AN_USHER', 'only ushers have a profile photo');
       const { key } = photoKeySchema.parse(req.body);
-      if (storage && !ownsPhotoKey(usher.id, key)) {
-        throw new ApiError(400, 'INVALID_PHOTO_KEY', 'photo must be uploaded via /photos/upload-url');
-      }
-      if (storage && usher.avatarKey && usher.avatarKey !== key) {
-        await storage.deleteObject(usher.avatarKey).catch(() => undefined);
-      }
-      await prisma.usher.update({ where: { id: usher.id }, data: { avatarKey: key } });
+      await prisma.$transaction(async (tx) => {
+        await lockUploadOwner(tx, req.auth.userId);
+        const current = await tx.usher.findUniqueOrThrow({ where: { id: usher.id } });
+        if (storage)
+          await consumeUpload(tx, {
+            key,
+            ownerId: req.auth.userId,
+            scopeId: usher.id,
+            purpose: 'avatar',
+            reference: `avatar:${usher.id}`,
+          });
+        if (
+          current.avatarKey &&
+          current.avatarKey !== key &&
+          current.avatarKey.startsWith(`photos/${usher.id}/`)
+        )
+          await scheduleDeletion(tx, current.avatarKey);
+        await tx.usher.update({ where: { id: usher.id }, data: { avatarKey: key } });
+      }, STORAGE_TX);
       await writeAudit({ actorId: req.auth.userId, action: 'usher.avatar.set', target: usher.id });
       res.json({ avatarUrl: await presignDoc(storage, key) });
     }),
@@ -275,15 +361,33 @@ export function profileRouter(storage?: StoragePort): Router {
       const usher = await prisma.usher.findFirst({ where: { userId: req.auth.userId } });
       if (!usher) throw new ApiError(403, 'NOT_AN_USHER', 'only ushers have a portfolio');
       const { key } = photoKeySchema.parse(req.body);
-      if (storage && !ownsPhotoKey(usher.id, key)) {
-        throw new ApiError(400, 'INVALID_PHOTO_KEY', 'photo must be uploaded via /photos/upload-url');
-      }
-      const count = await prisma.photo.count({ where: { usherId: usher.id } });
-      if (count >= MAX_PORTFOLIO_PHOTOS) {
-        throw new ApiError(409, 'PHOTO_LIMIT', `portfolio is limited to ${MAX_PORTFOLIO_PHOTOS} photos`);
-      }
-      const photo = await prisma.photo.create({ data: { usherId: usher.id, imageUrl: key } });
-      await writeAudit({ actorId: req.auth.userId, action: 'usher.portfolio.add', target: photo.id });
+      const photo = await prisma.$transaction(async (tx) => {
+        await lockUploadOwner(tx, req.auth.userId);
+        const existing = await tx.photo.findFirst({ where: { usherId: usher.id, imageUrl: key } });
+        const id = existing?.id ?? randomUUID();
+        if (storage)
+          await consumeUpload(tx, {
+            key,
+            ownerId: req.auth.userId,
+            scopeId: usher.id,
+            purpose: 'portfolio',
+            reference: `photo:${id}`,
+          });
+        if (existing) return existing;
+        const count = await tx.photo.count({ where: { usherId: usher.id } });
+        if (count >= MAX_PORTFOLIO_PHOTOS)
+          throw new ApiError(
+            409,
+            'PHOTO_LIMIT',
+            `portfolio is limited to ${MAX_PORTFOLIO_PHOTOS} photos`,
+          );
+        return tx.photo.create({ data: { id, usherId: usher.id, imageUrl: key } });
+      }, STORAGE_TX);
+      await writeAudit({
+        actorId: req.auth.userId,
+        action: 'usher.portfolio.add',
+        target: photo.id,
+      });
       res.status(201).json({ id: photo.id, imageUrl: await presignDoc(storage, photo.imageUrl) });
     }),
   );
@@ -294,13 +398,21 @@ export function profileRouter(storage?: StoragePort): Router {
     wrap(async (req, res) => {
       const usher = await prisma.usher.findFirst({ where: { userId: req.auth.userId } });
       if (!usher) throw new ApiError(403, 'NOT_AN_USHER', 'only ushers have a portfolio');
-      const photo = await prisma.photo.findUnique({ where: { id: String(req.params.id) } });
-      if (!photo || photo.usherId !== usher.id) {
-        throw new ApiError(404, 'PHOTO_NOT_FOUND', 'photo not found');
-      }
-      if (storage) await storage.deleteObject(photo.imageUrl).catch(() => undefined);
-      await prisma.photo.delete({ where: { id: photo.id } });
-      await writeAudit({ actorId: req.auth.userId, action: 'usher.portfolio.remove', target: photo.id });
+      const photo = await prisma.$transaction(async (tx) => {
+        await lockUploadOwner(tx, req.auth.userId);
+        const row = await tx.photo.findUnique({ where: { id: String(req.params.id) } });
+        if (!row || row.usherId !== usher.id)
+          throw new ApiError(404, 'PHOTO_NOT_FOUND', 'photo not found');
+        if (row.imageUrl.startsWith(`photos/${usher.id}/`))
+          await scheduleDeletion(tx, row.imageUrl);
+        await tx.photo.delete({ where: { id: row.id } });
+        return row;
+      }, STORAGE_TX);
+      await writeAudit({
+        actorId: req.auth.userId,
+        action: 'usher.portfolio.remove',
+        target: photo.id,
+      });
       res.json({ deleted: true });
     }),
   );
@@ -323,7 +435,16 @@ export function profileRouter(storage?: StoragePort): Router {
       const usher = await prisma.usher.findFirst({ where: { userId: req.auth.userId } });
       if (!usher) throw new ApiError(403, 'NOT_AN_USHER', 'only ushers have availability');
       const q = z
-        .object({ from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() })
+        .object({
+          from: z
+            .string()
+            .regex(/^\d{4}-\d{2}-\d{2}$/)
+            .optional(),
+          to: z
+            .string()
+            .regex(/^\d{4}-\d{2}-\d{2}$/)
+            .optional(),
+        })
         .parse(req.query);
       const where: { usherId: string; date?: { gte?: Date; lte?: Date } } = { usherId: usher.id };
       if (q.from || q.to) {
@@ -343,26 +464,34 @@ export function profileRouter(storage?: StoragePort): Router {
       if (!usher) throw new ApiError(403, 'NOT_AN_USHER', 'only ushers set availability');
       const body = setAvailabilitySchema.parse(req.body);
       const date = new Date(body.date);
-      const row = await prisma.$transaction(async (tx) => {
-        // Serialize with confirmation even when this availability row does not yet exist.
-        await lockUsherSchedules(tx, [usher.id]);
-        if (body.status !== 'AVAILABLE') {
-          const booked = await tx.booking.findFirst({
-            where: {
-              usherId: usher.id,
-              status: { notIn: VACATED_BOOKING_STATUSES },
-              event: { eventDate: date },
-            },
-            select: { id: true },
+      const row = await prisma.$transaction(
+        async (tx) => {
+          // Serialize with confirmation even when this availability row does not yet exist.
+          await lockUsherSchedules(tx, [usher.id]);
+          if (body.status !== 'AVAILABLE') {
+            const booked = await tx.booking.findFirst({
+              where: {
+                usherId: usher.id,
+                status: { notIn: VACATED_BOOKING_STATUSES },
+                event: { eventDate: date },
+              },
+              select: { id: true },
+            });
+            if (booked)
+              throw new ApiError(
+                409,
+                'SCHEDULE_CONFLICT',
+                'this date already has a booking; manage the booking before changing availability',
+              );
+          }
+          return tx.availability.upsert({
+            where: { usherId_date: { usherId: usher.id, date } },
+            update: { status: body.status },
+            create: { usherId: usher.id, date, status: body.status },
           });
-          if (booked) throw new ApiError(409, 'SCHEDULE_CONFLICT', 'this date already has a booking; manage the booking before changing availability');
-        }
-        return tx.availability.upsert({
-          where: { usherId_date: { usherId: usher.id, date } },
-          update: { status: body.status },
-          create: { usherId: usher.id, date, status: body.status },
-        });
-      }, { timeout: 30_000, maxWait: 30_000 });
+        },
+        { timeout: 30_000, maxWait: 30_000 },
+      );
       res.json(row);
     }),
   );

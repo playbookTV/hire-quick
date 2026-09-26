@@ -26,7 +26,7 @@ export function Dashboard() {
     : [];
 
   return (
-    <Page title="Dashboard">
+    <Page title="Dashboard" actions={<Link className="btn btn-ghost" to="/observability">View service health →</Link>}>
       <State loading={loading} error={error} onRetry={reload} />
       <div className="stat-grid">
         {cards.map(([label, value, to]) =>

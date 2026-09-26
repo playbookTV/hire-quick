@@ -5,17 +5,34 @@
  */
 import { useTheme, Box, Text } from '../theme/restyle.js';
 import { Icon, type IconName } from './Icon.js';
-import { primitives as p } from '../theme/primitives.js';
 import { fonts } from '../theme/fonts.js';
 import type { Theme } from '../theme/theme.js';
 
 export type BannerTone = 'info' | 'warning' | 'success' | 'brand';
 
-const TONE: Record<BannerTone, { fg: keyof Theme['colors']; bg: keyof Theme['colors']; border: string; icon: IconName }> = {
-  info: { fg: 'statusInfo', bg: 'statusInfoTint', border: p.blue[200], icon: 'info' },
-  warning: { fg: 'statusWarning', bg: 'statusWarningTint', border: p.neutral[300], icon: 'alert-triangle' },
-  success: { fg: 'statusSuccess', bg: 'statusSuccessTint', border: p.emerald[200], icon: 'check' },
-  brand: { fg: 'brandEmerald', bg: 'brandEmeraldTintWeak', border: p.emerald[200], icon: 'shield' },
+const TONE: Record<
+  BannerTone,
+  {
+    fg: keyof Theme['colors'];
+    bg: keyof Theme['colors'];
+    border: keyof Theme['colors'];
+    icon: IconName;
+  }
+> = {
+  info: { fg: 'statusInfo', bg: 'statusInfoTint', border: 'borderDefault', icon: 'info' },
+  warning: {
+    fg: 'statusWarning',
+    bg: 'statusWarningTint',
+    border: 'borderDefault',
+    icon: 'alert-triangle',
+  },
+  success: { fg: 'statusSuccess', bg: 'statusSuccessTint', border: 'borderDefault', icon: 'check' },
+  brand: {
+    fg: 'brandEmerald',
+    bg: 'brandEmeraldTintWeak',
+    border: 'borderDefault',
+    icon: 'shield',
+  },
 };
 
 interface BannerProps {
@@ -37,17 +54,31 @@ export function Banner({ tone = 'info', title, message }: BannerProps): React.JS
         borderRadius: theme.borderRadii.md,
         backgroundColor: theme.colors[t.bg],
         borderWidth: 1,
-        borderColor: t.border,
+        borderColor: theme.colors[t.border],
       }}
     >
       <Icon name={t.icon} size={18} color={t.fg} />
       <Box flex={1}>
         {title ? (
-          <Text style={{ fontFamily: fonts.sansSemibold, fontSize: 13, lineHeight: 18, color: theme.colors[t.fg] }}>
+          <Text
+            style={{
+              fontFamily: fonts.sansSemibold,
+              fontSize: 13,
+              lineHeight: 18,
+              color: theme.colors[t.fg],
+            }}
+          >
             {title}
           </Text>
         ) : null}
-        <Text style={{ fontFamily: fonts.sansRegular, fontSize: 13, lineHeight: 18, color: theme.colors[t.fg] }}>
+        <Text
+          style={{
+            fontFamily: fonts.sansRegular,
+            fontSize: 13,
+            lineHeight: 18,
+            color: theme.colors[t.fg],
+          }}
+        >
           {message}
         </Text>
       </Box>

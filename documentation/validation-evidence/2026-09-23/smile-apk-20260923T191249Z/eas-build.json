@@ -1,0 +1,43 @@
+{
+  "id": "f73ca4cb-afff-48c9-bae1-a931d9ee9b92",
+  "status": "FINISHED",
+  "platform": "ANDROID",
+  "artifacts": {
+    "buildUrl": "https://expo.dev/artifacts/eas/b-_Z_hYK8d5Z_plejF5Q4R7CVvH5A-9CbTMCNOj9hU4.apk",
+    "applicationArchiveUrl": "https://expo.dev/artifacts/eas/b-_Z_hYK8d5Z_plejF5Q4R7CVvH5A-9CbTMCNOj9hU4.apk"
+  },
+  "fingerprint": {
+    "id": "01a0cfac-3cbc-7e50-97a5-9612d63ddf10",
+    "hash": "f17649c17a86197cfb8fdf95b8e978412c7fc8b8"
+  },
+  "initiatingActor": {
+    "id": "8b56743a-e257-454a-b2d6-4eec58eea21c",
+    "displayName": "alphaknight"
+  },
+  "project": {
+    "id": "2b9864f5-7637-4151-983b-8a1bc1c29459",
+    "name": "hirequick",
+    "slug": "hirequick",
+    "ownerAccount": {
+      "id": "2886c3c8-d402-4481-995b-55e41919246a",
+      "name": "ovalay-studios"
+    }
+  },
+  "distribution": "INTERNAL",
+  "buildProfile": "preview",
+  "sdkVersion": "57.0.0",
+  "appVersion": "0.0.1",
+  "appBuildVersion": "8",
+  "priority": "HIGH",
+  "createdAt": "2026-09-23T19:15:23.444Z",
+  "updatedAt": "2026-09-23T19:47:56.493Z",
+  "message": "Smile sandbox KYC with test identity email",
+  "completedAt": "2026-09-23T19:47:56.293Z",
+  "expirationDate": "2026-12-22T19:15:23.498Z",
+  "isForIosSimulator": false,
+  "metrics": {
+    "buildWaitTime": 1978,
+    "buildQueueTime": 6057,
+    "buildDuration": 1944814
+  }
+}

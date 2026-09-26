@@ -1,0 +1,30 @@
+{
+  "checkedAt": "2026-09-23T17:32:11.201Z",
+  "checks": [
+    {
+      "name": "health",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "kycRequiresAuth",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "name": "unsignedCallbackRejected",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "name": "privacyPolicy",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "adminSmileReviewScreen",
+      "status": 200,
+      "passed": true
+    }
+  ]
+}

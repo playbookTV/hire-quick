@@ -12,7 +12,10 @@
     ],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.hirequick.mobile"
+      "bundleIdentifier": "com.ovalay.hirequick",
+      "infoPlist": {
+        "NSCameraUsageDescription": "HireQuick uses the camera for Smile ID identity and liveness verification."
+      }
     },
     "android": {
       "package": "com.hirequick.mobile",
@@ -20,10 +23,28 @@
         "backgroundColor": "#FBF7F0"
       },
       "permissions": [
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA"
       ]
     },
     "plugins": [
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "organization": "studio-templar",
+          "project": "react-native",
+          "experimental_android": {
+            "enableAndroidGradlePlugin": true,
+            "includeProguardMapping": true,
+            "autoUploadProguardMapping": true,
+            "uploadNativeSymbols": true,
+            "autoUploadNativeSymbols": true,
+            "includeNativeSources": false,
+            "includeSourceContext": false
+          }
+        }
+      ],
       "expo-router",
       "expo-secure-store",
       "expo-font",
@@ -34,7 +55,16 @@
           "photosPermission": "HireQuick needs photo access so you can upload your ID, profile photo, and work photos.",
           "cameraPermission": "HireQuick needs camera access so you can take a verification selfie or profile photo."
         }
-      ]
+      ],
+      [
+        "@smileid/usesmileid_mlkit_face",
+        {
+          "kspVersion": "2.3.6"
+        }
+      ],
+      "@smileid/usesmileid_vision_face",
+      "./plugins/with-smileid-host-sentry.js",
+      "expo-screen-orientation"
     ],
     "experiments": {
       "typedRoutes": false

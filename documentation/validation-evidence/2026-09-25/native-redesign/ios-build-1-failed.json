@@ -1,0 +1,17 @@
+{
+  "id": "b15c9c47-ed2b-445e-ac96-9a8849e36357",
+  "status": "ERRORED",
+  "platform": "IOS",
+  "appVersion": "0.0.1",
+  "appBuildVersion": "1",
+  "buildProfile": "ios-archive",
+  "distribution": "STORE",
+  "createdAt": "2026-09-25T18:12:04.552Z",
+  "completedAt": "2026-09-25T18:13:17.760Z",
+  "gitCommitHash": "442b54f817a18d47ff63c431023ff79d4a002acf",
+  "artifacts": {},
+  "error": {
+    "errorCode": "UNKNOWN_ERROR",
+    "message": "Unknown error. See logs of the Install pods build phase for more information."
+  }
+}

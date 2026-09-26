@@ -5,9 +5,11 @@ import { ApiError } from '../../app.js';
 import { requireAuth, type AuthedRequest } from '../auth/middleware.js';
 import { assertMessageableParty, loadBookingParties, isParty } from '../../realtime/messages.js';
 import { authorizedChatMediaKey, chatMediaKey, CHAT_MEDIA_MIME_TYPES } from './chat-media.js';
+import { issueUpload } from './uploads.js';
 import type { StoragePort } from './storage.js';
 
 const uploadSchema = z.object({
+  byteSize: z.number().int().positive(),
   contentType: z.enum(['IMAGE', 'VOICE']),
   mimeType: z.enum(CHAT_MEDIA_MIME_TYPES),
 });
@@ -20,7 +22,7 @@ export function chatMediaRouter(storage?: StoragePort): Router {
     '/bookings/:id/media/upload-url',
     wrap(async (req, res) => {
       const { id } = routeIds.parse(req.params);
-      const { contentType, mimeType } = uploadSchema.parse(req.body);
+      const { contentType, mimeType, byteSize } = uploadSchema.parse(req.body);
       await assertMessageableParty(id, req.auth.userId);
       if (!storage) throw new ApiError(503, 'STORAGE_UNAVAILABLE', 'chat storage not configured');
       let key: string;
@@ -29,8 +31,16 @@ export function chatMediaRouter(storage?: StoragePort): Router {
       } catch {
         throw new ApiError(400, 'INVALID_MEDIA_TYPE', 'media type and file format must match');
       }
-      const url = await storage.presignUpload(key, mimeType);
-      res.json({ key, url });
+      res.json(
+        await issueUpload(storage, {
+          key,
+          ownerId: req.auth.userId,
+          scopeId: id,
+          purpose: contentType,
+          contentType: mimeType,
+          byteSize,
+        }),
+      );
     }),
   );
   router.get(

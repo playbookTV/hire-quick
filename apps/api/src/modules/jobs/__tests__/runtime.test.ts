@@ -86,6 +86,7 @@ function handlers(overrides: Partial<JobHandlers> = {}): JobHandlers {
     commission: noop,
     checkouts: noop,
     resumeOps: noop,
+    storageCleanup: noop,
     retentionPurge: noop,
     auditVerify: noop,
     ...overrides,

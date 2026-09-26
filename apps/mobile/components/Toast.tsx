@@ -11,7 +11,6 @@ import Animated, { SlideInUp, SlideOutUp } from 'react-native-reanimated';
 import { useTheme, Box, Text } from '../theme/restyle.js';
 import { Icon, type IconName } from './Icon.js';
 import { shadowMd } from '../theme/shadows.js';
-import { primitives as p } from '../theme/primitives.js';
 import { fonts } from '../theme/fonts.js';
 import type { Theme } from '../theme/theme.js';
 
@@ -23,10 +22,28 @@ export interface ToastItem {
   message: string;
 }
 
-const TONE: Record<ToastTone, { fg: keyof Theme['colors']; bg: keyof Theme['colors']; border: string; icon: IconName }> = {
-  success: { fg: 'statusSuccess', bg: 'statusSuccessTint', border: p.emerald[200], icon: 'check-circle' },
-  error: { fg: 'statusDanger', bg: 'statusDangerTint', border: p.red[200], icon: 'alert-circle' },
-  info: { fg: 'statusInfo', bg: 'statusInfoTint', border: p.blue[200], icon: 'info' },
+const TONE: Record<
+  ToastTone,
+  {
+    fg: keyof Theme['colors'];
+    bg: keyof Theme['colors'];
+    border: keyof Theme['colors'];
+    icon: IconName;
+  }
+> = {
+  success: {
+    fg: 'statusSuccess',
+    bg: 'statusSuccessTint',
+    border: 'borderDefault',
+    icon: 'check-circle',
+  },
+  error: {
+    fg: 'statusDanger',
+    bg: 'statusDangerTint',
+    border: 'borderDefault',
+    icon: 'alert-circle',
+  },
+  info: { fg: 'statusInfo', bg: 'statusInfoTint', border: 'borderDefault', icon: 'info' },
 };
 
 interface ToastHostProps {
@@ -40,10 +57,22 @@ export function ToastHost({ toast, onDismiss }: ToastHostProps): React.JSX.Eleme
   const t = toast ? TONE[toast.tone] : null;
 
   return (
-    <Box pointerEvents="box-none" style={{ position: 'absolute', top: insets.top + 8, left: 16, right: 16, zIndex: 1000 }}>
+    <Box
+      pointerEvents="box-none"
+      style={{ position: 'absolute', top: insets.top + 8, left: 16, right: 16, zIndex: 1000 }}
+    >
       {toast && t ? (
-        <Animated.View key={toast.id} entering={SlideInUp.springify().damping(18)} exiting={SlideOutUp.duration(200)}>
-          <Pressable onPress={onDismiss} accessibilityRole="alert" accessibilityLiveRegion="assertive" accessibilityLabel={`${toast.title ? toast.title + '. ' : ''}${toast.message}`}>
+        <Animated.View
+          key={toast.id}
+          entering={SlideInUp.springify().damping(18)}
+          exiting={SlideOutUp.duration(200)}
+        >
+          <Pressable
+            onPress={onDismiss}
+            accessibilityRole="alert"
+            accessibilityLiveRegion="assertive"
+            accessibilityLabel={`${toast.title ? toast.title + '. ' : ''}${toast.message}`}
+          >
             <Box
               flexDirection="row"
               alignItems="center"
@@ -54,19 +83,33 @@ export function ToastHost({ toast, onDismiss }: ToastHostProps): React.JSX.Eleme
                   borderRadius: theme.borderRadii.md,
                   backgroundColor: theme.colors[t.bg],
                   borderWidth: 1,
-                  borderColor: t.border,
+                  borderColor: theme.colors[t.border],
                 },
                 shadowMd,
               ]}
             >
               <Icon name={t.icon} size={20} color={t.fg} />
               <Box flex={1}>
-              {toast.title ? (
-                  <Text style={{ fontFamily: fonts.sansSemibold, fontSize: 13, lineHeight: 18, color: theme.colors[t.fg] }}>
+                {toast.title ? (
+                  <Text
+                    style={{
+                      fontFamily: fonts.sansSemibold,
+                      fontSize: 13,
+                      lineHeight: 18,
+                      color: theme.colors[t.fg],
+                    }}
+                  >
                     {toast.title}
                   </Text>
                 ) : null}
-                <Text style={{ fontFamily: fonts.sansRegular, fontSize: 13, lineHeight: 18, color: theme.colors[t.fg] }}>
+                <Text
+                  style={{
+                    fontFamily: fonts.sansRegular,
+                    fontSize: 13,
+                    lineHeight: 18,
+                    color: theme.colors[t.fg],
+                  }}
+                >
                   {toast.message}
                 </Text>
               </Box>

@@ -1,9 +1,4 @@
-/**
- * View Profile — matches Figma `Client / 12 View Profile` (28:269). Live: usher
- * profile from `useUsher` and received reviews from `useUsherReviews`. Inviting
- * happens from an event (the API needs an event context), so the action bar
- * points the client back to their events.
- */
+/** Figma E01 staff profile; live identity, portfolio, reviews and booking-scoped messaging. */
 import { useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ScrollView } from 'react-native';
@@ -13,7 +8,9 @@ import { useTheme, Box, Text } from '../../theme/restyle.js';
 import { fonts } from '../../theme/fonts.js';
 import { AppBar } from '../../components/AppBar.js';
 import { Avatar } from '../../components/Avatar.js';
-import { Badge } from '../../components/Badge.js';
+import { StatusPill } from '../../components/StatusPill.js';
+import { Card } from '../../components/Card.js';
+import { screenTokens } from '../../theme/token-manager.js';
 import { Button } from '../../components/Button.js';
 import { Icon } from '../../components/Icon.js';
 import { ReviewCard } from '../../components/ReviewCard.js';
@@ -244,35 +241,42 @@ export default function StaffProfile(): React.JSX.Element {
     <Box flex={1} backgroundColor="bgCanvas">
       <AppBar showBack inset />
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 24, gap: 24 }}
+        contentContainerStyle={{
+          paddingHorizontal: screenTokens.gutter,
+          paddingTop: screenTokens.top,
+          paddingBottom: screenTokens.bottom,
+          gap: screenTokens.sectionGap,
+        }}
         showsVerticalScrollIndicator={false}
       >
-        {/* identity */}
-        <Box alignItems="center" style={{ gap: 12 }}>
+        <Box flexDirection="row" alignItems="center" gap="300">
           <Avatar name={name} size={96} imageUrl={u.avatarUrl} />
-          <Box flexDirection="row" alignItems="center" style={{ gap: 8 }}>
-            <Text variant="h1">{name}</Text>
-            {u.verificationStatus === 'VERIFIED' ? <Badge /> : null}
-          </Box>
-          <Box flexDirection="row" alignItems="center" style={{ gap: 6 }}>
-            <Icon name="star" size={16} color="accentGold" />
-            <Text variant="labelLg" color="inkStrong">
-              {u.ratingAvg.toFixed(1)}
-            </Text>
-            <Text variant="bodyLg" color="inkFaint">
-              ·
-            </Text>
-            <Text variant="bodyLg" color="inkMuted">
-              {u.completedJobsCount} jobs
-            </Text>
-            <Text variant="bodyLg" color="inkFaint">
-              ·
-            </Text>
-            <Text variant="label" style={{ fontSize: 13 }} color="statusSuccess">
-              {Math.round(u.reliabilityScore)}% reliable
-            </Text>
+          <Box flex={1} gap="100">
+            <Text variant="headingM">{name}</Text>
+            {u.verificationStatus === 'VERIFIED' ? <StatusPill status="VERIFIED" /> : null}
+            {u.city ? (
+              <Text variant="bodySm" color="inkMuted">
+                {u.city}
+              </Text>
+            ) : null}
           </Box>
         </Box>
+        <Card>
+          <Box flexDirection="row" flexWrap="wrap" justifyContent="space-around" gap="200">
+            {[
+              [u.ratingAvg.toFixed(1), 'Rating'],
+              [String(u.completedJobsCount), 'Jobs'],
+              [`${u.yearsExperience} yrs`, 'Experience'],
+            ].map(([value, label]) => (
+              <Box key={label} alignItems="center" gap="100">
+                <Text variant="amount">{value}</Text>
+                <Text variant="bodySm" color="inkMuted">
+                  {label}
+                </Text>
+              </Box>
+            ))}
+          </Box>
+        </Card>
 
         {/* about */}
         {u.bio ? (
@@ -284,25 +288,31 @@ export default function StaffProfile(): React.JSX.Element {
           </Box>
         ) : null}
 
-        {/* portfolio — work photos the usher uploaded (paged carousel + dots) */}
-        {(u.portfolio ?? []).length > 0 ? (
-          <Box style={{ gap: 8 }}>
-            <Text variant="headingS">Work photos</Text>
-            <PortfolioCarousel photos={u.portfolio ?? []} />
-          </Box>
-        ) : null}
-
-        {/* details — experience, base area, indicative rate */}
-        <Box style={{ gap: 8 }}>
-          <Text variant="labelSm" color="inkMuted">
-            Details
+        <Box gap="200">
+          <Text variant="headingS" color="inkMuted">
+            Work photos
           </Text>
-          <Box flexDirection="row" flexWrap="wrap" style={{ gap: 8 }}>
-            <Pill label={`${u.yearsExperience} year${u.yearsExperience === 1 ? '' : 's'} exp`} />
-            {u.city ? <Pill label={u.city} /> : null}
-            {u.dayRateKobo ? <Pill label={`${money(u.dayRateKobo)}/day`} /> : null}
-          </Box>
+          {(u.portfolio ?? []).length > 0 ? (
+            <PortfolioCarousel photos={u.portfolio ?? []} />
+          ) : (
+            <Box backgroundColor="bgSubtle" borderRadius="md" padding="400">
+              <Text variant="bodySm" color="inkMuted">
+                No work photos added yet.
+              </Text>
+            </Box>
+          )}
         </Box>
+        <Card>
+          <Box gap="200">
+            <Box flexDirection="row" flexWrap="wrap" justifyContent="space-between" gap="200">
+              <Text variant="labelLg">Indicative day rate</Text>
+              <Text variant="amountM">{u.dayRateKobo ? money(u.dayRateKobo) : 'On request'}</Text>
+            </Box>
+            <Text variant="bodySm" color="inkMuted">
+              The event’s agreed budget sets the actual price for a booking.
+            </Text>
+          </Box>
+        </Card>
 
         {/* languages */}
         {(u.languages ?? []).length > 0 ? (
@@ -347,23 +357,24 @@ export default function StaffProfile(): React.JSX.Element {
 
       {/* action bar */}
       <Box
-        flexDirection="row"
         backgroundColor="bgCanvas"
         style={{
           gap: 12,
-          paddingHorizontal: 20,
+          paddingHorizontal: screenTokens.gutter,
           paddingTop: 16,
           paddingBottom: insets.bottom + 16,
           borderTopWidth: 1.5,
           borderTopColor: theme.colors.borderDefault,
         }}
       >
-        <Box flex={1}>
+        <Button label="Invite to an event" onPress={invite} />
+        {existingThread ? (
           <Button label="Message" variant="secondary" onPress={message} />
-        </Box>
-        <Box flex={1}>
-          <Button label="Invite" onPress={invite} />
-        </Box>
+        ) : (
+          <Text variant="bodySm" color="inkMuted">
+            Messaging opens once you have a confirmed booking together.
+          </Text>
+        )}
       </Box>
     </Box>
   );

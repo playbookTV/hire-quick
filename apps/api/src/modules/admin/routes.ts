@@ -1,3 +1,4 @@
+import { cancellationView, releaseInformation } from '../payments/cancellation.js';
 /**
  * Admin API (TRD §15). All routes require an ADMIN role; money actions go
  * through the maker-checker service. Every mutation is audit-logged.
@@ -11,6 +12,7 @@ import { writeAudit } from '../audit.js';
 import {
   resolveDispute,
   createRefund,
+  proposeCancellation,
   decideApproval,
   APPROVAL_THRESHOLD_KOBO,
 } from './service.js';
@@ -22,6 +24,8 @@ import { authorizedChatMediaKey } from '../storage/chat-media.js';
 import { pageQuery, pageResult } from './pagination.js';
 import { paymentOperationsRouter } from './payment-operations.js';
 import { reviewVerification } from '../verification/service.js';
+import type { Redis } from 'ioredis';
+import { monitoringDashboardRouter } from '../../observability/dashboard-route.js';
 
 type Handler = (req: AuthedRequest, res: Response) => Promise<void>;
 const wrap =
@@ -50,9 +54,11 @@ export function adminRouter(deps: {
   realtime: RealtimeGateway;
   storage?: StoragePort | undefined;
   paystack?: PaystackPort | undefined;
+  redis?: Redis | undefined;
 }): Router {
   const r = Router();
   r.use(requireAuth, requireRole('ADMIN'));
+  r.use(monitoringDashboardRouter(deps.redis));
   r.use(paymentOperationsRouter());
 
   // Refund/dispute execution issues a real Paystack refund, so those routes
@@ -304,14 +310,59 @@ export function adminRouter(deps: {
       );
       const refund = await prisma.paymentOperation.findUnique({
         where: { dedupeKey: `BOOKING_REFUND:${id}` },
-        select: { id: true, status: true, providerRef: true, updatedAt: true },
+        select: { id: true, status: true, providerRef: true, updatedAt: true, payload: true },
       });
       const refundApprovals = await prisma.approval.findMany({
         where: { kind: 'REFUND', payload: { path: ['bookingId'], equals: id } },
         select: { id: true, status: true, amountKobo: true, updatedAt: true },
         orderBy: { createdAt: 'desc' },
       });
-      res.json({ ...booking, conversation: undefined, messages, refund, refundApprovals });
+      const cancellation = await cancellationView(prisma, refund);
+      res.json({
+        ...booking,
+        ...releaseInformation(booking.event),
+        cancellation,
+        conversation: undefined,
+        messages,
+        refund: refund ? { ...refund, payload: undefined } : null,
+        refundApprovals,
+      });
+    }),
+  );
+
+  r.get(
+    '/cancellations',
+    wrap(async (req, res) => {
+      const page = pageQuery.parse(req.query);
+      const rows = await prisma.paymentOperation.findMany({
+        where: {
+          kind: 'BOOKING_REFUND',
+          status: { in: ['PENDING', 'PROVIDER_OK'] },
+          payload: { path: ['cancellation', 'policy'], equals: 'CLIENT_CANCEL_V1' },
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: page.limit + 1,
+        ...(page.cursor ? { cursor: { id: page.cursor }, skip: 1 } : {}),
+      });
+      const items = await Promise.all(
+        rows.map(async (op) => ({
+          id: op.id,
+          createdAt: op.createdAt,
+          bookingId: (op.payload as { bookingId: string }).bookingId,
+          cancellation: await cancellationView(prisma, op),
+        })),
+      );
+      res.json(pageResult(items, page.limit));
+    }),
+  );
+
+  r.post(
+    '/bookings/:id/cancellation-approval',
+    wrap(async (req, res) => {
+      const { reason } = z.object({ reason: z.string().min(3).max(500) }).parse(req.body);
+      res.json(
+        await proposeCancellation(req.auth.userId, z.string().uuid().parse(req.params.id), reason),
+      );
     }),
   );
 

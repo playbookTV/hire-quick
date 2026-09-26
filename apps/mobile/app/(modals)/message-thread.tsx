@@ -1,396 +1,392 @@
-/**
- * Message Thread — matches Figma `Client / 16 Message Thread` (33:377). Live:
- * booking chat from `useBookingMessages` (polls) and `useSendMessage`. Outbound
- * vs inbound is decided by the signed-in user id. The API flags messages that
- * leak contact details (off-platform coordination).
- */
+/** Booking chat: Gifted Chat presentation over the session-bound durable controller. */
 import { useCallback, useRef, useState } from 'react';
+import { AppState, useColorScheme } from 'react-native';
 import { Image } from 'expo-image';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { queryKeys } from '../../lib/query.js';
-import { api } from '../../lib/client.js';
-import { pickImageAsset, uploadChatPhoto } from '../../lib/upload.js';
-import { useToast } from '../../lib/toast.js';
-import { AppState, KeyboardAvoidingView, Platform, ScrollView, TextInput } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Bubble, GiftedChat, type IMessage } from 'react-native-gifted-chat';
 import { useTheme, Box, Text } from '../../theme/restyle.js';
 import { fonts } from '../../theme/fonts.js';
 import { Avatar } from '../../components/Avatar.js';
 import { Button } from '../../components/Button.js';
 import { Banner } from '../../components/Banner.js';
 import { Icon } from '../../components/Icon.js';
-import { Skeleton } from '../../components/Skeleton.js';
 import { EmptyState } from '../../components/EmptyState.js';
 import { AnimatedPressable } from '../../components/Pressable.js';
-import { useBookingMessages, useSendMessage, useBooking } from '../../lib/hooks.js';
+import { useBooking } from '../../lib/hooks.js';
+import { useBookingChat } from '../../lib/use-chat.js';
 import { useAuth } from '../../lib/auth-context.js';
-import { formatTime, formatDayLabel, dateTime } from '../../lib/format.js';
+import { api } from '../../lib/client.js';
+import { queryKeys } from '../../lib/query.js';
+import { pickImageAsset, uploadChatPhoto } from '../../lib/upload.js';
+import { useToast } from '../../lib/toast.js';
+import { sessionStore } from '../../lib/tokens.js';
+import { dateTime } from '../../lib/format.js';
+
+interface ChatMessage extends IMessage {
+  mediaType?: 'IMAGE' | 'VOICE';
+  confirmed: boolean;
+  failed?: boolean;
+  flagged?: boolean;
+}
 
 export default function MessageThread(): React.JSX.Element {
+  const { booking } = useLocalSearchParams<{ booking: string }>();
+  const { user } = useAuth();
+  if (!booking || !user)
+    return (
+      <EmptyState
+        icon="message-circle"
+        title="Conversation unavailable"
+        subtitle="Open a conversation from your bookings."
+      />
+    );
+  return (
+    <BookingChat
+      key={`${user.id}.${booking}`}
+      bookingId={booking}
+      userId={user.id}
+      role={user.role}
+    />
+  );
+}
+
+function BookingChat({
+  bookingId,
+  userId,
+  role,
+}: {
+  bookingId: string;
+  userId: string;
+  role: string;
+}): React.JSX.Element {
   const router = useRouter();
   const theme = useTheme();
+  const scheme = useColorScheme();
   const insets = useSafeAreaInsets();
-  const { booking } = useLocalSearchParams<{ booking: string }>();
-  const bookingId = booking ?? '';
-  const messages = useBookingMessages(bookingId);
   const qc = useQueryClient();
-  const send = useSendMessage(bookingId);
-  const detail = useBooking(bookingId);
-  const { user } = useAuth();
-  const [text, setText] = useState('');
   const toast = useToast();
+  const detail = useBooking(bookingId);
+  const chat = useBookingChat(bookingId, userId);
+  const [text, setText] = useState('');
   const [uploading, setUploading] = useState(false);
+  const composing = useRef(false);
+  const [topHeight, setTopHeight] = useState(insets.top + 56);
   const canSend =
     !!detail.data &&
     !detail.isError &&
     ['CONFIRMED', 'CHECKED_IN', 'COMPLETED', 'PAID', 'DISPUTED'].includes(detail.data.status);
-  const nextId = useRef(0);
-  const [failed, setFailed] = useState<Array<{ id: number; body: string }>>([]);
-  const [pendingBody, setPendingBody] = useState<string | null>(null);
-
-  const isUsher = user?.role === 'USHER';
-  const counterparty = isUsher
-    ? detail.data?.event?.client?.displayName
-    : (detail.data?.usher?.displayName ?? detail.data?.usher?.user?.phone);
-  const ev = detail.data?.event;
-  const headerName = counterparty ?? ev?.title ?? `Booking · ${bookingId.slice(0, 6)}`;
-  const headerSub = ev?.title ?? 'Coordination chat';
-  const eventMeta = ev
-    ? `${dateTime(ev.eventDate, ev.startTime)}${ev.venue ? ` · ${ev.venue}` : ''}`
-    : null;
-
-  const sendBody = (body: string, retryId?: number): void => {
-    if (send.isPending || !canSend) return;
-    const id = retryId ?? ++nextId.current;
-    setPendingBody(body);
-    send.mutate(body, {
-      onSuccess: () => setFailed((items) => items.filter((item) => item.id !== id)),
-      onError: () =>
-        setFailed((items) =>
-          items.some((item) => item.id === id) ? items : [...items, { id, body }],
-        ),
-      onSettled: () => setPendingBody(null),
-    });
-  };
-  const onSend = (): void => {
-    const body = text.trim();
-    if (!body || send.isPending) return;
-    setText('');
-    sendBody(body);
-  };
-
-  const list = messages.data ?? [];
-  const lastInbound = list.filter((m) => m.senderId !== user?.id && !m.seenAt).at(-1)?.id;
+  const busy = uploading || chat.sending.length > 0;
+  const event = detail.data?.event;
+  const name =
+    (role === 'USHER' ? event?.client?.displayName : detail.data?.usher?.displayName) ??
+    'Booking conversation';
+  const lastInbound = chat.messages
+    .filter((message) => message.senderId !== userId && !message.seenAt)
+    .at(-1)?.id;
   useFocusEffect(
     useCallback(() => {
       const markRead = () => {
-        if (lastInbound && AppState.currentState === 'active')
+        if (lastInbound && AppState.currentState === 'active') {
           void api
             .post(`/api/bookings/${bookingId}/messages/seen`, { upToMessageId: lastInbound })
             .then(() => qc.invalidateQueries({ queryKey: queryKeys.bookings }))
             .catch(() => undefined);
+        }
       };
       markRead();
       const subscription = AppState.addEventListener('change', markRead);
       return () => subscription.remove();
     }, [bookingId, lastInbound, qc]),
   );
-  const sendPhoto = async (): Promise<void> => {
-    if (!canSend || uploading || send.isPending) return;
+
+  const submitText = async () => {
+    const content = text.trim();
+    if (!content || !canSend || busy || composing.current) return;
+    composing.current = true;
+    setText('');
+    try {
+      await chat.controller.submit(content);
+    } catch (error) {
+      setText((draft) => draft || content);
+      toast.error(error instanceof Error ? error.message : 'Couldn’t save this message.');
+    } finally {
+      composing.current = false;
+    }
+  };
+  const sendPhoto = async () => {
+    if (!canSend || busy || composing.current) return;
+    composing.current = true;
+    const generation = sessionStore.generation();
     setUploading(true);
     try {
       const asset = await pickImageAsset('library');
-      if (!asset) return;
-      const content = await uploadChatPhoto(bookingId, asset);
-      await send.mutateAsync({ content, contentType: 'IMAGE' });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Couldn’t send photo.');
+      if (!sessionStore.isCurrent(generation)) return;
+      if (asset) await chat.controller.submit(await uploadChatPhoto(bookingId, asset), 'IMAGE');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Couldn’t send photo.');
     } finally {
+      composing.current = false;
       setUploading(false);
     }
   };
+  const confirmedIds = new Set(chat.messages.map((message) => message.id));
+  const messages: ChatMessage[] = [
+    ...chat.messages.map((message) => ({
+      _id: message.id,
+      text: message.contentType === 'TEXT' ? message.content : '',
+      createdAt: new Date(message.createdAt),
+      user: { _id: message.senderId },
+      confirmed: true,
+      sent: true,
+      received: !!message.seenAt,
+      flagged: message.flagged,
+      ...(message.contentType !== 'TEXT' ? { mediaType: message.contentType } : {}),
+    })),
+    ...chat.pending
+      .filter((message) => !confirmedIds.has(message.clientMessageId))
+      .map((message) => ({
+        _id: message.clientMessageId,
+        text: message.contentType === 'TEXT' ? message.content : '',
+        createdAt: new Date(message.createdAt),
+        user: { _id: userId },
+        confirmed: false,
+        pending: chat.sending.includes(message.clientMessageId),
+        failed: !chat.sending.includes(message.clientMessageId),
+        ...(message.contentType !== 'TEXT' ? { mediaType: message.contentType } : {}),
+      })),
+  ].sort(
+    (a, b) =>
+      b.createdAt.getTime() - a.createdAt.getTime() || String(b._id).localeCompare(String(a._id)),
+  );
 
   return (
-    <Box flex={1} backgroundColor="bgCanvas" style={{ paddingTop: insets.top }}>
-      {/* header */}
+    <Box flex={1} backgroundColor="bgCanvas" style={{ paddingBottom: insets.bottom }}>
       <Box
-        flexDirection="row"
-        alignItems="center"
-        style={{
-          gap: 12,
-          paddingHorizontal: 16,
-          paddingVertical: 8,
-          borderBottomWidth: 1.5,
-          borderBottomColor: theme.colors.borderDefault,
-        }}
+        onLayout={(event) => setTopHeight(event.nativeEvent.layout.height)}
+        style={{ paddingTop: insets.top }}
       >
-        <AnimatedPressable
-          onPress={() => router.back()}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-        >
-          <Icon name="chevron-left" size={24} color="inkStrong" />
-        </AnimatedPressable>
-        <Avatar name={headerName} size={40} />
-        <Box flex={1}>
-          <Text
-            variant="label"
-            style={{ fontSize: 15, lineHeight: 20 }}
-            color="inkStrong"
-            numberOfLines={1}
-          >
-            {headerName}
-          </Text>
-          <Text variant="bodySm" color="inkMuted" numberOfLines={1}>
-            {headerSub}
-          </Text>
-        </Box>
-      </Box>
-
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={insets.top + 56}
-      >
-        {/* event context */}
-        {eventMeta ? (
-          <Box
-            flexDirection="row"
-            alignItems="center"
-            style={{ gap: 8, paddingHorizontal: 16, paddingTop: 10 }}
-          >
-            <Icon name="calendar" size={14} color="inkMuted" />
-            <Text variant="bodySm" color="inkMuted" numberOfLines={1} style={{ flex: 1 }}>
-              {eventMeta}
-            </Text>
-          </Box>
-        ) : null}
-
-        <Box style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
-          <Banner
-            tone="warning"
-            message="For your protection, keep coordination & payment on HireQuick."
-          />
-        </Box>
-
-        {/* messages */}
-        {messages.isLoading ? (
-          <Box style={{ flex: 1, padding: 16, gap: 12, justifyContent: 'flex-end' }}>
-            {[false, true, false, true].map((mine, i) => (
-              <Box key={i} style={{ alignSelf: mine ? 'flex-end' : 'flex-start' }}>
-                <Skeleton width={mine ? 150 : 200} height={44} radius={16} />
-              </Box>
-            ))}
-          </Box>
-        ) : messages.isError ? (
-          <EmptyState
-            icon="alert-circle"
-            title="Couldn’t load messages"
-            subtitle="Your draft is still here. Check your connection and try again."
-            actionLabel="Try again"
-            onAction={() => {
-              void messages.refetch();
-            }}
-          />
-        ) : list.length === 0 ? (
-          <Box style={{ flex: 1, justifyContent: 'center' }}>
-            <EmptyState
-              icon="message-circle"
-              title="No messages yet"
-              subtitle="Say hello and sort out the details for the day."
-            />
-          </Box>
-        ) : (
-          <ScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={{
-              padding: 16,
-              gap: 12,
-              flexGrow: 1,
-              justifyContent: 'flex-end',
-            }}
-          >
-            {(() => {
-              const rows: React.ReactNode[] = [];
-              let lastDay = '';
-              for (const m of list) {
-                const day = formatDayLabel(m.createdAt);
-                if (day && day !== lastDay) {
-                  lastDay = day;
-                  rows.push(
-                    <Box key={`sep-${m.id}`} alignItems="center" style={{ paddingVertical: 4 }}>
-                      <Box
-                        style={{
-                          backgroundColor: theme.colors.bgInset,
-                          paddingHorizontal: 12,
-                          paddingVertical: 4,
-                          borderRadius: theme.borderRadii.pill,
-                        }}
-                      >
-                        <Text variant="labelSm" color="inkMuted">
-                          {day}
-                        </Text>
-                      </Box>
-                    </Box>,
-                  );
-                }
-                const mine = m.senderId === user?.id;
-                rows.push(
-                  <Box
-                    key={m.id}
-                    style={{ maxWidth: '78%', alignSelf: mine ? 'flex-end' : 'flex-start', gap: 4 }}
-                  >
-                    <Box
-                      style={{
-                        paddingHorizontal: 16,
-                        paddingVertical: 12,
-                        backgroundColor: mine ? theme.colors.brandSurface : theme.colors.bgSurface,
-                        borderWidth: mine ? 0 : 1,
-                        borderColor: theme.colors.borderDefault,
-                        borderTopLeftRadius: 16,
-                        borderTopRightRadius: 16,
-                        borderBottomLeftRadius: mine ? 16 : 6,
-                        borderBottomRightRadius: mine ? 6 : 16,
-                      }}
-                    >
-                      {m.contentType === 'TEXT' ? (
-                        <Text variant="body" color={mine ? 'inverseInk' : 'inkDefault'}>
-                          {m.content}
-                        </Text>
-                      ) : (
-                        <ChatMedia bookingId={bookingId} messageId={m.id} type={m.contentType} />
-                      )}
-                      {m.flagged ? (
-                        <Text
-                          variant="bodySm"
-                          color={mine ? 'brandEmeraldTint' : 'statusWarning'}
-                          style={{ marginTop: 4 }}
-                        >
-                          Keep contact and payment on HireQuick.
-                        </Text>
-                      ) : null}
-                    </Box>
-                    <Text
-                      variant="labelSm"
-                      color="inkFaint"
-                      style={{ alignSelf: mine ? 'flex-end' : 'flex-start', paddingHorizontal: 4 }}
-                    >
-                      {formatTime(m.createdAt)}
-                      {mine && m.seenAt ? ' · Read' : ''}
-                    </Text>
-                  </Box>,
-                );
-              }
-              return rows;
-            })()}
-          </ScrollView>
-        )}
-
-        {pendingBody ? (
-          <Box padding="300">
-            <Text variant="bodySm" color="inkMuted" accessibilityLiveRegion="polite">
-              Sending: {pendingBody}
-            </Text>
-          </Box>
-        ) : null}
-        {failed.length ? (
-          <ScrollView style={{ maxHeight: 180 }} contentContainerStyle={{ padding: 16, gap: 12 }}>
-            {failed.map((item) => (
-              <Box key={item.id} style={{ gap: 8 }}>
-                <Text variant="bodySm" color="statusDanger" accessibilityRole="alert">
-                  Couldn’t confirm delivery: {item.body}
-                </Text>
-                <Button
-                  label="Retry this message"
-                  variant="secondary"
-                  size="md"
-                  disabled={send.isPending || !canSend || uploading}
-                  onPress={() => sendBody(item.body, item.id)}
-                />
-              </Box>
-            ))}
-          </ScrollView>
-        ) : null}
-        {!canSend ? (
-          <Box padding="400">
-            <Text variant="bodySm" color="inkMuted">
-              {detail.isError
-                ? 'Reload booking details before sending a message.'
-                : 'This conversation is read-only.'}
-            </Text>
-          </Box>
-        ) : (
-          <Button
-            label={uploading ? 'Sending photo…' : 'Share photo'}
-            variant="ghost"
-            disabled={uploading || send.isPending}
-            onPress={() => {
-              void sendPhoto();
-            }}
-          />
-        )}
-        {/* composer */}
         <Box
           flexDirection="row"
           alignItems="center"
           style={{
             gap: 12,
-            paddingHorizontal: 16,
-            paddingTop: 12,
-            paddingBottom: insets.bottom + 12,
-            borderTopWidth: 1.5,
-            borderTopColor: theme.colors.borderDefault,
+            paddingHorizontal: 24,
+            paddingVertical: 8,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.borderDefault,
           }}
         >
-          <Box
-            flex={1}
-            backgroundColor="bgSubtle"
-            borderRadius="pill"
-            style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 16 }}
+          <AnimatedPressable
+            onPress={() => router.back()}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
           >
-            <TextInput
-              editable={canSend}
-              maxLength={2000}
-              accessibilityLabel="Message"
-              value={text}
-              onChangeText={setText}
-              placeholder="Message…"
-              placeholderTextColor={theme.colors.inkFaint}
-              style={{
-                fontFamily: fonts.sansRegular,
-                fontSize: 15,
-                color: theme.colors.inkStrong,
-                paddingVertical: 8,
+            <Icon name="chevron-left" size={24} color="inkStrong" />
+          </AnimatedPressable>
+          <Avatar name={name} size={36} />
+          <Box flex={1}>
+            <Text variant="label" numberOfLines={1}>
+              {name}
+            </Text>
+            <Text variant="bodySm" color="inkMuted" numberOfLines={1}>
+              {event?.title ?? 'Coordination chat'}
+            </Text>
+          </Box>
+        </Box>
+        {event ? (
+          <Text
+            variant="bodySm"
+            color="inkMuted"
+            numberOfLines={1}
+            style={{ paddingHorizontal: 16, paddingTop: 8 }}
+          >
+            {dateTime(event.eventDate, event.startTime)}
+            {event.venue ? ` · ${event.venue}` : ''}
+          </Text>
+        ) : null}
+        <Box style={{ paddingHorizontal: 24, paddingVertical: 8 }}>
+          <Banner
+            tone="warning"
+            message="Keep payment and contact details on HireQuick. Messages and photos here can be reviewed if a dispute is opened."
+          />
+        </Box>
+        {chat.error ? (
+          <Box padding="300">
+            <Text variant="bodySm" color="statusDanger" accessibilityRole="alert">
+              {chat.error}
+            </Text>
+            <Button
+              label="Refresh messages"
+              variant="ghost"
+              onPress={() => {
+                void chat.controller.sync();
               }}
-              onSubmitEditing={onSend}
-              returnKeyType="send"
-              multiline
             />
           </Box>
+        ) : null}
+        {!canSend ? (
+          <Text variant="bodySm" color="inkMuted" style={{ padding: 12 }}>
+            {detail.isError
+              ? 'Reload booking details before sending a message.'
+              : 'This conversation is read-only.'}
+          </Text>
+        ) : null}
+      </Box>
+      <GiftedChat<ChatMessage>
+        messages={messages}
+        user={{ _id: userId }}
+        text={text}
+        colorScheme={scheme === 'dark' ? 'dark' : 'light'}
+        keyboardAvoidingViewProps={{ keyboardVerticalOffset: topHeight }}
+        renderAvatar={null}
+        isScrollToBottomEnabled
+        isDayAnimationEnabled={false}
+        textInputProps={{
+          onChangeText: setText,
+          editable: canSend,
+          maxLength: 4000,
+          placeholder: 'Message…',
+          accessibilityLabel: 'Message',
+          style: { color: theme.colors.inkStrong, fontFamily: fonts.sansRegular },
+        }}
+        loadEarlierMessagesProps={{
+          isAvailable: chat.hasOlder,
+          isLoading: chat.loadingOlder,
+          onPress: () => {
+            void chat.controller.loadOlder();
+          },
+          label: 'Load older messages',
+        }}
+        renderChatEmpty={() => (
+          <Box style={{ transform: [{ scaleY: -1 }] }}>
+            <EmptyState
+              icon="message-circle"
+              title={chat.ready ? 'No messages yet' : 'Loading messages…'}
+              subtitle={
+                chat.ready
+                  ? 'Say hello and sort out the details for the day.'
+                  : 'Your conversation will appear here.'
+              }
+            />
+          </Box>
+        )}
+        timeTextStyle={{
+          left: { color: theme.colors.inkMuted },
+          right: { color: theme.colors.inkOnAccent },
+        }}
+        renderBubble={(props) => (
+          <Bubble
+            {...props}
+            wrapperStyle={{
+              left: {
+                backgroundColor: theme.colors.bgSurface,
+                borderWidth: 1,
+                borderColor: theme.colors.borderDefault,
+                borderRadius: 12,
+              },
+              right: { backgroundColor: theme.colors.brandAccent, borderRadius: 12 },
+            }}
+            textStyle={{
+              left: {
+                color: theme.colors.inkStrong,
+                fontFamily: fonts.sansRegular,
+                fontSize: 16,
+                lineHeight: 24,
+              },
+              right: {
+                color: theme.colors.inkOnAccent,
+                fontFamily: fonts.sansRegular,
+                fontSize: 16,
+                lineHeight: 24,
+              },
+            }}
+            renderTicks={(message) =>
+              message.user._id === userId ? (
+                <Text variant="labelSm" color="inkOnAccent" style={{ paddingRight: 8 }}>
+                  {message.received ? 'Read' : message.confirmed ? 'Sent' : ''}
+                </Text>
+              ) : null
+            }
+          />
+        )}
+        renderCustomView={({ currentMessage: message }) => (
+          <Box style={{ paddingHorizontal: 10, gap: 4 }}>
+            {message.mediaType ? (
+              message.confirmed ? (
+                <ChatMedia
+                  bookingId={bookingId}
+                  messageId={String(message._id)}
+                  type={message.mediaType}
+                />
+              ) : (
+                <Text variant="bodySm" color="inkOnAccent">
+                  Photo waiting to send
+                </Text>
+              )
+            ) : null}
+            {message.flagged ? (
+              <Text
+                variant="bodySm"
+                color={message.user._id === userId ? 'inkOnAccent' : 'statusWarning'}
+              >
+                Keep contact and payment on HireQuick.
+              </Text>
+            ) : null}
+            {message.pending ? (
+              <Text variant="bodySm" color="inkOnAccent">
+                Sending…
+              </Text>
+            ) : null}
+            {message.failed ? (
+              <Button
+                label="Delivery unconfirmed · Retry"
+                variant="secondary"
+                disabled={!canSend || busy}
+                onPress={() => {
+                  void chat.controller
+                    .retry(String(message._id))
+                    .catch(() => toast.error('Reopen this conversation to retry.'));
+                }}
+              />
+            ) : null}
+          </Box>
+        )}
+        renderActions={() => (
           <AnimatedPressable
-            onPress={onSend}
-            disabled={send.isPending || !canSend || uploading}
+            onPress={() => {
+              void sendPhoto();
+            }}
+            disabled={!canSend || busy}
+            accessibilityRole="button"
+            accessibilityLabel={uploading ? 'Uploading photo' : 'Share photo'}
+            style={{ padding: 12 }}
+          >
+            <Icon name="paperclip" size={22} color="inkMuted" />
+          </AnimatedPressable>
+        )}
+        renderSend={() => (
+          <AnimatedPressable
+            onPress={() => {
+              void submitText();
+            }}
+            disabled={!canSend || busy || !text.trim()}
             accessibilityRole="button"
             accessibilityLabel="Send message"
+            style={{
+              padding: 12,
+              margin: 6,
+              borderRadius: 24,
+              backgroundColor: theme.colors.brandAccent,
+              opacity: !canSend || busy || !text.trim() ? 0.4 : 1,
+            }}
           >
-            <Box
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 22,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: theme.colors.brandSurface,
-                opacity: send.isPending ? 0.6 : 1,
-              }}
-            >
-              <Icon name="arrow-up" size={20} color="inverseInk" />
-            </Box>
+            <Icon name="send" size={22} color="inkOnAccent" />
           </AnimatedPressable>
-        </Box>
-      </KeyboardAvoidingView>
+        )}
+      />
     </Box>
   );
 }
@@ -406,8 +402,10 @@ function ChatMedia({
 }): React.JSX.Element {
   const query = useQuery({
     queryKey: ['chatMedia', bookingId, messageId],
-    queryFn: () =>
-      api.get<{ url: string }>(`/api/bookings/${bookingId}/messages/${messageId}/media-url`),
+    queryFn: ({ signal }) =>
+      api.get<{ url: string }>(`/api/bookings/${bookingId}/messages/${messageId}/media-url`, {
+        signal,
+      }),
     staleTime: 60_000,
   });
   if (query.isError)

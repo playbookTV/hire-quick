@@ -2,7 +2,7 @@
  * Event Day — matches Figma `Client / 19 Event Day` (37:426). Live: the event's
  * bookings (`useBookings` filtered to this event). The client generates a 6-digit
  * check-in code per usher (`useGenerateCheckin`) for them to enter on arrival,
- * then releases each payout once checked in (`useCompleteBooking`). The big card
+ * then records work completion once checked in (`useCompleteBooking`). The big card
  * shows the most recently generated code (dev returns it inline).
  */
 import { useState, useEffect } from 'react';
@@ -62,7 +62,7 @@ function RosterRow({
     setConfirming(false);
     complete.mutate(undefined, {
       onError: (e: unknown) =>
-        toast.error(e instanceof Error ? e.message : 'Try again.', 'Couldn’t release'),
+        toast.error(e instanceof Error ? e.message : 'Try again.', 'Couldn’t complete'),
     });
   };
 
@@ -78,12 +78,13 @@ function RosterRow({
         style={{ gap: 10 }}
       >
         <Text variant="label" color="statusDanger" numberOfLines={2}>
-          Release {name}’s payment? This can’t be undone.
+          Confirm {name} completed the work? Earnings remain held until 72 hours after event end and
+          any dispute is resolved.
         </Text>
         <Box flexDirection="row" style={{ gap: 8 }}>
           <Box flex={1}>
             <Button
-              label={complete.isPending ? 'Releasing…' : 'Release'}
+              label={complete.isPending ? 'Confirming…' : 'Complete'}
               variant="danger"
               size="md"
               onPress={release}
@@ -134,7 +135,7 @@ function RosterRow({
         />
       ) : checkedIn ? (
         <Button
-          label={complete.isPending ? 'Releasing…' : 'Release'}
+          label={complete.isPending ? 'Confirming…' : 'Complete'}
           size="md"
           fullWidth={false}
           onPress={() => setConfirming(true)}
@@ -341,7 +342,8 @@ export default function EventDay(): React.JSX.Element {
           <Button label="Done" variant="secondary" onPress={() => router.back()} />
           <Text variant="bodySm" color="inkFaint" style={{ textAlign: 'center' }}>
             Bookings with verified attendance or reported arrival can complete automatically 60 min
-            after the event ends, unless a dispute is open.
+            after the event ends, unless a dispute is open. Earnings remain held until 72 hours
+            after event end; unresolved disputes delay release.
           </Text>
         </Box>
       </Screen>

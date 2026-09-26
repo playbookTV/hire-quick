@@ -1,92 +1,69 @@
-/**
- * Semantic colour tokens — based on the Figma "Color" collection
- * (Light/Dark modes, file hpP1yPu7hkQLkgJFWvF9wC). Every key exists in BOTH maps
- * (Restyle requires identical key sets to swap themes) and aliases the same
- * primitive ramps, with text contrast corrections and separate filled surfaces.
- *
- * Restyle keys can't contain "/", so Figma `bg/canvas` → `bgCanvas`,
- * `brand/emerald-strong` → `brandEmeraldStrong`, etc. `overlay`/`transparent`
- * are app-only utilities (not Figma tokens).
- */
-import { primitives as p } from './primitives.js';
+/** Semantic roles from Redesign 2026. Legacy keys keep existing screens compatible. */
+import { colorTokens, primitiveTokens } from './token-manager.js';
 
-export const lightColors = {
-  // backgrounds
-  bgCanvas: p.neutral[50],
-  bgSurface: p.neutral[0],
-  bgSubtle: p.neutral[100],
-  bgInset: p.neutral[200],
-  // ink
-  inkStrong: p.neutral[900],
-  inkDefault: p.neutral[800],
-  // Darkened neutral[600] → neutral[700] for WCAG AA compliance on light
-  // backgrounds (neutral[600] ≈ 3.7:1 on bgCanvas; neutral[700] ≈ 7:1).
-  inkMuted: p.neutral[700],
-  inkFaint: p.neutral[700],
-  inverseInk: p.neutral[50],
-  brandSurface: p.emerald[700],
-  dangerSurface: p.red[600],
-  onBrandAccent: p.gold[200],
-  // brand
-  brandEmerald: p.emerald[600],
-  brandEmeraldStrong: p.emerald[700],
-  brandEmeraldTint: p.emerald[100],
-  brandEmeraldTintWeak: p.emerald[50],
-  // accent
-  accentGold: p.gold[500],
-  accentGoldStrong: '#7D5513',
-  accentGoldTint: p.gold[100],
-  // borders
-  borderDefault: p.neutral[200],
-  borderStrong: p.neutral[300],
-  // status
-  statusSuccess: p.green[700],
-  statusSuccessTint: p.green[100],
-  statusWarning: p.amber[700],
-  statusWarningTint: p.amber[100],
-  statusDanger: p.red[600],
-  statusDangerTint: p.red[100],
-  statusInfo: p.blue[600],
-  statusInfoTint: p.blue[100],
-  statusHeld: '#7D5513',
-  // app-only utilities
-  overlay: 'rgba(20, 19, 14, 0.45)',
-  transparent: 'transparent',
-};
-
+function semantic(c: typeof colorTokens.Light) {
+  return {
+    bgCanvas: c['bg/canvas'],
+    bgSurface: c['bg/surface'],
+    bgSurfaceAlt: c['bg/surface-alt'],
+    bgSubtle: c['bg/surface-alt'],
+    bgInset: c['border/subtle'],
+    bgInverse: c['bg/inverse'],
+    bgElevated: c['bg/elevated'],
+    inkStrong: c['ink/strong'],
+    inkDefault: c['ink/body'],
+    inkMuted: c['ink/muted'],
+    inkFaint: c['ink/muted'],
+    inkInverse: c['ink/inverse'],
+    inkOnAccent: c['ink/on-accent'],
+    inkOnElevated: c['ink/on-elevated'],
+    inkOnElevatedMuted: c['ink/on-elevated-muted'],
+    brandAccent: c['brand/accent'],
+    brandAccentHover: c['brand/accent-hover'],
+    brandAccentSubtle: c['brand/accent-subtle'],
+    brandAccentText: c['brand/accent-text'],
+    brandAccentOnElevated: c['brand/accent-on-elevated'],
+    brandAccentOnInverse: c['brand/accent-on-inverse'],
+    brandSplashEnd: c['brand/splash-end'],
+    borderDefault: c['border/subtle'],
+    borderStrong: c['border/strong'],
+    borderControl: c['border/control'],
+    borderFocus: c['border/focus'],
+    statusSuccess: c['status/success'],
+    statusSuccessTint: c['status/success-bg'],
+    statusWarning: c['status/warning'],
+    statusWarningTint: c['status/warning-bg'],
+    statusDanger: c['status/danger'],
+    statusDangerTint: c['status/danger-bg'],
+    statusInfo: c['status/info'],
+    statusInfoTint: c['status/info-bg'],
+    statusDangerOnElevated: c['status/danger-on-elevated'],
+    moneyAvailable: c['money/available'],
+    moneyHeld: c['money/held'],
+    moneyPending: c['money/pending'],
+    moneyHeldOnElevated: c['money/held-on-elevated'],
+    moneyHeldOnInverse: c['money/held-on-inverse'],
+    actionPrimaryPressed: c['action/primary-pressed'],
+    actionDangerPressed: c['action/danger-pressed'],
+    actionDisabled: c['action/disabled'],
+    inkOnDanger: primitiveTokens['neutral/0'],
+    // Older screen names map to semantic roles, never to the retired emerald palette.
+    inverseInk: c['ink/on-elevated'],
+    brandSurface: c['bg/elevated'],
+    dangerSurface: primitiveTokens['red/600'],
+    onBrandAccent: c['brand/accent-on-elevated'],
+    brandEmerald: c['brand/accent-text'],
+    brandEmeraldStrong: c['brand/accent-text'],
+    brandEmeraldTint: c['brand/accent-subtle'],
+    brandEmeraldTintWeak: c['brand/accent-subtle'],
+    accentGold: c['money/held-on-elevated'],
+    accentGoldStrong: c['money/held'],
+    accentGoldTint: c['status/warning-bg'],
+    statusHeld: c['money/held'],
+    overlay: 'rgba(0, 0, 0, 0.6)',
+    transparent: 'transparent',
+  };
+}
+export const lightColors = semantic(colorTokens.Light);
 export type SemanticColors = Record<keyof typeof lightColors, string>;
-
-export const darkColors: SemanticColors = {
-  bgCanvas: p.neutral[950],
-  bgSurface: p.neutral[890],
-  bgSubtle: p.neutral[870],
-  bgInset: p.neutral[850],
-  inkStrong: p.neutral[50],
-  inkDefault: p.neutral[300],
-  inkMuted: p.neutral[500],
-  inkFaint: p.neutral[400],
-  inverseInk: p.neutral[50],
-  brandSurface: p.emerald[700],
-  dangerSurface: p.red[600],
-  onBrandAccent: p.gold[200],
-  brandEmerald: p.emerald[300],
-  brandEmeraldStrong: p.emerald[500],
-  brandEmeraldTint: p.emerald[800],
-  brandEmeraldTintWeak: p.emerald[900],
-  accentGold: p.gold[400],
-  accentGoldStrong: p.gold[500],
-  accentGoldTint: p.gold[800],
-  borderDefault: p.neutral[850],
-  borderStrong: p.neutral[800],
-  statusSuccess: p.green[300],
-  statusSuccessTint: p.green[800],
-  statusWarning: p.amber[400],
-  statusWarningTint: p.amber[800],
-  statusDanger: p.red[300],
-  statusDangerTint: p.red[800],
-  statusInfo: p.blue[300],
-  statusInfoTint: p.blue[800],
-  statusHeld: p.gold[450],
-  overlay: 'rgba(0, 0, 0, 0.6)',
-  transparent: 'transparent',
-};
+export const darkColors: SemanticColors = semantic(colorTokens.Dark);

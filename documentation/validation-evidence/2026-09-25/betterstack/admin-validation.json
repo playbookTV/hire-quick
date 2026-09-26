@@ -1,0 +1,28 @@
+{
+  "targetedTests": {
+    "passed": 18,
+    "suites": 4
+  },
+  "checks": [
+    "shared build",
+    "API typecheck",
+    "API tests typecheck",
+    "admin typecheck",
+    "admin production build",
+    "targeted application and test ESLint",
+    "documentation link check"
+  ],
+  "liveProviderRead": {
+    "betterStack": {
+      "status": "connected",
+      "resourceCount": 4,
+      "monitorStatus": "all paused"
+    },
+    "sentry": {
+      "status": "rejected",
+      "httpStatus": 401
+    }
+  },
+  "deployment": "not deployed",
+  "railwayApiSecrets": "not changed; approval review rejected credential transfer"
+}

@@ -127,7 +127,9 @@ export function Approvals() {
           </p>
           <p>
             <strong>{naira(selected.amountKobo)}</strong> · Proposed outcome:{' '}
-            {selected.payload.outcome ?? 'REFUND'}
+            {selected.payload.outcome === 'CLIENT_CANCELLATION'
+              ? 'Client cancellation split (total allocation shown)'
+              : (selected.payload.outcome ?? 'REFUND')}
           </p>
           <p className="whitespace-pre-wrap">
             {selected.payload.resolution ?? selected.payload.reason ?? 'No rationale supplied.'}
@@ -145,7 +147,8 @@ export function Approvals() {
           {selected.status === 'REJECTED' ? (
             <p className="notice">
               Rejected. Dispute proposals can be revised from the open case once no other proposal
-              is pending.
+              is pending. Rejected cancellation proposals leave the original request reserved;
+              propose a revised review from its booking case.
             </p>
           ) : null}
           {selected.payload.bookingId ? (

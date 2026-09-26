@@ -6,11 +6,11 @@
 
 Record the revision, API/worker versions, relevant UTC timestamps, request ID if available, and entity/provider reference. Keep customer and credential data in restricted incident records. First distinguish API availability, worker availability, provider state, and client display state: each can fail independently.
 
-`/health` is HTTP liveness only. It does not establish database access, queue health, provider availability, or ledger reconciliation. Inspect both API and worker logs. These procedures recommend operational checks; they do not imply that alerts or a queue dashboard are installed.
+`/health` is HTTP liveness only. `/ready` checks database and Redis connectivity; it does not establish queue health, provider availability, or ledger reconciliation. Inspect both API and worker logs. [Observability](OBSERVABILITY.md) describes the error reporting and heartbeat hooks and the separate steps required to activate hosted alerts.
 
 ## Background jobs
 
-Source: [queues.ts](../apps/api/src/modules/jobs/queues.ts) and [jobs.ts](../apps/api/src/modules/jobs/jobs.ts). Queue name: `hirequick-jobs`. Registration deduplicates identical repeat options. Completed jobs are removed; up to 100 failed jobs are retained. No explicit timezone is configured in the repeat options; configure and verify the deployed scheduler timezone, preferably UTC, before translating schedules into local incident expectations.
+Source: [queues.ts](../apps/api/src/modules/jobs/queues.ts), [runtime.ts](../apps/api/src/modules/jobs/runtime.ts), and [jobs.ts](../apps/api/src/modules/jobs/jobs.ts). Each schedule uses a separate `hirequick-jobs-<job>` queue; the legacy `hirequick-jobs` queue drains existing work. Registration deduplicates identical repeat options. Completed jobs are removed; up to 100 failed jobs are retained per queue. Schedules explicitly use UTC.
 
 | Job              | Cron pattern      | Purpose / checks                                                                             |
 | ---------------- | ----------------- | -------------------------------------------------------------------------------------------- |

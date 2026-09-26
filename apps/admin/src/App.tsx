@@ -10,6 +10,7 @@ import { PaymentOperations } from './pages/PaymentOperations';
 import { Ledger } from './pages/Ledger';
 import { Bookings } from './pages/Bookings';
 import { Users } from './pages/Users';
+import { Observability } from './pages/Observability';
 
 export function App() {
   const { authed } = useAuth();
@@ -25,6 +26,7 @@ export function App() {
         <Route path="/payment-operations" element={<PaymentOperations />} />
         <Route path="/ledger" element={<Ledger />} />
         <Route path="/users" element={<Users />} />
+        <Route path="/observability" element={<Observability />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

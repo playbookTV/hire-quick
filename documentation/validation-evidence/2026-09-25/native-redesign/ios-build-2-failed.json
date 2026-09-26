@@ -1,0 +1,17 @@
+{
+  "id": "528dd3f0-469e-4a36-81ba-20fe8c2e26ca",
+  "status": "ERRORED",
+  "platform": "IOS",
+  "appVersion": "0.0.1",
+  "appBuildVersion": "2",
+  "buildProfile": "ios-archive",
+  "distribution": "STORE",
+  "createdAt": "2026-09-25T18:16:31.136Z",
+  "completedAt": "2026-09-25T18:18:52.656Z",
+  "gitCommitHash": "02d8248cd7a32e20ead497f863658aaf9885ad73",
+  "artifacts": {},
+  "error": {
+    "errorCode": "EAS_BUILD_UNKNOWN_FASTLANE_ERROR",
+    "message": "The \"Run fastlane\" step failed with an unknown error. Refer to \"Xcode Logs\" below for additional, more detailed logs."
+  }
+}

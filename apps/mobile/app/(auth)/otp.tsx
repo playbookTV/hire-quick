@@ -10,7 +10,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import type { UserRole } from '@hq/shared';
 import { Screen } from '../../components/Screen.js';
 import { AppBar } from '../../components/AppBar.js';
-import { StepIndicator } from '../../components/StepIndicator.js';
 import { Field } from '../../components/Field.js';
 import { Input } from '../../components/Input.js';
 import { Button } from '../../components/Button.js';
@@ -57,12 +56,14 @@ export default function Otp(): React.JSX.Element {
   }, [cooldown]);
 
   const submit = async () => {
+    if (verify.isPending || code.length !== 6) return;
     setError(null);
     try {
       const result = await verify.mutateAsync({ phone, code, role });
       hapticSuccess();
-      await login(result);
-      router.replace('/(auth)/complete-profile');
+      const user = await login(result);
+      // AuthProvider shows admins an account explanation instead of onboarding.
+      if (user.role !== 'ADMIN') router.replace('/(auth)/complete-profile');
     } catch (e) {
       hapticError();
       setError(userMessage(e));
@@ -86,11 +87,8 @@ export default function Otp(): React.JSX.Element {
     <Box flex={1} backgroundColor="bgCanvas">
       <AppBar showBack />
       <Screen scroll>
-        <Box marginBottom="500">
-          <StepIndicator total={3} current={1} label="ACCOUNT SETUP" />
-        </Box>
         <Text variant="h1" marginBottom="200">
-          Enter the code
+          Enter your code
         </Text>
         <Text variant="body" color="inkMuted" marginBottom="500">
           Sent to {phone}.
@@ -98,13 +96,18 @@ export default function Otp(): React.JSX.Element {
 
         {devCode ? (
           <Box marginBottom="400">
-            <Banner tone="info" title="Test build" message={`Your code is ${devCode} — already filled in below.`} />
+            <Banner
+              tone="info"
+              title="Test build"
+              message={`Your code is ${devCode} — already filled in below.`}
+            />
           </Box>
         ) : null}
 
-        <Field label="6-digit code" error={error ?? undefined}>
+        <Field label="Verification code" error={error ?? undefined}>
           <Input
             placeholder="000000"
+            variant="code"
             keyboardType="number-pad"
             textContentType="oneTimeCode"
             autoComplete="sms-otp"
@@ -133,11 +136,16 @@ export default function Otp(): React.JSX.Element {
             accessibilityState={{ disabled: cooldown > 0 || requestOtp.isPending }}
           >
             <Text variant="label" color={cooldown > 0 ? 'inkMuted' : 'brandEmerald'}>
-              {requestOtp.isPending ? 'Sending…' : cooldown > 0 ? `Resend code in ${cooldown}s` : 'Resend code'}
+              {requestOtp.isPending
+                ? 'Sending…'
+                : cooldown > 0
+                  ? `Resend code in ${cooldown}s`
+                  : 'Resend code'}
             </Text>
           </Pressable>
         </Box>
 
+        <Box flex={1} minHeight={32} />
         <Button
           label="Verify"
           disabled={code.length !== 6}

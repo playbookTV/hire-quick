@@ -107,7 +107,11 @@ export type CreateEventInput = z.infer<typeof createEventSchema>;
  */
 export const updateEventSchema = eventFields.partial().superRefine((e, ctx) => {
   if (e.startTime != null && e.endTime != null && e.endTime <= e.startTime) {
-    ctx.addIssue({ code: 'custom', message: 'End time must be after the start time.', path: ['endTime'] });
+    ctx.addIssue({
+      code: 'custom',
+      message: 'End time must be after the start time.',
+      path: ['endTime'],
+    });
   }
 });
 export type UpdateEventInput = z.infer<typeof updateEventSchema>;
@@ -142,6 +146,8 @@ export type SetAvailabilityInput = z.infer<typeof setAvailabilitySchema>;
 
 /** POST /bookings/:id/cancel — client cancels a confirmed booking (policy applies). */
 export const cancelBookingSchema = z.object({
+  expectedWindow: z.enum(['GT_48H', 'BETWEEN_12_48H', 'LT_12H']).optional(),
+  expectedRefundKobo: z.number().int().min(0).max(2_147_483_647).optional(),
   reason: z.string().max(500).optional(),
 });
 export type CancelBookingInput = z.infer<typeof cancelBookingSchema>;

@@ -1,0 +1,24 @@
+{
+  "checkedAt": "2026-09-25T12:11:40.043109+00:00",
+  "syntheticCallback": true,
+  "results": [
+    {
+      "check": "health",
+      "status": 200,
+      "expected": 200,
+      "body": "{\"status\":\"ok\"}"
+    },
+    {
+      "check": "callback_report",
+      "status": 200,
+      "expected": 200,
+      "body": "{\"ok\":true}"
+    },
+    {
+      "check": "callback_invalid",
+      "status": 400,
+      "expected": 400,
+      "body": "{\"error\":{\"code\":\"INVALID_WEBHOOK\",\"message\":\"Invalid delivery report\"}}"
+    }
+  ]
+}

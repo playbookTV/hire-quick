@@ -5,13 +5,19 @@
  * is audit-logged.
  */
 import { prisma, type ApprovalKind } from '@hq/database';
+import { cancellationSnapshot } from '../payments/cancellation-policy.js';
 import { ApiError } from '../../app.js';
-import { resolveDisputeRelease, assertRefundable } from '../payments/ledger/ledger.js';
+import {
+  resolveDisputeRelease,
+  releaseBooking,
+  assertRefundable,
+  assertCancellationSettlement,
+} from '../payments/ledger/ledger.js';
 import { claimOperation, runOperation } from '../payments/ledger/operations.js';
-import { refundBookingToClient } from '../payments/service.js';
+import { driveRefund, refundBookingToClient, type RefundPayload } from '../payments/service.js';
 import type { PaystackPort } from '../payments/port/paystack-port.js';
 import { notifyPayoutReleased, notifyMilestoneUnlocked } from '../notifications/service.js';
-import { kobo } from '@hq/shared';
+import { kobo, bookingReleaseAt, MONEY_APPROVAL_THRESHOLD_KOBO } from '@hq/shared';
 import { writeAudit } from '../audit.js';
 import { noopGateway, type RealtimeGateway } from '../../realtime/gateway.js';
 import { RT, bookingEvent } from '../../realtime/events.js';
@@ -19,7 +25,7 @@ import { loadBookingParties } from '../../realtime/messages.js';
 import { lockBookingLifecycle } from '../events/staffing.js';
 
 const TX = { timeout: 30_000, maxWait: 30_000 };
-export const APPROVAL_THRESHOLD_KOBO = 5_000_000; // ₦50,000
+export const APPROVAL_THRESHOLD_KOBO = MONEY_APPROVAL_THRESHOLD_KOBO; // ₦50,000
 
 export type DisputeOutcome = 'RELEASE' | 'REFUND';
 
@@ -41,7 +47,7 @@ async function executeDisputeResolution(
       if (dispute.status === 'RESOLVED') return [];
       const booking = await tx.booking.findUniqueOrThrow({
         where: { id: p.bookingId },
-        include: { payment: true },
+        include: { payment: true, event: true },
       });
       // Repair the old release-committed/dispute-not-resolved crash boundary.
       const released =
@@ -50,18 +56,24 @@ async function executeDisputeResolution(
         (await tx.escrowLedger.findFirst({
           where: { bookingId: p.bookingId, entryType: 'RELEASE' },
         }));
-      const tiers = released ? [] : await resolveDisputeRelease(tx, p.bookingId);
+      if (!released) await resolveDisputeRelease(tx, p.bookingId);
       await tx.dispute.update({
         where: { id: p.disputeId },
         data: { status: 'RESOLVED', resolution: p.resolution, resolvedById: p.adminId },
       });
-      return tiers;
+      if (
+        !released &&
+        Date.now() >= bookingReleaseAt(booking.event.eventDate, booking.event.endTime).getTime()
+      )
+        return releaseBooking(tx, p.bookingId, booking.attendanceMethod ?? 'AUTO');
+      return [];
     }, TX);
     const b = await prisma.booking.findUnique({
       where: { id: p.bookingId },
       include: { usher: true, payment: true },
     });
-    if (b?.payment) notifyPayoutReleased(b.usher.userId, kobo(b.payment.usherPayout));
+    if (b?.payment && b.status === 'PAID')
+      notifyPayoutReleased(b.usher.userId, kobo(b.payment.usherPayout));
     if (b) for (const tier of unlocked) notifyMilestoneUnlocked(b.usher.userId, tier.name);
   } else {
     // Refund the client — the booking is DISPUTED (frozen), already a legal
@@ -238,6 +250,79 @@ export async function createRefund(
   return { executed };
 }
 
+/** First admin proposes the client's immutable cancellation for a different checker. */
+export async function proposeCancellation(adminId: string, bookingId: string, reason: string) {
+  return prisma.$transaction(async (tx) => {
+    await lockBookingLifecycle(tx, bookingId);
+    const op = await tx.paymentOperation.findUnique({
+      where: { dedupeKey: `BOOKING_REFUND:${bookingId}` },
+    });
+    const payload = op?.payload as unknown as RefundPayload | undefined;
+    if (!op || !payload?.cancellation || !['PENDING', 'PROVIDER_OK'].includes(op.status))
+      throw new ApiError(409, 'NO_CANCELLATION', 'no pending client cancellation to approve');
+    const quote = cancellationSnapshot(payload.cancellation);
+    if (quote.grossAmount <= APPROVAL_THRESHOLD_KOBO)
+      throw new ApiError(
+        409,
+        'APPROVAL_NOT_REQUIRED',
+        'this cancellation does not require an approval',
+      );
+    await assertCancellationSettlement(tx, bookingId, quote);
+    const existing = await tx.approval.findFirst({
+      where: {
+        kind: 'REFUND',
+        status: { in: ['PENDING', 'APPROVED', 'EXECUTED'] },
+        payload: { path: ['cancellationOperationId'], equals: op.id },
+      },
+    });
+    if (existing) return { executed: existing.status === 'EXECUTED', approvalId: existing.id };
+    const approval = await tx.approval.create({
+      data: {
+        kind: 'REFUND',
+        makerId: adminId,
+        amountKobo: quote.grossAmount,
+        payload: {
+          bookingId,
+          amountKobo: quote.refundKobo,
+          cancellationOperationId: op.id,
+          outcome: 'CLIENT_CANCELLATION',
+          cancellation: quote,
+          reason,
+        },
+      },
+    });
+    await writeAudit(
+      {
+        actorId: adminId,
+        action: 'booking.cancellation.proposed',
+        target: bookingId,
+        metadata: { approvalId: approval.id, operationId: op.id, ...quote, reason },
+      },
+      tx,
+    );
+    return { executed: false, approvalId: approval.id };
+  }, TX);
+}
+
+async function executeCancellationApproval(
+  operationId: string,
+  bookingId: string,
+  paystack: PaystackPort,
+): Promise<boolean> {
+  const op = await prisma.paymentOperation.findUniqueOrThrow({ where: { id: operationId } });
+  if (
+    op.kind !== 'BOOKING_REFUND' ||
+    op.dedupeKey !== `BOOKING_REFUND:${bookingId}` ||
+    !(op.payload as unknown as RefundPayload).cancellation
+  )
+    throw new ApiError(
+      409,
+      'INVALID_CANCELLATION',
+      'approval does not match the cancellation request',
+    );
+  return (await driveRefund({ prisma, paystack }, op)).status === 'RECORDED';
+}
+
 export async function decideApproval(
   checkerId: string,
   approvalId: string,
@@ -325,22 +410,28 @@ export async function executeApprovalOp(
   });
   const execute = async () => {
     const done =
-      current.kind === 'DISPUTE_RESOLVE'
-        ? await executeDisputeResolution(
-            {
-              bookingId: String(payload.bookingId),
-              outcome: payload.outcome as DisputeOutcome,
-              disputeId: String(payload.disputeId),
-              resolution: typeof payload.resolution === 'string' ? payload.resolution : '',
-              adminId: current.checkerId ?? current.makerId,
-            },
+      current.kind === 'REFUND' && typeof payload.cancellationOperationId === 'string'
+        ? await executeCancellationApproval(
+            payload.cancellationOperationId,
+            String(payload.bookingId),
             paystack,
-            realtime,
           )
-        : await executeRefund(
-            { bookingId: String(payload.bookingId), amountKobo: Number(payload.amountKobo) },
-            paystack,
-          );
+        : current.kind === 'DISPUTE_RESOLVE'
+          ? await executeDisputeResolution(
+              {
+                bookingId: String(payload.bookingId),
+                outcome: payload.outcome as DisputeOutcome,
+                disputeId: String(payload.disputeId),
+                resolution: typeof payload.resolution === 'string' ? payload.resolution : '',
+                adminId: current.checkerId ?? current.makerId,
+              },
+              paystack,
+              realtime,
+            )
+          : await executeRefund(
+              { bookingId: String(payload.bookingId), amountKobo: Number(payload.amountKobo) },
+              paystack,
+            );
     return { status: done ? ('success' as const) : ('pending' as const) };
   };
   return runOperation(prisma, op, {

@@ -3,7 +3,7 @@ import { prisma } from '@hq/database';
 import { reconcile, recordReconciliation } from '../ledger/reconciliation.js';
 import { holdOrder, freezeBooking } from '../ledger/ledger.js';
 import { InMemoryPaystack } from '../port/paystack-port.js';
-import { createScenario, teardown, type Scenario } from './fixtures.js';
+import { createScenario, teardown, type Scenario, FIXTURE_DISPUTE_TIME } from './fixtures.js';
 import { jobReconcile } from '../../jobs/jobs.js';
 import { noopGateway } from '../../../realtime/gateway.js';
 let scenario: Scenario | undefined;
@@ -36,10 +36,13 @@ describe('durable reconciliation evidence', () => {
   });
   it('flags aged frozen funds and persists failed provider reads', async () => {
     scenario = await createScenario({ headcount: 1, amountKobo: 10000 });
-    await prisma.$transaction(async (tx) => {
-      await holdOrder(tx, scenario!.orderId, 'recon-frozen');
-      await freezeBooking(tx, scenario!.bookingIds[0]!);
-    });
+    await prisma.$transaction(
+      async (tx) => {
+        await holdOrder(tx, scenario!.orderId, 'recon-frozen');
+        await freezeBooking(tx, scenario!.bookingIds[0]!, FIXTURE_DISPUTE_TIME);
+      },
+      { timeout: 30_000, maxWait: 30_000 },
+    );
     await prisma.payment.updateMany({
       where: { bookingId: { in: scenario.bookingIds } },
       data: { createdAt: new Date('2000-01-01') },

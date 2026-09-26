@@ -4,6 +4,8 @@ Implementation guides reviewed against the repository on **2026-09-16**. They de
 
 ## Reading paths
 
+For API/worker errors, request timing, uptime, and job alerts, start with [Observability](OBSERVABILITY.md).
+
 | Your task               | Read in order                                                                                                                |
 | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | Run the project         | [Local setup](GETTING_STARTED.md) → [Configuration](CONFIGURATION.md) → [Troubleshooting](TROUBLESHOOTING.md)                |

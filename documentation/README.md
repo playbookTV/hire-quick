@@ -20,8 +20,15 @@ Specifications define intended behavior. [Current status](../docs/STATUS.md) dis
 - [Ledger amount limits](ledger-limits.md)
 - [Checkout recovery and reservation expiry](checkout-recovery-2026-09-14.md)
 - [Payment validation](payment-validation-2026-09-12.md)
+- [Approved settlement implementation and validation](payments/settlement-implementation-2026-09-21.md)
 - [Booking and privacy validation](booking-privacy-validation-2026-09-14.md)
 - [Checkout, ledger, and realtime validation](checkout-ledger-realtime-validation-2026-09-14.md)
+
+## Recent deployment
+
+- [22 September approved settlement deployment](deployment-2026-09-22.md) — API, worker and admin on TEST/staging; final blocked regressions passed. Updated native binaries remain separate.
+
+- [21 September payment recovery deployment](deployment-2026-09-21.md) — API, worker and admin on the existing TEST/staging environment; this deployment predates the new settlement implementation.
 
 ## Compliance records
 

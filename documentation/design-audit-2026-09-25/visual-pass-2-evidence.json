@@ -1,0 +1,410 @@
+{
+  "date": "2026-09-25",
+  "file": "Ep6MkJEc079aM6I0pQbwhw",
+  "mutations": [
+    {
+      "step": "P2.a",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"createdNodeIds\":[],\"mutatedNodeIds\":[\"2017:1722\",\"2017:1735\"],\"createdVariableIds\":[\"VariableID:2032:7\",\"VariableID:2032:8\",\"VariableID:2032:9\",\"VariableID:2032:10\",\"VariableID:2032:11\"],\"textStyles\":[{\"id\":\"S:eb7dbea8ac9b3ba1df88278bf4598a9904da89e0,\",\"name\":\"Body/M\",\"size\":16,\"line\":24},{\"id\":\"S:04ed1438ec8488de3059a9be171960778b01a566,\",\"name\":\"Body/S\",\"size\":14,\"line\":20},{\"id\":\"S:cee73e6e079ba847d7b4f969ce7fa4b0eb6d2474,\",\"name\":\"Label/L\",\"size\":16,\"line\":22},{\"id\":\"S:20dc6c6b3deaf94db6f83056137ce62e723551ea,\",\"name\":\"Label/M\",\"size\":14,\"line\":20},{\"id\":\"S:c4072c2fb13550d3914d13c8381de46f55fc6bf1,\",\"name\":\"Label/S\",\"size\":12,\"line\":16}],\"photoSources\":[{\"id\":\"2032:62\",\"name\":\"Shape\",\"fills\":[{\"type\":\"IMAGE\",\"visible\":true,\"opacity\":1,\"blendMode\":\"NORMAL\",\"scaleMode\":\"FILL\",\"scalingFactor\":0.5,\"rotation\":0,\"filters\":{\"exposure\":0,\"contrast\":0,\"saturation\":0,\"temperature\":0,\"tint\":0,\"highlights\":0,\"shadows\":0},\"imageTransform\":[[1,0,0],[0,1,0]],\"imageHash\":\"11dbcb982f9ba115c7d5cc790cc48a457815fb67\"}]},{\"id\":\"2032:63\",\"name\":\"Shape\",\"fills\":[{\"type\":\"IMAGE\",\"visible\":true,\"opacity\":1,\"blendMode\":\"NORMAL\",\"scaleMode\":\"FILL\",\"scalingFactor\":0.5,\"rotation\":0,\"filters\":{\"exposure\":0,\"contrast\":0,\"saturation\":0,\"temperature\":0,\"tint\":0,\"highlights\":0,\"shadows\":0},\"imageTransform\":[[1,0,0],[0,1,0]],\"imageHash\":\"11dbcb982f9ba115c7d5cc790cc48a457815fb67\"}]},{\"id\":\"2032:64\",\"name\":\"Shape\",\"fills\":[{\"type\":\"IMAGE\",\"visible\":true,\"opacity\":1,\"blendMode\":\"NORMAL\",\"scaleMode\":\"FILL\",\"scalingFactor\":0.5,\"rotation\":0,\"filters\":{\"exposure\":0,\"contrast\":0,\"saturation\":0,\"temperature\":0,\"tint\":0,\"highlights\":0,\"shadows\":0},\"imageTransform\":[[1,0,0],[0,1,0]],\"imageHash\":\"11dbcb982f9ba115c7d5cc790cc48a457815fb67\"}]}],\"librarySet\":{\"id\":\"2032:46\",\"name\":\"Avatar\"}}"
+          }
+        ],
+        "isError": false
+      }
+    },
+    {
+      "step": "P2.b-buttons-primary-secondary",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "TypeError: cannot read property 'id' of null\n    at recordTree (PLUGIN_1_SOURCE:5:41)\n    at <anonymous> (PLUGIN_1_SOURCE:7:90)\n"
+          },
+          {
+            "type": "text",
+            "text": "Figma Debug UUID: 61ba187d-0b35-4054-81ae-734b7aaa5e0b"
+          }
+        ],
+        "structuredContent": {
+          "safeToRetryWithoutCanvasRead": true,
+          "error_code": "INVALID_ARGUMENT"
+        },
+        "isError": true
+      }
+    },
+    {
+      "step": "P2.b-buttons-primary-secondary-retry",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"createdNodeIds\":[\"2034:7\",\"2034:8\",\"2034:9\",\"2034:10\",\"2034:11\",\"2034:13\",\"2034:12\",\"2034:14\",\"2034:15\",\"2034:16\",\"2034:17\",\"2034:18\",\"2034:20\",\"2034:19\",\"2034:21\",\"2034:22\",\"2034:23\",\"2034:24\",\"2034:25\",\"2034:27\",\"2034:26\",\"2034:28\",\"2034:29\",\"2034:30\",\"2034:31\",\"2034:32\",\"2034:33\",\"2034:34\",\"2034:36\",\"2034:35\",\"2034:37\",\"2034:38\"],\"mutatedNodeIds\":[\"6:27\",\"6:2\",\"6:5\",\"6:8\",\"6:11\",\"6:14\",\"6:17\",\"6:20\",\"6:23\",\"6:26\",\"80:3553\",\"80:3552\",\"80:3555\",\"80:3554\",\"2034:7\",\"2034:9\",\"2034:11\",\"2034:14\",\"2034:16\",\"2034:18\",\"2034:21\",\"2034:23\",\"2034:25\",\"2034:28\",\"2034:30\",\"2034:32\",\"2034:34\",\"2034:37\"],\"variantCount\":24,\"properties\":{\"Label#6:0\":{\"type\":\"TEXT\",\"defaultValue\":\"Confirm & pay\"},\"Variant\":{\"type\":\"VARIANT\",\"defaultValue\":\"Primary\",\"variantOptions\":[\"Primary\",\"Secondary\",\"Ghost\",\"Danger\"]},\"Size\":{\"type\":\"VARIANT\",\"defaultValue\":\"Large\",\"variantOptions\":[\"Large\",\"Medium\"]},\"State\":{\"type\":\"VARIANT\",\"defaultValue\":\"Default\",\"variantOptions\":[\"Default\",\"Disabled\",\"Pressed\",\"Focus\",\"Loading\"]}}}"
+          }
+        ],
+        "isError": false
+      }
+    },
+    {
+      "step": "P2.b-buttons-avatar",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"createdNodeIds\":[\"2035:7\",\"2035:8\",\"2035:9\",\"2035:10\",\"2035:11\",\"2035:13\",\"2035:12\",\"2035:14\",\"2035:15\",\"2035:16\",\"2035:17\",\"2035:18\",\"2035:19\",\"2035:20\",\"2035:22\",\"2035:21\",\"2035:23\",\"2035:24\",\"2035:25\",\"2035:26\",\"2035:27\",\"2035:28\",\"2035:29\",\"2035:31\",\"2035:30\",\"2035:32\",\"2035:33\",\"2035:34\",\"2035:35\",\"2035:36\",\"2035:37\",\"2035:38\",\"2035:40\",\"2035:39\",\"2035:41\",\"2035:42\",\"2035:43\",\"2035:44\",\"2035:45\",\"2035:46\",\"2035:47\",\"2035:48\",\"2035:49\",\"2035:50\",\"2035:51\",\"2035:52\",\"2035:53\",\"2035:54\",\"2035:55\",\"2035:56\"],\"mutatedNodeIds\":[\"6:5\",\"6:8\",\"6:11\",\"6:14\",\"6:17\",\"6:20\",\"6:23\",\"6:26\",\"80:3552\",\"80:3554\",\"2034:7\",\"2034:9\",\"2034:11\",\"2034:14\",\"2034:16\",\"2034:18\",\"2034:21\",\"2034:23\",\"2034:25\",\"2034:28\",\"2034:30\",\"2034:32\",\"2034:34\",\"2034:37\",\"2035:7\",\"2035:9\",\"2035:11\",\"2035:14\",\"2035:16\",\"2035:18\",\"2035:20\",\"2035:23\",\"2035:25\",\"2035:27\",\"2035:29\",\"2035:32\",\"2035:34\",\"2035:36\",\"2035:38\",\"2035:41\",\"6:70\",\"6:63\",\"6:64\",\"6:66\",\"6:68\",\"2035:52\"],\"buttons\":[{\"id\":\"6:5\",\"name\":\"Variant=Primary, Size=Large, State=Default\"},{\"id\":\"6:8\",\"name\":\"Variant=Primary, Size=Medium, State=Default\"},{\"id\":\"6:11\",\"name\":\"Variant=Secondary, Size=Large, State=Default\"},{\"id\":\"6:14\",\"name\":\"Variant=Secondary, Size=Medium, State=Default\"},{\"id\":\"6:17\",\"name\":\"Variant=Ghost, Size=Large, State=Default\"},{\"id\":\"6:20\",\"name\":\"Variant=Ghost, Size=Medium, State=Default\"},{\"id\":\"6:23\",\"name\":\"Variant=Danger, Size=Large, State=Default\"},{\"id\":\"6:26\",\"name\":\"Variant=Danger, Size=Medium, State=Default\"},{\"id\":\"80:3552\",\"name\":\"Variant=Primary, Size=Large, State=Disabled\"},{\"id\":\"80:3554\",\"name\":\"Variant=Primary, Size=Medium, State=Disabled\"},{\"id\":\"2034:7\",\"name\":\"Variant=Primary, Size=Large, State=Pressed\"},{\"id\":\"2034:9\",\"name\":\"Variant=Primary, Size=Large, State=Focus\"},{\"id\":\"2034:11\",\"name\":\"Variant=Primary, Size=Large, State=Loading\"},{\"id\":\"2034:14\",\"name\":\"Variant=Primary, Size=Medium, State=Pressed\"},{\"id\":\"2034:16\",\"name\":\"Variant=Primary, Size=Medium, State=Focus\"},{\"id\":\"2034:18\",\"name\":\"Variant=Primary, Size=Medium, State=Loading\"},{\"id\":\"2034:21\",\"name\":\"Variant=Secondary, Size=Large, State=Pressed\"},{\"id\":\"2034:23\",\"name\":\"Variant=Secondary, Size=Large, State=Focus\"},{\"id\":\"2034:25\",\"name\":\"Variant=Secondary, Size=Large, State=Loading\"},{\"id\":\"2034:28\",\"name\":\"Variant=Secondary, Size=Large, State=Disabled\"},{\"id\":\"2034:30\",\"name\":\"Variant=Secondary, Size=Medium, State=Pressed\"},{\"id\":\"2034:32\",\"name\":\"Variant=Secondary, Size=Medium, State=Focus\"},{\"id\":\"2034:34\",\"name\":\"Variant=Secondary, Size=Medium, State=Loading\"},{\"id\":\"2034:37\",\"name\":\"Variant=Secondary, Size=Medium, State=Disabled\"},{\"id\":\"2035:7\",\"name\":\"Variant=Ghost, Size=Large, State=Pressed\"},{\"id\":\"2035:9\",\"name\":\"Variant=Ghost, Size=Large, State=Focus\"},{\"id\":\"2035:11\",\"name\":\"Variant=Ghost, Size=Large, State=Loading\"},{\"id\":\"2035:14\",\"name\":\"Variant=Ghost, Size=Large, State=Disabled\"},{\"id\":\"2035:16\",\"name\":\"Variant=Ghost, Size=Medium, State=Pressed\"},{\"id\":\"2035:18\",\"name\":\"Variant=Ghost, Size=Medium, State=Focus\"},{\"id\":\"2035:20\",\"name\":\"Variant=Ghost, Size=Medium, State=Loading\"},{\"id\":\"2035:23\",\"name\":\"Variant=Ghost, Size=Medium, State=Disabled\"},{\"id\":\"2035:25\",\"name\":\"Variant=Danger, Size=Large, State=Pressed\"},{\"id\":\"2035:27\",\"name\":\"Variant=Danger, Size=Large, State=Focus\"},{\"id\":\"2035:29\",\"name\":\"Variant=Danger, Size=Large, State=Loading\"},{\"id\":\"2035:32\",\"name\":\"Variant=Danger, Size=Large, State=Disabled\"},{\"id\":\"2035:34\",\"name\":\"Variant=Danger, Size=Medium, State=Pressed\"},{\"id\":\"2035:36\",\"name\":\"Variant=Danger, Size=Medium, State=Focus\"},{\"id\":\"2035:38\",\"name\":\"Variant=Danger, Size=Medium, State=Loading\"},{\"id\":\"2035:41\",\"name\":\"Variant=Danger, Size=Medium, State=Disabled\"}],\"avatars\":[{\"id\":\"6:64\",\"name\":\"Size=Large, Content=Initials\"},{\"id\":\"6:66\",\"name\":\"Size=Medium, Content=Initials\"},{\"id\":\"6:68\",\"name\":\"Size=Small, Content=Initials\"},{\"id\":\"2035:43\",\"name\":\"Size=Large, Content=Photo\"},{\"id\":\"2035:46\",\"name\":\"Size=Medium, Content=Photo\"},{\"id\":\"2035:49\",\"name\":\"Size=Small, Content=Photo\"},{\"id\":\"2035:52\",\"name\":\"Size=Profile, Content=Initials\"},{\"id\":\"2035:54\",\"name\":\"Size=Profile, Content=Photo\"}],\"avatarProps\":{\"Initials#6:9\":{\"type\":\"TEXT\",\"defaultValue\":\"AO\"},\"Size\":{\"type\":\"VARIANT\",\"defaultValue\":\"Large\",\"variantOptions\":[\"Large\",\"Medium\",\"Small\",\"Profile\"]},\"Content\":{\"type\":\"VARIANT\",\"defaultValue\":\"Initials\",\"variantOptions\":[\"Initials\",\"Photo\"]}}}"
+          }
+        ],
+        "isError": false
+      }
+    },
+    {
+      "step": "P2.b-staff-money-transaction",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"createdNodeIds\":[\"2039:124\",\"2039:125\",\"2039:126\",\"2039:127\",\"2039:128\"],\"mutatedNodeIds\":[\"6:27\",\"6:70\",\"6:2\",\"6:63\",\"7:86\",\"7:87\",\"7:88\",\"7:90\",\"7:95\",\"7:91\",\"7:98\",\"7:99\",\"7:4\",\"7:6\",\"7:7\",\"7:3\",\"7:12\",\"7:14\",\"7:15\",\"7:11\",\"7:20\",\"7:22\",\"7:23\",\"7:19\"],\"staffProps\":{\"Name\":\"Name#2039:0\",\"Details\":\"Details#2039:1\",\"Rate\":\"Rate#2039:2\",\"Initials\":\"Initials#2039:3\"},\"transaction\":{\"id\":\"2039:124\",\"props\":{\"Title\":\"Title#2039:4\",\"Amount\":\"Amount#2039:5\",\"Detail\":\"Detail#2039:6\"}},\"moneyHeights\":[{\"id\":\"7:3\",\"height\":77},{\"id\":\"7:11\",\"height\":77},{\"id\":\"7:19\",\"height\":77}]}"
+          }
+        ],
+        "isError": false
+      }
+    },
+    {
+      "step": "P2.c-wallet",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"createdNodeIds\":[\"2041:1001\",\"I2041:1001;2039:125\",\"I2041:1001;2039:126\",\"I2041:1001;2039:127\",\"I2041:1001;2039:128\",\"2041:1006\",\"I2041:1006;2039:125\",\"I2041:1006;2039:126\",\"I2041:1006;2039:127\",\"I2041:1006;2039:128\",\"2041:1011\",\"I2041:1011;2039:125\",\"I2041:1011;2039:126\",\"I2041:1011;2039:127\",\"I2041:1011;2039:128\",\"2041:1016\",\"I2041:1016;2039:125\",\"I2041:1016;2039:126\",\"I2041:1016;2039:127\",\"I2041:1016;2039:128\",\"2041:1021\",\"I2041:1021;2039:125\",\"I2041:1021;2039:126\",\"I2041:1021;2039:127\",\"I2041:1021;2039:128\",\"2041:1026\",\"I2041:1026;2039:125\",\"I2041:1026;2039:126\",\"I2041:1026;2039:127\",\"I2041:1026;2039:128\"],\"mutatedNodeIds\":[\"8:6\",\"8:46\",\"I8:10;7:37\",\"8:22\",\"8:21\",\"8:20\",\"I8:30;7:15\",\"8:49\",\"8:2\",\"41:2662\",\"41:2673\",\"I41:2666;7:37\",\"41:2670\",\"41:2669\",\"41:2668\",\"I41:2671;7:15\",\"41:2675\",\"41:2660\"],\"removedNodeIds\":[\"8:51\",\"8:52\",\"8:53\",\"8:54\",\"8:55\",\"8:56\",\"8:57\",\"8:58\",\"8:59\",\"8:60\",\"8:61\",\"8:62\",\"8:63\",\"8:64\",\"8:65\",\"41:2677\",\"41:2678\",\"41:2679\",\"41:2680\",\"41:2681\",\"41:2682\",\"41:2683\",\"41:2684\",\"41:2685\",\"41:2686\",\"41:2687\",\"41:2688\",\"41:2689\",\"41:2690\",\"41:2691\"]}"
+          }
+        ],
+        "isError": false
+      }
+    },
+    {
+      "step": "P2.c-profile-2:88",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"createdNodeIds\":[\"2044:946\",\"I2044:946;2035:53\",\"2044:948\"],\"mutatedNodeIds\":[\"28:355\",\"28:358\",\"28:359\",\"28:375\",\"28:376\",\"28:379\",\"28:378\",\"28:338\"],\"removedNodeIds\":[\"28:356\",\"28:357\",\"28:380\",\"28:381\",\"28:382\",\"28:383\"]}"
+          }
+        ],
+        "isError": false
+      }
+    },
+    {
+      "step": "P2.c-profile-2:87",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"createdNodeIds\":[\"2044:1953\",\"I2044:1953;2035:53\",\"2044:1955\",\"2044:1956\",\"I2044:1956;2035:53\",\"2044:1958\"],\"mutatedNodeIds\":[\"12:437\",\"12:440\",\"12:441\",\"12:457\",\"12:458\",\"12:462\",\"12:461\",\"12:425\",\"41:2697\",\"41:2700\",\"41:2701\",\"41:2715\",\"41:2716\",\"41:2720\",\"41:2719\",\"41:2694\"],\"removedNodeIds\":[\"12:438\",\"12:439\",\"12:463\",\"12:464\",\"12:465\",\"12:466\",\"41:2698\",\"41:2699\",\"41:2721\",\"41:2722\",\"41:2723\",\"41:2724\"]}"
+          }
+        ],
+        "isError": false
+      }
+    },
+    {
+      "step": "P2.c-discover",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"createdNodeIds\":[],\"mutatedNodeIds\":[\"23:118\",\"23:138\",\"23:152\",\"23:166\",\"23:117\",\"41:431\",\"41:430\",\"45:543\",\"45:560\",\"45:561\",\"45:562\",\"45:542\"]}"
+          }
+        ],
+        "isError": false
+      }
+    },
+    {
+      "step": "P2.c-checkout-states",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"createdNodeIds\":[\"2046:1605\",\"2046:1606\",\"I2046:1606;6:13\",\"2046:1608\"],\"mutatedNodeIds\":[\"45:614\",\"45:572\",\"45:577\",\"53:706\",\"53:662\",\"53:664\"]}"
+          }
+        ],
+        "isError": false
+      }
+    },
+    {
+      "step": "P2.c-normalize-0:1",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"createdNodeIds\":[],\"mutatedNodeIds\":[\"80:3553\",\"80:3555\",\"80:3559\",\"2017:1713\",\"2017:1714\",\"2017:1715\",\"2017:1729\",\"2017:1730\",\"2017:1731\"],\"activated\":[]}"
+          }
+        ],
+        "isError": false
+      }
+    },
+    {
+      "step": "P2.c-normalize-2:85",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"createdNodeIds\":[],\"mutatedNodeIds\":[\"59:176\",\"59:241\"],\"activated\":[{\"id\":\"59:176\",\"label\":\"Send code\",\"state\":\"Disabled\"},{\"id\":\"59:241\",\"label\":\"Wait and retry\",\"state\":\"Disabled\"}]}"
+          }
+        ],
+        "isError": false
+      }
+    },
+    {
+      "step": "P2.c-normalize-2:86",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"createdNodeIds\":[],\"mutatedNodeIds\":[\"23:138\",\"23:152\",\"23:166\",\"45:560\",\"45:561\",\"45:562\"],\"activated\":[]}"
+          }
+        ],
+        "isError": false
+      }
+    },
+    {
+      "step": "P2.c-normalize-2:87",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"createdNodeIds\":[],\"mutatedNodeIds\":[\"40:525\",\"64:998\",\"I8:10;7:37\",\"I41:2666;7:37\"],\"activated\":[{\"id\":\"40:525\",\"label\":\"Withdraw to bank\",\"state\":\"Disabled\"},{\"id\":\"64:998\",\"label\":\"Withdraw to bank\",\"state\":\"Disabled\"}]}"
+          }
+        ],
+        "isError": false
+      }
+    },
+    {
+      "step": "P2.c-normalize-2:88",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"createdNodeIds\":[],\"mutatedNodeIds\":[\"38:589\",\"53:662\",\"53:784\",\"54:780\",\"63:875\",\"63:995\",\"63:1039\",\"76:929\",\"76:930\",\"76:1015\",\"76:1016\"],\"activated\":[{\"id\":\"38:589\",\"label\":\"Check in\",\"state\":\"Disabled\"},{\"id\":\"53:662\",\"label\":\"Opening payment…\",\"state\":\"Loading\"},{\"id\":\"53:784\",\"label\":\"Withdraw to bank\",\"state\":\"Disabled\"},{\"id\":\"54:780\",\"label\":\"Submit review\",\"state\":\"Disabled\"},{\"id\":\"63:875\",\"label\":\"Check in\",\"state\":\"Disabled\"},{\"id\":\"63:995\",\"label\":\"Check in\",\"state\":\"Disabled\"},{\"id\":\"63:1039\",\"label\":\"Withdraw to bank\",\"state\":\"Disabled\"}]}"
+          }
+        ],
+        "isError": false
+      }
+    },
+    {
+      "step": "P2.c-normalize-2:89",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"createdNodeIds\":[],\"mutatedNodeIds\":[\"45:386\",\"45:388\",\"58:218\"],\"activated\":[{\"id\":\"45:386\",\"label\":\"Approve\",\"state\":\"Disabled\"},{\"id\":\"45:388\",\"label\":\"Reject\",\"state\":\"Disabled\"},{\"id\":\"58:218\",\"label\":\"Approve\",\"state\":\"Disabled\"}]}"
+          }
+        ],
+        "isError": false
+      }
+    },
+    {
+      "step": "P2.d-compact-8:2",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"createdNodeIds\":[\"2048:1007\",\"2048:1008\",\"I2048:1008;6:98\",\"I2048:1008;9:2\",\"I2048:1008;9:3\",\"I2048:1008;9:4\",\"I2048:1008;9:5\",\"I2048:1008;9:6\",\"I2048:1008;9:7\",\"I2048:1008;9:8\",\"I2048:1008;9:9\",\"2048:1009\",\"2048:1010\",\"2048:1011\",\"2048:1012\",\"2048:1013\",\"I2048:1013;7:30\",\"I2048:1013;7:31\",\"I2048:1013;7:32\",\"I2048:1013;7:37\",\"2048:1014\",\"2048:1015\",\"2048:1016\",\"2048:1017\",\"2048:1018\",\"2048:1019\",\"2048:1020\",\"2048:1021\",\"2048:1022\",\"2048:1023\",\"2048:1024\",\"2048:1025\",\"2048:1026\",\"2048:1027\",\"I2048:1027;9:215\",\"I2048:1027;9:216\",\"I2048:1027;9:217\",\"I2048:1027;9:218\",\"I2048:1027;9:219\",\"I2048:1027;9:220\",\"I2048:1027;9:221\",\"I2048:1027;9:222\",\"I2048:1027;9:223\",\"I2048:1027;9:224\",\"I2048:1027;9:225\",\"I2048:1027;9:226\",\"I2048:1027;9:227\",\"I2048:1027;9:228\",\"I2048:1027;9:229\",\"I2048:1027;9:230\",\"I2048:1027;9:231\",\"I2048:1027;9:232\",\"I2048:1027;9:233\",\"I2048:1027;9:234\",\"I2048:1027;9:235\",\"I2048:1027;9:236\",\"I2048:1027;9:237\",\"I2048:1027;9:238\",\"I2048:1027;9:239\",\"2048:1028\",\"I2048:1028;6:101\"],\"mutatedNodeIds\":[],\"frame\":{\"id\":\"2048:1007\",\"name\":\"QA / Wallet / 320px · large amount\",\"width\":320,\"height\":740}}"
+          }
+        ],
+        "isError": false
+      }
+    },
+    {
+      "step": "P2.d-compact-23:106",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"createdNodeIds\":[\"2048:1754\",\"2048:1755\",\"I2048:1755;6:98\",\"I2048:1755;9:2\",\"I2048:1755;9:3\",\"I2048:1755;9:4\",\"I2048:1755;9:5\",\"I2048:1755;9:6\",\"I2048:1755;9:7\",\"I2048:1755;9:8\",\"I2048:1755;9:9\",\"2048:1756\",\"2048:1757\",\"2048:1758\",\"2048:1759\",\"2048:1760\",\"2048:1761\",\"2048:1762\",\"2048:1763\",\"2048:1764\",\"2048:1765\",\"2048:1766\",\"2048:1767\",\"2048:1768\",\"I2048:1768;6:73\",\"2048:1769\",\"I2048:1769;6:75\",\"2048:1770\",\"I2048:1770;6:75\",\"2048:1771\",\"2048:1772\",\"2048:1773\",\"2048:1774\",\"I2048:1774;7:87\",\"I2048:1774;7:88\",\"I2048:1774;7:89\",\"I2048:1774;7:90\",\"I2048:1774;7:91\",\"I2048:1774;7:92\",\"I2048:1774;7:93\",\"I2048:1774;7:94\",\"I2048:1774;7:95\",\"I2048:1774;7:96\",\"I2048:1774;7:97\",\"I2048:1774;7:98\",\"I2048:1774;7:99\",\"2048:1775\",\"I2048:1775;7:87\",\"I2048:1775;7:88\",\"I2048:1775;7:89\",\"I2048:1775;7:90\",\"I2048:1775;7:91\",\"I2048:1775;7:92\",\"I2048:1775;7:93\",\"I2048:1775;7:94\",\"I2048:1775;7:95\",\"I2048:1775;7:96\",\"I2048:1775;7:97\",\"I2048:1775;7:98\",\"I2048:1775;7:99\",\"2048:1776\",\"I2048:1776;7:87\",\"I2048:1776;7:88\",\"I2048:1776;7:89\",\"I2048:1776;7:90\",\"I2048:1776;7:91\",\"I2048:1776;7:92\",\"I2048:1776;7:93\",\"I2048:1776;7:94\",\"I2048:1776;7:95\",\"I2048:1776;7:96\",\"I2048:1776;7:97\",\"I2048:1776;7:98\",\"I2048:1776;7:99\",\"2048:1777\",\"I2048:1777;9:36\",\"I2048:1777;9:37\",\"I2048:1777;9:38\",\"I2048:1777;9:39\",\"I2048:1777;9:40\",\"I2048:1777;9:41\",\"I2048:1777;9:42\",\"I2048:1777;9:43\",\"I2048:1777;9:44\",\"I2048:1777;9:45\",\"I2048:1777;9:46\",\"I2048:1777;9:47\",\"I2048:1777;9:48\",\"I2048:1777;9:49\",\"I2048:1777;9:50\",\"I2048:1777;9:51\",\"I2048:1777;9:52\",\"I2048:1777;9:53\",\"I2048:1777;9:54\",\"I2048:1777;9:55\",\"I2048:1777;9:56\",\"I2048:1777;9:57\",\"I2048:1777;9:58\",\"I2048:1777;9:59\",\"2048:1778\",\"I2048:1778;6:101\"],\"mutatedNodeIds\":[],\"frame\":{\"id\":\"2048:1754\",\"name\":\"QA / Discover / 320px · long name\",\"width\":320,\"height\":740}}"
+          }
+        ],
+        "isError": false
+      }
+    },
+    {
+      "step": "P2.d-verification-viewport-fix",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Error: in set_minHeight: minHeight cannot be set to 0, use null to unset\n    at set (<input>:75:11)\n    at <anonymous> (PLUGIN_1_SOURCE:6:97)\n"
+          },
+          {
+            "type": "text",
+            "text": "Figma Debug UUID: 9d6330ed-5d0d-4253-b048-19b82c18655e"
+          }
+        ],
+        "structuredContent": {
+          "safeToRetryWithoutCanvasRead": true,
+          "error_code": "INVALID_ARGUMENT"
+        },
+        "isError": true
+      }
+    },
+    {
+      "step": "P2.d-verification-viewport-fix-retry",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"createdNodeIds\":[],\"mutatedNodeIds\":[\"14:75\",\"45:769\"],\"frames\":[{\"id\":\"14:59\",\"height\":844,\"children\":[{\"id\":\"14:60\",\"y\":0,\"height\":54},{\"id\":\"14:70\",\"y\":56,\"height\":56},{\"id\":\"14:75\",\"y\":114,\"height\":492},{\"id\":\"14:104\",\"y\":608,\"height\":200},{\"id\":\"14:114\",\"y\":810,\"height\":34}]},{\"id\":\"45:762\",\"height\":844,\"children\":[{\"id\":\"45:763\",\"y\":0,\"height\":54},{\"id\":\"45:764\",\"y\":56,\"height\":56},{\"id\":\"45:769\",\"y\":114,\"height\":492},{\"id\":\"45:795\",\"y\":608,\"height\":200},{\"id\":\"45:804\",\"y\":810,\"height\":34}]}]}"
+          }
+        ],
+        "isError": false
+      }
+    },
+    {
+      "step": "P2.d-foundation-layout",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"createdNodeIds\":[],\"mutatedNodeIds\":[\"6:28\",\"6:62\",\"6:71\",\"6:76\",\"6:77\",\"6:95\",\"6:96\",\"6:97\",\"6:100\",\"6:2\",\"6:70\"],\"columnBottom\":1432}"
+          }
+        ],
+        "isError": false
+      }
+    },
+    {
+      "step": "P2.d-dark-component-specimen",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"createdNodeIds\":[\"2054:7\",\"2054:8\",\"2054:9\",\"I2054:9;6:4\",\"2054:11\",\"I2054:11;2034:13\",\"I2054:11;2034:12\",\"2054:14\",\"I2054:14;2034:10\",\"2054:16\",\"I2054:16;2035:26\",\"2054:18\",\"I2054:18;2034:29\",\"2054:20\",\"2054:21\",\"2054:22\",\"I2054:22;2035:53\",\"2054:24\",\"I2054:24;2035:56\",\"2054:27\"],\"mutatedNodeIds\":[],\"frame\":\"2054:7\"}"
+          }
+        ],
+        "isError": false
+      }
+    },
+    {
+      "step": "P2.d-property-binding-fix",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"createdNodeIds\":[],\"mutatedNodeIds\":[\"6:4\",\"6:7\",\"6:10\",\"6:13\",\"6:16\",\"6:19\",\"6:22\",\"6:25\",\"80:3553\",\"80:3555\",\"2034:8\",\"2034:10\",\"2034:12\",\"2034:15\",\"2034:17\",\"2034:19\",\"2034:22\",\"2034:24\",\"2034:26\",\"2034:29\",\"2034:31\",\"2034:33\",\"2034:35\",\"2034:38\",\"2035:8\",\"2035:10\",\"2035:12\",\"2035:15\",\"2035:17\",\"2035:19\",\"2035:21\",\"2035:24\",\"2035:26\",\"2035:28\",\"2035:30\",\"2035:33\",\"2035:35\",\"2035:37\",\"2035:39\",\"2035:42\",\"6:65\",\"6:67\",\"6:69\",\"2035:44\",\"2035:47\",\"2035:50\",\"2035:53\",\"2035:55\"],\"beforeSample\":[{\"id\":\"80:3553\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"80:3555\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"2034:8\",\"refs\":{}},{\"id\":\"2034:10\",\"refs\":{}},{\"id\":\"2034:12\",\"refs\":{}},{\"id\":\"2034:15\",\"refs\":{}}],\"labelBindings\":[{\"id\":\"6:5\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"6:8\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"6:11\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"6:14\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"6:17\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"6:20\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"6:23\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"6:26\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"80:3552\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"80:3554\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"2034:7\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"2034:9\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"2034:11\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"2034:14\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"2034:16\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"2034:18\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"2034:21\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"2034:23\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"2034:25\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"2034:28\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"2034:30\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"2034:32\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"2034:34\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"2034:37\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"2035:7\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"2035:9\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"2035:11\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"2035:14\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"2035:16\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"2035:18\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"2035:20\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"2035:23\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"2035:25\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"2035:27\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"2035:29\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"2035:32\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"2035:34\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"2035:36\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"2035:38\",\"refs\":{\"characters\":\"Label#6:0\"}},{\"id\":\"2035:41\",\"refs\":{\"characters\":\"Label#6:0\"}}],\"sample\":[\"Component states\",\"Confirm booking\",\"Confirming booking…\",\"Keyboard focus\",\"Cancel booking\",\"Unavailable action\",\"Avatars\",\"AO\",\"Initials fallback · replaceable sample photo\"]}"
+          }
+        ],
+        "isError": false
+      }
+    },
+    {
+      "step": "P2.d-handoff",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"createdNodeIds\":[],\"mutatedNodeIds\":[\"61:3410\",\"61:3395\",\"61:3398\",\"61:3413\",\"61:3415\",\"61:3416\",\"61:3417\",\"61:3418\",\"61:3419\",\"77:10\"]}"
+          }
+        ],
+        "isError": false
+      }
+    }
+  ],
+  "geometry": [
+    {
+      "page": "2:85",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"page\":\"2:85\",\"texts\":160,\"clipping\":[{\"id\":\"I14:112;6:4\",\"ancestor\":\"14:59\",\"text\":\"Continue with Smile ID\"},{\"id\":\"I45:803;6:4\",\"ancestor\":\"45:762\",\"text\":\"Continue with Smile ID\"}],\"horizontalOverflow\":[]}"
+          }
+        ],
+        "isError": false
+      }
+    },
+    {
+      "page": "2:86",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"page\":\"2:86\",\"texts\":344,\"clipping\":[],\"horizontalOverflow\":[]}"
+          }
+        ],
+        "isError": false
+      }
+    },
+    {
+      "page": "2:87",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"page\":\"2:87\",\"texts\":681,\"clipping\":[],\"horizontalOverflow\":[]}"
+          }
+        ],
+        "isError": false
+      }
+    },
+    {
+      "page": "2:88",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"page\":\"2:88\",\"texts\":1066,\"clipping\":[],\"horizontalOverflow\":[]}"
+          }
+        ],
+        "isError": false
+      }
+    },
+    {
+      "page": "2:89",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"page\":\"2:89\",\"texts\":595,\"clipping\":[],\"horizontalOverflow\":[]}"
+          }
+        ],
+        "isError": false
+      }
+    },
+    {
+      "page": "2:90",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"page\":\"2:90\",\"texts\":85,\"clipping\":[],\"horizontalOverflow\":[]}"
+          }
+        ],
+        "isError": false
+      }
+    }
+  ],
+  "accountAfterFix": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"page\":\"2:85\",\"clipping\":[]}"
+      }
+    ],
+    "isError": false
+  },
+  "buttonContrast": {
+    "buttonCount": 40,
+    "uniqueNames": 40,
+    "avatarCount": 8,
+    "minimumRatio": 5.54,
+    "failures": [],
+    "comparisons": 64,
+    "variables": 97,
+    "textStyles": 17,
+    "scope": "Non-disabled button label/fill pairs in Light and Dark; ghost on canvas."
+  },
+  "counts": {
+    "families": 25,
+    "sets": 13,
+    "standalone": 12
+  },
+  "scope": "Figma visual system and product screens; no prototype wiring."
+}

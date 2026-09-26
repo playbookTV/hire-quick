@@ -14,7 +14,7 @@ flowchart LR
   Worker["BullMQ worker"] --> DB
   API <--> Redis["Redis"]
   Worker <--> Redis
-  API --> Providers["Paystack / Brevo / Dojah / FCM / S3"]
+  API --> Providers["Paystack / KudiSMS / Brevo / Twilio / Smile ID / FCM / S3"]
   Worker --> Providers
   Providers -->|"Verified webhooks"| API
   API --> Socket["Authorized Socket.IO delivery"]
@@ -43,11 +43,11 @@ Middleware order is intentional:
 
 1. Production configuration guard; proxy trust; Helmet and CORS; global rate limiting.
 2. Request correlation using `x-request-id`.
-3. Raw-body Paystack and Dojah webhooks, before JSON parsing.
+3. Raw-body Paystack and Smile ID webhooks, before JSON parsing.
 4. JSON parsing with a 1 MiB limit; `/health`; feature routers.
 5. Not-found and error serialization middleware.
 
-The global rate limiter runs before request-ID middleware, so early failures are not guaranteed a request ID. Paystack HTTP routes mount when a port is supplied; its webhook also needs a secret. Events always mount, but confirm requires a payment port. The Dojah webhook mounts with the selected KYC port.
+The global rate limiter runs before request-ID middleware, so early failures are not guaranteed a request ID. Paystack HTTP routes mount when a port is supplied; its webhook also needs a secret. Events always mount, but confirm requires a payment port. The Smile ID webhook mounts with the selected KYC port.
 
 `env.ts` applies strong-secret and provider requirements to staging and production. `createApp` additionally rejects production without CORS origins or a rate-limit Redis client. These checks establish configuration presence, not service connectivity. See [Configuration](CONFIGURATION.md).
 
@@ -115,8 +115,10 @@ Realtime is best effort. Redis outages do not authorize bypass delivery or provi
 External adapters are implementation boundaries, not evidence of configured infrastructure:
 
 - Paystack: real HTTP implementation in the server; in-memory implementation in tests.
-- Brevo: SMS or configured WhatsApp OTP, plus notifications. Development login requires real delivery.
-- Dojah: biometric KYC; no-op adapter when absent in development/tests.
+- KudiSMS: preferred Nigerian SMS OTP route when its API key is configured, using the approved Corporate Sender ID `HIREQUICK`. No automatic cross-provider retry on failure.
+- Twilio Programmable Messaging: legacy WhatsApp OTP using an approved authentication template. HireQuick generates and verifies codes locally.
+- Brevo: email notifications and legacy SMS delivery when KudiSMS is not configured. Development login requires real delivery.
+- Smile ID: biometric KYC; no-op adapter when absent in development/tests.
 - Storage: S3-compatible presigned uploads/downloads. Upload-url routes fail when storage is absent; some legacy profile paths permit passthrough values.
 - FCM: enabled by a complete service-account configuration; notification records and push delivery are separate concerns.
 

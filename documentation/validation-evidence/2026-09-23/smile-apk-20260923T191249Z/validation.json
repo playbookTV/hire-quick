@@ -1,0 +1,18 @@
+{
+  "frozenLockfileInstall": "passed",
+  "mobileTypecheck": "passed",
+  "apiBuild": "passed",
+  "sourceAndTestLint": "passed",
+  "apiTestTypecheck": "passed",
+  "providerTests": 17,
+  "databaseTests": 17,
+  "disposableSchemaCleaned": true,
+  "uploadArchiveMatchesSource": true,
+  "nativeBuild": "passed",
+  "onDeviceInteraction": "not performed",
+  "cloudSubmission": "accepted for requested Smile completion",
+  "buildId": "f73ca4cb-afff-48c9-bae1-a931d9ee9b92",
+  "clearBuildCache": true,
+  "apkInspection": "passed",
+  "signingCertificateMatchesBuild6": true
+}

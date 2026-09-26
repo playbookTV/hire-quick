@@ -1,0 +1,35 @@
+{
+  "date": "2026-09-25",
+  "checks": {
+    "typecheck": "passed",
+    "lint": "passed",
+    "androidExport": "passed",
+    "iosExport": "passed",
+    "semanticTextPairs": 22,
+    "minContrast": 5.19,
+    "controlBorders": ">=3:1"
+  },
+  "browser": {
+    "widths": [
+      390,
+      320,
+      280
+    ],
+    "interactions": [
+      "text entry",
+      "chip toggle",
+      "loading button",
+      "theme switch",
+      "client/usher navigation",
+      "selected tab semantics"
+    ],
+    "navigationIconSize": 22,
+    "statusDotSize": 6,
+    "hiddenCalendar": true
+  },
+  "limits": [
+    "No native simulator or Android SDK available",
+    "200% native text/keyboard/screen reader verification pending",
+    "Individual screen layouts and admin not migrated in this pass"
+  ]
+}

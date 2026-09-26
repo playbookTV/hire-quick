@@ -19,7 +19,7 @@ import {
 } from '../service.js';
 import { reconcileStuckWithdrawals, resumePaymentOperation } from '../recovery.js';
 import { InMemoryPaystack, type PaystackPort } from '../port/paystack-port.js';
-import { createScenario, teardown, type Scenario } from './fixtures.js';
+import { createScenario, teardown, type Scenario, FIXTURE_DISPUTE_TIME } from './fixtures.js';
 import { decideApproval, executeApprovalOp, resolveDispute } from '../../admin/service.js';
 
 let scenario: Scenario | undefined;
@@ -245,7 +245,7 @@ describe('refund reservation and recovery', () => {
   it('settles a pending dispute refund and its resolution in the same transaction on recovery', async () => {
     const s = await held();
     const bookingId = s.bookingIds[0]!;
-    await prisma.$transaction((tx) => freezeBooking(tx, bookingId));
+    await prisma.$transaction((tx) => freezeBooking(tx, bookingId, FIXTURE_DISPUTE_TIME));
     const dispute = await prisma.dispute.create({
       data: { bookingId, raisedById: s.clientUserId, reason: 'test' },
     });
@@ -421,7 +421,7 @@ describe('approval recovery', () => {
   it('rolls dispute release back with resolution and repairs an old split commit without paying twice', async () => {
     const s = await held();
     const bookingId = s.bookingIds[0]!;
-    await prisma.$transaction((tx) => freezeBooking(tx, bookingId));
+    await prisma.$transaction((tx) => freezeBooking(tx, bookingId, FIXTURE_DISPUTE_TIME));
     const dispute = await prisma.dispute.create({
       data: { bookingId, raisedById: s.clientUserId, reason: 'test' },
     });
@@ -495,7 +495,7 @@ describe('approval recovery', () => {
   it('recovers a legacy dispute refund whose ledger committed before dispute resolution', async () => {
     const s = await held();
     const bookingId = s.bookingIds[0]!;
-    await prisma.$transaction((tx) => freezeBooking(tx, bookingId));
+    await prisma.$transaction((tx) => freezeBooking(tx, bookingId, FIXTURE_DISPUTE_TIME));
     const dispute = await prisma.dispute.create({
       data: { bookingId, raisedById: s.clientUserId, reason: 'test' },
     });

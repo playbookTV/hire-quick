@@ -19,8 +19,9 @@ const EXPLANATIONS: Record<string, string> = {
   PENDING_PAYMENT: 'Payment has not been confirmed. This is not yet a confirmed job.',
   CONFIRMED:
     'Payment is held securely. Verify attendance with the client’s check-in code on arrival.',
-  CHECKED_IN: 'Attendance is verified. Payment remains held until completion.',
-  COMPLETED: 'Work is complete. Check here for the payout status.',
+  CHECKED_IN: 'Attendance is verified. Earnings remain held through 72 hours after event end.',
+  COMPLETED:
+    'Work is complete. Earnings stay held through 72 hours after event end and any unresolved dispute.',
   PAID: 'Payment has been released to the usher’s wallet.',
   CANCELLED:
     'This booking is cancelled. Contact support if you need help with the payment outcome.',
@@ -60,7 +61,9 @@ export default function BookingDetails(): React.JSX.Element {
               <StatusPill status={b.status} />
               <Text variant="h1">{b.event?.title ?? 'Event booking'}</Text>
               <Text variant="body">
-                {EXPLANATIONS[b.status] ?? 'Refresh to see the latest booking status.'}
+                {b.status === 'COMPLETED' && b.payment?.escrowStatus === 'RELEASED'
+                  ? 'This payment was already released. Contact support to review any concern about this earlier payout.'
+                  : (EXPLANATIONS[b.status] ?? 'Refresh to see the latest booking status.')}
               </Text>
               <Card>
                 <KeyValueRow
@@ -78,7 +81,10 @@ export default function BookingDetails(): React.JSX.Element {
                 ) : null}
                 <KeyValueRow label="Booking total" value={money(b.amount)} />
                 {usher && b.payment ? (
-                  <KeyValueRow label="Net earnings" value={money(b.payment.usherPayout)} />
+                  <KeyValueRow
+                    label="Net earnings"
+                    value={money(b.cancellation?.usherPayoutKobo ?? b.payment.usherPayout)}
+                  />
                 ) : null}
                 {b.payment ? (
                   <KeyValueRow
@@ -87,7 +93,53 @@ export default function BookingDetails(): React.JSX.Element {
                   />
                 ) : null}
               </Card>
-              {b.refund ? (
+              {b.payoutAvailableAt &&
+              ['CHECKED_IN', 'COMPLETED', 'DISPUTED'].includes(b.status) &&
+              b.payment?.escrowStatus !== 'RELEASED' ? (
+                <Card>
+                  <Text variant="body">
+                    Earliest wallet release:{' '}
+                    {new Date(b.payoutAvailableAt).toLocaleString('en-NG', {
+                      timeZone: 'Africa/Lagos',
+                    })}{' '}
+                    WAT. Unresolved disputes keep funds held.
+                  </Text>
+                </Card>
+              ) : null}
+              {b.cancellation ? (
+                <Card>
+                  <Text variant="titleM">
+                    Cancellation · {b.cancellation.status.toLowerCase().replaceAll('_', ' ')}
+                  </Text>
+                  <Text variant="bodySm">
+                    {b.cancellation.status === 'AWAITING_APPROVAL'
+                      ? 'These amounts are reserved. Funds remain held until two different admins approve.'
+                      : b.cancellation.status === 'PROCESSING'
+                        ? 'Awaiting refund confirmation. Funds remain held.'
+                        : b.cancellation.status === 'FAILED'
+                          ? 'No settlement was recorded. Contact support for review.'
+                          : b.cancellation.refundKobo > 0
+                            ? 'Settlement recorded. Bank refund processing times can vary.'
+                            : 'Compensation credited to the usher wallet. No client refund is due.'}
+                  </Text>
+                  <KeyValueRow label="Client refund" value={money(b.cancellation.refundKobo)} />
+                  <KeyValueRow
+                    label="Net usher compensation"
+                    value={money(b.cancellation.usherPayoutKobo)}
+                  />
+                  <KeyValueRow
+                    label="Platform commission"
+                    value={money(b.cancellation.platformFeeKobo)}
+                  />
+                  <Button
+                    label="Refresh cancellation status"
+                    variant="secondary"
+                    onPress={() => void query.refetch()}
+                    disabled={query.isFetching}
+                  />
+                </Card>
+              ) : null}
+              {b.refund && !b.cancellation ? (
                 <Card>
                   <Box style={{ gap: 8 }}>
                     <Text variant="titleM">
@@ -136,7 +188,8 @@ export default function BookingDetails(): React.JSX.Element {
                   }
                 />
               ) : null}
-              {b.status === 'CONFIRMED' ? (
+              {b.status === 'CONFIRMED' &&
+              (!b.cancellation || b.cancellation.status === 'FAILED') ? (
                 <>
                   <Button
                     label={usher ? 'Enter check-in code' : 'Show check-in code'}
@@ -174,7 +227,7 @@ export default function BookingDetails(): React.JSX.Element {
               ) : null}
               {b.status === 'CHECKED_IN' && !usher ? (
                 <Button
-                  label="Confirm work & release payment"
+                  label="Confirm work completed"
                   onPress={() =>
                     router.push({ pathname: '/(modals)/event-day', params: { id: b.eventId } })
                   }
@@ -191,8 +244,7 @@ export default function BookingDetails(): React.JSX.Element {
                   onPress={() => go('/(modals)/message-thread')}
                 />
               ) : null}
-              {['CONFIRMED', 'CHECKED_IN', 'COMPLETED'].includes(b.status) &&
-              (!usher || b.checkedInAt) ? (
+              {b.canDispute ? (
                 <Button
                   label="Report a problem"
                   variant="secondary"

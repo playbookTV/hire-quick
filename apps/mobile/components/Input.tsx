@@ -1,24 +1,19 @@
-/**
- * Input — matches Figma `Input/Field` (8:4): white surface, 1px border/default,
- * a very subtle drop shadow, 16/12 padding, 12px gap, radius md, Body/M text
- * (PJ Regular 15/22) with an ink/faint placeholder and an optional 20px leading
- * icon. Focus (emerald) and error (danger) borders are added states.
- */
+/** Figma TextField control with adaptive height and semantic focus/error borders. */
 import { useState, forwardRef } from 'react';
 import { TextInput, View, Text, type TextInputProps } from 'react-native';
 import { useTheme } from '../theme/restyle.js';
 import { Icon, type IconName } from './Icon.js';
-import { fonts } from '../theme/fonts.js';
 
 export interface InputProps extends Omit<TextInputProps, 'style'> {
   leftIcon?: IconName;
   /** Leading text affordance (e.g. a "₦" currency symbol). Rendered before the field. */
   prefix?: string;
   error?: boolean;
+  variant?: 'body' | 'code';
 }
 
 export const Input = forwardRef<TextInput, InputProps>(function Input(
-  { leftIcon, prefix, error = false, onFocus, onBlur, ...props },
+  { leftIcon, prefix, error = false, variant = 'body', onFocus, onBlur, ...props },
   ref,
 ) {
   const theme = useTheme();
@@ -27,34 +22,30 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
   const borderColor = error
     ? theme.colors.statusDanger
     : focused
-      ? theme.colors.brandEmerald
-      : theme.colors.borderDefault;
+      ? theme.colors.borderFocus
+      : theme.colors.borderControl;
 
   return (
     <View
       style={{
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
+        gap: theme.spacing['300'],
+        minHeight: variant === 'code' ? 64 : 52,
+        opacity: props.editable === false ? 0.5 : 1,
         paddingHorizontal: 16,
         paddingVertical: 12,
         borderRadius: theme.borderRadii.md,
-        borderWidth: 1,
+        borderWidth: focused || error ? 2 : 1.5,
         borderColor,
         backgroundColor: theme.colors.bgSurface,
-        shadowColor: '#0A0D14',
-        shadowOpacity: 0.03,
-        shadowRadius: 1,
-        shadowOffset: { width: 0, height: 1 },
       }}
     >
       {leftIcon ? <Icon name={leftIcon} size={20} color="inkFaint" /> : null}
       {prefix ? (
         <Text
           style={{
-            fontFamily: fonts.sansRegular,
-            fontSize: 15,
-            lineHeight: 22,
+            ...theme.textVariants.body,
             color: theme.colors.inkMuted,
           }}
         >
@@ -74,11 +65,12 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
         }}
         style={{
           flex: 1,
-          fontFamily: fonts.sansRegular,
-          fontSize: 15,
-          lineHeight: 22,
+          minWidth: 0,
+          ...(variant === 'code' ? theme.textVariants.code : theme.textVariants.body),
           color: theme.colors.inkStrong,
           paddingVertical: 0,
+          outlineWidth: 0,
+          outlineStyle: 'solid',
         }}
         {...props}
       />

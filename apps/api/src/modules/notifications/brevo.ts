@@ -6,26 +6,10 @@
 import { SignJWT, importPKCS8 } from 'jose';
 import { env } from '../../env.js';
 
-export interface SentRecord {
-  kind: 'sms' | 'email' | 'push' | 'whatsapp';
-  to: string;
-  summary: string;
-}
+import { record } from './test-recorder.js';
+export { sentNotifications, clearSentNotifications, type SentRecord } from './test-recorder.js';
 
 const IS_TEST = env.NODE_ENV === 'test';
-const MAX_TEST_RECORDS = 100;
-const sent: SentRecord[] = [];
-function record(r: SentRecord): void {
-  if (!IS_TEST) return;
-  if (sent.length >= MAX_TEST_RECORDS) sent.shift();
-  sent.push({ ...r });
-}
-export function sentNotifications(): readonly SentRecord[] {
-  return sent.map((entry) => ({ ...entry }));
-}
-export function clearSentNotifications(): void {
-  sent.length = 0;
-}
 
 function log(message: string): void {
   // Only fixed channel labels / HTTP status codes; never destinations or bodies.
@@ -98,50 +82,6 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
   if (!res) return false;
   if (!res.ok) {
     log(`email failed: ${String(res.status)}`);
-    return false;
-  }
-  return true;
-}
-
-/**
- * WhatsApp OTP via Brevo — the preferred OTP channel (TRD §4). Requires a
- * connected WhatsApp Business Account + an approved authentication template
- * (Meta rule: the first/transactional message must be a template). The code is
- * injected into the template variable named by BREVO_WHATSAPP_OTP_PARAM. Until
- * the WABA + template are configured it reports unavailable outside tests.
- *
- * NOTE: Brevo does not publicly document the WhatsApp `params` shape; this sends
- * `params: { <BREVO_WHATSAPP_OTP_PARAM>: code }`. Confirm against the approved
- * template once it exists and adjust the param mapping if Brevo expects a
- * different key (e.g. a positional "1").
- */
-export async function sendWhatsAppOtp(to: string, code: string): Promise<boolean> {
-  record({ kind: 'whatsapp', to, summary: `OTP ${code}` });
-  if (IS_TEST) return true;
-  const configured =
-    !!env.BREVO_API_KEY && !!env.BREVO_WHATSAPP_SENDER && env.BREVO_WHATSAPP_OTP_TEMPLATE_ID > 0;
-  if (!configured) {
-    log('WhatsApp transport unavailable');
-    return false;
-  }
-  const recipient = to.replace(/\D/g, ''); // Brevo wants digits only, incl. country code
-  const res = await providerFetch('https://api.brevo.com/v3/whatsapp/sendMessage', {
-    method: 'POST',
-    headers: {
-      'api-key': env.BREVO_API_KEY,
-      'content-type': 'application/json',
-      accept: 'application/json',
-    },
-    body: JSON.stringify({
-      senderNumber: env.BREVO_WHATSAPP_SENDER,
-      contactNumbers: [recipient],
-      templateId: env.BREVO_WHATSAPP_OTP_TEMPLATE_ID,
-      params: { [env.BREVO_WHATSAPP_OTP_PARAM]: code },
-    }),
-  });
-  if (!res) return false;
-  if (!res.ok) {
-    log(`WhatsApp failed: ${String(res.status)}`);
     return false;
   }
   return true;

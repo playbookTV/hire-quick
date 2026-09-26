@@ -1,6 +1,6 @@
 // Expo configures pnpm workspace watching and dependency resolution automatically.
-const { getDefaultConfig } = require('expo/metro-config');
-const config = getDefaultConfig(__dirname);
+const { getSentryExpoConfig } = require('@sentry/react-native/metro');
+const config = getSentryExpoConfig(__dirname);
 
 // The repo writes relative imports with a `.js` extension (NodeNext convention,
 // see CLAUDE.md), but our TS source files are `.ts`/`.tsx`. tsc (Bundler

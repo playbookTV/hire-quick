@@ -15,7 +15,13 @@ import {
   refundBooking,
   commissionSweep,
 } from '../ledger/ledger.js';
-import { createScenario, teardown, bookingLedgerSum, type Scenario } from './fixtures.js';
+import {
+  createScenario,
+  teardown,
+  bookingLedgerSum,
+  type Scenario,
+  FIXTURE_DISPUTE_TIME,
+} from './fixtures.js';
 import { reconcile } from '../ledger/reconciliation.js';
 import { InMemoryPaystack } from '../port/paystack-port.js';
 
@@ -160,19 +166,19 @@ describe('ledger conservation and accumulated limits', () => {
       const s = await fixture();
       await funded(s);
       if (mode === 'dispute')
-        await prisma.$transaction((tx) => freezeBooking(tx, s.bookingIds[0]!), TX);
+        await prisma.$transaction(
+          (tx) => freezeBooking(tx, s.bookingIds[0]!, FIXTURE_DISPUTE_TIME),
+          TX,
+        );
       await prisma.payment.update({
         where: { bookingId: s.bookingIds[0]! },
         data: { usherPayout: 8499 },
       });
       await expect(
-        prisma.$transaction(
-          (tx) =>
-            mode === 'normal'
-              ? releaseBooking(tx, s.bookingIds[0]!, 'OTP')
-              : resolveDisputeRelease(tx, s.bookingIds[0]!),
-          TX,
-        ),
+        prisma.$transaction(async (tx) => {
+          if (mode === 'normal') await releaseBooking(tx, s.bookingIds[0]!, 'OTP');
+          else await resolveDisputeRelease(tx, s.bookingIds[0]!);
+        }, TX),
       ).rejects.toMatchObject({ code: 'ALLOCATION_MISMATCH' });
       expect(await bookingLedgerSum(s.bookingIds[0]!)).toBe(10000);
       expect(await prisma.walletLedger.count({ where: { walletId: s.walletId } })).toBe(0);

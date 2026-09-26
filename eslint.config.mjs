@@ -10,6 +10,18 @@ export default [
   },
   {
     ...tseslint.configs.disableTypeChecked,
+    files: ['apps/mobile/plugins/**/*.js'],
+    languageOptions: {
+      ...tseslint.configs.disableTypeChecked.languageOptions,
+      globals: { require: 'readonly', module: 'readonly' },
+    },
+    rules: {
+      ...tseslint.configs.disableTypeChecked.rules,
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
+  {
+    ...tseslint.configs.disableTypeChecked,
     files: ['scripts/check-docs.mjs'],
     // Local documentation paths/text are repository inputs, not HTTP input.
     rules: {

@@ -118,10 +118,14 @@ describe('admin read contracts', () => {
     expect(mocks.users).not.toHaveBeenCalled();
   });
   it('audit-logs successful case reads and returns not-found explicitly', async () => {
-    mocks.booking.mockResolvedValueOnce({ id, status: 'DISPUTED' }).mockResolvedValueOnce(null);
+    const event = { eventDate: new Date('2026-09-25T00:00:00Z'), endTime: '18:00' };
+    mocks.booking.mockResolvedValueOnce({ id, status: 'DISPUTED', event }).mockResolvedValueOnce(null);
     expect(await read('/bookings/:id/review', {}, { id })).toEqual({
       id,
       status: 'DISPUTED',
+      event,
+      payoutAvailableAt: expect.any(String),
+      cancellation: null,
       messages: [],
       conversation: undefined,
       refund: null,

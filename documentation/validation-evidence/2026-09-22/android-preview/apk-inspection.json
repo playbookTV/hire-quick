@@ -1,0 +1,16 @@
+{
+  "sha256": "276415e50891062f778b779d2b3ea75856fd7a9cc3dde97df98b280b608c9746",
+  "sizeBytes": 109067752,
+  "signerCertificateSha256": "7bfd30f0ae773e266f2389476e13815bda73e764bc95a7b07bdac5b5e07b108d",
+  "manifest": {
+    "package": "com.hirequick.mobile",
+    "versionCode": 5,
+    "versionName": "0.0.1"
+  },
+  "stagingApiOriginPresent": true,
+  "policyCopyPresent": {
+    "Earnings stay held through 72 hours after event end": true,
+    "awaits two-admin approval": true,
+    "The remaining allocation pays the usher": true
+  }
+}

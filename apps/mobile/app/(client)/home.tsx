@@ -1,20 +1,15 @@
-/**
- * Client Home — matches Figma `Client / Home` (10:2): gold "WELCOME BACK"
- * overline + Fraunces greeting + Avatar; two QuickActionCards; a live "Your
- * events" section; and a "Suggested staff" StaffCardCompact row.
- */
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable } from 'react-native';
+import { ActivityIndicator } from 'react-native';
 import { Screen } from '../../components/Screen.js';
 import { QuickActionCard } from '../../components/QuickActionCard.js';
 import { SectionHeader } from '../../components/SectionHeader.js';
 import { EventCard } from '../../components/EventCard.js';
-import { StaffCardCompact } from '../../components/StaffCardCompact.js';
+import { StaffCard } from '../../components/StaffCard.js';
 import { EmptyState } from '../../components/EmptyState.js';
-import { Avatar } from '../../components/Avatar.js';
-import { Icon } from '../../components/Icon.js';
-import { Box, Text, useTheme } from '../../theme/restyle.js';
-import { fonts } from '../../theme/fonts.js';
+import { Box, useTheme } from '../../theme/restyle.js';
+import { HomeHeading } from '../../components/ScreenHeading.js';
+import { screenTokens } from '../../theme/token-manager.js';
+import { money } from '../../lib/format.js';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../lib/auth-context.js';
 import { useEvents, useUshers, useNotifications } from '../../lib/hooks.js';
@@ -34,7 +29,7 @@ export default function ClientHome(): React.JSX.Element {
       ? user.client.displayName
       : null;
   const firstName = fullName ? fullName.split(' ')[0] : 'there';
-  const recent = (events.data ?? []).slice(0, 3);
+  const recent = (events.data ?? []).slice(0, 2);
 
   return (
     <Box flex={1} backgroundColor="bgCanvas" style={{ paddingTop: insets.top }}>
@@ -47,82 +42,23 @@ export default function ClientHome(): React.JSX.Element {
           void suggested.refetch();
         }}
       >
-        <Box style={{ paddingHorizontal: 20, paddingTop: 16, gap: 24 }}>
-          {/* greeting */}
-          <Box flexDirection="row" alignItems="center" justifyContent="space-between">
-            <Box style={{ gap: 2 }}>
-              <Text variant="overline" color="accentGoldStrong" style={{ letterSpacing: 1.2 }}>
-                WELCOME BACK
-              </Text>
-              <Text variant="h2">Hello, {firstName}</Text>
-            </Box>
-            <Box flexDirection="row" alignItems="center" style={{ gap: 12 }}>
-              <Pressable
-                onPress={() => router.push('/(modals)/notifications')}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel={
-                  unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'
-                }
-              >
-                <Box
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 22,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: theme.colors.bgSurface,
-                    borderWidth: 1,
-                    borderColor: theme.colors.borderDefault,
-                  }}
-                >
-                  <Icon name="bell" size={20} color="inkStrong" />
-                  {unread > 0 ? (
-                    <Box
-                      style={{
-                        position: 'absolute',
-                        top: -3,
-                        right: -3,
-                        minWidth: 18,
-                        height: 18,
-                        borderRadius: 9,
-                        paddingHorizontal: 4,
-                        backgroundColor: theme.colors.dangerSurface,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontFamily: fonts.sansBold,
-                          fontSize: 10,
-                          lineHeight: 12,
-                          color: theme.colors.inverseInk,
-                        }}
-                      >
-                        {unread > 9 ? '9+' : unread}
-                      </Text>
-                    </Box>
-                  ) : null}
-                </Box>
-              </Pressable>
-              <Avatar name={fullName ?? user?.phone} size={48} />
-            </Box>
-          </Box>
+        <Box style={{ paddingHorizontal: screenTokens.gutter, gap: screenTokens.sectionGap }}>
+          <HomeHeading
+            name={firstName}
+            unread={unread}
+            onNotifications={() => router.push('/(modals)/notifications')}
+          />
 
           {/* quick actions */}
-          <Box flexDirection="row" style={{ gap: 16 }}>
+          <Box flexDirection="row" style={{ gap: 8 }}>
             <QuickActionCard
               title="Create event"
-              subtitle="Post a new role"
               icon="plus"
               variant="primary"
               onPress={() => router.push('/(modals)/create-event')}
             />
             <QuickActionCard
               title="Browse staff"
-              subtitle="Invite directly"
               icon="search"
               onPress={() => router.push('/(client)/discover')}
             />
@@ -178,14 +114,15 @@ export default function ClientHome(): React.JSX.Element {
                 actionLabel="See all"
                 onAction={() => router.push('/(client)/discover')}
               />
-              <Box flexDirection="row" flexWrap="wrap" style={{ gap: 16 }}>
+              <Box style={{ gap: 16 }}>
                 {(suggested.data ?? []).slice(0, 2).map((u) => (
-                  <StaffCardCompact
+                  <StaffCard
                     key={u.id}
                     name={u.displayName ?? 'Usher'}
                     avatarUrl={u.avatarUrl}
-                    rating={`${u.ratingAvg.toFixed(1)} · ${u.completedJobsCount} jobs`}
-                    price={u.verificationStatus === 'VERIFIED' ? 'Verified' : ''}
+                    meta={`${u.ratingAvg.toFixed(1)} · ${u.completedJobsCount} jobs · ${u.city ?? 'Lagos'}`}
+                    price={u.dayRateKobo ? money(u.dayRateKobo) : 'Rate on request'}
+                    priceSuffix={u.dayRateKobo ? '/ day indicative' : ''}
                     verified={u.verificationStatus === 'VERIFIED'}
                     onPress={() =>
                       router.push({ pathname: '/(modals)/staff-profile', params: { id: u.id } })

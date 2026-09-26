@@ -1,0 +1,19 @@
+{
+  "checkedAt": "2026-09-23T17:32:08.940Z",
+  "deployment": "d5a5a6bd-1719-40f9-95a8-681e94ffb702",
+  "service": "hirequick-worker",
+  "mode": "staging",
+  "paystackTest": true,
+  "kycMode": "smile",
+  "smileEnvironment": "sandbox",
+  "database": true,
+  "redis": "PONG",
+  "hashes": {
+    "apps/api/src/modules/verification/port/smile-kyc.ts": "d29d90df773821c4c6633b468d95f78fea8a696324997109fdc67570f9ceecdd",
+    "apps/api/src/modules/verification/service.ts": "bd3ec22cc35ca6f65f2b3dbc3d27e13096c9d04c060f93bc9fd4e4ceabedea4a",
+    "apps/api/src/modules/verification/routes.ts": "ff69be2c6ff66d06cbe6eff6d09c40c02e6e14b9a06ddc969600749446afee46",
+    "apps/api/src/env.ts": "d7c8808c698d95d0568601639d2ffc52987242fb01405f8907fc4df5ba3a7874",
+    "apps/api/src/server.ts": "709410364b9f44675011c4d715e123b8631f6f0058d095ad382ab9ae99d0a142",
+    "packages/database/prisma/schema.prisma": "703616b2ac5e638062aaf340a1f5455706e09127523414e72cfd99ba76e1f77c"
+  }
+}

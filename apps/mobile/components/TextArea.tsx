@@ -1,8 +1,4 @@
-/**
- * TextArea — matches Figma `TextArea` (120:72): white surface, 1.5px
- * border/default, radius md, 16px padding, min height 88, Body/M text with an
- * ink/faint placeholder, top-aligned. Focus/error borders are added states.
- */
+/** Multiline Figma TextField, using the same tokens as Input. */
 import { useState } from 'react';
 import { TextInput, type TextInputProps } from 'react-native';
 import { useTheme } from '../theme/restyle.js';
@@ -25,8 +21,8 @@ export function TextArea({
   const borderColor = error
     ? theme.colors.statusDanger
     : focused
-      ? theme.colors.brandEmerald
-      : theme.colors.borderDefault;
+      ? theme.colors.borderFocus
+      : theme.colors.borderControl;
 
   return (
     <TextInput
@@ -45,12 +41,11 @@ export function TextArea({
         minHeight,
         padding: 16,
         borderRadius: theme.borderRadii.md,
-        borderWidth: 1.5,
+        borderWidth: focused || error ? 2 : 1.5,
+        opacity: props.editable === false ? 0.5 : 1,
         borderColor,
         backgroundColor: theme.colors.bgSurface,
-        fontFamily: 'PlusJakartaSans_400Regular',
-        fontSize: 15,
-        lineHeight: 22,
+        ...theme.textVariants.body,
         color: theme.colors.inkStrong,
       }}
       {...props}

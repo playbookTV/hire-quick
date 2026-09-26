@@ -1,21 +1,13 @@
-/**
- * Button — matches Figma `Button` (6:18). Variants Primary / Secondary / Ghost /
- * Danger × sizes lg / md. Primary & Danger are vertical gradients with a 1px
- * inner ring, soft drop shadow, and a subtle text-shadow (the premium glossy
- * treatment in the file). Secondary is a white surface with a soft ring; Ghost
- * is text-only. Full-width by default (set the instance to Fill in Figma).
- */
-import { View, ActivityIndicator, StyleSheet, type ViewStyle } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+/** Figma Button: flat fill, 12px radius, adaptive 44/52px targets and visible states. */
+import { useState } from 'react';
+import { ActivityIndicator } from 'react-native';
 import { useTheme, Text } from '../theme/restyle.js';
 import { Icon, type IconName } from './Icon.js';
 import { AnimatedPressable } from './Pressable.js';
 import type { Theme } from '../theme/theme.js';
-import { fonts } from '../theme/fonts.js';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 export type ButtonSize = 'lg' | 'md';
-
 interface ButtonProps {
   label: string;
   onPress?: () => void;
@@ -26,42 +18,6 @@ interface ButtonProps {
   fullWidth?: boolean;
   leftIcon?: IconName;
 }
-
-const SIZE: Record<
-  ButtonSize,
-  { ph: number; pv: number; radius: number; fontSize: number; lineHeight: number; ls: number }
-> = {
-  lg: { ph: 24, pv: 16, radius: 16, fontSize: 15, lineHeight: 20, ls: 0 },
-  md: { ph: 20, pv: 12, radius: 12, fontSize: 13, lineHeight: 16, ls: 0.2 },
-};
-
-// Gradient treatments are a fixed visual style in the file (not theme tokens).
-// `border` is the 1px edge (the gradient's top colour); `ring` is the
-// `0 0 0 1px` outer ring drawn just outside it via the second box-shadow layer.
-const GRADIENT: Record<
-  'primary' | 'danger',
-  {
-    colors: readonly [string, string, ...string[]];
-    locations?: readonly [number, number, ...number[]];
-    border: string;
-    ring: string;
-  }
-> = {
-  // Figma stops: #15D1A2 @ -123.08%, #0B6B53 @ 76.92%. Mapped into the visible
-  // 0–100% band the top resolves to ~#0F9271, then holds flat #0B6B53 past 77%.
-  primary: {
-    colors: ['#0B6B53', '#08553F', '#08553F'],
-    locations: [0, 0.7692, 1],
-    border: '#15D1A2',
-    ring: '#0B6B53',
-  },
-  danger: { colors: ['#C2381F', '#A22D17'], border: '#FFAB9C', ring: '#C2381F' },
-};
-
-// box-shadow: 0 1px 2px rgba(14,18,27,.24) drop + 0 0 0 1px <ring> outer ring.
-const ringShadow = (ring: string): string =>
-  `0px 1px 2px 0px rgba(14, 18, 27, 0.24), 0px 0px 0px 1px ${ring}`;
-
 export function Button({
   label,
   onPress,
@@ -73,110 +29,82 @@ export function Button({
   leftIcon,
 }: ButtonProps): React.JSX.Element {
   const theme = useTheme();
-  const s = SIZE[size];
-  const isDisabled = disabled || loading;
-
-  const fg: keyof Theme['colors'] =
-    variant === 'secondary' ? 'inkStrong' : variant === 'ghost' ? 'brandEmerald' : 'inverseInk';
-  const textShadow = variant === 'primary' || variant === 'danger';
-
-  const inner: ViewStyle = {
-    minHeight: 44,
-    minWidth: 44,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingHorizontal: s.ph,
-    paddingVertical: s.pv,
-    borderRadius: s.radius,
-  };
-
-  const content = loading ? (
-    <ActivityIndicator color={theme.colors[fg]} />
-  ) : (
-    <>
-      {leftIcon ? <Icon name={leftIcon} size={size === 'lg' ? 18 : 16} color={fg} /> : null}
-      <Text
-        style={{
-          fontFamily: fonts.sansSemibold,
-          fontSize: s.fontSize,
-          lineHeight: s.lineHeight,
-          letterSpacing: s.ls,
-          color: theme.colors[fg],
-          ...(textShadow
-            ? {
-                textShadowColor: 'rgba(0,0,0,0.27)',
-                textShadowOffset: { width: 0, height: 1 },
-                textShadowRadius: 0,
-              }
-            : null),
-        }}
-      >
-        {label}
-      </Text>
-    </>
-  );
-
-  const body =
-    variant === 'primary' || variant === 'danger' ? (
-      <LinearGradient
-        colors={GRADIENT[variant].colors}
-        locations={GRADIENT[variant].locations}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={[
-          inner,
-          {
-            borderWidth: 1,
-            borderColor: GRADIENT[variant].border,
-            boxShadow: ringShadow(GRADIENT[variant].ring),
-          },
-        ]}
-      >
-        {content}
-      </LinearGradient>
-    ) : variant === 'secondary' ? (
-      <View
-        style={[
-          inner,
-          styles.softShadow,
-          {
-            backgroundColor: theme.colors.bgSurface,
-            borderWidth: 1,
-            borderColor: theme.colors.borderDefault,
-          },
-        ]}
-      >
-        {content}
-      </View>
-    ) : (
-      <View style={inner}>{content}</View>
-    );
-
+  const [pressed, setPressed] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const inactive = disabled || loading;
+  const active = !inactive && (pressed || hovered);
+  const fg: keyof Theme['colors'] = disabled
+    ? 'inkMuted'
+    : variant === 'primary'
+      ? 'inkOnAccent'
+      : variant === 'danger'
+        ? 'inkOnDanger'
+        : 'inkStrong';
+  const bg = disabled
+    ? theme.colors.actionDisabled
+    : variant === 'primary'
+      ? active
+        ? theme.colors.actionPrimaryPressed
+        : theme.colors.brandAccent
+      : variant === 'danger'
+        ? active
+          ? theme.colors.actionDangerPressed
+          : theme.colors.dangerSurface
+        : active
+          ? theme.colors.bgSurfaceAlt
+          : variant === 'secondary'
+            ? theme.colors.bgSurface
+            : 'transparent';
   return (
     <AnimatedPressable
       onPress={onPress}
-      disabled={isDisabled}
+      disabled={inactive}
+      scaleTo={1}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      onFocus={() => setFocused(true)}
+      onBlur={() => {
+        setFocused(false);
+        setPressed(false);
+      }}
+      onHoverIn={() => setHovered(true)}
+      onHoverOut={() => setHovered(false)}
       accessibilityRole="button"
       accessibilityLabel={label}
-      accessibilityState={{ disabled: isDisabled, busy: loading }}
+      accessibilityState={{ disabled: inactive, busy: loading }}
       style={{
         alignSelf: fullWidth ? 'stretch' : 'flex-start',
-        opacity: isDisabled ? 0.5 : 1,
+        minHeight: size === 'lg' ? 52 : 44,
+        minWidth: 44,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: theme.spacing['200'],
+        paddingHorizontal: theme.spacing[size === 'lg' ? '600' : '500'],
+        paddingVertical: theme.spacing['300'],
+        borderRadius: theme.borderRadii.md,
+        backgroundColor: bg,
+        borderWidth: 1.5,
+        borderColor:
+          variant === 'secondary' && !disabled ? theme.colors.borderControl : 'transparent',
+        outlineWidth: focused ? 3 : 0,
+        outlineColor: theme.colors.borderFocus,
+        outlineOffset: 2,
       }}
     >
-      {body}
+      {loading ? (
+        <ActivityIndicator size="small" color={theme.colors[fg]} />
+      ) : leftIcon ? (
+        <Icon name={leftIcon} size={18} color={fg} />
+      ) : null}
+      <Text
+        variant={size === 'lg' ? 'labelLg' : 'label'}
+        color={fg}
+        style={{ flexShrink: 1, textAlign: 'center' }}
+      >
+        {label}
+      </Text>
     </AnimatedPressable>
   );
 }
-
-const styles = StyleSheet.create({
-  softShadow: {
-    shadowColor: '#0E1219',
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 1,
-  },
-});

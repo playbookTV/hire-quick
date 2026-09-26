@@ -7,6 +7,9 @@
 import { randomUUID } from 'node:crypto';
 import { prisma } from '@hq/database';
 
+/** Historical in-window instant for the standard September 1 event fixture. */
+export const FIXTURE_DISPUTE_TIME = new Date('2026-09-02T12:00:00Z');
+
 export interface Scenario {
   clientUserId: string;
   usherUserId: string;
@@ -19,7 +22,9 @@ export interface Scenario {
   amountKobo: number;
 }
 
-export async function createScenario(opts: { headcount?: number; amountKobo?: number } = {}): Promise<Scenario> {
+export async function createScenario(
+  opts: { headcount?: number; amountKobo?: number } = {},
+): Promise<Scenario> {
   const headcount = opts.headcount ?? 3;
   const amountKobo = opts.amountKobo ?? 2_000_000; // ₦20,000
   const tag = randomUUID().slice(0, 8);
@@ -71,7 +76,13 @@ export async function createScenario(opts: { headcount?: number; amountKobo?: nu
   const bookingIds: string[] = [];
   for (let i = 0; i < headcount; i++) {
     const b = await prisma.booking.create({
-      data: { eventId: event.id, usherId, orderId: order.id, amount: amountKobo, status: 'PENDING_PAYMENT' },
+      data: {
+        eventId: event.id,
+        usherId,
+        orderId: order.id,
+        amount: amountKobo,
+        status: 'PENDING_PAYMENT',
+      },
     });
     bookingIds.push(b.id);
   }
@@ -93,7 +104,10 @@ export async function teardown(s: Scenario): Promise<void> {
   await prisma.escrowLedger.deleteMany({ where: { bookingId: { in: s.bookingIds } } });
   await prisma.walletLedger.deleteMany({ where: { walletId: s.walletId } });
   // Durable operation records this scenario may have created (refund/transfer).
-  const wds = await prisma.withdrawal.findMany({ where: { walletId: s.walletId }, select: { id: true } });
+  const wds = await prisma.withdrawal.findMany({
+    where: { walletId: s.walletId },
+    select: { id: true },
+  });
   await prisma.paymentOperation.deleteMany({
     where: {
       dedupeKey: {

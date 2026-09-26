@@ -10,6 +10,7 @@ import { prisma } from '@hq/database';
 import { createApp } from '../../../app.js';
 import { socketToken } from '../../../realtime/__tests__/session-fixture.js';
 import { assertDisposableDatabase } from '../../auth/__tests__/assert-disposable-db.js';
+import { finalizeUpload } from '../uploads.js';
 import { chatMediaKey } from '../chat-media.js';
 import { jobRetentionPurge } from '../../jobs/jobs.js';
 import { sendMessage } from '../../../realtime/messages.js';
@@ -22,6 +23,15 @@ vi.mock('../../notifications/service.js', async (importOriginal) => ({
 const storage = {
   presignUpload: vi.fn(async (key: string, _mime: string) => `https://storage.invalid/put/${key}`),
   presignDownload: vi.fn(async (key: string) => `https://storage.invalid/get/${key}`),
+  inspectObject: vi.fn(async (key: string) => ({
+    size: 16,
+    contentType: key.includes('/VOICE/') ? 'audio/mp4' : 'image/jpeg',
+    etag: 'test',
+    prefix: key.includes('/VOICE/')
+      ? Buffer.from('0000ftypM4A 00000')
+      : Buffer.from([255, 216, 255, 0]),
+  })),
+  copyObject: vi.fn(async () => undefined),
   deleteObject: vi.fn(async (_key: string) => undefined),
 };
 const app = createApp({ storage });
@@ -98,8 +108,13 @@ async function issue(f: Awaited<ReturnType<typeof fixture>>, type: 'IMAGE' | 'VO
   const response = await request(app)
     .post(`/api/bookings/${f.bookingId}/media/upload-url`)
     .set('Authorization', `Bearer ${f.token}`)
-    .send({ contentType: type, mimeType: type === 'IMAGE' ? 'image/jpeg' : 'audio/mp4' });
+    .send({
+      contentType: type,
+      mimeType: type === 'IMAGE' ? 'image/jpeg' : 'audio/mp4',
+      byteSize: 16,
+    });
   expect(response.status).toBe(200);
+  await finalizeUpload(storage, f.clientId, response.body.key as string);
   return response.body.key as string;
 }
 
@@ -110,8 +125,9 @@ describe('authorized chat-media routes, messages and retention', () => {
       const f = await fixture();
       const key = await issue(f, type);
       expect(storage.presignUpload).toHaveBeenCalledWith(
-        key,
+        `staging/${key}`,
         type === 'IMAGE' ? 'image/jpeg' : 'audio/mp4',
+        16,
       );
       const sent = await request(app)
         .post(`/api/bookings/${f.bookingId}/messages`)
@@ -139,7 +155,7 @@ describe('authorized chat-media routes, messages and retention', () => {
       const response = await request(app)
         .get(`/api/bookings/${f.bookingId}/messages/${sent.body.id}/media-url`)
         .set('Authorization', `Bearer ${f.usherToken}`);
-      expect(response.status).toBe(200);
+      expect(response.status, response.text).toBe(200);
       expect(storage.presignDownload).toHaveBeenCalledWith(key);
     },
   );
@@ -200,14 +216,18 @@ describe('authorized chat-media routes, messages and retention', () => {
     const other = await fixture();
     const path = `/api/bookings/${f.bookingId}/media/upload-url`;
     expect(
-      (await request(app).post(path).send({ contentType: 'IMAGE', mimeType: 'image/png' })).status,
+      (
+        await request(app)
+          .post(path)
+          .send({ contentType: 'IMAGE', mimeType: 'image/png', byteSize: 16 })
+      ).status,
     ).toBe(401);
     expect(
       (
         await request(app)
           .post(path)
           .set('Authorization', `Bearer ${other.token}`)
-          .send({ contentType: 'IMAGE', mimeType: 'image/png' })
+          .send({ contentType: 'IMAGE', mimeType: 'image/png', byteSize: 16 })
       ).status,
     ).toBe(403);
     await prisma.booking.update({
@@ -219,7 +239,7 @@ describe('authorized chat-media routes, messages and retention', () => {
         await request(app)
           .post(path)
           .set('Authorization', `Bearer ${f.token}`)
-          .send({ contentType: 'IMAGE', mimeType: 'image/png' })
+          .send({ contentType: 'IMAGE', mimeType: 'image/png', byteSize: 16 })
       ).status,
     ).toBe(409);
     expect(storage.presignUpload).not.toHaveBeenCalled();
@@ -232,7 +252,7 @@ describe('authorized chat-media routes, messages and retention', () => {
         await request(app)
           .post(path)
           .set('Authorization', `Bearer ${f.token}`)
-          .send({ contentType: 'VOICE', mimeType: 'image/png' })
+          .send({ contentType: 'VOICE', mimeType: 'image/png', byteSize: 16 })
       ).status,
     ).toBe(400);
     expect(
@@ -240,7 +260,7 @@ describe('authorized chat-media routes, messages and retention', () => {
         await request(createApp())
           .post(path)
           .set('Authorization', `Bearer ${f.token}`)
-          .send({ contentType: 'IMAGE', mimeType: 'image/png' })
+          .send({ contentType: 'IMAGE', mimeType: 'image/png', byteSize: 16 })
       ).status,
     ).toBe(503);
     expect(storage.presignUpload).not.toHaveBeenCalled();
@@ -260,7 +280,7 @@ describe('authorized chat-media routes, messages and retention', () => {
       bookingId: other.bookingId,
       senderId: other.clientId,
       contentType: 'IMAGE',
-      content: chatMediaKey(other.bookingId, other.clientId, 'IMAGE', 'image/jpeg'),
+      content: await issue(other),
     });
     for (const id of [legacy.id, good.id])
       expect(
@@ -297,20 +317,22 @@ describe('authorized chat-media routes, messages and retention', () => {
         await request(app)
           .post(`/api/bookings/${other.bookingId}/media/upload-url`)
           .set('Authorization', `Bearer ${other.token}`)
-          .send({ contentType: 'IMAGE', mimeType: 'image/png' })
+          .send({ contentType: 'IMAGE', mimeType: 'image/png', byteSize: 16 })
       ).status,
     ).toBe(409);
-    expect(storage.presignUpload).not.toHaveBeenCalled();
+    expect(storage.presignUpload).toHaveBeenCalledTimes(1);
   });
   it('retention deletes only correctly bound objects, skipping malicious legacy references', async () => {
     const f = await fixture(true);
     const outsider = await fixture();
     const ownKey = chatMediaKey(f.bookingId, f.clientId, 'IMAGE', 'image/jpeg');
-    await sendMessage({
-      bookingId: f.bookingId,
-      senderId: f.clientId,
-      contentType: 'IMAGE',
-      content: ownKey,
+    await prisma.message.create({
+      data: {
+        conversationId: f.conversationId,
+        senderId: f.clientId,
+        contentType: 'IMAGE',
+        content: ownKey,
+      },
     });
     const badKeys = [
       `verifications/${f.usherId}/id-secret.jpg`,
@@ -348,11 +370,13 @@ describe('authorized chat-media routes, messages and retention', () => {
         include: { event: true },
       });
       const key = chatMediaKey(f.bookingId, f.clientId, 'IMAGE', 'image/jpeg');
-      await sendMessage({
-        bookingId: f.bookingId,
-        senderId: f.clientId,
-        contentType: 'IMAGE',
-        content: key,
+      await prisma.message.create({
+        data: {
+          conversationId: f.conversationId,
+          senderId: f.clientId,
+          contentType: 'IMAGE',
+          content: key,
+        },
       });
       await prisma.conversation.update({
         where: { id: f.conversationId },

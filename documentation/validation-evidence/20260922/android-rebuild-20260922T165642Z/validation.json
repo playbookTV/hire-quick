@@ -1,0 +1,17 @@
+{
+  "frozenLockfileInstall": "passed",
+  "sharedBuild": "passed",
+  "mobileTypecheck": "passed",
+  "mobileLint": "passed",
+  "uploadArchiveMatchesSource": true,
+  "androidReleaseBundle": "passed",
+  "stagingApiOriginPresent": true,
+  "cloudSubmission": "accepted after explicit owner approval",
+  "requestedDestination": "ovalay-studios/hirequick (Expo project 2b9864f5-7637-4151-983b-8a1bc1c29459)",
+  "buildId": "5053b236-c4a3-446c-857f-f2f04483372d",
+  "clearBuildCache": true,
+  "apkInspection": "passed",
+  "signingCertificateMatchesBuild5": true,
+  "zipIntegrity": "passed",
+  "onDeviceInteraction": "not performed"
+}

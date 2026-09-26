@@ -2,7 +2,7 @@
 
 [Documentation index](README.md) · [Specifications](../documentation/README.md)
 
-Reviewed from source on **2026-09-16**. This is a bounded documentation reconciliation, not an exhaustive defect audit or a production certification. Dated validation reports remain evidence for their own revision/environment.
+Reviewed from source on **2026-09-16**, with approved settlement implementation updated **2026-09-21**. This is a bounded documentation reconciliation, not an exhaustive defect audit or a production certification. Dated validation reports remain evidence for their own revision/environment.
 
 ## Implemented foundations
 
@@ -12,10 +12,10 @@ The repository includes OTP authentication and refresh revocation, recruitment/e
 
 | Area                      | Current boundary                                                                                                       | Implication / evidence                                                                                                                     |
 | ------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Late client cancellation  | Split refund/payout policy is defined, but the service only executes 100% client refunds                               | `409 PARTIAL_CANCEL_UNSUPPORTED`; [booking service](../apps/api/src/modules/bookings/service.ts) and [Payments](PAYMENTS.md#policy-matrix) |
+| Late client cancellation | Approved 100%/50%/0% refund and commission-inclusive usher allocation implemented locally | Immutable quotes, guarded approvals, append-only settlement; [Payments](PAYMENTS.md#policy-matrix) |
 | Admin partial refunds     | Current refund execution requires the full eligible booking amount                                                     | `REFUND_MUST_BE_FULL`; [admin service](../apps/api/src/modules/admin/service.ts)                                                           |
-| Post-payout dispute       | COMPLETED/PAID cannot transition to DISPUTED                                                                           | Broader specification window is constrained until clawback/debt support; [state tables](../packages/shared/src/state-machines.ts)          |
-| Processing-fee deductions | Disabled and not wired into ledger settlement                                                                          | One policy marker is true, but effective global flag is false; [policy source](../packages/shared/src/policy.ts)                           |
+| Dispute window | COMPLETED remains HELD until event end + 72h; PAID/historical released funds remain protected from clawback | Shared deadline and locked release/freeze gates; [state tables](../packages/shared/src/state-machines.ts) |
+| Processing-fee deductions | Disabled and not wired into ledger settlement                                                                          | Owner approved no client refund deduction; effective global flag is false; [policy source](../packages/shared/src/policy.ts)                           |
 | Checkout expiry           | Thirty-minute deadline alone does not prove nonpayment                                                                 | Uncertain outcomes remain REVIEW; [checkout source](../apps/api/src/modules/payments/checkout.ts)                                          |
 | Refund ambiguity          | After possible dispatch, recovery reads evidence and does not blindly issue another refund                             | Some outcomes require operator/provider investigation; [Payments](PAYMENTS.md)                                                             |
 | OTP development login     | Direct code echo is test-only                                                                                          | Configure delivery for interactive development; [OTP service](../apps/api/src/modules/auth/otp.ts)                                         |
@@ -33,3 +33,5 @@ The repository includes OTP authentication and refresh revocation, recruitment/e
 The [TRD](../documentation/04-HireQuick-TRD.md) §23 records merchant-of-record, held-balance, wallet, provider fee, and verification questions. This documentation update does not resolve those questions or establish legal/provider approval for live funds. Product/payment owners must record their decisions and update the affected specification and implementation together.
 
 For each deferred capability, track a concrete implementation/decision, acceptance criteria, and current evidence in the team's issue system. Close a gap here only after its behavior and verification actually change. Do not replace a limitation with an old test report or a future-tense claim in an architecture page.
+
+The OVA-136/137 API, worker and admin changes were [deployed to TEST/staging on 22 September](../documentation/deployment-2026-09-22.md), after the outstanding regressions passed. Updated native binaries remain separate. The earlier 21 September deployment record is historical. See [settlement implementation and validation](../documentation/payments/settlement-implementation-2026-09-21.md). OVA-166 account authorization remains a live-rollout gate.

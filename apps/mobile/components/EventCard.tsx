@@ -1,60 +1,65 @@
-/**
- * EventCard — an event summary used on the client home and the events list.
- * Composes Card + StatusPill + MetaRow and formats money via @hq/shared.
- */
+/** Figma EventSummaryCard (2156:497), with server-confirmed staffing only. */
 import { memo } from 'react';
-import { kobo, formatNaira } from '@hq/shared';
 import { Box, Text } from '../theme/restyle.js';
 import { Card } from './Card.js';
 import { StatusPill } from './StatusPill.js';
-import { MetaRow } from './MetaRow.js';
-import { CategoryBadge } from './CategoryBadge.js';
-import { formatEventDate, formatTimeRange } from '../lib/format.js';
+import { dateTime } from '../lib/format.js';
 import type { EventResource } from '../lib/types.js';
 
-interface EventCardProps {
+export const EventCard = memo(function EventCard({
+  event,
+  onPress,
+}: {
   event: EventResource;
   onPress?: () => void;
-}
-
-export const EventCard = memo(function EventCard({ event, onPress }: EventCardProps): React.JSX.Element {
+}): React.JSX.Element {
+  const confirmed = event.staffing?.confirmed;
+  const remaining = confirmed === undefined ? undefined : Math.max(0, event.headcount - confirmed);
   return (
     <Card onPress={onPress}>
-      <Box flexDirection="row" alignItems="flex-start" justifyContent="space-between" gap="300" marginBottom="300">
-        <Text variant="title" style={{ flex: 1 }} numberOfLines={2}>
-          {event.title}
+      <Box gap="200">
+        <Text variant="headingS">{event.title}</Text>
+        <Text variant="bodySm" color="inkMuted">
+          {dateTime(event.eventDate, event.startTime)}
         </Text>
-        <StatusPill status={event.status} />
-      </Box>
-
-      <Box marginBottom="300">
-        <CategoryBadge category={event.category} size="sm" />
-      </Box>
-
-      <MetaRow icon="map-pin" text={event.venue} />
-      <MetaRow icon="calendar" text={formatEventDate(event.eventDate)} />
-      <MetaRow icon="clock" text={formatTimeRange(event.startTime, event.endTime)} />
-
-      <Box
-        flexDirection="row"
-        alignItems="center"
-        justifyContent="space-between"
-        marginTop="300"
-        paddingTop="300"
-        borderTopWidth={1}
-        borderTopColor="borderDefault"
-      >
-        <Box flexDirection="row" alignItems="center" gap="200">
-          <Text variant="label" color="inkDefault">
-            {event.headcount}
-          </Text>
+        {confirmed !== undefined ? (
+          <Box gap="150">
+            <Box flexDirection="row" justifyContent="space-between" flexWrap="wrap" gap="100">
+              <Text variant="label">
+                {confirmed} of {event.headcount} confirmed
+              </Text>
+              <Text variant="bodySm" color="inkMuted">
+                {remaining} to fill
+              </Text>
+            </Box>
+            <Box
+              height={6}
+              backgroundColor="bgSubtle"
+              borderRadius="pill"
+              overflow="hidden"
+              accessibilityRole="progressbar"
+              accessibilityLabel="Confirmed staff"
+              accessibilityValue={{ min: 0, max: event.headcount, now: confirmed }}
+            >
+              <Box
+                height={6}
+                backgroundColor="brandAccent"
+                borderRadius="pill"
+                style={{
+                  width: `${event.headcount > 0 ? Math.min(100, (confirmed / event.headcount) * 100) : 0}%`,
+                }}
+              />
+            </Box>
+          </Box>
+        ) : (
           <Text variant="bodySm" color="inkMuted">
-            {event.headcount === 1 ? 'staff' : 'staff'} needed
+            {event.headcount} staff needed
           </Text>
-        </Box>
-        <Text variant="label" color="brandEmerald">
-          {formatNaira(kobo(event.budgetPerHead))}/head
-        </Text>
+        )}
+        <StatusPill
+          status={event.status}
+          label={event.status === 'OPEN' ? 'Recruiting' : undefined}
+        />
       </Box>
     </Card>
   );

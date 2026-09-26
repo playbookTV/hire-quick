@@ -2,7 +2,9 @@ import express, { type Express, type Request, type Response, type NextFunction }
 import helmet from 'helmet';
 import cors, { type CorsOptions } from 'cors';
 import type { Redis } from 'ioredis';
-import { randomUUID } from 'node:crypto';
+import { requestLogging } from './observability/http.js';
+import { readinessHandler } from './observability/readiness.js';
+import { reportError } from './observability/reporting.js';
 import { createRateLimiters } from './middleware/rate-limit.js';
 import { logger } from './logger.js';
 import type { StoragePort } from './modules/storage/storage.js';
@@ -16,12 +18,13 @@ import { authRouter } from './modules/auth/routes.js';
 import { profileRouter } from './modules/profile/routes.js';
 import { privacyRouter } from './modules/privacy/routes.js';
 import { notificationsRouter } from './modules/notifications/routes.js';
+import { kudiSmsWebhookRouter } from './modules/notifications/kudisms-webhook.js';
 import { legalRouter } from './modules/legal/routes.js';
 import { adminRouter } from './modules/admin/routes.js';
 import { eventsRouter } from './modules/events/routes.js';
 import { bookingsRouter } from './modules/bookings/routes.js';
 import { ushersRouter } from './modules/ushers/routes.js';
-import { kycRouter, dojahWebhookRouter } from './modules/verification/routes.js';
+import { kycRouter, smileWebhookRouter } from './modules/verification/routes.js';
 import { NoopKyc } from './modules/verification/port/noop-kyc.js';
 import type { KycPort } from './modules/verification/port/kyc-port.js';
 import { noopGateway, type RealtimeGateway } from './realtime/gateway.js';
@@ -49,7 +52,7 @@ export interface AppConfig {
   trustProxy?: number;
   /** S3-compatible storage for KYC documents. When absent, legacy URL passthrough. */
   storage?: StoragePort | undefined;
-  /** KYC provider (Dojah). When absent, NoopKyc lets the app boot/tests run with no keys. */
+  /** KYC provider (Smile ID). When absent, NoopKyc lets the app boot/tests run with no keys. */
   kyc?: KycPort | undefined;
 }
 
@@ -87,16 +90,20 @@ export function createApp(config: AppConfig = {}): Express {
   const limiters = createRateLimiters(config.rateLimitRedis);
 
   app.disable('x-powered-by');
+  app.use(requestLogging(logger));
   app.use(helmet());
-  app.use(cors({ origin: corsOriginFor(config.corsOrigins) }));
-  app.use(limiters.global);
-
-  app.use((req: Request, res: Response, next: NextFunction) => {
-    const id = req.header('x-request-id') ?? randomUUID();
-    res.setHeader('x-request-id', id);
-    (req as Request & { id: string }).id = id;
-    next();
+  app.use(cors({ origin: corsOriginFor(config.corsOrigins), exposedHeaders: ['x-request-id'] }));
+  app.get('/health', (_req, res) => {
+    res.json({ status: 'ok' });
   });
+  app.get('/ready', readinessHandler({
+    database: () => prisma.$queryRaw`SELECT 1`,
+    redis: async () => {
+      if (!config.rateLimitRedis || config.rateLimitRedis.status !== 'ready') throw new Error('Redis unavailable');
+      await config.rateLimitRedis.ping();
+    },
+  }));
+  app.use(limiters.global);
 
   // Webhook needs the RAW body for signature verification — mount BEFORE json.
   if (config.paystack && config.paystackSecret) {
@@ -107,14 +114,13 @@ export function createApp(config: AppConfig = {}): Express {
     );
   }
 
-  // Dojah KYC `kyc.widget` webhook — raw body, authoritative result path.
-  app.use('/webhooks/dojah', express.raw({ type: '*/*' }), dojahWebhookRouter({ kyc, realtime }));
+  // Smile ID callback — signed headers and per-attempt callback capability.
+  app.use('/webhooks/smile-id', express.raw({ type: '*/*' }), smileWebhookRouter({ kyc, realtime }));
+
+  // Parse delivery reports with their own smaller limit before general JSON.
+  app.use('/webhooks/kudisms', kudiSmsWebhookRouter());
 
   app.use(express.json({ limit: '1mb' }));
-
-  app.get('/health', (_req, res) => {
-    res.json({ status: 'ok' });
-  });
 
   app.use('/auth', limiters.auth, authRouter());
   app.use('/api/me/verification', kycRouter({ kyc }));
@@ -122,7 +128,7 @@ export function createApp(config: AppConfig = {}): Express {
   app.use('/api/me', privacyRouter(config.storage));
   app.use('/api/me', notificationsRouter());
   app.use('/api/legal', legalRouter());
-  app.use('/api/admin', adminRouter({ realtime, storage: config.storage, paystack: config.paystack }));
+  app.use('/api/admin', adminRouter({ realtime, storage: config.storage, paystack: config.paystack, redis: config.rateLimitRedis }));
   app.use('/api', bookingsRouter({ realtime, paystack: config.paystack }));
   app.use('/api', chatMediaRouter(config.storage));
   app.use('/api', ushersRouter(config.storage));
@@ -160,6 +166,7 @@ export function createApp(config: AppConfig = {}): Express {
       // Server-side faults (5xx) modelled as ApiError are still worth logging.
       if (err.statusCode >= 500) {
         logger.error({ err, reqId: (req as Request & { id?: string }).id, code: err.code }, 'api error');
+        reportError(err, { reqId: String((req as Request & { id?: string }).id), code: err.code });
       }
       res.status(err.statusCode).json({ error: { code: err.code, message: err.message } });
       return;
@@ -167,6 +174,7 @@ export function createApp(config: AppConfig = {}): Express {
     // Unexpected errors must never be swallowed — log with the request id so the
     // generic client response can be traced back to a stack trace.
     logger.error({ err, reqId: (req as Request & { id?: string }).id }, 'unhandled error');
+    reportError(err, { reqId: String((req as Request & { id?: string }).id), code: 'INTERNAL' });
     res.status(500).json({ error: { code: 'INTERNAL', message: 'Something went wrong' } });
   });
 

@@ -10,18 +10,20 @@ import { runCommissionSweep, type Deps } from '../payments/service.js';
 import { resumePaymentOperation, reconcileStuckWithdrawals } from '../payments/recovery.js';
 import { noopGateway, type RealtimeGateway } from '../../realtime/gateway.js';
 import { authorizedChatMediaKey } from '../storage/chat-media.js';
+import { cleanupStorage, scheduleDeletion, STORAGE_TX } from '../storage/uploads.js';
 import { type StoragePort } from '../storage/storage.js';
 import { claimOperation } from '../payments/ledger/operations.js';
 import { writeAudit, verifyAuditChain } from '../audit.js';
 import { env } from '../../env.js';
 import { reconcileCheckouts } from '../payments/checkout.js';
 import { claimRecoveryBatch } from '../payments/recovery-schedule.js';
+import { reportAlarm } from '../../observability/reporting.js';
+import { logger } from '../../logger.js';
 
 const DAY_MS = 86_400_000;
 
 function log(message: string): void {
-   
-  console.log(`[job] ${message}`);
+  logger.info(message);
 }
 
 export async function jobAutoComplete(realtime: RealtimeGateway = noopGateway): Promise<void> {
@@ -29,17 +31,42 @@ export async function jobAutoComplete(realtime: RealtimeGateway = noopGateway): 
   if (r.completed.length) log(`auto-completed ${String(r.completed.length)} booking(s)`);
 }
 
-export async function jobNoShow(deps: Deps, realtime: RealtimeGateway = noopGateway): Promise<void> {
+export async function jobNoShow(
+  deps: Deps,
+  realtime: RealtimeGateway = noopGateway,
+): Promise<void> {
   const r = await noShowSweep(deps, undefined, undefined, realtime);
   if (r.noShows.length) log(`flagged ${String(r.noShows.length)} no-show(s)`);
 }
 
-export async function jobReconcile(deps: Deps, realtime: RealtimeGateway = noopGateway): Promise<void> {
-  const r = await recordReconciliation(deps.prisma, deps.paystack);
-  if (r.ok) { log('reconciliation ok'); return; }
-  log(`RECONCILIATION ALARM run=${r.runId} drift=${String(r.driftKobo)} classification=${r.classification}`);
+export async function jobReconcile(
+  deps: Deps,
+  realtime: RealtimeGateway = noopGateway,
+): Promise<boolean> {
+  const r = await recordReconciliation(deps.prisma, deps.paystack).catch((error: unknown) => {
+    // A missing balance sample is itself an alarm. Keep the rejection so the
+    // scheduled job retries; never include raw provider/database error details.
+    log('RECONCILIATION ALARM classification=error');
+    reportAlarm('RECONCILIATION_ERROR');
+    realtime.emitToAdmins('recon:alarm', {
+      classification: 'error',
+      message:
+        'Balance evidence could not be collected; review reconciliation history and worker health',
+      at: new Date().toISOString(),
+    });
+    throw error;
+  });
+  if (r.ok) {
+    log('reconciliation ok');
+    return true;
+  }
+  log(
+    `RECONCILIATION ALARM run=${r.runId} drift=${String(r.driftKobo)} classification=${r.classification}`,
+  );
   // Durable history is available even when no admin is connected to realtime.
   realtime.emitToAdmins('recon:alarm', { ...r, at: new Date().toISOString() });
+  reportAlarm('RECONCILIATION_REVIEW');
+  return false;
 }
 
 export async function jobCommissionSweep(deps: Deps, period: string): Promise<void> {
@@ -47,7 +74,10 @@ export async function jobCommissionSweep(deps: Deps, period: string): Promise<vo
     log('commission sweep skipped: PAYSTACK_OPERATING_RECIPIENT not set');
     return;
   }
-  const r = await runCommissionSweep(deps, { operatingRecipientCode: env.PAYSTACK_OPERATING_RECIPIENT, period });
+  const r = await runCommissionSweep(deps, {
+    operatingRecipientCode: env.PAYSTACK_OPERATING_RECIPIENT,
+    period,
+  });
   log(`commission swept: ${String(r.swept)} kobo`);
 }
 
@@ -63,32 +93,43 @@ export async function jobResumePaymentOps(
 ): Promise<void> {
   // Backfill approvals created by the former EXECUTED-before-intent sequence.
   // Page by immutable ID so existing/blocked records cannot hide later orphans.
-  let after: string | undefined;
-  for (;;) {
-    const approvals = await deps.prisma.approval.findMany({
-      where: { status: { in: ['APPROVED', 'EXECUTED'] }, checkerId: { not: null } },
-      orderBy: { id: 'asc' },
-      take: 100,
-      ...(after ? { cursor: { id: after }, skip: 1 } : {}),
-    });
-    for (const approval of approvals) {
-      const dedupeKey = `APPROVAL_EXECUTE:${approval.id}`;
-      if (!(await deps.prisma.paymentOperation.findUnique({ where: { dedupeKey } }))) {
-        await claimOperation(deps.prisma, {
-          kind: 'APPROVAL_EXECUTE',
-          dedupeKey,
-          payload: { approvalId: approval.id },
-        });
+  let prerequisiteFailed = false;
+  try {
+    let after: string | undefined;
+    for (;;) {
+      const approvals = await deps.prisma.approval.findMany({
+        where: { status: { in: ['APPROVED', 'EXECUTED'] }, checkerId: { not: null } },
+        orderBy: { id: 'asc' },
+        take: 100,
+        ...(after ? { cursor: { id: after }, skip: 1 } : {}),
+      });
+      for (const approval of approvals) {
+        const dedupeKey = `APPROVAL_EXECUTE:${approval.id}`;
+        if (!(await deps.prisma.paymentOperation.findUnique({ where: { dedupeKey } }))) {
+          await claimOperation(deps.prisma, {
+            kind: 'APPROVAL_EXECUTE',
+            dedupeKey,
+            payload: { approvalId: approval.id },
+          });
+        }
       }
+      if (approvals.length < 100) break;
+      after = approvals.at(-1)?.id;
     }
-    if (approvals.length < 100) break;
-    after = approvals.at(-1)?.id;
+  } catch {
+    prerequisiteFailed = true;
+    log('payment recovery approval backfill failed; continuing existing operations');
   }
-  const wd = await reconcileStuckWithdrawals(deps, 30 * 60_000, true);
+  const wd = await reconcileStuckWithdrawals(deps, 30 * 60_000, true).catch(() => {
+    prerequisiteFailed = true;
+    log('payment recovery legacy withdrawal check failed; continuing existing operations');
+    return { completed: 0, failed: 0, pending: 0 };
+  });
   const ops = await claimRecoveryBatch(deps.prisma);
   let recorded = 0;
   let failed = 0;
   let stillPending = 0;
+  let evidenceWriteFailed = false;
   for (const op of ops) {
     try {
       const r = await resumePaymentOperation(deps, op, realtime);
@@ -98,10 +139,20 @@ export async function jobResumePaymentOps(
     } catch {
       stillPending += 1;
       log(`resume op ${op.id} (${op.kind}) failed; retained for recovery review`);
-      await deps.prisma.paymentOperation.updateMany({
-        where: { id: op.id, status: { in: ['PENDING', 'PROVIDER_OK'] } },
-        data: { lastError: 'Recovery could not complete; inspect provider evidence and local prerequisites' },
-      });
+      try {
+        await deps.prisma.paymentOperation.updateMany({
+          where: { id: op.id, status: { in: ['PENDING', 'PROVIDER_OK'] } },
+          data: {
+            lastError:
+              'Recovery could not complete; inspect provider evidence and local prerequisites',
+          },
+        });
+      } catch {
+        // The claim already persisted the lease/backoff. A failed diagnostic
+        // write must not prevent later claimed operations from progressing.
+        evidenceWriteFailed = true;
+        log(`resume op ${op.id} recovery evidence could not be saved`);
+      }
     }
   }
   if (recorded || failed || stillPending || wd.completed || wd.failed) {
@@ -110,6 +161,8 @@ export async function jobResumePaymentOps(
         `withdrawals reconciled +${String(wd.completed)}/-${String(wd.failed)} (${String(wd.pending)} pending)`,
     );
   }
+  if (evidenceWriteFailed) throw new Error('Payment recovery evidence could not be saved');
+  if (prerequisiteFailed) throw new Error('Payment recovery legacy checks could not complete');
 }
 
 /** Recover checkouts and expire only reservations supported by conclusive unpaid evidence. */
@@ -133,10 +186,14 @@ export async function jobRetentionPurge(storage?: StoragePort): Promise<void> {
       OR: [{ consumedAt: { not: null } }, { expiresAt: { lt: new Date(now) } }],
     },
   });
-  const devices = await prisma.deviceToken.deleteMany({ where: { lastSeenAt: { lt: deviceCutoff } } });
+  const devices = await prisma.deviceToken.deleteMany({
+    where: { lastSeenAt: { lt: deviceCutoff } },
+  });
   // Refresh-token denylist: a revoked jti only needs to outlive the token it
   // blocks; once expired the JWT is rejected on its own, so the row is dead weight.
-  const revokedTokens = await prisma.revokedToken.deleteMany({ where: { expiresAt: { lt: new Date(now) } } });
+  const revokedTokens = await prisma.revokedToken.deleteMany({
+    where: { expiresAt: { lt: new Date(now) } },
+  });
 
   // KYC raw documents (TRD §14): delete the ID doc + selfie objects 90 days after
   // VERIFIED (APPROVED) / 30 days after REJECTED, leaving only the pass/fail flag
@@ -152,16 +209,19 @@ export async function jobRetentionPurge(storage?: StoragePort): Promise<void> {
         { status: 'REJECTED', reviewedAt: { lt: kycRejectedCutoff } },
       ],
     },
-    select: { id: true, idDocumentUrl: true, selfieUrl: true },
+    select: { id: true },
   });
-  for (const v of kycRows) {
-    if (storage) {
-      await Promise.allSettled(
-        [v.idDocumentUrl, v.selfieUrl].filter((k): k is string => Boolean(k)).map((k) => storage.deleteObject(k)),
-      );
-    }
-    await prisma.usherVerification.update({ where: { id: v.id }, data: { idDocumentUrl: '', selfieUrl: '' } });
-  }
+  for (const candidate of kycRows)
+    await prisma.$transaction(async (tx) => {
+      const v = await tx.usherVerification.findUnique({ where: { id: candidate.id } });
+      if (!v) return;
+      for (const key of [v.idDocumentUrl, v.selfieUrl])
+        if (key?.startsWith(`verifications/${v.usherId}/`)) await scheduleDeletion(tx, key);
+      await tx.usherVerification.update({
+        where: { id: v.id },
+        data: { idDocumentUrl: '', selfieUrl: '' },
+      });
+    }, STORAGE_TX);
 
   // Chat/media (TRD §14): delete messages (and their media objects) 180 days after
   // the booking's dispute window closes. Gate on the event date plus a safety
@@ -174,25 +234,40 @@ export async function jobRetentionPurge(storage?: StoragePort): Promise<void> {
   const convoIds = staleConvos.map((c) => c.id);
   let chatDeleted = 0;
   if (convoIds.length) {
-    if (storage) {
-      const media = await prisma.message.findMany({
-        where: { conversationId: { in: convoIds }, contentType: { in: ['IMAGE', 'VOICE'] } },
+    chatDeleted = await prisma.$transaction(async (tx) => {
+      const media = await tx.message.findMany({
+        where: { conversationId: { in: convoIds } },
         select: {
-          content: true, contentType: true, senderId: true,
-          conversation: { select: {
-            bookingId: true, clientId: true, usherId: true,
-            booking: { select: {
-              usherId: true, usher: { select: { userId: true } },
-              event: { select: { clientId: true, client: { select: { userId: true } } } },
-            } },
-          } },
+          id: true,
+          content: true,
+          contentType: true,
+          senderId: true,
+          conversation: {
+            select: {
+              bookingId: true,
+              clientId: true,
+              usherId: true,
+              booking: {
+                select: {
+                  usherId: true,
+                  usher: { select: { userId: true } },
+                  event: { select: { clientId: true, client: { select: { userId: true } } } },
+                },
+              },
+            },
+          },
         },
       });
       const authorizedKeys: string[] = [];
       for (const message of media) {
+        if (message.contentType === 'TEXT') continue;
         const { conversation } = message;
         const { booking } = conversation;
-        if (conversation.clientId !== booking.event.clientId || conversation.usherId !== booking.usherId) continue;
+        if (
+          conversation.clientId !== booking.event.clientId ||
+          conversation.usherId !== booking.usherId
+        )
+          continue;
         const key = authorizedChatMediaKey(message, {
           bookingId: conversation.bookingId,
           clientUserId: booking.event.client.userId,
@@ -200,12 +275,17 @@ export async function jobRetentionPurge(storage?: StoragePort): Promise<void> {
         });
         if (key) authorizedKeys.push(key);
       }
-      const skipped = media.length - authorizedKeys.length;
+      const skipped =
+        media.filter((message) => message.contentType !== 'TEXT').length - authorizedKeys.length;
       if (skipped) log(`retention skipped ${String(skipped)} unauthorized chat media reference(s)`);
-      await Promise.allSettled([...new Set(authorizedKeys)].map((key) => storage.deleteObject(key)));
-    }
-    chatDeleted = (await prisma.message.deleteMany({ where: { conversationId: { in: convoIds } } })).count;
+      for (const key of new Set(authorizedKeys)) await scheduleDeletion(tx, key);
+      // Delete only the inventory snapshot; concurrent sends keep their references.
+      return (
+        await tx.message.deleteMany({ where: { id: { in: media.map((message) => message.id) } } })
+      ).count;
+    }, STORAGE_TX);
   }
+  const cleanup = await cleanupStorage(storage);
 
   if (otp.count || devices.count || kycRows.length || chatDeleted) {
     log(
@@ -222,17 +302,22 @@ export async function jobRetentionPurge(storage?: StoragePort): Promise<void> {
       deviceTokens: devices.count,
       revokedTokens: revokedTokens.count,
       kycDocuments: kycRows.length,
+      objectsDeleted: cleanup.deleted,
+      objectsFailed: cleanup.failed,
+      objectsDeferred: cleanup.deferred,
       messages: chatDeleted,
     },
   });
 }
 
 /** Recompute the audit hash chain and alarm loudly on any break (TRD §14). */
-export async function jobAuditVerify(): Promise<void> {
+export async function jobAuditVerify(): Promise<boolean> {
   const r = await verifyAuditChain();
   if (r.ok) {
     log(`audit chain ok: ${String(r.checked)} chained, ${String(r.legacy)} legacy`);
-    return;
+    return true;
   }
   log(`⚠ AUDIT CHAIN BROKEN at seq=${r.brokenAt?.seq ?? '?'} (${r.brokenAt?.reason ?? 'unknown'})`);
+  reportAlarm('AUDIT_CHAIN_BROKEN');
+  return false;
 }

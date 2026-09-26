@@ -1,27 +1,15 @@
-/**
- * EarningsCard — the canonical "available to withdraw" emerald hero shown on the
- * usher Home and Wallet. Extracted so the single most important surface has ONE
- * layout and treatment (critique P2: it was inlined twice, with different figure
- * sizes and two different withdraw affordances). Colours are tokenised
- * (inverseInk / accentGold — both stay legible on emerald in light AND dark), so
- * it themes correctly; `footer` carries the screen-specific action or meta row.
- */
+/** Figma BalanceHero, shared by Home and Wallet; values always come from live data. */
 import type { ReactNode } from 'react';
+import { ScrollView } from 'react-native';
 import { useTheme, Box, Text } from '../theme/restyle.js';
-import { shadowMd } from '../theme/shadows.js';
 import { money } from '../lib/format.js';
 import { Sparkline } from './Sparkline.js';
-
 interface EarningsCardProps {
-  /** Available balance in kobo. */
   amount: number;
-  /** lg (40px, Wallet) or md (32px, Home). */
   size?: 'md' | 'lg';
-  /** Optional 7-day earnings sparkline (last slot = today). Hidden when total is 0. */
   weekly?: { values: number[]; total: number };
   footer?: ReactNode;
 }
-
 export function EarningsCard({
   amount,
   size = 'lg',
@@ -29,63 +17,45 @@ export function EarningsCard({
   footer,
 }: Readonly<EarningsCardProps>): React.JSX.Element {
   const theme = useTheme();
-  const big = size === 'lg';
   return (
-    <Box
-      borderRadius="lg"
-      style={[{ backgroundColor: theme.colors.brandSurface, padding: 20, gap: 12 }, shadowMd]}
-    >
-      <Text
-        style={{
-          fontFamily: 'PlusJakartaSans_700Bold',
-          fontSize: 11,
-          lineHeight: 14,
-          letterSpacing: 1.2,
-        }}
-        color="onBrandAccent"
-      >
-        AVAILABLE TO WITHDRAW
+    <Box borderRadius="xl" backgroundColor="bgElevated" padding="600" gap="150">
+      <Text variant="label" color="inkOnElevatedMuted">
+        Available to withdraw
       </Text>
-      <Text
-        style={{
-          fontFamily: 'Fraunces_900Black',
-          fontSize: big ? 40 : 32,
-          lineHeight: big ? 44 : 38,
-          letterSpacing: big ? -1.5 : -1,
-        }}
-        color="inverseInk"
-      >
-        {money(amount)}
-      </Text>
+      {/* Keep currency digits grouped at large text sizes without shrinking the user's font. */}
+      <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }}>
+        <Text
+          variant={size === 'lg' ? 'amountXL' : 'amount'}
+          color="brandAccentOnElevated"
+          numberOfLines={1}
+        >
+          {money(amount)}
+        </Text>
+      </ScrollView>
       {weekly && weekly.total > 0 ? (
-        <Box style={{ gap: 8, paddingTop: 4 }}>
-          <Box flexDirection="row" alignItems="baseline" justifyContent="space-between">
-            <Text
-              style={{
-                fontFamily: 'PlusJakartaSans_700Bold',
-                fontSize: 11,
-                lineHeight: 14,
-                letterSpacing: 1.2,
-              }}
-              color="onBrandAccent"
-            >
-              THIS WEEK
+        <Box gap="200" paddingTop="100">
+          <Box
+            flexDirection="row"
+            flexWrap="wrap"
+            alignItems="baseline"
+            justifyContent="space-between"
+            gap="200"
+          >
+            <Text variant="label" color="inkOnElevatedMuted">
+              This week
             </Text>
-            <Text
-              style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, lineHeight: 20 }}
-              color="inverseInk"
-            >
+            <Text variant="labelLg" color="inkOnElevated">
               {money(weekly.total)}
             </Text>
           </Box>
           <Sparkline
             values={weekly.values}
-            barColor={theme.colors.accentGold}
-            trackColor="rgba(255,255,255,0.16)"
+            barColor={theme.colors.brandAccentOnElevated}
+            trackColor={theme.colors.borderStrong}
           />
         </Box>
       ) : null}
-      {footer}
+      {footer ? <Box marginTop="200">{footer}</Box> : null}
     </Box>
   );
 }

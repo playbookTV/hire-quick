@@ -1,0 +1,10 @@
+{
+  "build": "passed",
+  "focusedTests": 149,
+  "failedTests": 0,
+  "credentialScan": "only match was the credential-free loopback Redis default; no actual credentials in release source",
+  "migrationRequired": false,
+  "apiOnly": true,
+  "baselineDeployment": "43ceff8b-f5b3-4c7e-b321-f17459d47e0b",
+  "deployment": "c2928d51-4817-4607-a526-af768a65e062"
+}

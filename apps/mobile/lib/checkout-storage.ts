@@ -8,9 +8,9 @@ interface Keychain {
   deleteItemAsync(key: string): Promise<void>;
 }
 /** Publish immutable small chunks with one atomic manifest; serialize readers and cleanup per scope. */
-export function checkoutStorage(keychain: Keychain, revision: () => string): CheckoutStorage {
+export function checkoutStorage(keychain: Keychain, revision: () => string, namespace = 'hq.checkout'): CheckoutStorage {
   const tails = new Map<string, Promise<unknown>>();
-  const key = (scope: string): string => `hq.checkout.${scope}`;
+  const key = (scope: string): string => `${namespace}.${scope}`;
   const serialized = <T>(scope: string, work: () => Promise<T>): Promise<T> => {
     const result = (tails.get(scope) ?? Promise.resolve()).catch(() => undefined).then(work);
     tails.set(scope, result);
@@ -28,7 +28,7 @@ export function checkoutStorage(keychain: Keychain, revision: () => string): Che
       let value = '';
       for (let i = 0; i < manifest.chunks; i++) {
         const part = await keychain.getItemAsync(`${key(scope)}.${manifest.revision}.${i}`);
-        if (part === null) throw new Error('Saved checkout is incomplete.');
+        if (part === null) throw new Error('Saved data is incomplete.');
         value += part;
       }
       return value;
@@ -37,11 +37,19 @@ export function checkoutStorage(keychain: Keychain, revision: () => string): Che
       const prefix = key(scope);
       const oldRaw = await keychain.getItemAsync(prefix);
       const old = oldRaw === null ? null : manifestSchema.parse(JSON.parse(oldRaw));
-      // At most 500 UTF-16 code units per value, within native per-value limits.
-      const manifest = manifestSchema.parse({ version: 1, revision: revision(), chunks: Math.ceil(value.length / 500) });
+      // At most 500 UTF-16 code units per value, without splitting emoji surrogate
+      // pairs at a native keychain boundary. Each chunk stays below 2 KB UTF-8.
+      const chunks: string[] = [];
+      let chunk = '';
+      for (const character of value) {
+        if (chunk.length + character.length > 500) { chunks.push(chunk); chunk = ''; }
+        chunk += character;
+      }
+      if (chunk) chunks.push(chunk);
+      const manifest = manifestSchema.parse({ version: 1, revision: revision(), chunks: chunks.length });
       // If manifest publication fails ambiguously, retain new chunks so either
       // the old or newly committed manifest remains readable on restart.
-      for (let i = 0; i < manifest.chunks; i++) await keychain.setItemAsync(`${prefix}.${manifest.revision}.${i}`, value.slice(i * 500, (i + 1) * 500));
+      for (const [i, part] of chunks.entries()) await keychain.setItemAsync(`${prefix}.${manifest.revision}.${i}`, part);
       await keychain.setItemAsync(prefix, JSON.stringify(manifest));
       if (old) await cleanup(prefix, old);
     }),

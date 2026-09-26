@@ -1,0 +1,35 @@
+[
+  {
+    "check": "health",
+    "status": 200,
+    "body": {
+      "status": "ok"
+    }
+  },
+  {
+    "check": "unauthenticated cancellation queue",
+    "status": 401
+  },
+  {
+    "check": "admin CORS",
+    "status": 204,
+    "origin": "https://hirequick-admin-production.up.railway.app"
+  },
+  {
+    "check": "admin asset",
+    "path": "/assets/index-CJU8s9Hm.js",
+    "status": 200,
+    "sha256": "e3408ff297e396b12935480b223248f4ff82f77968cebe26287b121bbf7ddb85"
+  },
+  {
+    "check": "admin asset",
+    "path": "/assets/index-CbxBgJXs.css",
+    "status": 200,
+    "sha256": "1f8ed24c71943c82b67cf52727030c58f62a15323fb73ef6d1f595cb63f899dd"
+  },
+  {
+    "check": "admin page",
+    "status": 200,
+    "assetsVerified": 2
+  }
+]

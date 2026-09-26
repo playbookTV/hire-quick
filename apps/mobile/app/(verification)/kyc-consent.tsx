@@ -1,4 +1,4 @@
-/** The native identity widget is not available yet; deep links use manual review. */
+/** Old entry links now open Smile ID onboarding; biometric consent is captured by the SDK. */
 import { Redirect } from 'expo-router';
 
 export default function KycConsent(): React.JSX.Element {

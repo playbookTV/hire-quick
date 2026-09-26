@@ -41,7 +41,18 @@ describe('payment recovery scheduling', () => {
   });
   it('operation 101 progresses even when the first 100 all fail before touching the operation', async () => {
     // No provider work follows the first claim: models an exception or worker crash.
-    for (let i = 0; i < 101; i++) await create();
+    const batchIds = Array.from({ length: 101 }, () => randomUUID());
+    ids.push(...batchIds);
+    await prisma.paymentOperation.createMany({
+      data: batchIds.map((id) => ({
+        id,
+        kind: 'BOOKING_REFUND',
+        dedupeKey: `recovery-test:${id}`,
+        attempts: 1,
+        payload: { bookingId: randomUUID() },
+        updatedAt: new Date('2000-01-01'),
+      })),
+    });
     const now = new Date();
     const first = await claimRecoveryBatch(prisma, now);
     expect(first).toHaveLength(100);
@@ -49,6 +60,25 @@ describe('payment recovery scheduling', () => {
     expect(second).toHaveLength(1);
     expect(first.map((row) => row.id)).not.toContain(second[0]!.id);
     expect(new Set([...first, ...second].map((row) => row.id)).size).toBe(101);
+  });
+  it('persists the exact bounded backoff for a mixed batch without resetting dispatch attempts', async () => {
+    const priorAttempts = [0, 1, 3, 6, MAX_RECOVERY_ATTEMPTS - 1];
+    const rows = [];
+    for (const attempts of priorAttempts) rows.push(await create(3, attempts));
+    const now = new Date();
+    const claimed = await claimRecoveryBatch(prisma, now);
+    for (const row of rows) {
+      const saved = claimed.find((op) => op.id === row.id)!;
+      expect(saved.recoveryAttempts).toBe(row.recoveryAttempts + 1);
+      expect(saved.attempts).toBe(3);
+      expect(saved.nextAttemptAt?.getTime()).toBe(
+        now.getTime() + recoveryDelay(saved.recoveryAttempts),
+      );
+      expect(saved.updatedAt.getTime()).toBe(now.getTime());
+      expect(saved.quarantinedAt?.getTime() ?? null).toBe(
+        saved.recoveryAttempts >= MAX_RECOVERY_ATTEMPTS ? now.getTime() : null,
+      );
+    }
   });
   it('overlapping workers claim an operation once during its lease', async () => {
     const op = await create();

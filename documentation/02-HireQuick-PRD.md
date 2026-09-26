@@ -1,5 +1,7 @@
 # HireQuick — Product Requirements Document (PRD)
 
+> **Policy amendment — approved 21 September 2026:** completion keeps funds in escrow until event end + 72 hours; undisputed completed bookings then become eligible for wallet release. Client cancellations use 100% / 50% / 0% refunds at >48h / 12–48h inclusive / <12h, with 15% commission within the remaining usher allocation and no processing-fee deduction from the refund. See the [approved decision and implementation criteria](payments/approved-settlement-policy-2026-09-21.md). Local implementation is tracked in OVA-136/137; see the [implementation and validation record](payments/settlement-implementation-2026-09-21.md). Deployment remains separately recorded.
+
 **Version:** 2.1
 **v2.1 changes:** usher-payout protection (self-check-in + auto-complete when the client is passive); payout-to-wallet vs withdraw-to-bank clarified; commission sweep; maker-checker on refunds/disputes; cancellation processing-fee copy gated on the Paystack answer; fraud and leakage mitigations strengthened to match their risk ratings. Flagged inline as **[v2.1]**.
 **Prepared for:** HireQuick
@@ -112,7 +114,7 @@ Accepts when: user requests recovery; OTP verification is sent; on success the u
 
 **Usher identity verification [v2]**
 *As an usher, I want to verify my identity so clients trust me and I can receive payouts.*
-Accepts when: usher submits required ID and a selfie; profile enters *Pending Verification*; admin approves or rejects with reason; only *Verified* ushers appear in discovery, can apply, or can be paid out.
+Accepts when: usher provides Nigerian NIN/BVN details and completes Smile ID consent and live-selfie capture; profile enters *Pending Verification*. The server verifies the provider callback and retrieves the authoritative result: `clear` approves, `block` rejects, and `attention`/`error` remain pending for support/admin review. A device submission callback never grants verification. Admin decisions on the latest attempt take precedence; historical manual-document reviews are retained. Only *Verified* ushers appear in discovery, can apply, or can be paid out.
 
 ### Event Creation
 
@@ -142,7 +144,7 @@ Accepts when: client selects accepted applicants up to headcount; sees a summary
 
 **Receive guaranteed payout [v2]**
 *As an usher, I want to be paid reliably after I work.*
-Accepts when: my attendance is verified on the day; the booking reaches *Completed*; my share (booking value minus platform fee) is transferred to my wallet; I can withdraw to a Nigerian bank account.
+Accepts when: my attendance is verified on the day; the booking reaches *Completed*; my share (booking value minus platform fee) remains held until event end + 72 hours and is then transferred to my wallet if no unresolved dispute exists; I can withdraw to a Nigerian bank account.
 
 ### Messaging
 
@@ -158,7 +160,7 @@ Accepts when: client generates an OTP (or shows a QR); usher enters/scans it on 
 
 **Get paid even if the client is passive [v2.1]**
 *As an usher, I want my payout protected when I show up but the client never verifies me.*
-Accepts when: the usher can mark *I've arrived* independently of the client; if the booking has an asserted arrival (or a verified check-in) and the client never confirms completion, the booking **auto-completes at event end + grace window (default 60 min)** and the payout is released; the client's only recourse against a false arrival claim is to open a dispute (not to silently withhold). This closes the gap where a passive or withholding client could deny a working usher their guaranteed payout. (See TRD §12.)
+Accepts when: the usher can mark *I've arrived* independently of the client; if the booking has an asserted arrival (or a verified check-in) and the client never confirms completion, the booking **auto-completes at event end + grace window (default 60 min)**; funds remain held until event end + 72 hours and are released only if no unresolved dispute exists; the client's only recourse against a false arrival claim is to open a dispute (not to silently withhold). This closes the gap where a passive or withholding client could deny a working usher their guaranteed payout. (See TRD §12.)
 
 ### Reviews
 
@@ -259,9 +261,9 @@ Previously absent; this is now a first-class part of the product because cancell
 
 | When | Client refund | Usher compensation | Usher reputation |
 |---|---|---|---|
-| > 48h before event | 100% (less non-refundable processing fee †) | none | none |
-| 12–48h before | 50% | 50% to usher | none |
-| < 12h before | 0% | 100% to usher | none |
+| > 48h before event | 100% (no processing-fee deduction) | none | none |
+| 12–48h before | 50% | 50% allocation, less 15% platform commission | none |
+| < 12h before | 0% | 100% allocation, less 15% platform commission | none |
 
 ### Usher cancels a confirmed booking
 
@@ -277,10 +279,9 @@ Client is refunded 100% for that booking; usher receives nothing and takes a maj
 
 ### Disputes
 
-Either party may open a dispute on a booking within **72h** of the event. That booking's escrow is frozen, both parties submit evidence (chat history, photos, verification logs are attached automatically), and an admin resolves within an SLA with a recorded outcome that drives the ledger. Attendance-verification logs and in-app chat are the primary evidence, which is a direct reason messaging and verification stay on-platform. **Refunds and dispute payouts above a configurable amount require a second admin to approve (maker-checker); every action is audit-logged (TRD §15). [v2.1]**
+Either party may open a dispute on a booking before **72 hours after the scheduled event end**. Completion leaves funds held through this window. At the deadline an undisputed completed booking becomes eligible for wallet release. That booking's escrow is frozen, both parties submit evidence (chat history, photos, verification logs are attached automatically), and an admin resolves within an SLA with a recorded outcome that drives the ledger. Attendance-verification logs and in-app chat are the primary evidence, which is a direct reason messaging and verification stay on-platform. **Refunds and dispute payouts above a configurable amount require a second admin to approve (maker-checker); every action is audit-logged (TRD §15). [v2.1]**
 
-> All percentages above are **launch defaults**, configurable by ops, and must be shown to the user before they confirm any cancellation.
-> **† [v2.1]** Whether the original Paystack processing fee is actually non-refundable depends on Paystack's answer to TRD §23 Q4. If it turns out to be recoverable on refund, drop "less non-refundable processing fee" and refund 100%. Do not hard-ship this copy until Q4 is settled.
+> These are the **owner-approved launch rules (21 September 2026)** and must be shown before cancellation confirmation. Exactly 12h and 48h belong to the 50% refund window. Refunds round down to integer kobo; the usher allocation receives the remainder, commission rounds down within that allocation, and the wallet receives its remainder. No provider processing fee is deducted from the client refund; HireQuick bears unrecovered refund/processing charges. Account-specific charges still require provider evidence under TRD §23 Q4.
 
 ---
 

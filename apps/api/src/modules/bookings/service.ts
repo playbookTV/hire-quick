@@ -1,13 +1,15 @@
 /**
  * Booking lifecycle (TRD §7/§8/§12). Confirm-batch creates the order + bookings
  * then initializes the Paystack charge; the charge.success webhook (Phase 2)
- * holds them into escrow. Attendance → completion releases payout to the wallet.
+ * holds them into escrow. Completion records work done; wallet release waits through the dispute deadline.
  * Auto-complete / no-show implement the D1 windows.
  */
 import { randomUUID } from 'node:crypto';
 import { prisma, Prisma, type AttendanceMethod } from '@hq/database';
 import {
   DEFAULT_GRACE_MINUTES,
+  bookingReleaseAt,
+  disputeWindowOpen,
   eventInstant,
   kobo,
   cancelWindow,
@@ -15,6 +17,7 @@ import {
   type PolicyOutcome,
   type ReputationEffect,
   type CheckoutResponse,
+  type CancelBookingInput,
 } from '@hq/shared';
 import { ApiError } from '../../app.js';
 import { validateEventValues } from '../events/edit.js';
@@ -35,7 +38,14 @@ import {
   notifyMilestoneUnlocked,
 } from '../notifications/service.js';
 import { generateOtp, hashOtp, verifyOtpHash, OTP_TTL_MS, OTP_MAX_ATTEMPTS } from '../auth/hash.js';
-import { releaseBooking, freezeBooking, markCheckedIn } from '../payments/ledger/ledger.js';
+import {
+  completeBookingHeld,
+  releaseBooking,
+  freezeBooking,
+  markCheckedIn,
+  LedgerError,
+} from '../payments/ledger/ledger.js';
+import { cancelConfirmedBooking } from '../payments/cancellation.js';
 import { refundBookingToClient, type Deps } from '../payments/service.js';
 import { CHECKOUT_TTL_MS, resumeCheckout } from '../payments/checkout.js';
 import { runIdempotent } from '../payments/ledger/idempotency.js';
@@ -58,9 +68,6 @@ function emitBooking(
   realtime.emitToUser(parties.usherUserId, event, payload);
   if (toAdmins) realtime.emitToAdmins(event, payload);
 }
-
-/** 72-hour dispute window after the event ends (PRD §13 / TRD §20). */
-const DISPUTE_WINDOW_MS = 72 * 3_600_000;
 
 /** reliabilityScore decrement per reputation tier on an usher cancellation (PRD §13). */
 const REPUTATION_PENALTY: Record<ReputationEffect, number> = {
@@ -326,6 +333,11 @@ export async function assertArrival(bookingId: string, usherUserId: string): Pro
     if (booking.status !== 'CONFIRMED' && booking.status !== 'CHECKED_IN') {
       throw new ApiError(400, 'BAD_STATE', 'cannot assert arrival now');
     }
+    const refund = await tx.paymentOperation.findUnique({
+      where: { dedupeKey: `BOOKING_REFUND:${bookingId}` },
+    });
+    if (refund && refund.status !== 'FAILED')
+      throw new ApiError(409, 'REFUND_PENDING', 'a cancellation or refund is being processed');
     if (!booking.arrivalAssertedAt) {
       await tx.booking.update({
         where: { id: bookingId },
@@ -339,23 +351,39 @@ export async function completeBooking(
   bookingId: string,
   clientUserId: string,
   realtime: RealtimeGateway = noopGateway,
-): Promise<void> {
+): Promise<{ status: 'PAID' | 'COMPLETED' }> {
   const booking = await prisma.booking.findUniqueOrThrow({
     where: { id: bookingId },
     include: { event: { include: { client: true } }, usher: true, payment: true },
   });
   if (booking.event.client.userId !== clientUserId)
     throw new ApiError(403, 'FORBIDDEN', 'not your booking');
-  if (booking.status !== 'CHECKED_IN')
-    throw new ApiError(400, 'NOT_CHECKED_IN', 'booking must be checked in');
   const method: AttendanceMethod = booking.attendanceMethod ?? 'OTP';
-  const unlocked = await prisma.$transaction((tx) => releaseBooking(tx, bookingId, method), TX);
-  if (booking.payment)
-    notifyPayoutReleased(booking.usher.userId, kobo(booking.payment.usherPayout));
-  for (const tier of unlocked) notifyMilestoneUnlocked(booking.usher.userId, tier.name);
+  const result = await prisma.$transaction(async (tx) => {
+    await lockBookingLifecycle(tx, bookingId);
+    const current = await tx.booking.findUniqueOrThrow({
+      where: { id: bookingId },
+      include: { event: true },
+    });
+    if (current.status === 'PAID') return null;
+    if (!['CHECKED_IN', 'COMPLETED'].includes(current.status))
+      throw new ApiError(409, 'NOT_CHECKED_IN', 'booking must be checked in before completion');
+    const now = new Date();
+    await completeBookingHeld(tx, bookingId, method, now);
+    const paid =
+      now.getTime() >= bookingReleaseAt(current.event.eventDate, current.event.endTime).getTime();
+    return { paid, unlocked: paid ? await releaseBooking(tx, bookingId, method, now) : [] };
+  }, TX);
+  if (!result) return { status: 'PAID' };
   const parties = { clientUserId: booking.event.client.userId, usherUserId: booking.usher.userId };
   emitBooking(realtime, parties, RT.BOOKING_COMPLETED, bookingId, 'COMPLETED');
-  emitBooking(realtime, parties, RT.BOOKING_PAID, bookingId, 'PAID');
+  if (result.paid) {
+    if (booking.payment)
+      notifyPayoutReleased(booking.usher.userId, kobo(booking.payment.usherPayout));
+    for (const tier of result.unlocked) notifyMilestoneUnlocked(booking.usher.userId, tier.name);
+    emitBooking(realtime, parties, RT.BOOKING_PAID, bookingId, 'PAID');
+  }
+  return { status: result.paid ? 'PAID' : 'COMPLETED' };
 }
 
 /** D1 auto-complete: arrival/check-in present, event ended + grace, no open dispute. */
@@ -366,31 +394,43 @@ export async function autoComplete(
 ): Promise<{ completed: string[] }> {
   const candidates = await prisma.booking.findMany({
     where: {
+      payment: { escrowStatus: 'HELD' },
       disputes: { none: { status: { in: ['OPEN', 'UNDER_REVIEW'] } } },
-      OR: [{ status: 'CHECKED_IN' }, { status: 'CONFIRMED', arrivalAssertedAt: { not: null } }],
+      OR: [
+        { status: 'COMPLETED' },
+        { status: 'CHECKED_IN' },
+        { status: 'CONFIRMED', arrivalAssertedAt: { not: null } },
+      ],
     },
     include: { event: { include: { client: true } }, usher: true, payment: true },
   });
   const completed: string[] = [];
   for (const b of candidates) {
-    const end = combine(b.event.eventDate, b.event.endTime);
-    if (now.getTime() < end.getTime() + graceMin * 60_000) continue;
-    const unlocked = await prisma.$transaction(async (tx) => {
+    const eligibleAt =
+      b.status === 'COMPLETED'
+        ? bookingReleaseAt(b.event.eventDate, b.event.endTime).getTime()
+        : combine(b.event.eventDate, b.event.endTime).getTime() + graceMin * 60_000;
+    if (now.getTime() < eligibleAt) continue;
+    const result = await prisma.$transaction(async (tx) => {
       await lockBookingLifecycle(tx, b.id);
       const current = await tx.booking.findUniqueOrThrow({
         where: { id: b.id },
-        include: { event: true },
+        include: { event: true, payment: true },
       });
       if (
-        current.status !== 'CHECKED_IN' &&
-        !(current.status === 'CONFIRMED' && current.arrivalAssertedAt)
+        current.payment?.escrowStatus !== 'HELD' ||
+        !(
+          ['COMPLETED', 'CHECKED_IN'].includes(current.status) ||
+          (current.status === 'CONFIRMED' && current.arrivalAssertedAt)
+        )
       )
         return null;
-      if (
-        now.getTime() <
-        combine(current.event.eventDate, current.event.endTime).getTime() + graceMin * 60_000
-      )
-        return null;
+      const wasCompleted = current.status === 'COMPLETED';
+      const deadline = bookingReleaseAt(current.event.eventDate, current.event.endTime).getTime();
+      const cutoff = wasCompleted
+        ? deadline
+        : combine(current.event.eventDate, current.event.endTime).getTime() + graceMin * 60_000;
+      if (now.getTime() < cutoff) return null;
       if (
         await tx.dispute.findFirst({
           where: { bookingId: b.id, status: { in: ['OPEN', 'UNDER_REVIEW'] } },
@@ -402,15 +442,26 @@ export async function autoComplete(
       });
       if (refund && refund.status !== 'FAILED') return null;
       if (current.status === 'CONFIRMED') await markCheckedIn(tx, b.id, 'AUTO');
-      return releaseBooking(tx, b.id, 'AUTO');
+      const method = wasCompleted ? (current.attendanceMethod ?? 'AUTO') : 'AUTO';
+      await completeBookingHeld(tx, b.id, method, now);
+      const paid = now.getTime() >= deadline;
+      return {
+        wasCompleted,
+        paid,
+        unlocked: paid ? await releaseBooking(tx, b.id, method, now) : [],
+      };
     }, TX);
-    if (unlocked === null) continue;
-    completed.push(b.id);
-    if (b.payment) notifyPayoutReleased(b.usher.userId, kobo(b.payment.usherPayout));
-    for (const tier of unlocked) notifyMilestoneUnlocked(b.usher.userId, tier.name);
+    if (!result) continue;
     const parties = { clientUserId: b.event.client.userId, usherUserId: b.usher.userId };
-    emitBooking(realtime, parties, RT.BOOKING_COMPLETED, b.id, 'COMPLETED', true);
-    emitBooking(realtime, parties, RT.BOOKING_PAID, b.id, 'PAID');
+    if (!result.wasCompleted) {
+      completed.push(b.id);
+      emitBooking(realtime, parties, RT.BOOKING_COMPLETED, b.id, 'COMPLETED', true);
+    }
+    if (result.paid) {
+      if (b.payment) notifyPayoutReleased(b.usher.userId, kobo(b.payment.usherPayout));
+      for (const tier of result.unlocked) notifyMilestoneUnlocked(b.usher.userId, tier.name);
+      emitBooking(realtime, parties, RT.BOOKING_PAID, b.id, 'PAID');
+    }
   }
   // Early payouts and events with no bookings need a time-driven state refresh too.
   let afterId: string | undefined;
@@ -463,7 +514,13 @@ export async function noShowSweep(
       bookingId: b.id,
       amountKobo: refundAmount,
       precursor: 'NO_SHOW',
+    }).catch((error: unknown) => {
+      // An accepted client cancellation owns this allocation. Keep its quote and
+      // continue sweeping other bookings, including when the intent wins a race.
+      if (error instanceof ApiError && error.code === 'REFUND_CONFLICT') return null;
+      throw error;
     });
+    if (!refund) continue;
     if (refund.status !== 'RECORDED') continue;
     await prisma.usher.update({
       where: { id: b.usherId },
@@ -511,12 +568,7 @@ export async function openDispute(
       'you can only raise a dispute after checking in at the event',
     );
   }
-  // Enforce the 72-hour dispute window (PRD §13 / TRD §20): disputes are only
-  // accepted up to 72h after the event ends. (freezeBooking separately requires
-  // funds still HELD, so once a payout completes the window is effectively shorter
-  // — the two gates compose rather than conflict.)
-  const eventEnd = combine(booking.event.eventDate, booking.event.endTime);
-  if (Date.now() > eventEnd.getTime() + DISPUTE_WINDOW_MS) {
+  if (!disputeWindowOpen(booking.event.eventDate, booking.event.endTime, new Date())) {
     throw new ApiError(
       409,
       'DISPUTE_WINDOW_CLOSED',
@@ -524,12 +576,28 @@ export async function openDispute(
     );
   }
 
-  const dispute = await prisma.$transaction(async (tx) => {
-    await freezeBooking(tx, bookingId);
-    return tx.dispute.create({
-      data: { bookingId, raisedById: userId, reason, note: note ?? null, status: 'OPEN' },
+  const dispute = await prisma
+    .$transaction(async (tx) => {
+      await freezeBooking(tx, bookingId);
+      return tx.dispute.create({
+        data: { bookingId, raisedById: userId, reason, note: note ?? null, status: 'OPEN' },
+      });
+    }, TX)
+    .catch((error: unknown) => {
+      if (error instanceof LedgerError && error.code === 'DISPUTE_WINDOW_CLOSED')
+        throw new ApiError(
+          409,
+          error.code,
+          'the 72-hour dispute window for this booking has closed',
+        );
+      if (error instanceof LedgerError && ['NOT_DISPUTABLE', 'REFUND_PENDING'].includes(error.code))
+        throw new ApiError(
+          409,
+          error.code,
+          'funds are no longer available to freeze; contact support for review',
+        );
+      throw error;
     });
-  }, TX);
   notifyDisputeOpened(userId === clientUserId ? usherUserId : clientUserId);
   emitBooking(
     realtime,
@@ -611,61 +679,30 @@ export async function createReview(
   }
 }
 
-/**
- * Client cancels a CONFIRMED booking. The cancellation policy matrix (PRD §13)
- * is authoritative. We only execute the money path for full client-refund
- * windows (escrow back to the client, usher unpaid) to keep ledger invariants
- * exact; windows that split payout to the usher return 409 + the computed
- * outcome for support to settle (avoids shipping partial-release money math).
- */
+/** Confirm the shared cancellation quote, then settle or retain its approval reservation. */
 export async function cancelBookingByClient(
   deps: Deps,
   bookingId: string,
   clientUserId: string,
   realtime: RealtimeGateway = noopGateway,
-): Promise<{ status: 'REFUNDED'; outcome: PolicyOutcome }> {
-  const booking = await prisma.booking.findUniqueOrThrow({
-    where: { id: bookingId },
-    include: { event: { include: { client: true } }, usher: true, payment: true },
-  });
-  if (booking.event.client.userId !== clientUserId)
-    throw new ApiError(403, 'FORBIDDEN', 'not your booking');
-  if (booking.status !== 'CONFIRMED')
-    throw new ApiError(400, 'NOT_CONFIRMED', 'only confirmed bookings can be cancelled');
-
-  const start = combine(booking.event.eventDate, booking.event.startTime);
-  const outcome = policyForCancellation('CLIENT', cancelWindow(start, new Date()));
-  if (outcome.clientRefundPct !== 100) {
-    throw new ApiError(
-      409,
-      'PARTIAL_CANCEL_UNSUPPORTED',
-      'late cancellation requires support to settle the usher payout',
+  confirmation: CancelBookingInput = {},
+) {
+  const result = await cancelConfirmedBooking(deps, bookingId, clientUserId, confirmation);
+  if (result.status === 'RECORDED') {
+    const booking = await prisma.booking.findUniqueOrThrow({
+      where: { id: bookingId },
+      include: { usher: true },
+    });
+    emitBooking(
+      realtime,
+      { clientUserId, usherUserId: booking.usher.userId },
+      RT.BOOKING_CANCELLED,
+      bookingId,
+      booking.status,
+      true,
     );
   }
-  const gross = booking.payment?.grossAmount ?? booking.amount;
-  // Full client refund: issues the real Paystack refund, then the ledger
-  // CANCELLED + REFUND in one tx.
-  const refund = await refundBookingToClient(deps, {
-    bookingId,
-    amountKobo: gross,
-    precursor: 'CANCEL',
-  });
-  if (refund.status !== 'RECORDED') {
-    throw new ApiError(
-      409,
-      'REFUND_PENDING',
-      'refund is awaiting provider confirmation; do not submit a new payment',
-    );
-  }
-  emitBooking(
-    realtime,
-    { clientUserId: booking.event.client.userId, usherUserId: booking.usher.userId },
-    RT.BOOKING_CANCELLED,
-    bookingId,
-    'CANCELLED',
-    true,
-  );
-  return { status: 'REFUNDED', outcome };
+  return result;
 }
 
 /**

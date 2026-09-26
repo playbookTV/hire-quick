@@ -95,7 +95,7 @@ export function Disputes() {
                   disabled={busy}
                   onChange={(e) => setOutcome(e.target.value as 'RELEASE' | 'REFUND')}
                 >
-                  <option value="RELEASE">Release payout to usher</option>
+                  <option value="RELEASE">Award to usher (72-hour hold applies)</option>
                   <option value="REFUND">Refund client</option>
                 </select>
                 <p>
