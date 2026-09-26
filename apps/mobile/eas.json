@@ -14,13 +14,15 @@
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://prolific-love-production-2775.up.railway.app",
-        "EXPO_PUBLIC_APP_ENV": "preview"
+        "EXPO_PUBLIC_APP_ENV": "preview",
+        "EXPO_PUBLIC_CRISP_WEBSITE_ID": "17beef2c-a56c-41de-8c96-4d7a233389e9"
       }
     },
     "production": {
       "environment": "production",
       "env": {
-        "EXPO_PUBLIC_APP_ENV": "production"
+        "EXPO_PUBLIC_APP_ENV": "production",
+        "EXPO_PUBLIC_CRISP_WEBSITE_ID": "17beef2c-a56c-41de-8c96-4d7a233389e9"
       },
       "android": {
         "buildType": "app-bundle"

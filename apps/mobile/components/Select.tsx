@@ -7,6 +7,7 @@ import { Modal, Pressable, FlatList } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, Box, Text } from '../theme/restyle.js';
 import { Icon } from './Icon.js';
+import { useMotionPreference } from '../lib/use-motion-preference.js';
 
 export interface SelectOption<T extends string> {
   label: string;
@@ -36,6 +37,7 @@ export function Select<T extends string>({
 }: SelectProps<T>): React.JSX.Element {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const reducedMotion = useMotionPreference();
   const [open, setOpen] = useState(false);
   const selected = options.find((o) => o.value === value);
 
@@ -66,7 +68,12 @@ export function Select<T extends string>({
         <Icon name="chevron-down" size={20} color="inkMuted" />
       </Pressable>
 
-      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
+      <Modal
+        visible={open}
+        transparent
+        animationType={reducedMotion ? 'none' : 'slide'}
+        onRequestClose={() => setOpen(false)}
+      >
         <Pressable
           style={{ flex: 1, backgroundColor: theme.colors.overlay }}
           onPress={() => setOpen(false)}

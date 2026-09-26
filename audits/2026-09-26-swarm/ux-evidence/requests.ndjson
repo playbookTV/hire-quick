@@ -1,0 +1,26 @@
+{"at":"2026-09-26T09:34:26.385Z","method":"POST","path":"/auth/admin/otp/request","mode":"normal"}
+{"at":"2026-09-26T09:34:32.164Z","method":"POST","path":"/auth/admin/otp/verify","mode":"normal"}
+{"at":"2026-09-26T09:34:44.961Z","method":"POST","path":"/auth/admin/otp/verify","mode":"normal"}
+{"at":"2026-09-26T09:34:44.995Z","method":"GET","path":"/api/admin/stats","mode":"normal"}
+{"at":"2026-09-26T09:34:45.007Z","method":"GET","path":"/api/admin/stats","mode":"normal"}
+{"at":"2026-09-26T09:34:49.231Z","method":"GET","path":"/api/admin/disputes","mode":"normal"}
+{"at":"2026-09-26T09:34:49.236Z","method":"GET","path":"/api/admin/disputes","mode":"normal"}
+{"at":"2026-09-26T09:35:01.787Z","method":"GET","path":"/api/admin/bookings/test-booking/review","mode":"normal"}
+{"at":"2026-09-26T09:35:01.796Z","method":"GET","path":"/api/admin/bookings/test-booking/review","mode":"normal"}
+{"at":"2026-09-26T09:35:10.406Z","method":"POST","path":"/api/admin/disputes/test-dispute/resolve","mode":"normal","resolution":"Synthetic test reasoning retained after failed request."}
+{"at":"2026-09-26T09:35:10.420Z","method":"GET","path":"/api/admin/disputes","mode":"normal"}
+{"at":"2026-09-26T09:35:17.138Z","method":"GET","path":"/api/admin/disputes","mode":"normal"}
+{"at":"2026-09-26T09:35:25.815Z","method":"GET","path":"/api/me","mode":"restore-fail"}
+{"at":"2026-09-26T09:35:25.819Z","method":"GET","path":"/api/me","mode":"restore-fail"}
+{"at":"2026-09-26T09:35:39.312Z","method":"GET","path":"/api/me","mode":"normal"}
+{"at":"2026-09-26T09:35:39.335Z","method":"GET","path":"/api/admin/disputes","mode":"normal"}
+{"at":"2026-09-26T09:35:39.337Z","method":"GET","path":"/api/admin/disputes","mode":"normal"}
+{"at":"2026-09-26T09:35:46.935Z","method":"POST","path":"/auth/logout","mode":"normal"}
+{"at":"2026-09-26T09:36:09.354Z","method":"POST","path":"/auth/admin/otp/request","mode":"hang"}
+{"at":"2026-09-26T09:44:01.778Z","method":"POST","path":"/auth/admin/otp/request","mode":"hang"}
+{"at":"2026-09-26T10:59:17.634Z","method":"POST","path":"/auth/admin/otp/request","mode":"hang"}
+{"at":"2026-09-26T11:00:08.052Z","method":"POST","path":"/auth/admin/otp/request","mode":"normal"}
+{"at":"2026-09-26T11:00:45.831Z","method":"POST","path":"/auth/admin/otp/verify","mode":"hang-verify"}
+{"at":"2026-09-26T11:01:23.701Z","method":"POST","path":"/auth/admin/otp/verify","mode":"normal"}
+{"at":"2026-09-26T11:01:23.715Z","method":"GET","path":"/api/admin/stats","mode":"normal"}
+{"at":"2026-09-26T11:01:23.716Z","method":"GET","path":"/api/admin/stats","mode":"normal"}

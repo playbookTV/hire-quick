@@ -1,0 +1,16 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /Users/leslieisah/app-dev/hire-quick
+
+ ✓ apps/mobile/lib/__tests__/amount-input.test.ts (21 tests) 14ms
+ ✓ apps/mobile/lib/__tests__/monitoring-privacy.test.ts (2 tests) 9ms
+ ✓ apps/mobile/lib/__tests__/order-checkout.test.ts (10 tests) 19ms
+ ✓ apps/api/src/modules/payments/__tests__/checkout-mobile.unit.test.ts (13 tests) 47ms
+ ✓ audits/2026-09-26-swarm/bug-evidence/adversarial.test.ts (3 tests) 524ms
+   ✓ bounded audit: monetary input and checkpoint interruption > round-trips 10,000 deterministic integer-kobo balances within database range 507ms
+
+ Test Files  5 passed (5)
+      Tests  49 passed (49)
+   Start at  10:34:46
+   Duration  2.80s (transform 1.05s, setup 0ms, collect 2.34s, tests 613ms, environment 3ms, prepare 2.85s)
+

@@ -1,9 +1,12 @@
 # HireQuick — Executive Summary
 
-> **Policy amendment — approved 21 September 2026:** completion keeps funds in escrow until event end + 72 hours; undisputed completed bookings then become eligible for wallet release. Client cancellations use 100% / 50% / 0% refunds at >48h / 12–48h inclusive / <12h, with 15% commission within the remaining usher allocation and no processing-fee deduction from the refund. See the [approved decision and implementation criteria](payments/approved-settlement-policy-2026-09-21.md). Local implementation is tracked in OVA-136/137; see the [implementation and validation record](payments/settlement-implementation-2026-09-21.md). Deployment remains separately recorded.
+> **Pricing amendment — 26 September 2026:** new checkouts add a 15% client-paid platform fee to agreed staff pay. Ushers receive their full agreed pay. Cancellation percentages apply separately to staff pay and the added fee; the fee is refunded proportionally. Existing orders retain their recorded terms. See [client-paid fee policy](payments/client-paid-fee-policy-2026-09-26.md).
+
+
+> **Policy amendment — approved 21 September 2026:** completion keeps funds in escrow until event end + 72 hours; undisputed completed bookings then become eligible for wallet release. Client cancellations use 100% / 50% / 0% refunds at >48h / 12–48h inclusive / <12h, with the former fee-deducted pricing (superseded for new checkouts by the 26 September amendment) and no processing-fee deduction from the refund. See the [approved decision and implementation criteria](payments/approved-settlement-policy-2026-09-21.md). Local implementation is tracked in OVA-136/137; see the [implementation and validation record](payments/settlement-implementation-2026-09-21.md). Deployment remains separately recorded.
 
 **Version:** 2.1
-**v2.1 changes:** payout lands in an usher wallet (withdraw-to-bank is separate); commission becomes revenue via a scheduled sweep; client-passive auto-complete protects the usher's guaranteed payout; fee shown to the client is informational only. Flagged inline as **[v2.1]**.
+**v2.1 changes:** payout lands in an usher wallet (withdraw-to-bank is separate); commission becomes revenue via a scheduled sweep; client-passive auto-complete protects the usher's guaranteed payout; fee treatment superseded by the 26 September amendment. Flagged inline as **[v2.1]**.
 **Prepared for:** HireQuick
 **Prepared by:** Leslie Williams
 **Launch market:** Lagos, Nigeria
@@ -82,7 +85,7 @@ The initial wedge is **event planners and wedding coordinators in Lagos** — th
 
 ## 6. Revenue Model
 
-**Primary — commission per completed booking.** HireQuick takes a **15% platform fee** on the booking value, deducted at payout. The fee is charged once per booking and is shown to both sides before confirmation for transparency — but since the usher bears it, it is never added to the client's total (the client pays exactly budget × count). **[v2.1]**
+**Primary — commission per completed booking.** HireQuick adds a **15% platform fee** to the agreed staff pay, paid by the client. Staff pay is `budget × count`; the client total is staff pay plus the sum of per-booking fees. Ushers receive their full agreed pay. Checkout shows staff pay, platform fee and total before confirmation. **[26 September 2026]**
 
 > **Pricing note:** v1 launches at a single flat 15% rather than a 10–15% range. A range invites negotiation and complicates the escrow ledger; one rate is simpler to communicate, build, and reconcile. Volume-based or category-based tiers are a deliberate later decision, not a launch feature.
 

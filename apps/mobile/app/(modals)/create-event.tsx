@@ -13,6 +13,7 @@ import {
   createEventSchema,
   type CreateEventInput,
   kobo,
+  priceBooking,
   formatNaira,
   ACCOMMODATION_STATUSES,
   isLateNight,
@@ -104,7 +105,8 @@ export default function CreateEvent(): React.JSX.Element {
   });
 
   const values = watch();
-  const total = kobo((values.headcount || 0) * (values.budgetPerHeadKobo || 0));
+  const perHead = priceBooking(kobo(values.budgetPerHeadKobo || 0));
+  const total = kobo((values.headcount || 0) * perHead.gross);
   const lateNight = isLateNight(values.endTime ?? '');
   // End must be after start; only offer later slots so an invalid range can't be picked.
   const endTimeOptions = useMemo(
@@ -302,7 +304,7 @@ export default function CreateEvent(): React.JSX.Element {
                 {values.headcount} staff × {formatNaira(kobo(values.budgetPerHeadKobo || 0))}
               </Text>
               <Text variant="bodySm" color="inkMuted">
-                15% platform fee is deducted from each staff payout — you pay exactly this amount.
+                Plus {formatNaira(kobo((values.headcount || 0) * perHead.fee))} platform fee (15%). Staff receive their full agreed pay.
               </Text>
             </Box>
 

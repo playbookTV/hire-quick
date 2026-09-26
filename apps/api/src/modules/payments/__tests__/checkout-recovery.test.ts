@@ -32,10 +32,10 @@ afterEach(async () => {
 class CheckoutFake extends InMemoryPaystack {
   status: CheckoutVerification['status'] = 'abandoned';
   override verifyCheckout(reference: string): Promise<CheckoutVerification> {
-    return Promise.resolve({ reference, status: this.status, amountKobo: 10000 });
+    return Promise.resolve({ reference, status: this.status, amountKobo: 11500 });
   }
   override verifyChargeKobo(_reference: string): Promise<{ status: 'success' | 'failed'; amountKobo: number }> {
-    return Promise.resolve({ status: this.status === 'success' ? 'success' : 'failed', amountKobo: 10000 });
+    return Promise.resolve({ status: this.status === 'success' ? 'success' : 'failed', amountKobo: 11500 });
   }
 }
 async function fixture() {
@@ -67,6 +67,8 @@ describe('durable checkout recovery and unpaid reservation expiry', () => {
     expect([retry.orderId, restored.orderId]).toEqual([first.orderId, first.orderId]);
     expect(restored.authorizationUrl).toBe(first.authorizationUrl);
     expect(f.initialize).toHaveBeenCalledTimes(1);
+    expect(first.amountKobo).toBe(11500);
+    expect(f.initialize).toHaveBeenCalledWith(expect.objectContaining({ amountKobo: 11500 }));
     await expect(getCheckout(f.deps, first.orderId, f.usher.id)).rejects.toMatchObject({ code: 'FORBIDDEN' });
     const api = createApp({ paystack: f.paystack });
     const ownerResponse = await request(api).get(`/api/payments/orders/${first.orderId}/checkout`).set('Authorization', `Bearer ${await signAccessToken(f.client.id, 'CLIENT')}`);
@@ -155,7 +157,7 @@ describe('durable checkout recovery and unpaid reservation expiry', () => {
     const gate = new Promise<void>((resolve) => { release = resolve; });
     const ready = new Promise<void>((resolve) => { inspected = resolve; });
     vi.spyOn(f.paystack, 'verifyCheckout').mockImplementationOnce(async (reference) => {
-      const snapshot = { reference, amountKobo: 10000, status: 'abandoned' as const };
+      const snapshot = { reference, amountKobo: 11500, status: 'abandoned' as const };
       inspected(); await gate; return snapshot;
     });
     const expiration = reconcileCheckout(f.deps, out.orderId, afterExpiry());

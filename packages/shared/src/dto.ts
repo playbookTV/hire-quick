@@ -5,7 +5,7 @@
  */
 import { z } from 'zod';
 import { ACCOMMODATION_STATUSES, REWARD_TYPES } from './enums.js';
-import { MAX_INT32_KOBO } from './money.js';
+import { MAX_INT32_KOBO, priceBooking, kobo } from './money.js';
 
 export const uuid = z.string().uuid();
 
@@ -92,12 +92,19 @@ export const createEventSchema = eventFields
     message: 'Accommodation must be disclosed for events ending at or after 10:00 PM.',
     path: ['accommodation'],
   })
-  // The aggregate charge (Order.gross = headcount × budgetPerHead) must also fit
+  // The aggregate charge (Order.gross = headcount × (staff pay + platform fee)) must also fit
   // the signed 32-bit Int money column, not just each field on its own.
-  .refine((e) => e.headcount * e.budgetPerHeadKobo <= MAX_INT32_KOBO, {
-    message: 'Total event budget exceeds the maximum allowed.',
-    path: ['budgetPerHeadKobo'],
-  });
+  .refine(
+    (e) =>
+      Number.isInteger(e.budgetPerHeadKobo) &&
+      e.budgetPerHeadKobo > 0 &&
+      e.budgetPerHeadKobo <= MAX_INT32_KOBO &&
+      e.headcount * priceBooking(kobo(e.budgetPerHeadKobo)).gross <= MAX_INT32_KOBO,
+    {
+      message: 'Total event budget exceeds the maximum allowed.',
+      path: ['budgetPerHeadKobo'],
+    },
+  );
 export type CreateEventInput = z.infer<typeof createEventSchema>;
 
 /**

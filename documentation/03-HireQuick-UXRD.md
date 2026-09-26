@@ -1,9 +1,12 @@
 # HireQuick — User Experience Requirements Document (UXRD)
 
-> **Policy amendment — approved 21 September 2026:** completion keeps funds in escrow until event end + 72 hours; undisputed completed bookings then become eligible for wallet release. Client cancellations use 100% / 50% / 0% refunds at >48h / 12–48h inclusive / <12h, with 15% commission within the remaining usher allocation and no processing-fee deduction from the refund. See the [approved decision and implementation criteria](payments/approved-settlement-policy-2026-09-21.md). Local implementation is tracked in OVA-136/137; see the [implementation and validation record](payments/settlement-implementation-2026-09-21.md). Deployment remains separately recorded.
+> **Pricing amendment — 26 September 2026:** new checkouts add a 15% client-paid platform fee to agreed staff pay. Ushers receive their full agreed pay. Cancellation percentages apply separately to staff pay and the added fee; the fee is refunded proportionally. Existing orders retain their recorded terms. See [client-paid fee policy](payments/client-paid-fee-policy-2026-09-26.md).
+
+
+> **Policy amendment — approved 21 September 2026:** completion keeps funds in escrow until event end + 72 hours; undisputed completed bookings then become eligible for wallet release. Client cancellations use 100% / 50% / 0% refunds at >48h / 12–48h inclusive / <12h, with the former fee-deducted pricing (superseded for new checkouts by the 26 September amendment) and no processing-fee deduction from the refund. See the [approved decision and implementation criteria](payments/approved-settlement-policy-2026-09-21.md). Local implementation is tracked in OVA-136/137; see the [implementation and validation record](payments/settlement-implementation-2026-09-21.md). Deployment remains separately recorded.
 
 **Version:** 2.1
-**v2.1 changes:** platform fee shown as informational (never added to the client total); usher self-check-in + client-passive auto-complete in the attendance flow; wallet "available vs withdraw-to-bank" clarified; booking-status label↔DB-enum mapping; cancellation processing-fee copy flagged as pending. Flagged inline as **[v2.1]**.
+**v2.1 changes:** platform fee display superseded by the 26 September amendment; usher self-check-in + client-passive auto-complete in the attendance flow; wallet "available vs withdraw-to-bank" clarified; booking-status label↔DB-enum mapping; cancellation processing-fee copy flagged as pending. Flagged inline as **[v2.1]**.
 **Prepared for:** HireQuick
 **Prepared by:** Leslie Williams
 **Launch market:** Lagos, Nigeria
@@ -77,7 +80,7 @@ Target: under 2 minutes. Role choice is explicit and changeable only via support
 Home → Create Event →
 **Basic info:** title, venue, date, time, category.
 **Staffing requirements:** **number of staff needed (headcount)**, role, dress code, **budget per head**, special instructions, and any preference fields (see §6.4 note).
-**Review:** shows total estimated cost (budget per head × headcount, with fees displayed) → Publish → Success.
+**Review:** shows total estimated cost (budget per head × headcount, plus the platform fee) → Publish → Success.
 
 The event now carries a headcount and a per-head budget, and every downstream screen reasons in "X of N".
 
@@ -111,9 +114,9 @@ Chat unlocks **per confirmed booking** (after payment), not merely on acceptance
 
 ### 6.9 Payments **[v2 — escrow language]**
 
-Booking summary (per-head × count, platform fee shown **for transparency only**, total) → Proceed to Payment → Paystack checkout → **Funds Held in Escrow** confirmation (not "paid to staff") → bookings confirmed.
+Booking summary (per-head × count, client-paid platform fee added on top, total) → Proceed to Payment → Paystack checkout → **Funds Held in Escrow** confirmation (not "paid to staff") → bookings confirmed.
 
-> **Fee display [v2.1]:** the 15% platform fee is borne by the usher (deducted from payout), so the **client's total is exactly `budget per head × count`** — the fee is shown as an informational line, never added to what the client pays. The UI must not imply the fee is additive (resolves the Exec §6 ↔ UX inconsistency).
+> **Fee display [26 September 2026]:** the client pays `budget per head × count` plus the sum of each booking’s 15% platform fee. Show staff subtotal, added fee and total. Usher job screens show the full agreed pay; no platform fee is deducted. Saved legacy orders show their original price.
 The success screen explicitly states money is held safely and released only after attendance is verified. This is a trust moment and is designed as one.
 
 ### 6.10 Event Day
@@ -128,7 +131,7 @@ After completion, the client rates each usher (1–5 + optional comment), and us
 
 ### 6.12 Cancellation Experience **[v2 — new]**
 
-When a client cancels a confirmed booking, a sheet shows the exact outcome — refund amount, any usher compensation, and timing — based on how close to the event it is (PRD §13), and requires explicit confirmation. No cancellation executes without the user seeing its financial consequence first. **Approved 21 September 2026:** show no processing-fee deduction from the client refund. Show gross usher allocation, its 15% platform commission and net usher compensation separately; use the approved exact 12/48-hour boundaries (PRD §13).
+When a client cancels a confirmed booking, a sheet shows the exact outcome — refund amount, any usher compensation, and timing — based on how close to the event it is (PRD §13), and requires explicit confirmation. No cancellation executes without the user seeing its financial consequence first. **Approved 21 September 2026:** show no processing-fee deduction from the client refund. Show total retained, platform fee retained and usher compensation separately; use the approved exact 12/48-hour boundaries (PRD §13).
 
 ### 6.13 Dispute Experience **[v2 — new]**
 

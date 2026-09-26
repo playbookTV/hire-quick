@@ -22,11 +22,19 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction): v
   }
   verifyAccessToken(header.slice(7))
     .then(async (auth) => {
-      // A valid signature isn't enough — a token minted before suspension/erasure
-      // must stop working. Re-check live account status on every request.
-      const user = await prisma.user.findUnique({ where: { id: auth.userId }, select: { status: true } });
+      // Re-check live status and role so old tokens lose authority after an
+      // account is suspended, erased, or assigned a different role.
+      const user = await prisma.user.findUnique({
+        where: { id: auth.userId },
+        select: { status: true, role: true },
+      });
       if (!user || user.status !== 'ACTIVE') {
         next(new ApiError(403, 'ACCOUNT_INACTIVE', 'account is not active'));
+        return;
+      }
+      if (user.role !== auth.role) {
+        // Refresh mints the current role. Never promote a stale token in place.
+        next(new ApiError(401, 'ROLE_CHANGED', 'account role changed; refresh your session'));
         return;
       }
       (req as AuthedRequest).auth = auth;

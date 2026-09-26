@@ -418,7 +418,7 @@ model Event {
   endTime       String // "HH:MM" — drives auto-complete (§12)
   category      String
   headcount     Int
-  budgetPerHead Int // kobo
+  budgetPerHead Int // kobo, full agreed staff pay before the client-paid platform fee
   dressCode     String?
   accommodation Accommodation? // required by API when endTime >= 22:00 (late-night safety, visible to staff)
   preferences   Json?
@@ -515,7 +515,7 @@ model Order {
   eventId           String      @db.Uuid
   event             Event       @relation(fields: [eventId], references: [id])
   paystackChargeRef String?
-  grossAmount       Int // kobo — Σ per-head over this batch
+  grossAmount       Int // kobo — Σ client allocations including per-booking platform fees
   status            OrderStatus @default(PENDING)
   createdAt         DateTime    @default(now()) @db.Timestamptz(6)
   updatedAt         DateTime    @updatedAt @db.Timestamptz(6)
@@ -536,7 +536,8 @@ model Booking {
   usher             Usher             @relation(fields: [usherId], references: [id])
   orderId           String?           @db.Uuid
   order             Order?            @relation(fields: [orderId], references: [id])
-  amount            Int // kobo, = event.budgetPerHead at confirmation
+  amount            Int // kobo, total client allocation including platform fee
+  staffPay          Int? // agreed staff pay at checkout; null preserves legacy fee-deducted orders
   status            BookingStatus     @default(PENDING_PAYMENT)
   attendanceMethod  AttendanceMethod?
   arrivalAssertedAt DateTime?         @db.Timestamptz(6)
@@ -564,7 +565,7 @@ model Payment {
   bookingId           String       @unique @db.Uuid
   booking             Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   grossAmount         Int // kobo
-  platformFee         Int // kobo (15%)
+  platformFee         Int // kobo (15% of agreed staff pay for new bookings)
   usherPayout         Int // kobo (gross − fee)
   paystackChargeRef   String? // denormalized from order
   paystackTransferRef String? // null in wallet model (transfer at withdrawal)

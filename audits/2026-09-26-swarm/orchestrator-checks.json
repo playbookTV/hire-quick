@@ -1,0 +1,40 @@
+{
+  "recorded_at": "2026-09-26T09:33:57.628795+00:00",
+  "head": "f99e3b4e8d9bb7a86f45f04a1430e2ebcb524da1",
+  "working_tree": "Existing staged and unstaged mobile/documentation changes; concurrent external edits observed. No swarm production edits.",
+  "checks": [
+    {
+      "command": "pnpm --filter @hq/admin typecheck",
+      "exit_code": 0,
+      "result": "passed"
+    },
+    {
+      "command": "pnpm --filter @hq/mobile typecheck",
+      "exit_code": 0,
+      "result": "passed"
+    },
+    {
+      "command": "pnpm --filter @hq/shared test",
+      "exit_code": 0,
+      "result": "7 files, 62 tests passed; 5.00s reported duration"
+    },
+    {
+      "command": "node_modules/.bin/vitest run --config audits/2026-09-26-swarm/auth-evidence/vitest.config.mts --reporter verbose",
+      "exit_code": 0,
+      "result": "Independent repeat: 1 file, 6 tests passed, 3.73s; fixture and real source inspected first."
+    }
+  ],
+  "limitations": [
+    "Checks describe working tree at execution time, not a frozen release commit.",
+    "No database integration or live provider tests run by orchestrator."
+  ],
+  "closure": {
+    "recorded_at": "2026-09-26T09:50:09.720639+00:00",
+    "auth_changed_since_capture": [],
+    "bug_changed_since_capture": [
+      "apps/mobile/app/(modals)/payment-summary.tsx",
+      "apps/mobile/app/(modals)/funds-held.tsx"
+    ],
+    "production_edits_by_swarm": false
+  }
+}

@@ -15,7 +15,16 @@
     />
     <meta property="og:type" content="website" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="preload" as="image" href="/images/event-crew.jpg" fetchpriority="high" />
+    <!-- Match the hero source; sizes include the width needed for its object-fit crop. -->
+    <link
+      rel="preload"
+      as="image"
+      type="image/webp"
+      href="/images/event-crew-960.webp"
+      imagesrcset="/images/event-crew-640.webp 640w, /images/event-crew-960.webp 960w, /images/event-crew-1536.webp 1536w"
+      imagesizes="(max-width: 360px) 510px, (max-width: 640px) 593px, (max-width: 850px) 660px, (max-width: 1150px) 728px, (min-width: 1500px) 848px, 767px"
+      fetchpriority="high"
+    />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

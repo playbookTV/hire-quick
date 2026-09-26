@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { kobo, formatNaira } from '@hq/shared';
+import { kobo, priceBooking, formatNaira } from '@hq/shared';
 import { Screen } from '../../../components/Screen.js';
 import { AppBar } from '../../../components/AppBar.js';
 import { Card } from '../../../components/Card.js';
@@ -93,7 +93,9 @@ export default function EventDetail(): React.JSX.Element {
     );
   }
 
-  const total = kobo(event.headcount * event.budgetPerHead);
+  const staffSubtotal = kobo(event.headcount * event.budgetPerHead);
+  const fee = kobo(event.headcount * priceBooking(kobo(event.budgetPerHead)).fee);
+  const total = kobo(staffSubtotal + fee);
   const applicants = event._count?.applications ?? 0;
   const confirmed = event.staffing?.confirmed ?? 0;
   const open = event.staffing?.available ?? 0;
@@ -148,7 +150,10 @@ export default function EventDetail(): React.JSX.Element {
               BUDGET
             </Text>
             <KeyValueRow label="Per usher" value={formatNaira(kobo(event.budgetPerHead))} />
-            <KeyValueRow label={`${event.headcount} ushers`} value={formatNaira(total)} emphasize />
+            <KeyValueRow label={`${event.headcount} ushers`} value={formatNaira(staffSubtotal)} />
+            <KeyValueRow label="Platform fee (15%)" value={formatNaira(fee)} />
+            <KeyValueRow label="Estimated total" value={formatNaira(total)} emphasize />
+            <Text variant="bodySm" color="inkMuted">Estimate for new bookings. Saved orders keep their confirmed prices.</Text>
             <Text variant="bodySm" color="inkMuted" marginTop="200">
               Payments and held funds are shown per booking.
             </Text>

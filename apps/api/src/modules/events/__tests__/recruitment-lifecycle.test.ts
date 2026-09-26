@@ -351,7 +351,7 @@ describe('locked recruitment and staffing lifecycle', () => {
     );
     await prisma.$transaction(async (tx) => {
       await cancelBooking(tx, out.bookingIds[0]!);
-      await refundBooking(tx, out.bookingIds[0]!, 10000);
+      await refundBooking(tx, out.bookingIds[0]!, out.amountKobo);
       expect((await tx.event.findUniqueOrThrow({ where: { id: f.event.id } })).status).toBe('OPEN');
     }, TX);
     expect(
@@ -452,7 +452,7 @@ describe('locked recruitment and staffing lifecycle', () => {
         dedupeKey: `BOOKING_REFUND:${bookingId}`,
         payload: {
           bookingId,
-          amountKobo: 10000,
+          amountKobo: out.amountKobo,
           precursor: 'CANCEL',
           chargeReference: out.reference,
         },

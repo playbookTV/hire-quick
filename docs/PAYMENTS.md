@@ -23,15 +23,13 @@ A fractional value would silently break the ledger's `Σ == 0` invariant. All
 arithmetic goes through `@hq/shared/money`:
 
 ```ts
-import { kobo, naira, splitFee, sumKobo, PLATFORM_FEE_BPS } from '@hq/shared';
+import { kobo, naira, priceBooking, sumKobo, PLATFORM_FEE_BPS } from '@hq/shared';
 
 naira(10_000); // → 1_000_000 kobo (₦10,000)
-splitFee(kobo(1_000_000), PLATFORM_FEE_BPS); // → { fee: 150_000, payout: 850_000 }
+priceBooking(kobo(1_000_000)); // → { gross: 1_150_000, fee: 150_000, payout: 1_000_000 }
 ```
 
-`splitFee` floors the fee and gives the payout the **exact remainder**, so
-`fee + payout === gross` always holds — no rounding leak. `PLATFORM_FEE_BPS` is
-`1500` (15%).
+`priceBooking` adds a floored 15% fee to the full staff pay. `Booking.staffPay` snapshots the agreed pay; `Booking.amount` is the client gross. `bookingAllocation` preserves the old `splitFee` calculation only for legacy rows with null `staffPay`. `fee + payout === gross` always holds. See the [26 September policy](../documentation/payments/client-paid-fee-policy-2026-09-26.md).
 
 ---
 
@@ -370,7 +368,7 @@ far before the event):
 | `BETWEEN_12_48H` (12–48h inclusive) | 50% / 50%; no usher reputation penalty                  | 100% client refund; penalty                               |
 | `LT_12H` (<12h)                     | 0% / 100%; no usher reputation penalty                  | 100% client refund; major penalty; suspend-if-repeat flag |
 
-**Implemented settlement:** the first accepted client request reserves the booking and persists its time, event start, window and all amounts. Late requests must confirm the displayed window/refund; stale quotes return `CANCELLATION_QUOTE_CHANGED`. The client refund rounds down, the usher allocation gets the remainder, the 15% commission within that allocation rounds down, and the net wallet payout gets the remainder. Refund + net payout + fee equals the original gross, including odd kobo.
+**Implemented settlement:** the first accepted client request reserves the booking and persists its time, event start, window and all amounts. Late requests must confirm the displayed window/refund; stale quotes return `CANCELLATION_QUOTE_CHANGED`. For new bookings, each component (staff pay and the added fee) is refunded at the policy percentage, rounded down independently. Retained staff pay goes fully to the usher and the retained fee to HireQuick. Legacy orders and V1 cancellation receipts preserve the prior split. Refund + net payout + fee equals the original gross, including odd kobo.
 
 Gross booking allocations above 5,000,000 kobo require two distinct admins, including zero-refund cancellations. The original request remains reserved during approval/rejection and can be reproposed; a rejected approval does not change the accepted quote. Recovery and ledger finalization both verify approval. Provider uncertainty leaves all funds held. Confirmed settlement appends REFUND (when positive), RELEASE and FEE and a wallet CREDIT exactly once. Zero-refund cancellations skip the provider refund entirely. Full refunds end REFUNDED; compensation-bearing cancellations end CANCELLED with payment escrow RELEASED. The original Payment allocation is historical; cancellation summaries and ledger entries report actual settlement. Ordinary admin refunds still require the full eligible booking amount and cannot replace a cancellation reservation.
 
@@ -435,7 +433,7 @@ Platform fees accumulate in the Balance as the residue of releases. The daily
 - [ ] `EscrowLedger` / `WalletLedger` are append-only.
 - [ ] Per booking, escrow entries sum to 0 at end of life.
 - [ ] `wallet.availableBalance == Σ WalletLedger.amount`.
-- [ ] `fee + payout == gross` (use `splitFee`).
+- [ ] `fee + payout == gross` (use `priceBooking`; `bookingAllocation` preserves legacy terms).
 - [ ] A new ledger entry type that changes the Paystack Balance is added to the
       reconciliation formula.
 - [ ] A new state transition is added to its table **before** code performs it.

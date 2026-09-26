@@ -61,6 +61,84 @@ describe('admin session lifecycle and checker expiry', () => {
     expect(session.getSnapshot().status).toBe('authed');
   });
 
+  it.each(['request', 'verify'] as const)('bounds a stalled %s fetch or body and permits retry', async (kind) => {
+    vi.useFakeTimers();
+    try {
+      for (const stage of ['fetch', 'body'] as const) {
+        const late = deferred<Response>();
+        const lateBody = deferred<string>();
+        const response = ok({});
+        vi.spyOn(response, 'text').mockReturnValue(lateBody.promise);
+        const success = kind === 'verify' ? { ...first, user: { role: 'ADMIN' } } : { sent: true };
+        const fetch = vi.fn<typeof globalThis.fetch>()
+          .mockImplementationOnce(() => stage === 'fetch' ? late.promise : Promise.resolve(response))
+          .mockImplementation(async () => ok(success));
+        const { session, saved } = setup(fetch, null);
+        await session.restore();
+        let result: unknown;
+        const attempt = kind === 'verify' ? session.verify('admin@example.test', '123456') : session.requestOtp('admin@example.test');
+        const observed = attempt.catch((error: unknown) => { result = error; });
+        await vi.advanceTimersByTimeAsync(8000);
+        expect(result).toMatchObject({ code: 'LOGIN_TIMEOUT', status: 0 });
+        await observed;
+        expect(fetch.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
+        expect(session.getSnapshot().status).toBe('guest');
+        expect(saved()?.tokens ?? null).toBeNull();
+        if (kind === 'verify') await session.verify('admin@example.test', '123456');
+        else await session.requestOtp('admin@example.test');
+        late.resolve(ok({ ...rotated, user: { role: 'ADMIN' } }));
+        lateBody.resolve(JSON.stringify({ ...rotated, user: { role: 'ADMIN' } }));
+        await vi.advanceTimersByTimeAsync(0);
+        if (kind === 'verify') {
+          expect(saved().tokens).toEqual(first);
+          expect(session.getSnapshot().status).toBe('authed');
+          expect(fetch).toHaveBeenCalledWith('https://example.test/auth/logout', expect.objectContaining({ body: JSON.stringify({ refreshToken: rotated.refreshToken }) }));
+        } else expect(session.getSnapshot().status).toBe('guest');
+        expect(vi.getTimerCount()).toBe(0);
+      }
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('cleans login deadline timers after success and ordinary failures', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetch = vi.fn<typeof globalThis.fetch>()
+        .mockResolvedValueOnce(ok({ sent: true }))
+        .mockResolvedValueOnce(denied())
+        .mockResolvedValueOnce(ok({ ...first, user: { role: 'ADMIN' } }));
+      const { session } = setup(fetch, null);
+      await session.restore();
+      await session.requestOtp('admin@example.test');
+      expect(vi.getTimerCount()).toBe(0);
+      await expect(session.verify('admin@example.test', '000000')).rejects.toMatchObject({ status: 401 });
+      expect(vi.getTimerCount()).toBe(0);
+      await session.verify('admin@example.test', '123456');
+      expect(vi.getTimerCount()).toBe(0);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('never authenticates a timed-out verification that completes after logout', async () => {
+    vi.useFakeTimers();
+    try {
+      const late = deferred<Response>();
+      const fetch = vi.fn<typeof globalThis.fetch>().mockImplementationOnce(() => late.promise).mockResolvedValue(new Response(null, { status: 204 }));
+      const { session, saved } = setup(fetch, null);
+      await session.restore();
+      let result: unknown;
+      const pending = session.verify('admin@example.test', '123456').catch((error: unknown) => { result = error; });
+      await vi.advanceTimersByTimeAsync(8000);
+      expect(result).toMatchObject({ code: 'LOGIN_TIMEOUT' });
+      await pending;
+      await session.logout();
+      late.resolve(ok({ ...first, user: { role: 'ADMIN' } }));
+      await vi.advanceTimersByTimeAsync(0);
+      expect(saved().tokens).toBeNull();
+      expect(session.getSnapshot().status).toBe('guest');
+      expect(fetch).toHaveBeenCalledWith('https://example.test/auth/logout', expect.objectContaining({ body: JSON.stringify({ refreshToken: first.refreshToken }) }));
+      expect(vi.getTimerCount()).toBe(0);
+    } finally { vi.useRealTimers(); }
+  });
+
   it('returns access-only legacy sessions to login without trusting their token', async () => {
     const fetch = vi.fn<typeof globalThis.fetch>();
     const { session, discardLegacy } = setup(fetch, null);

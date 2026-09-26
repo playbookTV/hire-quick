@@ -69,7 +69,7 @@ describe('event edits and complete checkout selection', () => {
     const f = await fixture();
     const out = await confirmBatch(f.deps, { ...f.params, applicationIds: [f.application.id, f.application.id] });
     expect(out.bookingIds).toHaveLength(1);
-    expect((await prisma.order.findUniqueOrThrow({ where: { id: out.orderId } })).grossAmount).toBe(10000);
+    expect((await prisma.order.findUniqueOrThrow({ where: { id: out.orderId } })).grossAmount).toBe(11500);
   });
 
   it('checks verification and account status before any checkout effect', async () => {
@@ -120,7 +120,7 @@ describe('event edits and complete checkout selection', () => {
     ]);
     expect(confirmed.status).toBe('fulfilled');
     const order = await prisma.order.findFirstOrThrow({ where: { eventId: f.event.id } });
-    expect(order.grossAmount).toBe(edit.status === 'fulfilled' ? 20000 : 10000);
+    expect(order.grossAmount).toBe(edit.status === 'fulfilled' ? 23000 : 11500);
     if (edit.status === 'rejected') expect(edit.reason).toMatchObject({ code: 'EVENT_LOCKED' });
     await expect(editEvent(prisma, f.client.client!.id, f.client.id, f.event.id, { title: 'Too late' })).rejects.toMatchObject({ code: 'EVENT_LOCKED' });
   });

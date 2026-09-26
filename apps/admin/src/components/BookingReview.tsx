@@ -101,11 +101,10 @@ export function BookingReview({
             </dd>
             {q.data.payment && (
               <>
-                <dt>Net usher payout</dt>
+                <dt>Usher payout</dt>
                 <dd>
-                  {naira(q.data.cancellation?.usherPayoutKobo ?? q.data.payment.usherPayout)} after{' '}
-                  {naira(q.data.cancellation?.platformFeeKobo ?? q.data.payment.platformFee)}{' '}
-                  platform fee
+                  {naira(q.data.cancellation?.usherPayoutKobo ?? q.data.payment.usherPayout)}; platform fee:{' '}
+                  {naira(q.data.cancellation?.platformFeeKobo ?? q.data.payment.platformFee)}
                 </dd>
               </>
             )}
@@ -130,9 +129,9 @@ export function BookingReview({
                 remain reserved during review.
               </p>
               <p>
-                Client refund: {naira(q.data.cancellation.refundKobo)}. Gross usher allocation:{' '}
+                Client refund: {naira(q.data.cancellation.refundKobo)}. Amount retained:{' '}
                 {naira(q.data.cancellation.usherCompensationKobo)}. Platform commission:{' '}
-                {naira(q.data.cancellation.platformFeeKobo)}. Net usher payout:{' '}
+                {naira(q.data.cancellation.platformFeeKobo)}. Usher payout:{' '}
                 {naira(q.data.cancellation.usherPayoutKobo)}.
               </p>
               <p>No processing fee is deducted from the client refund.</p>

@@ -1,5 +1,7 @@
 # Approved settlement policy — 21 September 2026
 
+> **26 September pricing update:** fee incidence and cancellation allocation below describe the legacy model. New checkouts use the [client-paid platform fee and proportional refunds](client-paid-fee-policy-2026-09-26.md). Release timing and provider approval requirements remain applicable.
+
 **Decision: approved. Implementation: OVA-136/137 complete; final regressions passed and API/worker/admin deployed to TEST/staging on 22 September. Updated native binaries remain separate.**
 
 The project owner approved both proposed options in the Codex conversation on 21 September 2026: “approved prposed. set and document”. This records product authorization for HireQuick. It does not record Paystack approval, a provider contract amendment, deployment or completed runtime validation. It supersedes the unresolved product-policy choices in the earlier account decision register and PRD/TRD/UXRD drafts.

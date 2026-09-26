@@ -1,0 +1,90 @@
+
+ RUN  v2.1.9 /Users/leslieisah/app-dev/hire-quick
+
+ ✓ apps/api/src/modules/auth/__tests__/middleware.unit.test.ts > HTTP live-role authorization > allows unchanged CLIENT sessions
+ ✓ apps/api/src/modules/auth/__tests__/middleware.unit.test.ts > HTTP live-role authorization > allows unchanged USHER sessions
+ ✓ apps/api/src/modules/auth/__tests__/middleware.unit.test.ts > HTTP live-role authorization > allows unchanged ADMIN sessions
+ × apps/api/src/modules/auth/__tests__/middleware.unit.test.ts > HTTP live-role authorization > rejects a downgraded ADMIN token before any protected mutation, and applies the new role to a fresh token
+   → expected 204 to be 401 // Object.is equality
+ × apps/api/src/modules/auth/__tests__/middleware.unit.test.ts > HTTP live-role authorization > does not promote an old CLIENT token when its account becomes ADMIN
+   → expected 403 to be 401 // Object.is equality
+ ✓ apps/api/src/modules/auth/__tests__/middleware.unit.test.ts > HTTP live-role authorization > preserves inactive-account rejection for SUSPENDED, including a changed role
+ ✓ apps/api/src/modules/auth/__tests__/middleware.unit.test.ts > HTTP live-role authorization > preserves inactive-account rejection for ANONYMIZED, including a changed role
+ ✓ apps/api/src/modules/auth/__tests__/middleware.unit.test.ts > HTTP live-role authorization > rejects missing accounts, anonymous requests and malformed tokens
+ ✓ apps/api/src/modules/auth/__tests__/middleware.unit.test.ts > HTTP live-role authorization > preserves legacy access without a session binding when the role is current
+ ✓ audits/2026-09-26-swarm/auth-evidence/lifecycle.test.ts > real JWT and HTTP/socket authorization with isolated persistence > allows the current administrator and denies anonymous, malformed and lower-role tokens
+ × audits/2026-09-26-swarm/auth-evidence/lifecycle.test.ts > real JWT and HTTP/socket authorization with isolated persistence > rejects stale administrator authority after a live role downgrade on HTTP and sockets
+   → expected { status: 200, role: 'ADMIN' } to deeply equal { status: 401, code: 'ROLE_CHANGED' }
+ ✓ audits/2026-09-26-swarm/auth-evidence/lifecycle.test.ts > real JWT and HTTP/socket authorization with isolated persistence > denies existing access after live status becomes SUSPENDED
+ ✓ audits/2026-09-26-swarm/auth-evidence/lifecycle.test.ts > real JWT and HTTP/socket authorization with isolated persistence > denies existing access after live status becomes ANONYMIZED
+ ✓ audits/2026-09-26-swarm/auth-evidence/lifecycle.test.ts > real JWT and HTTP/socket authorization with isolated persistence > denies access when the account no longer exists
+ ✓ audits/2026-09-26-swarm/auth-evidence/lifecycle.test.ts > real JWT and HTTP/socket authorization with isolated persistence > documents logout semantics: revoked refresh binding denies sockets while existing REST access survives
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/api/src/modules/auth/__tests__/middleware.unit.test.ts > HTTP live-role authorization > rejects a downgraded ADMIN token before any protected mutation, and applies the new role to a fresh token
+AssertionError: expected 204 to be 401 // Object.is equality
+
+- Expected
++ Received
+
+- 401
++ 204
+
+ ❯ apps/api/src/modules/auth/__tests__/middleware.unit.test.ts:94:29
+     92|     state.user.role = 'CLIENT';
+     93|     const rejected = await admin(stale);
+     94|     expect(rejected.status).toBe(401);
+       |                             ^
+     95|     expect(rejected.body.error.code).toBe('ROLE_CHANGED');
+     96|     expect(state.adminMutations).toBe(0);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  apps/api/src/modules/auth/__tests__/middleware.unit.test.ts > HTTP live-role authorization > does not promote an old CLIENT token when its account becomes ADMIN
+AssertionError: expected 403 to be 401 // Object.is equality
+
+- Expected
++ Received
+
+- 401
++ 403
+
+ ❯ apps/api/src/modules/auth/__tests__/middleware.unit.test.ts:108:29
+    106|     state.user.role = 'ADMIN';
+    107|     const rejected = await admin(stale);
+    108|     expect(rejected.status).toBe(401);
+       |                             ^
+    109|     expect(rejected.body.error.code).toBe('ROLE_CHANGED');
+    110|     expect(state.adminMutations).toBe(0);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  audits/2026-09-26-swarm/auth-evidence/lifecycle.test.ts > real JWT and HTTP/socket authorization with isolated persistence > rejects stale administrator authority after a live role downgrade on HTTP and sockets
+AssertionError: expected { status: 200, role: 'ADMIN' } to deeply equal { status: 401, code: 'ROLE_CHANGED' }
+
+- Expected
++ Received
+
+  Object {
+-   "code": "ROLE_CHANGED",
+-   "status": 401,
++   "role": "ADMIN",
++   "status": 200,
+  }
+
+ ❯ audits/2026-09-26-swarm/auth-evidence/lifecycle.test.ts:53:40
+     51|     await expect(authorizeSocketToken(access)).resolves.toMatchObject(…
+     52|     state.user.role = 'CLIENT';
+     53|     expect(await requestAdmin(access)).toEqual({ status: 401, code: 'R…
+       |                                        ^
+     54|     await expect(authorizeSocketToken(access)).rejects.toThrow('socket…
+     55|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+ Test Files  2 failed (2)
+      Tests  3 failed | 12 passed (15)
+   Start at  11:57:50
+   Duration  2.61s (transform 212ms, setup 0ms, collect 787ms, tests 206ms, environment 0ms, prepare 215ms)
+

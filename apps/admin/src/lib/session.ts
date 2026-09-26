@@ -59,6 +59,31 @@ export function createAdminSession(deps: {
     catch { /* Revocation is best effort; local fencing happens first. */ }
     finally { clearTimeout(timer); }
   };
+  const loginResponse = async (path: string, payload: unknown, timeoutMessage: string, issuedSession = false) => {
+    const abort = new AbortController();
+    let timedOut = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const deadline = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        timedOut = true;
+        reject(new AdminApiError(0, 'LOGIN_TIMEOUT', timeoutMessage));
+        abort.abort();
+      }, 8000);
+    });
+    // Race the complete response, including its body. Abort alone cannot bound
+    // a transport that ignores cancellation; late work never commits a login.
+    const response = (async () => {
+      const response = await send(path, 'POST', JSON.stringify(payload), null, undefined, abort.signal);
+      const result = await bodyOf(response);
+      if (timedOut && issuedSession && response.ok) {
+        try { void revoke(pair(result).refreshToken); }
+        catch { /* An incomplete late response has no token we can revoke. */ }
+      }
+      return { response, result };
+    })();
+    try { return await Promise.race([response, deadline]); }
+    finally { clearTimeout(timer); }
+  };
   const end = (expected: number): AdminTokens | null => {
     assertCurrent(expected);
     const captured = tokens;
@@ -157,8 +182,9 @@ export function createAdminSession(deps: {
       } finally { clearTimeout(timer); }
     },
     async requestOtp(this: void, email: string): Promise<{ sent: true }> {
-      const response = await send('/auth/admin/otp/request', 'POST', JSON.stringify({ email: email.trim().toLowerCase() }), null);
-      const result = await bodyOf(response);
+      const { response, result } = await loginResponse('/auth/admin/otp/request',
+        { email: email.trim().toLowerCase() },
+        'Sending your code took too long. Check your connection and try again.');
       if (!response.ok) throw apiError(response, result);
       return result as { sent: true };
     },
@@ -176,8 +202,9 @@ export function createAdminSession(deps: {
         setState('unavailable', 'Couldn’t clear your previous admin session. Try again.');
         throw error;
       }
-      const response = await send('/auth/admin/otp/verify', 'POST', JSON.stringify({ email: email.trim().toLowerCase(), code }), null);
-      const result = await bodyOf(response);
+      const { response, result } = await loginResponse('/auth/admin/otp/verify',
+        { email: email.trim().toLowerCase(), code },
+        'Sign-in took too long. Try your code again, or request a new code if it has expired.', true);
       if (!response.ok) { assertCurrent(expected); throw apiError(response, result); }
       const next = pair(result);
       const role = (result as { user?: { role?: string } }).user?.role;

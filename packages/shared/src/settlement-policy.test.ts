@@ -7,7 +7,7 @@ import {
   policyForCancellation,
 } from './policy.js';
 import { canTransitionBooking } from './state-machines.js';
-import { MAX_INT32_KOBO } from './money.js';
+import { MAX_INT32_KOBO, priceBooking, kobo } from './money.js';
 
 describe('approved settlement policy', () => {
   it('uses Lagos event end and non-overlapping dispute/release boundaries', () => {
@@ -34,7 +34,7 @@ describe('approved settlement policy', () => {
     );
     expect(outcome.clientRefundPct).toBe(percent);
   });
-  it('deducts commission within the odd-kobo usher allocation', () => {
+  it('preserves legacy cancellation allocations', () => {
     expect(
       cancellationSettlement(10_001, policyForCancellation('CLIENT', 'BETWEEN_12_48H')),
     ).toEqual({
@@ -56,4 +56,31 @@ describe('approved settlement policy', () => {
       }
     },
   );
+});
+
+
+describe('client-paid fee cancellation', () => {
+  it.each([
+    ['GT_48H', 1_150_000, 0, 0],
+    ['BETWEEN_12_48H', 575_000, 500_000, 75_000],
+    ['LT_12H', 0, 1_000_000, 150_000],
+  ] as const)('%s refunds pay and fee proportionally', (window, refund, payout, fee) => {
+    const result = cancellationSettlement(1_150_000, policyForCancellation('CLIENT', window), 1_000_000);
+    expect(result.refundKobo).toBe(refund);
+    expect(result.usherPayoutKobo).toBe(payout);
+    expect(result.platformFeeKobo).toBe(fee);
+  });
+  it.each([1, 7, 10_001, 10_007, 1_867_000_000])('conserves both components of %i kobo', (base) => {
+    const price = priceBooking(kobo(base));
+    for (const window of ['GT_48H', 'BETWEEN_12_48H', 'LT_12H'] as const) {
+      const policy = policyForCancellation('CLIENT', window);
+      const result = cancellationSettlement(price.gross, policy, base);
+      expect(result.usherPayoutKobo).toBe(base - Math.floor(base * policy.clientRefundPct / 100));
+      expect(result.platformFeeKobo).toBe(price.fee - Math.floor(price.fee * policy.clientRefundPct / 100));
+      expect(result.refundKobo + result.usherPayoutKobo + result.platformFeeKobo).toBe(price.gross);
+      expect(cancellationSettlement(price.gross, policyForCancellation('USHER', window), base)).toMatchObject({
+        refundKobo: price.gross, usherPayoutKobo: 0, platformFeeKobo: 0,
+      });
+    }
+  });
 });

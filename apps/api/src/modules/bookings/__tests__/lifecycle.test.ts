@@ -205,7 +205,7 @@ describe('full booking lifecycle (TRD §7/§8/§12)', () => {
     const booking = await prisma.booking.findUniqueOrThrow({ where: { id: s.bookingId } });
     expect(booking.status).toBe('PAID');
     const wallet = await prisma.wallet.findUniqueOrThrow({ where: { id: s.walletId } });
-    expect(wallet.availableBalance).toBe(1_700_000); // ₦20,000 − 15%
+    expect(wallet.availableBalance).toBe(2_000_000); // Full ₦20,000 staff pay; client funds the fee separately.
   }, 120_000);
 
   it('client-passive auto-complete pays the usher who self-asserted arrival (D1)', async () => {
@@ -229,7 +229,7 @@ describe('full booking lifecycle (TRD §7/§8/§12)', () => {
     expect(booking.status).toBe('PAID');
     expect(booking.attendanceMethod).toBe('AUTO');
     const wallet = await prisma.wallet.findUniqueOrThrow({ where: { id: s.walletId } });
-    expect(wallet.availableBalance).toBe(1_700_000);
+    expect(wallet.availableBalance).toBe(2_000_000);
   });
 
   it('opening a dispute freezes the escrow', async () => {

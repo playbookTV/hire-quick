@@ -1,5 +1,7 @@
 # HireQuick technical interface audit — 26 September 2026
 
+**Remediation update:** All seven findings below now have implementation fixes. See the [fixes and validation report](technical-ui-audit-fixes-2026-09-26.md) for evidence and remaining native-device checks. The findings and score below preserve the original audit baseline.
+
 ## Anti-patterns verdict
 
 **Pass for the rendered marketing page; provisional pass for the inspected product code.** The website has a coherent people-first direction, a real wordmark, distinct display/body typography, and useful organiser/staff paths. It does not read as a generic gradient-and-glass template.

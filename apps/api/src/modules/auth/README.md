@@ -4,7 +4,9 @@
 
 Concurrent reuse produces at most one successor pair. A duplicate or logged-out token returns `401 INVALID_REFRESH`; duplicate detection does not invalidate the winning successor. The repository has no session-family graph, so this is deliberately token-scoped rotation and logout, with no family-wide reuse revocation. Logout of an already rotated ancestor cannot revoke its successor; the client must send its current refresh token. Independent logins remain independent.
 
-A response lost after the database commit cannot be recovered by replaying the consumed token; the user must sign in with OTP again. Returning the winning successor to a reused token could disclose it to an attacker. Access tokens remain subject to their expiry and the HTTP account-status check.
+A response lost after the database commit cannot be recovered by replaying the consumed token; the user must sign in with OTP again. Returning the winning successor to a reused token could disclose it to an attacker. Access tokens remain subject to their expiry and the HTTP account-status and role checks.
+
+HTTP authorization reads the current account status and role on each request. A token whose role differs from the current account role returns `401 ROLE_CHANGED`, for both promotions and downgrades, before protected handlers run. Clients may refresh once to obtain a token carrying the current role; the server never upgrades an old token's authority in place. Inactive or missing accounts still return `403 ACCOUNT_INACTIVE`. This applies to subsequent authorization checks; it does not cancel requests already executing when the account changes. Existing logout semantics and legacy access-token formats remain unchanged.
 
 Refresh JWT verification requires HS256 plus an explicit refresh type, UUID subject/JTI, and unexpired expiry. Missing or malformed claims cannot reach database rotation.
 

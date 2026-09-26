@@ -100,7 +100,7 @@ export function Disputes() {
                 </select>
                 <p>
                   {outcome === 'RELEASE'
-                    ? `The usher receives ${naira(booking.payment?.usherPayout ?? 0)} after the platform fee.`
+                    ? `The usher receives ${naira(booking.payment?.usherPayout ?? 0)}.`
                     : `The client receives a refund of ${naira(booking.payment?.grossAmount ?? 0)}.`}{' '}
                   A second admin must approve amounts above the configured threshold.
                 </p>

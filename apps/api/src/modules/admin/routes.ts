@@ -338,7 +338,9 @@ export function adminRouter(deps: {
         where: {
           kind: 'BOOKING_REFUND',
           status: { in: ['PENDING', 'PROVIDER_OK'] },
-          payload: { path: ['cancellation', 'policy'], equals: 'CLIENT_CANCEL_V1' },
+          OR: ['CLIENT_CANCEL_V1', 'CLIENT_CANCEL_V2'].map((policy) => ({
+            payload: { path: ['cancellation', 'policy'], equals: policy },
+          })),
         },
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         take: page.limit + 1,

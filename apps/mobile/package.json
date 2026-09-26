@@ -31,6 +31,7 @@
     "@smileid/usesmileid_mlkit_face": "12.1.0",
     "@smileid/usesmileid_vision_face": "12.1.0",
     "@tanstack/react-query": "^5.62.7",
+    "crisp-sdk-react-native": "^0.4.3",
     "expo": "~57.0.0",
     "expo-brightness": "~57.0.2",
     "expo-constants": "~57.0.19",

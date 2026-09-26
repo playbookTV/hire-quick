@@ -1,6 +1,9 @@
 # HireQuick — Technical Requirements Document (TRD)
 
-> **Policy amendment — approved 21 September 2026:** completion keeps funds in escrow until event end + 72 hours; undisputed completed bookings then become eligible for wallet release. Client cancellations use 100% / 50% / 0% refunds at >48h / 12–48h inclusive / <12h, with 15% commission within the remaining usher allocation and no processing-fee deduction from the refund. See the [approved decision and implementation criteria](payments/approved-settlement-policy-2026-09-21.md). Local implementation is tracked in OVA-136/137; see the [implementation and validation record](payments/settlement-implementation-2026-09-21.md). Deployment remains separately recorded.
+> **Pricing amendment — 26 September 2026:** new checkouts add a 15% client-paid platform fee to agreed staff pay. Ushers receive their full agreed pay. Cancellation percentages apply separately to staff pay and the added fee; the fee is refunded proportionally. Existing orders retain their recorded terms. See [client-paid fee policy](payments/client-paid-fee-policy-2026-09-26.md).
+
+
+> **Policy amendment — approved 21 September 2026:** completion keeps funds in escrow until event end + 72 hours; undisputed completed bookings then become eligible for wallet release. Client cancellations use 100% / 50% / 0% refunds at >48h / 12–48h inclusive / <12h, with the former fee-deducted pricing (superseded for new checkouts by the 26 September amendment) and no processing-fee deduction from the refund. See the [approved decision and implementation criteria](payments/approved-settlement-policy-2026-09-21.md). Local implementation is tracked in OVA-136/137; see the [implementation and validation record](payments/settlement-implementation-2026-09-21.md). Deployment remains separately recorded.
 
 **Version:** 2.1
 **Prepared for:** HireQuick
@@ -194,7 +197,8 @@ Smile ID v3 / mobile v12 handles new biometric checks. The provider reference is
 | event_id | uuid (fk) | |
 | usher_id | uuid (fk) | |
 | order_id | uuid (fk orders) | batch charge this booking was confirmed under **[v2.1]** |
-| amount | numeric | = event.budget_per_head at confirmation |
+| amount | integer kobo | full client allocation: agreed staff pay + platform fee |
+| staff_pay | nullable integer kobo | immutable agreed pay at checkout; null identifies legacy fee-deducted pricing |
 | status | enum | PENDING_PAYMENT / CONFIRMED / CHECKED_IN / COMPLETED / PAID / CANCELLED / NO_SHOW / DISPUTED / REFUNDED |
 | attendance_method | enum | OTP / QR / AUTO / null **[v2.1]** (AUTO = client-passive auto-complete) |
 | arrival_asserted_at | timestamptz | usher self-check-in; null until asserted **[v2.1]** |
@@ -207,8 +211,8 @@ Smile ID v3 / mobile v12 handles new biometric checks. The provider reference is
 | id | uuid (pk) | |
 | booking_id | uuid (fk) | |
 | gross_amount | numeric | |
-| platform_fee | numeric | 15% |
-| usher_payout | numeric | gross − fee |
+| platform_fee | integer kobo | floor(agreed staff pay × 15 / 100) |
+| usher_payout | integer kobo | full agreed staff pay; gross − fee |
 | paystack_charge_ref | varchar | denormalized from orders.paystack_charge_ref (one charge covers the batch) **[v2.1]** |
 | paystack_transfer_ref | varchar | null in wallet model — the Paystack Transfer happens at withdrawal, not per booking; see `withdrawals` **[v2.1]** |
 | escrow_status | enum | HELD / RELEASED / REFUNDED / FROZEN |
@@ -262,7 +266,7 @@ Smile ID v3 / mobile v12 handles new biometric checks. The provider reference is
 | client_id | uuid (fk users) | |
 | event_id | uuid (fk) | |
 | paystack_charge_ref | varchar | the one charge covering the batch |
-| gross_amount | numeric | Σ per-head over confirmed slots in this batch |
+| gross_amount | numeric | Σ (staff pay + per-booking fee) over confirmed slots in this batch |
 | status | enum | PENDING / PAID / PARTIALLY_REFUNDED / REFUNDED |
 | created_at | timestamptz | |
 
@@ -397,7 +401,7 @@ Usher → API: accept (reserves slot, PENDING_PAYMENT)
 ```text
 Client selects up to N accepted ushers
 Client → API: confirm batch
-API → DB: create ONE order (gross = Σ per-head)            [v2.1]
+API → DB: create ONE order (gross = Σ (staff pay + platform fee))            [v2.1]
 API → Paystack: charge full amount (Σ per-head) under order
 Paystack → API: charge.success (webhook)
         … Manual Payouts ON → funds stay in Paystack Balance, NOT auto-settled …
@@ -442,10 +446,12 @@ A booking cancellation evaluates time-to-event against the policy matrix (PRD §
 cancel(booking):
   window = event_start − now
   (refund_pct, payout_pct, reputation_delta) = policy(window, who_cancelled)
-  refund = floor(refund_pct × amount / 100)
-  allocation = amount − refund
-  fee = floor(allocation × 15 / 100)
-  payout = allocation − fee
+  staff_refund = floor(refund_pct × staff_pay / 100)
+  fee_refund = floor(refund_pct × platform_fee / 100)
+  refund = staff_refund + fee_refund
+  payout = staff_pay − staff_refund
+  fee = platform_fee − fee_refund
+  # Legacy orders use their original fee-deducted allocation.
   reserve immutable settlement; apply existing approval/audit controls
   confirm Paystack refund if refund > 0; recover uncertain outcomes
   ledger.append(REFUND, −refund)

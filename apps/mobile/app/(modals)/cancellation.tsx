@@ -25,9 +25,9 @@ import { money } from '../../lib/format.js';
 const WINDOW_NOTE: Record<string, string> = {
   GT_48H: 'You’re cancelling more than 48 hours out — full refund.',
   BETWEEN_12_48H:
-    'You receive a 50% refund. The remaining allocation pays the usher, less the 15% platform commission.',
+    'You receive a 50% refund. The remaining amount covers usher compensation and the platform fee.',
   LT_12H:
-    'No client refund is due. The booking amount pays the usher, less the 15% platform commission.',
+    'No client refund is due. The booking amount covers usher compensation and the platform fee.',
 };
 
 export default function Cancellation(): React.JSX.Element {
@@ -160,12 +160,12 @@ export default function Cancellation(): React.JSX.Element {
               value={`${money(refund)}  (${outcome.clientRefundPct}%)`}
               tone="success"
             />
-            <KeyValueRow label="Gross usher allocation" value={money(usherShare)} />
+            <KeyValueRow label="Amount retained" value={money(usherShare)} />
             <KeyValueRow
-              label="Platform commission (15% of allocation)"
+              label="Platform fee retained"
               value={money(quote.data.platformFeeKobo)}
             />
-            <KeyValueRow label="Net usher compensation" value={money(quote.data.usherPayoutKobo)} />
+            <KeyValueRow label="Usher compensation" value={money(quote.data.usherPayoutKobo)} />
             <KeyValueRow
               label="Processing fee deduction"
               value={

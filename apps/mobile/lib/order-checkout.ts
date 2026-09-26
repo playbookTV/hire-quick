@@ -1,4 +1,4 @@
-import { checkoutResponseSchema, type CheckoutResponse } from '@hq/shared';
+import { checkoutResponseSchema, priceBooking, kobo, type CheckoutResponse } from '@hq/shared';
 import type { Booking } from './types.js';
 
 /** A server order is recoverable without an intent stored on this device. */
@@ -23,7 +23,11 @@ export function validateOrderRoster(outcome: CheckoutResponse, bookings: Booking
         b.orderId !== outcome.orderId ||
         !b.usher?.displayName?.trim() ||
         !Number.isSafeInteger(b.amount) ||
-        b.amount < 0,
+        b.amount < 0 ||
+        (b.staffPay != null &&
+          (!Number.isSafeInteger(b.staffPay) ||
+            b.staffPay < 0 ||
+            priceBooking(kobo(b.staffPay)).gross !== b.amount)),
     ) ||
     bookings.reduce((sum, b) => sum + b.amount, 0) !== outcome.amountKobo
   )

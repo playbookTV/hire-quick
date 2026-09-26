@@ -1,5 +1,8 @@
 # HireQuick — Cost-to-Operate & Fee Model
 
+> **Pricing amendment — 26 September 2026:** new checkouts add a 15% client-paid platform fee to agreed staff pay. Ushers receive their full agreed pay. Cancellation percentages apply separately to staff pay and the added fee; the fee is refunded proportionally. Existing orders retain their recorded terms. See [client-paid fee policy](payments/client-paid-fee-policy-2026-09-26.md).
+
+
 **Version:** 1.0
 **Prepared for:** HireQuick
 **Prepared by:** Leslie Williams
@@ -20,7 +23,7 @@ The platform's cost has two parts:
 | **Running costs** (§3)    | Mostly fixed + mild variable | Database, hosting, OTP messages, storage, mobile builds |
 | **Transaction fees** (§4) | Purely variable              | Per booking — Paystack's cut of every payment           |
 
-**Bottom line up front:** on a typical **₦15,000 booking**, HireQuick earns **₦2,250** (15%), pays Paystack **₦325** to collect it, and nets **≈ ₦1,925** before infrastructure. Infrastructure is a small, slow-growing floor; the real cost against revenue is Paystack's per-payment fee.
+On a typical **₦15,000 staff-pay booking**, the client pays **₦17,250**, HireQuick earns **₦2,250**, and the indicative local Paystack collection charge is **₦358.75**, leaving **₦1,891.25** before transfers, levies and infrastructure. Infrastructure is a small, slow-growing floor; the real cost against revenue is Paystack's per-payment fee.
 
 **Currency note.** Some vendors bill in **USD** (Neon, Railway, Cloudflare R2, Expo) and some in **NGN** (Paystack, Brevo SMS). USD figures below are converted at an assumed **₦1,600 = $1** — _update this rate to today's before presenting._ All money inside the product is integer **kobo** (₦1 = 100 kobo); there are no floats anywhere in the ledger.
 
@@ -88,28 +91,25 @@ These are referenced in the product but **not currently configured**, so they co
 
 ## 4. Fee model (per booking)
 
-HireQuick charges a **15% commission** (`PLATFORM_FEE_BPS = 1500`, [money.ts](../packages/shared/src/money.ts)). The fee is floored and the usher payout takes the exact remainder, so `fee + payout === gross` with no rounding leak.
+HireQuick adds a **15% client-paid platform fee** to agreed staff pay (`priceBooking` in [money.ts](../packages/shared/src/money.ts)). The usher receives 100% of agreed pay. Fees round down per booking in integer kobo before the batch total is calculated.
 
-Against that revenue, **Paystack charges HireQuick to collect the payment**: **1.5% + ₦100**, capped at **₦2,000**, and **waived entirely when the transaction is ≤ ₦2,500**. This fee is _not_ modelled in the codebase — it reduces funds on Paystack's side — so it must be tracked here as a real cost against the commission.
+Paystack's [published Nigerian pricing](https://paystack.com/pricing), checked 26 September 2026, lists local collection at **1.5% + ₦100**, capped at **₦2,000**. Only the fixed ₦100 component is waived below ₦2,500; the percentage fee still applies. Provider charges apply to the **client total including the platform fee**. Account-specific fees and levies still need reconciliation evidence.
 
-Worked examples across the three fee bands:
+| | Small | Typical | Large |
+| --- | ---: | ---: | ---: |
+| Agreed staff pay / usher payout | ₦2,000 | ₦15,000 | ₦150,000 |
+| Added platform fee | ₦300 | ₦2,250 | ₦22,500 |
+| Client total | ₦2,300 | ₦17,250 | ₦172,500 |
+| Indicative local collection fee | ₦34.50 | ₦358.75 | ₦2,000 |
+| Contribution before transfers, levies and infrastructure | ₦265.50 | ₦1,891.25 | ₦20,500 |
 
-|                            | Small (waived)            | Typical          | Large (cap hit) |
-| -------------------------- | ------------------------- | ---------------- | --------------- |
-| Booking gross              | ₦2,500                    | ₦15,000          | ₦150,000        |
-| HireQuick commission (15%) | ₦375                      | ₦2,250           | ₦22,500         |
-| Usher payout (85%)         | ₦2,125                    | ₦12,750          | ₦127,500        |
-| Paystack charge fee        | **₦0** (≤ ₦2,500, waived) | ₦325 (1.5%+₦100) | ₦2,000 (capped) |
-| **HireQuick net margin**   | **₦375**                  | **₦1,925**       | **₦20,500**     |
-| Effective platform take    | 15.0%                     | 12.8%            | 13.7%           |
-
-> **Insight:** small bookings are proportionally the most profitable for the platform — Paystack waives its fee under ₦2,500, so HireQuick keeps the full commission. The Paystack fee cap (₦2,000) kicks in above ~₦126,700 gross.
+These estimates assume a single local charge per booking. A batch is charged once, so its fixed fee/cap applies to the batch total. Refunds and cancellation revenue follow the [proportional policy](payments/client-paid-fee-policy-2026-09-26.md).
 
 ### 4.1 Payout & withdrawal fees
 
 The actual bank transfer to the usher happens at **withdrawal**, not at release. Paystack's transfer fee is tiered (~₦10 ≤ ₦5k, ~₦25 ₦5k–50k, ~₦50 > ₦50k).
 
-**Today, the usher bears this fee:** the wallet is debited the full requested amount ([ledger.ts](../apps/api/src/modules/payments/ledger/ledger.ts)), and Paystack deducts its transfer fee on its side. So an usher withdrawing ₦12,750 receives ~₦12,725. **This is a pricing/product decision to confirm, not a bug** — the platform could choose to absorb it.
+The wallet debit and transfer principal are the requested withdrawal amount. The code does not subtract a provider transfer fee from that principal. Paystack checks its balance for [principal plus the transfer fee](https://paystack.com/docs/transfers/how-transfers-work/). The former claim that an usher automatically receives a reduced amount was unsupported; track provider charges separately as platform costs and validate account-specific treatment.
 
 HireQuick collects its own commission by sweeping accumulated fees to its operating bank account once they exceed a **₦100 floor** ([service.ts](../apps/api/src/modules/payments/service.ts)). Sweeping in batches (a daily job) amortises the transfer fee across many bookings, so the platform's payout cost is negligible per booking.
 
@@ -117,15 +117,15 @@ HireQuick collects its own commission by sweeping accumulated fees to its operat
 
 ## 5. Combined: platform P&L per tier
 
-Revenue is the sum of commissions; cost is Paystack charge fees plus infrastructure. At ₦15,000 avg booking: ₦2,250 commission and ₦325 Paystack fee each.
+Revenue is the sum of commissions; cost is Paystack charge fees plus infrastructure. At ₦15,000 agreed staff pay: ₦2,250 platform fee and an indicative ₦358.75 local collection fee on the ₦17,250 client charge. These estimates exclude transfer fees, levies, refunds and disputes.
 
 | Monthly                | Pilot (100)    | Growth (1,000)   | Scale (10,000)    |
 | ---------------------- | -------------- | ---------------- | ----------------- |
 | Commission revenue     | ₦225,000       | ₦2,250,000       | ₦22,500,000       |
-| − Paystack charge fees | (₦32,500)      | (₦325,000)       | (₦3,250,000)      |
+| − Paystack charge fees | (₦35,875)      | (₦358,750)       | (₦3,587,500)      |
 | − Infrastructure (§3)  | (₦38,400)      | (₦168,000)       | (₦729,600)        |
-| **Net contribution**   | **≈ ₦154,000** | **≈ ₦1,757,000** | **≈ ₦18,520,000** |
-| Contribution margin    | ~68%           | ~78%             | ~82%              |
+| **Net contribution**   | **₦150,725** | **₦1,723,250** | **₦18,182,900** |
+| Contribution margin    | ~67%           | ~77%             | ~81%              |
 
 > HireQuick is contribution-positive even at pilot scale. Infrastructure is a shrinking share of total cost as volume grows (~54% at Pilot → ~18% at Scale), because the fixed monthly floor is spread over more bookings; **Paystack's per-payment fee then becomes the dominant cost** against commission. Figures exclude VAT, refunds, and disputes.
 

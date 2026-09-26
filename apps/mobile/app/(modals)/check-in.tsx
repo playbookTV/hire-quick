@@ -143,7 +143,7 @@ function CheckInBody({ booking }: Readonly<{ booking: Booking }>): React.JSX.Ele
           >
             <Icon name="shield" size={18} color="brandEmerald" />
             <Text variant="bodySm" color="brandEmerald" style={{ flex: 1 }}>
-              {pay ? `Your payout after the platform fee is ${pay}. ` : ''}
+              {pay ? `Your payout is ${pay}. ` : ''}
               {heldFundsCopy}
             </Text>
           </Box>
@@ -165,7 +165,7 @@ function CheckInBody({ booking }: Readonly<{ booking: Booking }>): React.JSX.Ele
           title={released ? 'Released to your wallet' : 'Booking completed'}
           body={
             released && pay
-              ? `Your ${pay} payout after the platform fee has been released to your wallet.`
+              ? `Your ${pay} payout has been released to your wallet.`
               : `${heldFundsCopy} ${walletReleaseCopy}`
           }
           amountLabel={released ? 'EARNED' : 'EXPECTED PAYOUT'}

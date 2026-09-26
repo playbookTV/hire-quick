@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { checkoutResponseSchema, type CheckoutResponse } from '@hq/shared';
+import type { CheckoutResponse } from '@hq/shared';
 import { Box, Text } from '../../theme/restyle.js';
 import { Screen } from '../../components/Screen.js';
 import { AppBar } from '../../components/AppBar.js';
@@ -48,7 +48,7 @@ export default function FundsHeld(): React.JSX.Element {
     setError('');
     try {
       const result = orderId
-        ? checkoutResponseSchema.parse(await api.get(`/api/payments/orders/${orderId}/checkout`))
+        ? readOrderOutcome(orderId, await api.get(`/api/payments/orders/${orderId}/checkout`))
         : await checkoutStore.refresh(user.id, eventId);
       if (current()) setOutcome(result);
     } catch (e) {
@@ -121,6 +121,15 @@ export default function FundsHeld(): React.JSX.Element {
     setError('');
     try {
       if (!orderId) await checkoutStore.acknowledge(user.id, eventId, outcome.orderId);
+      else {
+        // A server recovery may also correspond to an intent saved on this device.
+        // Refresh and close only that exact order; preserve any unrelated intent.
+        const saved = await checkoutStore.load(user.id, outcome.eventId);
+        if (saved?.outcome?.orderId === outcome.orderId) {
+          await checkoutStore.refresh(user.id, outcome.eventId);
+          await checkoutStore.acknowledge(user.id, outcome.eventId, outcome.orderId);
+        }
+      }
       if (!current()) return;
       await qc.invalidateQueries({ queryKey: ['savedCheckout'] });
       if (current()) router.dismissAll();

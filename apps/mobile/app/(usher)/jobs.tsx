@@ -3,7 +3,6 @@ import { useRouter } from 'expo-router';
 import { ScrollView, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Box, Text } from '../../theme/restyle.js';
-import { kobo, splitFee, PLATFORM_FEE_BPS } from '@hq/shared';
 import { screenTokens } from '../../theme/token-manager.js';
 import { ScreenHeading } from '../../components/ScreenHeading.js';
 import { Banner } from '../../components/Banner.js';
@@ -73,7 +72,7 @@ export default function Jobs(): React.JSX.Element {
       <JobCard
         key={e.id}
         title={e.title}
-        pay={money(splitFee(kobo(e.budgetPerHead), PLATFORM_FEE_BPS).payout)}
+        pay={money(e.budgetPerHead)}
         date={dateTime(e.eventDate, e.startTime)}
         slots={e.staffing ? `${e.staffing.available} of ${e.headcount} slots left` : undefined}
         distance={e.venue}

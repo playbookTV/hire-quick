@@ -9,7 +9,7 @@ import { useMemo, useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { updateEventSchema, type UpdateEventInput, kobo, formatNaira, ACCOMMODATION_STATUSES, isLateNight } from '@hq/shared';
+import { updateEventSchema, type UpdateEventInput, kobo, priceBooking, formatNaira, ACCOMMODATION_STATUSES, isLateNight } from '@hq/shared';
 
 import { Screen } from '../../components/Screen.js';
 import { AppBar } from '../../components/AppBar.js';
@@ -86,7 +86,8 @@ function EditEventForm({ event }: { event: EventResource }): React.JSX.Element {
   });
 
   const values = watch();
-  const total = kobo((values.headcount || 0) * (values.budgetPerHeadKobo || 0));
+  const perHead = priceBooking(kobo(values.budgetPerHeadKobo || 0));
+  const total = kobo((values.headcount || 0) * perHead.gross);
   const lateNight = isLateNight(values.endTime ?? '');
   const endTimeOptions = useMemo(
     () => TIME_OPTIONS.filter((o) => o.value > (values.startTime ?? '')),
@@ -230,7 +231,7 @@ function EditEventForm({ event }: { event: EventResource }): React.JSX.Element {
             <Text variant="labelLg" color="inkDefault">Estimated total</Text>
             <Text style={{ fontFamily: fonts.sansBold, fontSize: 22, lineHeight: 28, letterSpacing: -0.3 }} color="brandEmerald">{formatNaira(total)}</Text>
           </Box>
-          <Text variant="bodySm" color="inkMuted">{values.headcount} staff × {formatNaira(kobo(values.budgetPerHeadKobo || 0))}</Text>
+          <Text variant="bodySm" color="inkMuted">{values.headcount} staff × {formatNaira(kobo(values.budgetPerHeadKobo || 0))}, plus {formatNaira(kobo((values.headcount || 0) * perHead.fee))} platform fee (15%). Staff receive their full agreed pay.</Text>
         </Box>
 
         <Controller

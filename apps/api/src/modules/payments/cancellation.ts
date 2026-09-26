@@ -49,7 +49,11 @@ export async function cancelConfirmedBooking(
     const now = new Date();
     const start = eventInstant(booking.event.eventDate, booking.event.startTime);
     const window = cancelWindow(start, now);
-    const amounts = cancellationSettlement(booking.amount, policyForCancellation('CLIENT', window));
+    const amounts = cancellationSettlement(
+      booking.amount,
+      policyForCancellation('CLIENT', window),
+      booking.staffPay,
+    );
     // Old clients can safely request only their existing full-refund path. A late
     // split requires confirmation of the actual preview, and stale quotes are rejected.
     if (
@@ -73,7 +77,8 @@ export async function cancelConfirmedBooking(
         'the cancellation amounts changed; review the updated quote',
       );
     const snapshot = cancellationSnapshot({
-      policy: 'CLIENT_CANCEL_V1',
+      policy: booking.staffPay == null ? 'CLIENT_CANCEL_V1' : 'CLIENT_CANCEL_V2',
+      ...(booking.staffPay == null ? {} : { staffPay: booking.staffPay }),
       clientUserId,
       requestedAt: now.toISOString(),
       eventStart: start.toISOString(),

@@ -29,6 +29,9 @@ function semantic(c: typeof colorTokens.Light) {
     borderStrong: c['border/strong'],
     borderControl: c['border/control'],
     borderFocus: c['border/focus'],
+    // Selection marks need contrast against their fill in both themes.
+    selectionFill: c['brand/accent-text'],
+    inkOnSelection: c['bg/surface'],
     statusSuccess: c['status/success'],
     statusSuccessTint: c['status/success-bg'],
     statusWarning: c['status/warning'],

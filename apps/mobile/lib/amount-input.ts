@@ -1,8 +1,16 @@
 /** Convert decimal naira text without silently rounding fractional kobo. */
 export function parseNairaInput(text: string): number | null {
-  const match = /^(\d+)(?:\.(\d{0,2}))?$/.exec(text.trim());
-  if (!match) return null;
-  const value = Number(match[1]) * 100 + Number((match[2] ?? '').padEnd(2, '0'));
+  const parts = text.trim().split('.');
+  const whole = parts[0];
+  const fraction = parts[1] ?? '';
+  if (
+    parts.length > 2 ||
+    !/^\d+$/.test(whole) ||
+    fraction.length > 2 ||
+    (fraction !== '' && !/^\d+$/.test(fraction))
+  )
+    return null;
+  const value = Number(whole) * 100 + Number(fraction.padEnd(2, '0'));
   return Number.isSafeInteger(value) ? value : null;
 }
 

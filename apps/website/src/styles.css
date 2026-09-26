@@ -203,6 +203,7 @@ img {
 .wordmark {
   display: inline-flex;
   align-items: center;
+  min-height: 44px;
   gap: 12px;
   flex-shrink: 0;
   color: var(--white);
@@ -315,7 +316,12 @@ h1 > span {
   transform: rotate(-3deg);
   background: var(--night-soft);
 }
-.hero-photo > img {
+.hero-photo > picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.hero-photo > picture > img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -391,6 +397,9 @@ h1 > span {
   line-height: 1.6;
 }
 .event-strip a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 17px;
@@ -480,7 +489,7 @@ h1 > span {
   min-height: 610px;
   background: var(--night);
 }
-.occasion-photo > img {
+.occasion-photo > picture > img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -1238,7 +1247,7 @@ details[open] .faq-plus::after {
   .hero-photo {
     height: 395px;
   }
-  .hero-photo > img {
+  .hero-photo > picture > img {
     object-position: 64% center;
   }
   .hero-photo figcaption {
@@ -1327,7 +1336,7 @@ details[open] .faq-plus::after {
   .occasion-photo {
     min-height: 410px;
   }
-  .occasion-photo > img {
+  .occasion-photo > picture > img {
     object-position: 43% center;
   }
   .occasion-photo figcaption {

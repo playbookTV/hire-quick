@@ -1,5 +1,5 @@
 import { eventInstant } from './booking-flow.js';
-import { splitFee, kobo, PLATFORM_FEE_BPS } from './money.js';
+import { splitFee, kobo, PLATFORM_FEE_BPS, bookingAllocation } from './money.js';
 
 /**
  * Cancellation / no-show / dispute POLICY MATRIX — the single source of truth
@@ -136,7 +136,22 @@ export function disputeWindowOpen(eventDate: Date | string, endTime: string, now
 }
 
 /** Gross allocation is split only after computing the client's exact refund. */
-export function cancellationSettlement(gross: number, outcome: PolicyOutcome) {
+export function cancellationSettlement(gross: number, outcome: PolicyOutcome, staffPay?: number | null) {
+  if (staffPay != null) {
+    // Refund both components at the same percentage, flooring each independently.
+    // Their retained remainders belong to their original recipients.
+    const allocation = bookingAllocation(gross, staffPay);
+    const staff = cancellationAmounts(allocation.payout, outcome);
+    const platform = cancellationAmounts(allocation.fee, outcome);
+    return {
+      refundKobo: staff.refundKobo + platform.refundKobo,
+      usherCompensationKobo: staff.usherCompensationKobo + platform.usherCompensationKobo,
+      processingFeeKobo: 0,
+      platformFeeKobo: platform.usherCompensationKobo,
+      usherPayoutKobo: staff.usherCompensationKobo,
+    };
+  }
+  // Preserve the immutable terms of legacy bookings and cancellation receipts.
   const amounts = cancellationAmounts(gross, outcome);
   const { fee, payout } = splitFee(kobo(amounts.usherCompensationKobo), PLATFORM_FEE_BPS);
   return { ...amounts, platformFeeKobo: fee, usherPayoutKobo: payout };

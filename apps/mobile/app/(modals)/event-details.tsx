@@ -1,7 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Box, Text } from '../../theme/restyle.js';
-import { kobo, splitFee, PLATFORM_FEE_BPS } from '@hq/shared';
 import { StatusPill } from '../../components/StatusPill.js';
 import { Card } from '../../components/Card.js';
 import { KeyValueRow } from '../../components/KeyValueRow.js';
@@ -109,7 +108,6 @@ export default function EventDetails(): React.JSX.Element {
   }
 
   const e = event.data;
-  const estimate = splitFee(kobo(e.budgetPerHead), PLATFORM_FEE_BPS);
   const alreadyApplied = (applications.data ?? []).some(
     (a) => a.event.id === id && a.status !== 'WITHDRAWN',
   );
@@ -163,10 +161,8 @@ export default function EventDetails(): React.JSX.Element {
           </Box>
 
           <Card>
-            <KeyValueRow label="Event budget" value={money(e.budgetPerHead)} />
-            <KeyValueRow label="Commission (15%)" value={`−${money(estimate.fee)}`} />
-            <Box height={1} backgroundColor="borderDefault" marginVertical="200" />
-            <KeyValueRow label="Estimated earnings" value={money(estimate.payout)} emphasize />
+            <KeyValueRow label="Your pay" value={money(e.budgetPerHead)} emphasize />
+            <Text variant="bodySm" color="inkMuted">The client pays the platform fee separately.</Text>
             <Text variant="bodySm" color="inkMuted" marginTop="200">
               Eligible for wallet release from 72 hours after event end, once completed and with no
               open dispute.

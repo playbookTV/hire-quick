@@ -175,6 +175,7 @@ export interface Booking {
   usherId: string;
   status: string;
   amount: number;
+  staffPay?: number | null;
   /** Detail response only; never confuse gross booking amount with net earnings. */
   payment?: {
     grossAmount: number;

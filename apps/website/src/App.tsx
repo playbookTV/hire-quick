@@ -117,7 +117,7 @@ const questions = [
   {
     question: 'What does HireQuick cost?',
     answer:
-      'As an organiser, you pay the agreed booking amount: the budget per person multiplied by the number of staff. The 15% platform commission is deducted from the usher’s allocation, rather than added to your total. Ushers see the fee and their expected earnings before confirming.',
+      'As an organiser, you pay the agreed staff pay plus a 15% platform fee. Each usher receives their full agreed pay. Your checkout shows staff pay, the platform fee and the total before you confirm.',
   },
   {
     question: 'What if my plans change?',
@@ -242,12 +242,20 @@ export function App() {
             <div className="hero-visual">
               <div className="photo-backplate" aria-hidden="true" />
               <figure className="hero-photo">
-                <img
-                  src="/images/event-crew.jpg"
-                  alt="An event host in black and white tailoring, with her team welcoming guests behind her"
-                  width="1536"
-                  height="1024"
-                />
+                <picture>
+                  <source
+                    type="image/webp"
+                    srcSet="/images/event-crew-640.webp 640w, /images/event-crew-960.webp 960w, /images/event-crew-1536.webp 1536w"
+                    sizes="(max-width: 360px) 510px, (max-width: 640px) 593px, (max-width: 850px) 660px, (max-width: 1150px) 728px, (min-width: 1500px) 848px, 767px"
+                  />
+                  <img
+                    src="/images/event-crew.jpg"
+                    fetchPriority="high"
+                    alt="An event host in black and white tailoring, with her team welcoming guests behind her"
+                    width="1536"
+                    height="1024"
+                  />
+                </picture>
                 <figcaption>
                   <span>THE PEOPLE MAKE THE EVENT.</span>
                   <Icon name="arrow" />
@@ -345,13 +353,20 @@ export function App() {
           <section id="occasions" className="occasion-section" aria-labelledby="occasion-heading">
             <div className="container occasion-layout">
               <figure className="occasion-photo">
-                <img
-                  src="/images/event-welcome.jpg"
-                  alt="Event hosts welcoming guests and managing registration at an evening reception"
-                  loading="lazy"
-                  width="1536"
-                  height="1024"
-                />
+                <picture>
+                  <source
+                    type="image/webp"
+                    srcSet="/images/event-welcome-640.webp 640w, /images/event-welcome-960.webp 960w, /images/event-welcome-1536.webp 1536w"
+                    sizes="(max-width: 640px) 615px, (max-width: 850px) 870px, 915px"
+                  />
+                  <img
+                    src="/images/event-welcome.jpg"
+                    alt="Event hosts welcoming guests and managing registration at an evening reception"
+                    loading="lazy"
+                    width="1536"
+                    height="1024"
+                  />
+                </picture>
                 <figcaption>
                   <span>
                     FRONT OF HOUSE.

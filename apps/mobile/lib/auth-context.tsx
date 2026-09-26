@@ -11,7 +11,7 @@ import {
 import { api, revokeRefreshToken, setUnauthorizedHandler } from './client.js';
 import { sessionStore } from './tokens.js';
 import { createAuthSession, type AuthState } from './auth-session.js';
-import { openSupport } from './support.js';
+import { openSupport, setSupportUser } from './support.js';
 import { queryClient, queryKeys } from './query.js';
 import type { Me, AuthResult } from './types.js';
 import { Screen } from '../components/Screen.js';
@@ -35,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }): React.JSX.E
       fetchMe: (signal) => api.get<Me>('/api/me', { signal }),
       revoke: revokeRefreshToken,
       publish: (user) => {
+        setSupportUser(user);
         if (user) queryClient.setQueryData(queryKeys.me, user);
         else queryClient.clear();
       },

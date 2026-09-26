@@ -261,7 +261,9 @@ export default function AwaitingApproval(): React.JSX.Element {
                   <StatusStep
                     state={approved ? 'done' : 'todo'}
                     title="Approved"
-                    subtitle="You can start applying"
+                    subtitle={
+                      approved && !ready ? 'Identity check passed' : 'You can start applying'
+                    }
                   />
                 </Box>
               </Box>

@@ -12,7 +12,8 @@ import { LedgerError } from './ledger/amounts.js';
 
 const amount = z.number().int().min(0).max(MAX_INT32_KOBO);
 const snapshotSchema = z.object({
-  policy: z.literal('CLIENT_CANCEL_V1'),
+  policy: z.enum(['CLIENT_CANCEL_V1', 'CLIENT_CANCEL_V2']),
+  staffPay: amount.optional(),
   clientUserId: z.string().uuid(),
   requestedAt: z.string().datetime(),
   eventStart: z.string().datetime(),
@@ -36,7 +37,13 @@ export function cancellationSnapshot(value: unknown): CancellationSnapshot {
       'INVALID_CANCELLATION',
       'cancellation window does not match its accepted time',
     );
-  const expected = cancellationSettlement(p.grossAmount, policyForCancellation('CLIENT', p.window));
+  if ((p.policy === 'CLIENT_CANCEL_V2') !== (p.staffPay !== undefined))
+    throw new LedgerError('INVALID_CANCELLATION', 'cancellation pricing version is invalid');
+  const expected = cancellationSettlement(
+    p.grossAmount,
+    policyForCancellation('CLIENT', p.window),
+    p.staffPay,
+  );
   for (const key of [
     'refundKobo',
     'usherCompensationKobo',

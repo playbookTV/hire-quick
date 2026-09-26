@@ -1,8 +1,14 @@
 # Paystack account decisions — 21 September 2026
 
+> **26 September pricing update:** fee incidence and cancellation allocation below describe the legacy model. New checkouts use the [client-paid platform fee and proportional refunds](client-paid-fee-policy-2026-09-26.md). Release timing and provider approval requirements remain applicable.
+
 Tracks OVA-166 and the external acceptance gates for OVA-94/95/97/114/134/137. **Status: product settlement rules approved on 21 September 2026; account-specific provider approval and evidence still outstanding.** Public documentation and successful TEST API access do not approve HireQuick's merchant, escrow or held-wallet model.
 
 ## Closure work — 24 September 2026
+
+**26 September legal/provider correction:** Paystack [explicitly lists escrow services as unsupported](https://support.paystack.com/en/articles/2127042). Manual Payouts is therefore not a presumed solution to the conditional-holding model. The support draft now requests eligibility assessment against that restriction. Nigerian legal review must separately classify custody/retained balances and recruitment licensing; provider support approval cannot replace statutory authorization. See the corrected [live-readiness plan](paystack-live-readiness-2026-09-26.md).
+
+**26 September account decision:** the owner selected a separate HireQuick Paystack account. The Ovalay Academy integration below is historical TEST evidence only; its balance, recipients, credentials and account permissions must not be treated as HireQuick launch-account evidence. Provisioning and activation of the new account remain unverified. The [support draft](paystack-account-confirmation-request.md) now describes the separate account, client-paid 15% fee and proportional refunds. The [live-readiness plan](paystack-live-readiness-2026-09-26.md) separates account approval from the required provider-accounting work. No support message has been sent.
 
 The [account-confirmation request](paystack-account-confirmation-request.md) is prepared but has not been sent. Existing written approval/support-case details and named business/account/finance owners have been requested from the owner; none has been supplied in this validation session. OVA-166 remains open pending that evidence.
 

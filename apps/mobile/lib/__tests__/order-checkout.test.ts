@@ -66,3 +66,11 @@ describe('server-backed checkout recovery', () => {
     expect(() => validateOrderRoster(checkout, entries as Booking[])).toThrow('every person');
   });
 });
+
+
+it('restores client-paid fees from saved staff-pay snapshots and rejects a mismatched split', () => {
+  const priced = bookings.map((b) => ({ ...b, staffPay: 10_007, amount: 11_508 }));
+  const order = { ...checkout, amountKobo: 23_016 };
+  expect(validateOrderRoster(order, priced)).toEqual(priced);
+  expect(() => validateOrderRoster(order, priced.map((b) => ({ ...b, staffPay: 10_000 })))).toThrow('every person');
+});

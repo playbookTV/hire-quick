@@ -6,7 +6,7 @@
  * "payment opened" state. Line items come from the accepted applications.
  */
 import { useEffect, useRef, useState } from 'react';
-import type { CheckoutResponse } from '@hq/shared';
+import { priceBooking, kobo, type CheckoutResponse } from '@hq/shared';
 import { createCheckoutScopeFence } from '../../lib/checkout.js';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
@@ -68,16 +68,20 @@ export default function PaymentSummary(): React.JSX.Element {
     ? (orderSummary.data?.bookings ?? []).map((b) => ({
         id: b.id,
         name: b.usher!.displayName!,
-        amount: b.amount,
+        amount: b.staffPay ?? b.amount,
+        fee: b.staffPay == null ? 0 : b.amount - b.staffPay,
       }))
     : chosen.map((a) => ({
         id: a.id,
         name: a.usher.displayName ?? 'Usher',
         amount: ev?.budgetPerHead ?? 0,
+        fee: priceBooking(kobo(ev?.budgetPerHead ?? 0)).fee,
       }));
   const count = lines.length;
-  const total =
-    orderSummary.data?.checkout.amountKobo ?? lines.reduce((sum, line) => sum + line.amount, 0);
+  const subtotal = lines.reduce((sum, line) => sum + line.amount, 0);
+  const platformFee = lines.reduce((sum, line) => sum + line.fee, 0);
+  const legacyOrder = !!orderSummary.data?.bookings.some((b) => b.staffPay == null);
+  const total = orderSummary.data?.checkout.amountKobo ?? subtotal + platformFee;
   const [paying, setPaying] = useState(false);
   const payLock = useRef(false);
   const pending = paying || confirm.isPending || resumeOrder.isPending;
@@ -88,6 +92,14 @@ export default function PaymentSummary(): React.JSX.Element {
 
   const pay = (): void => {
     if (payLock.current || pending) return;
+    if (
+      orderId &&
+      orderSummary.data &&
+      !['CREATED', 'READY'].includes(orderSummary.data.checkout.state)
+    ) {
+      router.replace({ pathname: '/(modals)/funds-held', params: { order: orderId } });
+      return;
+    }
     payLock.current = true;
     setPaying(true);
     const current = fence.capture();
@@ -163,6 +175,10 @@ export default function PaymentSummary(): React.JSX.Element {
             title="Couldn’t load your booking"
             subtitle="We couldn’t confirm the staff and price for this order. Check your connection and try again."
             actionLabel="Try again"
+            secondaryLabel={orderId ? 'Check payment status' : undefined}
+            onSecondary={() =>
+              router.push({ pathname: '/(modals)/funds-held', params: { order: orderId } })
+            }
             onAction={() => {
               if (!order) void saved.refetch();
               if (orderId) void orderSummary.refetch();
@@ -251,7 +267,7 @@ export default function PaymentSummary(): React.JSX.Element {
                 Subtotal · {count} {count === 1 ? 'usher' : 'ushers'}
               </Text>
               <Text variant="labelLg" color="inkStrong">
-                {money(total)}
+                {money(subtotal)}
               </Text>
             </Box>
             <Box flexDirection="row" alignItems="center" justifyContent="space-between">
@@ -259,7 +275,7 @@ export default function PaymentSummary(): React.JSX.Element {
                 Platform fee (15%)
               </Text>
               <Text variant="labelLg" color="inkStrong">
-                Paid by staff
+                {legacyOrder ? 'Included in saved price' : money(platformFee)}
               </Text>
             </Box>
             <Box style={{ width: 100, height: 1 }} backgroundColor="borderDefault" />
@@ -278,8 +294,9 @@ export default function PaymentSummary(): React.JSX.Element {
               </Text>
             </Box>
             <Text variant="bodySm" color="inkMuted">
-              The 15% fee is deducted from each usher’s payout — your total is exactly{' '}
-              {money(total)}.
+              {legacyOrder
+                ? 'This saved order keeps its original pricing.'
+                : 'The 15% platform fee is added to staff pay. Each usher receives their full agreed pay.'}
             </Text>
           </Box>
 
@@ -299,9 +316,13 @@ export default function PaymentSummary(): React.JSX.Element {
             label={
               pending
                 ? 'Checking…'
-                : orderId || saved.data
-                  ? 'Resume saved checkout'
-                  : `Pay ${money(total)}`
+                : orderId &&
+                    orderSummary.data &&
+                    !['CREATED', 'READY'].includes(orderSummary.data.checkout.state)
+                  ? 'View payment status'
+                  : orderId || saved.data
+                    ? 'Resume saved checkout'
+                    : `Pay ${money(total)}`
             }
             disabled={pending || count === 0}
             onPress={pay}

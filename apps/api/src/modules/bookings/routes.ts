@@ -218,7 +218,7 @@ export function bookingsRouter(deps: {
         actor,
         window,
         ...outcome,
-        ...cancellationSettlement(booking.amount, outcome),
+        ...cancellationSettlement(booking.amount, outcome, booking.staffPay),
         gross: booking.amount,
         eligible: booking.status === 'CONFIRMED' && !reserved,
         selfServe: booking.status === 'CONFIRMED' && !reserved,

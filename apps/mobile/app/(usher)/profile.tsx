@@ -14,6 +14,7 @@ import { useAuth } from '../../lib/auth-context.js';
 import { useUsherReviews, useBookings } from '../../lib/hooks.js';
 import { upcomingBookings } from '../../lib/bookings.js';
 import { shortDate } from '../../lib/format.js';
+import { openSupport } from '../../lib/support.js';
 
 export default function UsherProfile(): React.JSX.Element {
   const insets = useSafeAreaInsets();
@@ -136,6 +137,11 @@ export default function UsherProfile(): React.JSX.Element {
                 onPress={() => router.push('/(verification)/awaiting-approval')}
               />
             ) : null}
+            <PreferenceRow
+              icon="help-circle"
+              label="Help & support"
+              onPress={() => void openSupport()}
+            />
             <PreferenceRow
               icon="log-out"
               label="Sign out"

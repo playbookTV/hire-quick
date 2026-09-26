@@ -6,8 +6,7 @@
  */
 import type { MilestoneTier, Prisma } from '@hq/database';
 import {
-  splitFee,
-  PLATFORM_FEE_BPS,
+  bookingAllocation,
   bookingReleaseAt,
   disputeWindowOpen,
   type AttendanceMethod,
@@ -191,6 +190,7 @@ async function preflightHold(
     throw new LedgerError('CHARGE_REFERENCE_MISMATCH', 'charge reference does not match order');
   await assertNoOrderEscrow(tx, order);
   for (const booking of order.bookings) {
+    const expected = bookingAllocation(booking.amount, booking.staffPay);
     if (booking.eventId !== order.eventId)
       throw new LedgerError('ALLOCATION_MISMATCH', 'booking allocation belongs to another event');
     if (expired) {
@@ -205,7 +205,6 @@ async function preflightHold(
       assertBookingTransition(booking.status, 'CONFIRMED');
       if (booking.payment) {
         const payment = booking.payment;
-        const expected = splitFee(booking.amount as never, PLATFORM_FEE_BPS);
         assertPaymentAllocation(booking.amount, payment);
         if (
           payment.escrowStatus !== 'HELD' ||
@@ -230,7 +229,7 @@ async function recordOrderHold(
   confirmBookings: boolean,
 ): Promise<void> {
   for (const booking of order.bookings) {
-    const { fee, payout } = splitFee(booking.amount as never, PLATFORM_FEE_BPS);
+    const { fee, payout } = bookingAllocation(booking.amount, booking.staffPay);
     await appendEscrow(tx, booking.id, 'HOLD', booking.amount, chargeRef);
     await tx.payment.upsert({
       where: { bookingId: booking.id },
@@ -521,6 +520,7 @@ export async function assertCancellationSettlement(
   if (
     b.event.client.userId !== p.clientUserId ||
     b.amount !== p.grossAmount ||
+    (b.staffPay ?? null) !== (p.staffPay ?? null) ||
     b.payment?.escrowStatus !== 'HELD'
   )
     throw new LedgerError('INVALID_CANCELLATION', 'cancellation does not match the held booking');

@@ -12,6 +12,7 @@ import {
   disputeWindowOpen,
   eventInstant,
   kobo,
+  priceBooking,
   cancelWindow,
   policyForCancellation,
   type PolicyOutcome,
@@ -165,6 +166,7 @@ export async function confirmBatch(
           'OVERBOOKED',
           `event needs ${Math.max(0, event.headcount - liveCount)} more staff; you selected ${apps.length}`,
         );
+      const price = priceBooking(kobo(event.budgetPerHead));
       const orderId = randomUUID();
       const reference = `hq-${orderId}`;
       const order = await tx.order.create({
@@ -172,7 +174,7 @@ export async function confirmBatch(
           id: orderId,
           clientId: event.clientId,
           eventId: event.id,
-          grossAmount: event.budgetPerHead * apps.length,
+          grossAmount: price.gross * apps.length,
           status: 'PENDING',
           paystackChargeRef: reference,
           checkout: {
@@ -191,7 +193,8 @@ export async function confirmBatch(
             eventId: event.id,
             usherId: a.usherId,
             orderId: order.id,
-            amount: event.budgetPerHead,
+            amount: price.gross,
+            staffPay: price.payout,
             status: 'PENDING_PAYMENT',
           },
         });
