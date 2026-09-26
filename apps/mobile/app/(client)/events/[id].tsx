@@ -218,7 +218,7 @@ export default function EventDetail(): React.JSX.Element {
               onPress={() => router.push({ pathname: '/(modals)/event-day', params: { id } })}
             />
           ) : null}
-          <ActionChip label="Message all" onPress={() => router.push('/(client)/messages')} />
+          <ActionChip label="Messages" onPress={() => router.push('/(client)/messages')} />
           {eventBookings.length === 1 && firstBooking ? (
             <ActionChip
               label="Cancel booking"

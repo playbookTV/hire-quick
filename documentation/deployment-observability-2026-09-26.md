@@ -4,9 +4,11 @@ API, admin and worker application deployments are **SUCCESS** on Railway. These 
 
 | Service | Deployment |
 | --- | --- |
-| API (`prolific-love`) | `56da2342-9c65-47bb-b34b-06aa6852ce1c` |
+| API (`prolific-love`) | `6693f714-0a33-481a-9ad2-ae36f585cf60` |
 | Worker (`hirequick-worker`) | `9e641bbb-e0d4-49af-8609-677ee497979c` |
 | Admin (`hirequick-admin`) | `da277167-e4da-4c01-b9c7-6af147dca0a7` |
+
+The initial API deployment was `56da2342-9c65-47bb-b34b-06aa6852ce1c`. A subsequent [admin-login networking fix](admin-login-networking-2026-09-26.md) activated static outbound IPs with the same application image; the latest API deployment above is also successful.
 
 [Open admin observability](https://hirequick-admin-production.up.railway.app/observability).
 
@@ -28,13 +30,27 @@ The full API suite is **not green**: 871 passed, 22 failed, one skipped across 9
 
 ## Mobile previews
 
-Fresh builds were submitted after Railway deployment succeeded:
+Initial Android build 10 failed because the Sentry upload executable was not available at the app-local path expected by Gradle. Initial iOS build 4 failed with duplicate Sentry native symbols from CocoaPods and Smile ID's Swift package dependency. Neither failed build is an installable release.
 
-- Android preview build 10: [Expo build](https://expo.dev/accounts/ovalay-studios/projects/hirequick/builds/ef54e749-8394-44c9-95c9-2c747367cc95).
-- iOS preview build 4: [Expo build](https://expo.dev/accounts/ovalay-studios/projects/hirequick/builds/624148f2-8653-4455-942e-0f8cd98c0c32).
+Corrections are saved in the working tree and a new frozen mobile snapshot, `/private/tmp/hq-native-monitoring-fix-20260926`:
 
-Both use the preview environment and deployed API origin. Android reuses its existing keystore. iOS reuses the existing distribution certificate and has a new ad hoc profile containing the registered iPhone. These are preview builds, with no store submission. Completion, source-map upload and artifact validation are pending.
+- `@sentry/cli` 2.58.4 is a direct mobile development dependency.
+- A local Swift package retains Smile ID's exact verified Bridge/Vision Face binaries and Kamera dependency, omitting only its optional Sentry adapter. The config plugin replaces the package reference in both native projects after pod installation.
+- Smile ID's documented `enableCrashReporting` option is false because HireQuick owns Sentry and its privacy filter.
+
+Mobile typecheck/lint, Swift manifest validation, native project generation and the Ruby hook's idempotent app/Pods reference conversion passed. All 477 archive files match the mobile manifest; generated iOS projects and private files are excluded.
+
+Completed replacement preview builds (both **FINISHED**):
+
+- Android build 11: [Download APK](https://expo.dev/artifacts/eas/CljW5KYdclYsc8SwfFxJK-mxSxrgsliY1C91T5je3-E.apk) · [Expo build](https://expo.dev/accounts/ovalay-studios/projects/hirequick/builds/2f3be311-4fa6-4b17-a9f4-e8bcb7a677d0).
+- iOS build 5: [Expo build](https://expo.dev/accounts/ovalay-studios/projects/hirequick/builds/32e27886-fc67-4e66-98e6-e7146384f053).
+
+Both use the preview environment and deployed API origin. Android reuses its existing keystore. iOS reuses the existing distribution certificate and has an ad hoc profile containing the registered iPhone. No store submission was performed. Both downloaded archives passed integrity and embedded-configuration checks. Android's signer certificate matches the previous preview. The iOS profile signature and registered-device inclusion were verified. Both bundles contain the deployed API origin and expected Sentry project, with native Sentry present. No checked private local credentials were found in either JavaScript bundle.
+
+EAS logs confirm source-map uploads for `com.hirequick.mobile@0.0.1+11` and `com.ovalay.hirequick@0.0.1+5`; iOS also uploaded 34 debug information files. An installed-device crash/stack-resolution test has not been performed.
 
 ## Evidence
 
 [Release manifest](validation-evidence/2026-09-25/observability-release/release-manifest.json) · [Validation](validation-evidence/2026-09-25/observability-release/validation.json) · [Railway status](validation-evidence/2026-09-25/observability-release/railway-status.json) · [API runtime](validation-evidence/2026-09-25/observability-release/prolific-love-runtime.json) · [Worker runtime](validation-evidence/2026-09-25/observability-release/hirequick-worker-runtime.json) · [HTTP checks](validation-evidence/2026-09-25/observability-release/http-checks.json).
+
+Mobile evidence: [Android artifact](validation-evidence/2026-09-25/observability-release/android-artifact.json) · [iOS artifact](validation-evidence/2026-09-25/observability-release/ios-artifact.json) · [Sentry uploads](validation-evidence/2026-09-25/observability-release/mobile-sentry-uploads.json) · [Native validation](validation-evidence/2026-09-25/observability-release/mobile-fix-validation.json).

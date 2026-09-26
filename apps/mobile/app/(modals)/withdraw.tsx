@@ -31,12 +31,14 @@ import { shadowMd } from '../../theme/shadows.js';
 import { fonts } from '../../theme/fonts.js';
 import {
   useWallet,
+  useBanks,
   useBankAccounts,
   useAddBankAccount,
   useWithdraw,
   useResolveAccount,
 } from '../../lib/hooks.js';
 import { hapticSuccess } from '../../lib/haptics.js';
+import { parseNairaInput, nairaInput } from '../../lib/amount-input.js';
 import { money } from '../../lib/format.js';
 import type { Bank, BankAccount } from '../../lib/types.js';
 import type { WithdrawalResponse } from '@hq/shared';
@@ -55,6 +57,10 @@ export default function Withdraw(): React.JSX.Element {
   const insets = useSafeAreaInsets();
   const wallet = useWallet();
   const accounts = useBankAccounts();
+  const banks = useBanks();
+  const [addingAccount, setAddingAccount] = useState(false);
+  const bankName = (code: string) =>
+    banks.data?.find((b) => b.code === code)?.name ?? `Bank ${code}`;
   const addAccount = useAddBankAccount();
   const withdraw = useWithdraw();
   const resolve = useResolveAccount();
@@ -69,7 +75,7 @@ export default function Withdraw(): React.JSX.Element {
   useEffect(() => {
     if (!amountSeeded.current && wallet.data) {
       amountSeeded.current = true;
-      setAmount(String(Math.floor(available / 100)));
+      setAmount(nairaInput(available));
     }
   }, [wallet.data, available]);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -111,13 +117,21 @@ export default function Withdraw(): React.JSX.Element {
     }
     setPendingIntent({ amountKobo: input.amountKobo, account });
     setSelected(input.bankAccountId);
-    setAmount(String(input.amountKobo / 100));
+    setAmount(nairaInput(input.amountKobo));
     setStep('review');
   }, [withdraw.savedAttempt, withdraw.isRestoring, accounts.data, step]);
 
-  const amountKobo = Math.round(Number(amount) * 100);
-  const amountValid = Number.isFinite(amountKobo) && amountKobo > 0 && amountKobo <= available;
-  const amountError = getAmountError(amount, amountKobo, amountValid, available);
+  const parsedAmount = parseNairaInput(amount);
+  const amountKobo = parsedAmount ?? 0;
+  const amountValid =
+    parsedAmount !== null &&
+    Number.isFinite(amountKobo) &&
+    amountKobo > 0 &&
+    amountKobo <= available;
+  const amountError =
+    parsedAmount === null && amount.trim()
+      ? 'Enter naira and up to two decimal places, for example 42.51.'
+      : getAmountError(amount, amountKobo, amountValid, available);
 
   // Each input revision owns its result. Incomplete edits invalidate in-flight work.
   useEffect(() => {
@@ -150,7 +164,9 @@ export default function Withdraw(): React.JSX.Element {
     addAccount.mutate(
       { bankCode: bank.code, accountNumber },
       {
-        onSuccess: () => {
+        onSuccess: (account) => {
+          setSelected(account.id);
+          setAddingAccount(false);
           setBank(null);
           setAccountNumber('');
           setResolvedName(null);
@@ -331,7 +347,7 @@ export default function Withdraw(): React.JSX.Element {
               {reviewAccount.accountNumber ? (
                 <ReceiptRow
                   label="Account"
-                  value={`${reviewAccount.bankCode} ••${reviewAccount.accountNumber.slice(-4)}`}
+                  value={`${bankName(reviewAccount.bankCode)} ••${reviewAccount.accountNumber.slice(-4)}`}
                 />
               ) : null}
               <Box height={1} backgroundColor="borderDefault" />
@@ -432,29 +448,35 @@ export default function Withdraw(): React.JSX.Element {
 
           {accounts.isLoading ? (
             <Loading />
-          ) : list.length > 0 ? (
+          ) : list.length > 0 && !addingAccount ? (
             <Box style={{ gap: 12 }}>
               <Text variant="headingS">To account</Text>
               {list.map((a) => (
                 <OptionCard
                   key={a.id}
                   title={a.accountName}
-                  subtitle={`${a.bankCode} · ••${a.accountNumber.slice(-4)}`}
+                  subtitle={`${bankName(a.bankCode)} · ••${a.accountNumber.slice(-4)}`}
                   selected={activeId === a.id}
                   onPress={() => setSelected(a.id)}
                 />
               ))}
+              <Button
+                label="Add another account"
+                variant="ghost"
+                onPress={() => setAddingAccount(true)}
+              />
               <Field label="Amount (₦)" error={amountError ?? undefined}>
                 <Input
                   value={amount}
                   onChangeText={setAmount}
-                  keyboardType="number-pad"
+                  error={!!amountError}
+                  keyboardType="decimal-pad"
                   placeholder="0"
                 />
               </Field>
               {available > 0 ? (
                 <Pressable
-                  onPress={() => setAmount(String(Math.floor(available / 100)))}
+                  onPress={() => setAmount(nairaInput(available))}
                   accessibilityRole="button"
                   accessibilityLabel={`Withdraw all, ${money(available)}`}
                   hitSlop={8}
@@ -478,6 +500,14 @@ export default function Withdraw(): React.JSX.Element {
           ) : (
             <Box style={{ gap: 12 }}>
               <Text variant="headingS">Add a bank account</Text>
+              {list.length > 0 ? (
+                <Button
+                  label="Use a saved account"
+                  variant="ghost"
+                  disabled={addAccount.isPending}
+                  onPress={() => setAddingAccount(false)}
+                />
+              ) : null}
 
               <Field label="Bank">
                 <Pressable

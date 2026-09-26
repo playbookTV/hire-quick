@@ -6,18 +6,14 @@ import { Box, Text } from '../../theme/restyle.js';
 import { kobo, splitFee, PLATFORM_FEE_BPS } from '@hq/shared';
 import { screenTokens } from '../../theme/token-manager.js';
 import { ScreenHeading } from '../../components/ScreenHeading.js';
+import { Banner } from '../../components/Banner.js';
 import { Button } from '../../components/Button.js';
 import { Segmented } from '../../components/Segmented.js';
 import { JobCard } from '../../components/JobCard.js';
 import { EmptyState } from '../../components/EmptyState.js';
 import { SkeletonCard } from '../../components/Skeleton.js';
-import {
-  useEvents,
-  useMyApplications,
-  useSavedJobs,
-  useSaveJob,
-  useUnsaveJob,
-} from '../../lib/hooks.js';
+import { useEvents, useMyApplications, useSavedJobs } from '../../lib/hooks.js';
+import { useJobBookmark } from '../../lib/use-job-bookmark.js';
 import { money, dateTime } from '../../lib/format.js';
 import type { ApplicationStatus, EventResource } from '../../lib/types.js';
 
@@ -47,8 +43,7 @@ export default function Jobs(): React.JSX.Element {
   const events = useEvents();
   const applied = useMyApplications();
   const saved = useSavedJobs();
-  const saveJob = useSaveJob();
-  const unsaveJob = useUnsaveJob();
+  const bookmark = useJobBookmark();
 
   const open = (id: string): void =>
     router.push({ pathname: '/(modals)/event-details', params: { id } });
@@ -70,6 +65,7 @@ export default function Jobs(): React.JSX.Element {
       badge?: string;
       badgeTone?: 'gold' | 'emerald' | 'danger' | 'muted';
       bookingId?: string;
+      bookingStatus?: string;
     },
   ): React.JSX.Element => {
     const isSaved = savedIds.has(e.id);
@@ -84,8 +80,13 @@ export default function Jobs(): React.JSX.Element {
         dress={e.dressCode ?? e.category}
         badge={opts?.badge}
         badgeTone={opts?.badgeTone}
+        bookingStatus={opts?.bookingStatus}
+        saving={bookmark.pending.has(e.id)}
+        saveDisabled={saved.isLoading || saved.isError}
         saved={isSaved}
-        onToggleSave={() => (isSaved ? unsaveJob.mutate(e.id) : saveJob.mutate(e.id))}
+        onToggleSave={() => {
+          void bookmark.toggle(e.id, isSaved);
+        }}
         actionLabel="View"
         onAction={() =>
           opts?.bookingId
@@ -120,6 +121,21 @@ export default function Jobs(): React.JSX.Element {
         refreshControl={<RefreshControl refreshing={active.isFetching} onRefresh={onRefresh} />}
       >
         <ScreenHeading title="Jobs" />
+        {saved.isError && tab !== 'saved' ? (
+          <Box style={{ gap: 8 }}>
+            <Banner
+              tone="warning"
+              message="Saved jobs couldn’t load. Refresh them before changing a bookmark."
+            />
+            <Button
+              label="Retry saved jobs"
+              variant="ghost"
+              onPress={() => {
+                void saved.refetch();
+              }}
+            />
+          </Box>
+        ) : null}
         <Segmented options={TABS} value={tab} onChange={setTab} />
         <Box flexDirection="row" alignItems="center" justifyContent="space-between" gap="200">
           <Text variant="bodySm" color="inkMuted">
@@ -160,7 +176,7 @@ export default function Jobs(): React.JSX.Element {
               <EmptyState
                 icon="search"
                 title="No open jobs right now"
-                subtitle="New jobs are posted across Lagos every day — check back soon."
+                subtitle="New opportunities will appear here when they’re posted. Check back soon."
                 actionLabel="Refresh"
                 onAction={() => {
                   void events.refetch();
@@ -203,9 +219,10 @@ export default function Jobs(): React.JSX.Element {
                         ? 'Booked'
                         : a.booking.status.toLowerCase().replaceAll('_', ' ')
                     : b.label,
-                  badgeTone:
-                    a.booking && a.booking.status !== 'PENDING_PAYMENT' ? 'emerald' : b.tone,
-                  ...(a.booking ? { bookingId: a.booking.id } : {}),
+                  badgeTone: b.tone,
+                  ...(a.booking
+                    ? { bookingId: a.booking.id, bookingStatus: a.booking.status }
+                    : {}),
                 });
               })}
             </Box>

@@ -3,10 +3,11 @@
  * gold status badge, a "verification in review" message, a Submitted → Under
  * review → Approved progress list, and a ghost CTA to browse jobs meanwhile.
  */
-import { useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, Box, Text } from '../../theme/restyle.js';
+import { Banner } from '../../components/Banner.js';
 import { Button } from '../../components/Button.js';
 import { IconCircle } from '../../components/IconCircle.js';
 import { Icon } from '../../components/Icon.js';
@@ -109,9 +110,39 @@ export default function AwaitingApproval(): React.JSX.Element {
 
   const approved = latest?.status === 'APPROVED';
   const needsReview = ['attention', 'error'].includes(latest?.govLookup?.providerStatus ?? '');
+  const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const syncingRef = useRef(false);
+  const mounted = useRef(true);
   useEffect(() => {
-    if (approved && user?.usher?.verificationStatus !== 'VERIFIED') void refreshMe();
-  }, [approved, user?.usher?.verificationStatus, refreshMe]);
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  const ready = approved && user?.usher?.verificationStatus === 'VERIFIED';
+  const syncProfile = useCallback(async () => {
+    if (syncingRef.current) return;
+    syncingRef.current = true;
+    setSyncing(true);
+    setSyncError(null);
+    try {
+      const updated = await refreshMe();
+      if (mounted.current && updated?.usher?.verificationStatus !== 'VERIFIED')
+        setSyncError(
+          'Your identity is approved, but we couldn’t update your account. Check your connection and try again.',
+        );
+    } catch {
+      if (mounted.current)
+        setSyncError('We couldn’t update your account. Check your connection and try again.');
+    } finally {
+      syncingRef.current = false;
+      if (mounted.current) setSyncing(false);
+    }
+  }, [refreshMe]);
+  useEffect(() => {
+    if (approved && !ready) void syncProfile();
+  }, [approved, ready, syncProfile]);
 
   return (
     <Box flex={1} backgroundColor="bgCanvas" style={{ paddingTop: insets.top }}>
@@ -157,13 +188,17 @@ export default function AwaitingApproval(): React.JSX.Element {
                 />
               )}
               <Button
-                label={verifications.isFetching ? 'Checking…' : 'Check latest status'}
+                label={verifications.isFetching || syncing ? 'Checking…' : 'Check latest status'}
                 variant="ghost"
-                disabled={verifications.isFetching}
+                disabled={verifications.isFetching || syncing}
                 onPress={() => {
-                  void verifications.refetch();
+                  void verifications.refetch().then((result) => {
+                    if (mounted.current && result.data?.[0]?.status === 'APPROVED')
+                      void syncProfile();
+                  });
                 }}
               />
+              {syncError ? <Banner tone="warning" message={syncError} /> : null}
               <Box style={{ paddingHorizontal: 24, paddingTop: 8 }}>
                 <StepIndicator
                   total={5}
@@ -185,14 +220,18 @@ export default function AwaitingApproval(): React.JSX.Element {
                 />
                 <Text variant="h1" style={{ textAlign: 'center' }}>
                   {approved
-                    ? 'You’re verified'
+                    ? ready
+                      ? 'You’re verified'
+                      : 'Identity approved'
                     : needsReview
                       ? 'Your identity check needs review'
                       : 'Verification in progress'}
                 </Text>
                 <Text variant="body" color="inkMuted" style={{ textAlign: 'center' }}>
                   {approved
-                    ? 'You can now apply to jobs and get paid into your wallet.'
+                    ? ready
+                      ? 'You can now apply to jobs and earn into your wallet.'
+                      : 'We’re updating your account so you can start applying. If the update fails, check the latest status to retry.'
                     : needsReview
                       ? 'Your Smile ID check needs a closer look. Our team can help you complete verification.'
                       : 'We’re waiting for your identity check to finish. If you closed the camera before submitting, return to verification to complete it.'}
@@ -217,7 +256,7 @@ export default function AwaitingApproval(): React.JSX.Element {
                   <StatusStep
                     state={approved ? 'done' : 'active'}
                     title="Under review"
-                    subtitle="Our team is checking"
+                    subtitle={approved ? 'Review complete' : 'Our team is checking'}
                   />
                   <StatusStep
                     state={approved ? 'done' : 'todo'}
@@ -232,8 +271,8 @@ export default function AwaitingApproval(): React.JSX.Element {
               style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: insets.bottom + 16 }}
             >
               <Button
-                label={approved ? 'Start applying' : 'Browse jobs while you wait'}
-                variant={approved ? 'primary' : 'ghost'}
+                label={ready ? 'Start applying' : 'Browse jobs while you wait'}
+                variant={ready ? 'primary' : 'ghost'}
                 onPress={() => router.replace('/(usher)/jobs')}
               />
             </Box>

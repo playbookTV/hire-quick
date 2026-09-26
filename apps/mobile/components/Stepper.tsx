@@ -1,11 +1,10 @@
 /**
- * Stepper — matches Figma `Stepper` (152:92): − value + . Round 48px buttons with
- * a 1.5px border/strong ring and emerald icons; value is Heading/M (Fraunces
- * 22/28), centred and flexible. Clamps to [min, max].
+ * Stepper — round 48px controls with stable numeric alignment. Clamps to [min, max].
  */
 import { Pressable } from 'react-native';
 import { useTheme, Box, Text } from '../theme/restyle.js';
 import { Icon } from './Icon.js';
+import { numericTypography } from '../theme/token-manager.js';
 
 interface StepperProps {
   value: number;
@@ -57,7 +56,7 @@ export function Stepper({
   return (
     <Box flexDirection="row" alignItems="center" style={{ gap: 16 }}>
       {btn(dec, 'minus', value <= min)}
-      <Text variant="h2" style={{ flex: 1, textAlign: 'center' }}>
+      <Text variant="h2" style={{ flex: 1, textAlign: 'center', ...numericTypography }}>
         {value}
       </Text>
       {btn(inc, 'plus', value >= max)}

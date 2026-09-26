@@ -14,6 +14,7 @@ import { EmptyState } from '../../components/EmptyState.js';
 import { EarningsCard } from '../../components/EarningsCard.js';
 import { useAuth } from '../../lib/auth-context.js';
 import { useWallet, useWalletActivity, useBookings } from '../../lib/hooks.js';
+import { heldFundsCopy } from '../../lib/payment-copy.js';
 import { money, signedMoney } from '../../lib/format.js';
 
 export default function Wallet(): React.JSX.Element {
@@ -89,7 +90,7 @@ export default function Wallet(): React.JSX.Element {
                       </Box>
                     </Box>
                     <Text variant="bodySm" color="inkMuted">
-                      After completion and event end + 72h, if undisputed.
+                      {heldFundsCopy}
                     </Text>
                   </Box>
                 </Pressable>

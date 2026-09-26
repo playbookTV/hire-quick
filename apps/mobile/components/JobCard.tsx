@@ -15,6 +15,9 @@ interface JobCardProps {
   dress?: string;
   rating?: string;
   badge?: string;
+  bookingStatus?: string;
+  saving?: boolean;
+  saveDisabled?: boolean;
   badgeTone?: BadgeTone;
   saved?: boolean;
   onToggleSave?: () => void;
@@ -30,6 +33,9 @@ export function JobCard({
   distance,
   dress,
   badge,
+  bookingStatus,
+  saving = false,
+  saveDisabled = false,
   badgeTone = 'muted',
   saved,
   onToggleSave,
@@ -69,13 +75,14 @@ export function JobCard({
           {badge ? (
             <StatusPill
               status={
-                badgeTone === 'emerald'
+                bookingStatus ??
+                (badgeTone === 'emerald'
                   ? 'CONFIRMED'
                   : badgeTone === 'gold'
                     ? 'PENDING_PAYMENT'
                     : badgeTone === 'danger'
                       ? 'NO_SHOW'
-                      : ''
+                      : '')
               }
               label={badge}
             />
@@ -85,9 +92,16 @@ export function JobCard({
       {onToggleSave ? (
         <Pressable
           onPress={onToggleSave}
+          disabled={saving || saveDisabled}
           accessibilityRole="button"
-          accessibilityState={{ selected: !!saved }}
-          accessibilityLabel={saved ? `Unsave ${title}` : `Save ${title}`}
+          accessibilityState={{ selected: !!saved, busy: saving, disabled: saving || saveDisabled }}
+          accessibilityLabel={
+            saving
+              ? `Updating saved status for ${title}`
+              : saved
+                ? `Unsave ${title}`
+                : `Save ${title}`
+          }
           style={{
             position: 'absolute',
             top: 4,
@@ -98,7 +112,11 @@ export function JobCard({
             justifyContent: 'center',
           }}
         >
-          <Icon name="bookmark" size={19} color={saved ? 'brandAccentText' : 'inkMuted'} />
+          <Icon
+            name={saving ? 'loader' : 'bookmark'}
+            size={19}
+            color={saved ? 'brandAccentText' : 'inkMuted'}
+          />
         </Pressable>
       ) : null}
       {!onPress && onAction ? (

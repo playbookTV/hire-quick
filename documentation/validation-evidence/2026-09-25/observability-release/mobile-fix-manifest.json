@@ -8,7 +8,8 @@
     "pnpm-lock.yaml",
     "apps/mobile/plugins/with-smileid-host-sentry.js",
     "apps/mobile/native/smileid/Package.swift",
-    "apps/mobile/native/smileid/Sources/UseSmileIDKameraSupport/UseSmileIDKameraSupport.swift"
+    "apps/mobile/native/smileid/Sources/UseSmileIDKameraSupport/UseSmileIDKameraSupport.swift",
+    "eslint.config.mjs"
   ],
   "files": {
     ".dockerignore": "edd622101f9dab3b8f96a934fe6a9802ba2bc3797dd98ff9bd9d5c498d83dec7",
@@ -427,7 +428,7 @@
     "apps/mobile/native/smileid/Package.swift": "c7228fee8742927107e5d2bffeede45aab62ac51e550e51d4fede45bc52b23a4",
     "apps/mobile/native/smileid/Sources/UseSmileIDKameraSupport/UseSmileIDKameraSupport.swift": "b0bf4f7c4f8af117a3e97f0bcb28179ce754926b76dbaca688fea5238806138b",
     "apps/mobile/package.json": "e8ec8a09aebde1b01710fcc67f3772c3864aa03af2e26801b543489c538cb6ae",
-    "apps/mobile/plugins/with-smileid-host-sentry.js": "761c44895ff3c39d0a01a868b2906c05f7df6b5856327f86a6bdff44b1e9eea5",
+    "apps/mobile/plugins/with-smileid-host-sentry.js": "cdcac03c7789df012c7689e5cc5dfd7f371bea402c3db9b00ddde919b1914184",
     "apps/mobile/theme/figma-tokens.json": "f3fddcf9757e3a2271e3f797129459addbb8318970b2083b18b891a281128b11",
     "apps/mobile/theme/fonts.ts": "83bf0b546ab157beb468063c99cb303580d52810acfed2ee1fe2035c8b9ec312",
     "apps/mobile/theme/index.ts": "b712bf5124371c91f27cd3abb7dd10f7c1a7eecdbd7d6d75966fa797d60921b7",
@@ -440,7 +441,7 @@
     "apps/mobile/tsconfig.json": "e5934f6e2a952e38c06c12e2606d64f0e3c4c4d5d5e44e5d515c9d9050d1b486",
     "apps/mobile/turbo.json": "39d3d44fbfb94e434a105856fe6cea67d2d131e40d67b12f5ac398997a01a2be",
     "apps/mobile/vitest.config.ts": "096e8020b2f3c04ee9f03cb30c499e56f33e34b2e92e5935f1fc0a87a9417fde",
-    "eslint.config.mjs": "96614bebcb3c43cac8ed587bc3f988f2fbf7f37d2f4e3bb126916bbe18d4b09a",
+    "eslint.config.mjs": "0deaa8fedce4e25e560440450b0135601510564e174211a4c0b7a4ec98ccb7ad",
     "eslint.tests.config.mjs": "fad1cac86952d33651b5c3311cff7259c7815b3d552bfc8710840337087c85d4",
     "package.json": "b76ef78990948f47f5f065b56d546c937ea5027bc15327377e2074d95d1491ab",
     "packages/config/eslint.config.mjs": "3ff980be54ee00513804c863b6968a09b61f6d5df5a54f75ae93567d4ea97e75",

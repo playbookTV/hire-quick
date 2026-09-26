@@ -1,0 +1,15 @@
+{
+  "id": "624148f2-8653-4455-942e-0f8cd98c0c32",
+  "status": "ERRORED",
+  "platform": "IOS",
+  "distribution": "INTERNAL",
+  "buildProfile": "preview",
+  "appVersion": "0.0.1",
+  "appBuildVersion": "4",
+  "createdAt": "2026-09-26T07:04:34.537Z",
+  "completedAt": "2026-09-26T07:11:42.647Z",
+  "error": {
+    "errorCode": "XCODE_BUILD_ERROR",
+    "message": "The \"Run fastlane\" step failed because of an error in the Xcode build process. We automatically detected following errors in your Xcode build logs:\n- linker command failed with exit code 1 (use -v to see invocation)\nRefer to \"Xcode Logs\" below for additional, more detailed logs."
+  }
+}

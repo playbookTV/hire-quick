@@ -183,7 +183,7 @@ export default function BookingDetails(): React.JSX.Element {
                   onPress={() =>
                     router.push({
                       pathname: '/(modals)/payment-summary',
-                      params: { id: b.eventId },
+                      params: { id: b.eventId, order: b.orderId ?? '' },
                     })
                   }
                 />

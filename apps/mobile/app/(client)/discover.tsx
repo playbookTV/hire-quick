@@ -110,7 +110,9 @@ export default function Discover(): React.JSX.Element {
           }}
         />
         <Pressable
-          onPress={() => router.push('/(modals)/filters')}
+          onPress={() =>
+            router.push({ pathname: '/(modals)/filters', params: { query: query.trim() } })
+          }
           style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
           accessibilityRole="button"
           accessibilityLabel={filterCount > 0 ? `Filters, ${filterCount} applied` : 'Filters'}
@@ -167,7 +169,7 @@ export default function Discover(): React.JSX.Element {
           }
         />
         <Chip
-          label="4.5+"
+          label={`${filters.minRating ?? 4.5}+`}
           selected={!!filters.minRating}
           onPress={() =>
             setDiscoverFilters({ ...filters, minRating: filters.minRating ? undefined : 4.5 })
@@ -190,7 +192,9 @@ export default function Discover(): React.JSX.Element {
               : `${data.length} verified usher${data.length === 1 ? '' : 's'}`}
         </Text>
         <Pressable
-          onPress={() => router.push('/(modals)/filters')}
+          onPress={() =>
+            router.push({ pathname: '/(modals)/filters', params: { query: query.trim() } })
+          }
           accessibilityRole="button"
           accessibilityLabel="Open discovery filters"
           style={{ minHeight: 44, justifyContent: 'center' }}
@@ -250,9 +254,21 @@ export default function Discover(): React.JSX.Element {
               }}
             />
           ) : (
-            <Text variant="bodySm" color="inkMuted">
-              No ushers match your search yet.
-            </Text>
+            <EmptyState
+              icon="search"
+              title={query.trim() || filterCount ? 'No matching ushers' : 'No ushers available yet'}
+              subtitle={
+                query.trim() || filterCount
+                  ? 'Try a different search or loosen your filters.'
+                  : 'Verified ushers will appear here when they become available.'
+              }
+              actionLabel={
+                query.trim() ? 'Clear search' : filterCount ? 'Reset filters' : undefined
+              }
+              onAction={() => (query.trim() ? setQuery('') : setDiscoverFilters({}))}
+              secondaryLabel={query.trim() && filterCount ? 'Reset filters' : undefined}
+              onSecondary={() => setDiscoverFilters({})}
+            />
           )
         }
         contentContainerStyle={{

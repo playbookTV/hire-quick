@@ -3,6 +3,7 @@ import { useState, forwardRef } from 'react';
 import { TextInput, View, Text, type TextInputProps } from 'react-native';
 import { useTheme } from '../theme/restyle.js';
 import { Icon, type IconName } from './Icon.js';
+import { controlTokens } from '../theme/token-manager.js';
 
 export interface InputProps extends Omit<TextInputProps, 'style'> {
   leftIcon?: IconName;
@@ -18,6 +19,8 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
 ) {
   const theme = useTheme();
   const [focused, setFocused] = useState(false);
+  const borderWidth = focused || error ? controlTokens.activeBorder : controlTokens.border;
+  const borderInset = borderWidth - controlTokens.border;
 
   const borderColor = error
     ? theme.colors.statusDanger
@@ -33,10 +36,10 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
         gap: theme.spacing['300'],
         minHeight: variant === 'code' ? 64 : 52,
         opacity: props.editable === false ? 0.5 : 1,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
+        paddingHorizontal: theme.spacing['400'] - borderInset,
+        paddingVertical: theme.spacing['300'] - borderInset,
         borderRadius: theme.borderRadii.md,
-        borderWidth: focused || error ? 2 : 1.5,
+        borderWidth,
         borderColor,
         backgroundColor: theme.colors.bgSurface,
       }}

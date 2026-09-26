@@ -6,8 +6,8 @@
  * designed, reassuring state rather than a silent screen or an OS alert.
  *
  *   CONFIRMED      → enter code  ("ask the host for your code")
- *   CHECKED_IN     → checked in  ("₦X releases after the event")
- *   COMPLETED/PAID → paid        ("₦X is in your wallet")
+ *   CHECKED_IN     → attendance confirmed; funds remain held
+ *   COMPLETED → held until eligible; PAID → credited to wallet
  */
 import { useState } from 'react';
 import { TextInput } from 'react-native';
@@ -23,6 +23,7 @@ import { shadowMd } from '../../theme/shadows.js';
 import { fonts } from '../../theme/fonts.js';
 import { useBooking, useVerifyCheckin } from '../../lib/hooks.js';
 import { hapticSuccess } from '../../lib/haptics.js';
+import { heldFundsCopy, walletReleaseCopy } from '../../lib/payment-copy.js';
 import { money, formatEventDate, formatTimeRange } from '../../lib/format.js';
 import type { Booking } from '../../lib/types.js';
 
@@ -142,8 +143,8 @@ function CheckInBody({ booking }: Readonly<{ booking: Booking }>): React.JSX.Ele
           >
             <Icon name="shield" size={18} color="brandEmerald" />
             <Text variant="bodySm" color="brandEmerald" style={{ flex: 1 }}>
-              {pay ? `Your payout after the platform fee is ${pay}. ` : ''}Funds stay held until
-              attendance is recorded and the booking is completed.
+              {pay ? `Your payout after the platform fee is ${pay}. ` : ''}
+              {heldFundsCopy}
             </Text>
           </Box>
         </Box>
@@ -152,11 +153,7 @@ function CheckInBody({ booking }: Readonly<{ booking: Booking }>): React.JSX.Ele
           tone="success"
           icon="check"
           title="You’re checked in"
-          body={
-            pay
-              ? `Your payout after the platform fee is ${pay}. It will be released when the booking is completed after the event.`
-              : 'Your attendance is recorded. Check your wallet for your payout once the booking is completed.'
-          }
+          body={`Your attendance is recorded. ${heldFundsCopy} ${walletReleaseCopy}`}
           amountLabel="YOUR PAY"
           amount={pay ?? undefined}
           primary={{ label: 'Done', onPress: () => router.back() }}
@@ -169,7 +166,7 @@ function CheckInBody({ booking }: Readonly<{ booking: Booking }>): React.JSX.Ele
           body={
             released && pay
               ? `Your ${pay} payout after the platform fee has been released to your wallet.`
-              : 'Check your wallet for the latest payout status.'
+              : `${heldFundsCopy} ${walletReleaseCopy}`
           }
           amountLabel={released ? 'EARNED' : 'EXPECTED PAYOUT'}
           amount={pay ?? undefined}

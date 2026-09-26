@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { TextInput, type TextInputProps } from 'react-native';
 import { useTheme } from '../theme/restyle.js';
+import { controlTokens } from '../theme/token-manager.js';
 
 export interface TextAreaProps extends Omit<TextInputProps, 'style' | 'multiline'> {
   error?: boolean;
@@ -17,6 +18,7 @@ export function TextArea({
 }: TextAreaProps): React.JSX.Element {
   const theme = useTheme();
   const [focused, setFocused] = useState(false);
+  const borderWidth = focused || error ? controlTokens.activeBorder : controlTokens.border;
 
   const borderColor = error
     ? theme.colors.statusDanger
@@ -39,9 +41,10 @@ export function TextArea({
       }}
       style={{
         minHeight,
-        padding: 16,
+        padding: theme.spacing['400'] - (borderWidth - controlTokens.border),
         borderRadius: theme.borderRadii.md,
-        borderWidth: focused || error ? 2 : 1.5,
+        borderWidth,
+        outlineWidth: 0,
         opacity: props.editable === false ? 0.5 : 1,
         borderColor,
         backgroundColor: theme.colors.bgSurface,

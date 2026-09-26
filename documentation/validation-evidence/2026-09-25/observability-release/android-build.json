@@ -1,12 +1,12 @@
 {
-  "id": "ef54e749-8394-44c9-95c9-2c747367cc95",
-  "status": "IN_PROGRESS",
+  "id": "2f3be311-4fa6-4b17-a9f4-e8bcb7a677d0",
+  "status": "FINISHED",
   "platform": "ANDROID",
-  "distribution": "INTERNAL",
-  "buildProfile": "preview",
   "appVersion": "0.0.1",
-  "appBuildVersion": "10",
-  "createdAt": "2026-09-26T07:02:18.120Z",
-  "updatedAt": "2026-09-26T07:02:25.491Z",
-  "buildUrl": "https://expo.dev/accounts/ovalay-studios/projects/hirequick/builds/ef54e749-8394-44c9-95c9-2c747367cc95"
+  "appBuildVersion": "11",
+  "createdAt": "2026-09-26T07:28:15.748Z",
+  "completedAt": "2026-09-26T07:59:21.339Z",
+  "buildPage": "https://expo.dev/accounts/ovalay-studios/projects/hirequick/builds/2f3be311-4fa6-4b17-a9f4-e8bcb7a677d0",
+  "profile": "preview",
+  "artifactUrl": "https://expo.dev/artifacts/eas/CljW5KYdclYsc8SwfFxJK-mxSxrgsliY1C91T5je3-E.apk"
 }

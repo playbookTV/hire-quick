@@ -1,0 +1,21 @@
+{
+  "platform": "ios",
+  "buildId": "32e27886-fc67-4e66-98e6-e7146384f053",
+  "version": "0.0.1",
+  "buildNumber": "5",
+  "artifactUrl": "https://expo.dev/artifacts/eas/yHmSqhccbLwxulR8HT86ngId4tKM0rueqLLUtA-yTpg.ipa",
+  "localArtifact": "/private/tmp/hq-release-artifacts/ios.ipa",
+  "sizeBytes": 22852848,
+  "sha256": "1bbd4178976bf9b25eafadb9477394a2da16a09de22a327442d3668408bf71f8",
+  "zipIntegrity": "passed",
+  "bundleIdentifier": "com.ovalay.hirequick",
+  "embeddedBuildNumber": "5",
+  "embeddedVersion": "0.0.1",
+  "provisioningProfileSignature": "passed",
+  "registeredIphoneIncluded": true,
+  "distribution": "ad-hoc",
+  "nativeSentryPresent": true,
+  "stagingApiOriginPresent": true,
+  "mobileSentryProjectPresent": true,
+  "bundleSizeBytes": 9222816
+}

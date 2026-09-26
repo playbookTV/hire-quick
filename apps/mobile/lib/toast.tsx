@@ -6,7 +6,15 @@
  * Use this for success/error/validation feedback — keep Alert.alert for blocking
  * Yes/Cancel confirmations of destructive actions.
  */
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { AccessibilityInfo } from 'react-native';
 import { ToastHost, type ToastItem, type ToastTone } from '../components/Toast.js';
 import { hapticSuccess, hapticError, hapticSelection } from './haptics.js';
@@ -44,6 +52,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }): Reac
     clear();
     setToast(null);
   }, [clear]);
+
+  useEffect(() => clear, [clear]);
 
   const show = useCallback(
     (tone: ToastTone, message: string, title?: string) => {

@@ -5,7 +5,8 @@
  * completes on the Paystack webhook, so locally we land on Funds Held in a
  * "payment opened" state. Line items come from the accepted applications.
  */
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { CheckoutResponse } from '@hq/shared';
 import { createCheckoutScopeFence } from '../../lib/checkout.js';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
@@ -19,19 +20,34 @@ import { ListItem } from '../../components/ListItem.js';
 import { Button } from '../../components/Button.js';
 import { Loading } from '../../components/Loading.js';
 import { EmptyState } from '../../components/EmptyState.js';
-import { useEvent, useApplications, useConfirmEvent, useSavedCheckout } from '../../lib/hooks.js';
+import {
+  useEvent,
+  useApplications,
+  useConfirmEvent,
+  useSavedCheckout,
+  useOrderSummary,
+  useResumeOrder,
+} from '../../lib/hooks.js';
 import { useAuth } from '../../lib/auth-context.js';
 import { useToast } from '../../lib/toast.js';
 import { CategoryBadge } from '../../components/CategoryBadge.js';
+import { heldFundsCopy } from '../../lib/payment-copy.js';
 import { fonts } from '../../theme/fonts.js';
 import { money, formatEventDate, formatTimeRange } from '../../lib/format.js';
 
 export default function PaymentSummary(): React.JSX.Element {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { id, apps } = useLocalSearchParams<{ id: string; apps: string }>();
+  const { id, apps, order } = useLocalSearchParams<{
+    id?: string;
+    apps?: string;
+    order?: string;
+  }>();
   const eventId = id ?? '';
-  const saved = useSavedCheckout(eventId);
+  const saved = useSavedCheckout(order ? '' : eventId);
+  const orderId = order || saved.data?.outcome?.orderId || '';
+  const orderSummary = useOrderSummary(orderId);
+  const resumeOrder = useResumeOrder(orderId);
   const appIds = saved.data?.input.applicationIds ?? (apps ?? '').split(',').filter(Boolean);
   const event = useEvent(eventId);
   const applications = useApplications(eventId);
@@ -39,7 +55,7 @@ export default function PaymentSummary(): React.JSX.Element {
   const { user } = useAuth();
   const toast = useToast();
   const fence = useRef(createCheckoutScopeFence()).current;
-  const scope = `${user?.id ?? ''}:${eventId}`;
+  const scope = `${user?.id ?? ''}:${eventId}:${order ?? ''}`;
   fence.activate(scope);
   useEffect(() => {
     fence.activate(scope);
@@ -47,54 +63,80 @@ export default function PaymentSummary(): React.JSX.Element {
   }, [fence, scope]);
   const ev = event.data;
 
-  const perHead = saved.data?.outcome
-    ? saved.data.outcome.amountKobo / appIds.length
-    : (event.data?.budgetPerHead ?? 0);
   const chosen = (applications.data ?? []).filter((a) => appIds.includes(a.id));
-  const count = appIds.length;
-  const total = perHead * count;
+  const lines = orderId
+    ? (orderSummary.data?.bookings ?? []).map((b) => ({
+        id: b.id,
+        name: b.usher!.displayName!,
+        amount: b.amount,
+      }))
+    : chosen.map((a) => ({
+        id: a.id,
+        name: a.usher.displayName ?? 'Usher',
+        amount: ev?.budgetPerHead ?? 0,
+      }));
+  const count = lines.length;
+  const total =
+    orderSummary.data?.checkout.amountKobo ?? lines.reduce((sum, line) => sum + line.amount, 0);
+  const [paying, setPaying] = useState(false);
+  const payLock = useRef(false);
+  const pending = paying || confirm.isPending || resumeOrder.isPending;
   const email =
     saved.data?.input.email ??
     user?.email ??
     `${(user?.phone ?? 'client').replace(/\D/g, '')}@hirequick.ng`;
 
   const pay = (): void => {
+    if (payLock.current || pending) return;
+    payLock.current = true;
+    setPaying(true);
     const current = fence.capture();
-    confirm.mutate(
-      { applicationIds: appIds, email },
-      {
-        onSuccess: (res) => {
-          if (!current()) return;
-          void (async () => {
-            try {
-              if (res.state === 'READY' && res.authorizationUrl)
-                await WebBrowser.openBrowserAsync(res.authorizationUrl);
-            } catch (error) {
-              if (current())
-                toast.error(
-                  error instanceof Error ? error.message : 'Could not open Paystack.',
-                  'Checkout saved',
-                );
-            } finally {
-              if (current())
-                router.replace({ pathname: '/(modals)/funds-held', params: { event: eventId } });
+    const callbacks = {
+      onSuccess: (res: CheckoutResponse) => {
+        if (!current()) return;
+        void (async () => {
+          try {
+            if (res.state === 'READY' && res.authorizationUrl)
+              await WebBrowser.openBrowserAsync(res.authorizationUrl);
+          } catch (error) {
+            if (current())
+              toast.error(
+                error instanceof Error ? error.message : 'Could not open Paystack.',
+                'Checkout saved',
+              );
+          } finally {
+            payLock.current = false;
+            if (current()) {
+              setPaying(false);
+              router.replace({
+                pathname: '/(modals)/funds-held',
+                params: orderId ? { order: orderId } : { event: eventId },
+              });
             }
-          })();
-        },
-        onError: (e: unknown) => {
-          if (current())
-            toast.error(
-              e instanceof Error ? e.message : 'Please try again.',
-              'Payment couldn’t start',
-            );
-        },
+          }
+        })();
       },
-    );
+      onError: (error: unknown) => {
+        payLock.current = false;
+        if (current()) {
+          setPaying(false);
+          toast.error(
+            error instanceof Error ? error.message : 'Please try again.',
+            'Payment couldn’t start',
+          );
+        }
+      },
+    };
+    if (orderId) resumeOrder.mutate(undefined, callbacks);
+    else confirm.mutate({ applicationIds: appIds, email }, callbacks);
   };
 
   // Don't render the pay screen until the event AND the chosen ushers have loaded —
   // otherwise the line-items list is empty while the total still shows the full price (C7).
-  if (event.isLoading || applications.isLoading || saved.isLoading) {
+  if (
+    event.isLoading ||
+    (orderId ? orderSummary.isLoading : applications.isLoading || saved.isLoading)
+  ) {
     return (
       <Box flex={1} backgroundColor="bgCanvas">
         <AppBar title="Confirm & pay" showBack inset />
@@ -102,7 +144,16 @@ export default function PaymentSummary(): React.JSX.Element {
       </Box>
     );
   }
-  if (saved.isError || event.isError || !ev || (!saved.data?.outcome && chosen.length !== count)) {
+  if (
+    event.isError ||
+    !ev ||
+    (orderId
+      ? orderSummary.isError || !orderSummary.data || orderSummary.data.checkout.eventId !== eventId
+      : saved.isError ||
+        applications.isError ||
+        appIds.length === 0 ||
+        chosen.length !== appIds.length)
+  ) {
     return (
       <Box flex={1} backgroundColor="bgCanvas">
         <AppBar title="Confirm & pay" showBack inset />
@@ -113,7 +164,8 @@ export default function PaymentSummary(): React.JSX.Element {
             subtitle="We couldn’t confirm the staff and price for this order. Check your connection and try again."
             actionLabel="Try again"
             onAction={() => {
-              void saved.refetch();
+              if (!order) void saved.refetch();
+              if (orderId) void orderSummary.refetch();
               void event.refetch();
               void applications.refetch();
             }}
@@ -169,8 +221,8 @@ export default function PaymentSummary(): React.JSX.Element {
             <Text variant="titleM">
               Booking {count} {count === 1 ? 'usher' : 'ushers'}
             </Text>
-            {chosen.map((a) => {
-              const name = a.usher.displayName ?? 'Usher';
+            {lines.map((a) => {
+              const name = a.name;
               return (
                 <Box key={a.id} flexDirection="row" alignItems="center" style={{ gap: 12 }}>
                   <Avatar name={name} size={32} />
@@ -178,7 +230,7 @@ export default function PaymentSummary(): React.JSX.Element {
                     {name}
                   </Text>
                   <Text variant="labelLg" color="inkStrong">
-                    {money(perHead)}
+                    {money(a.amount)}
                   </Text>
                 </Box>
               );
@@ -196,7 +248,7 @@ export default function PaymentSummary(): React.JSX.Element {
           >
             <Box flexDirection="row" alignItems="center" justifyContent="space-between">
               <Text variant="body" color="inkMuted">
-                Subtotal · {count} × {money(perHead)}
+                Subtotal · {count} {count === 1 ? 'usher' : 'ushers'}
               </Text>
               <Text variant="labelLg" color="inkStrong">
                 {money(total)}
@@ -231,10 +283,7 @@ export default function PaymentSummary(): React.JSX.Element {
             </Text>
           </Box>
 
-          <Banner
-            tone="brand"
-            message="Held safely until attendance is recorded and the booking is completed."
-          />
+          <Banner tone="brand" message={heldFundsCopy} />
 
           <ListItem
             icon="credit-card"
@@ -248,13 +297,13 @@ export default function PaymentSummary(): React.JSX.Element {
         <Box style={{ gap: 8, paddingBottom: insets.bottom }}>
           <Button
             label={
-              confirm.isPending
+              pending
                 ? 'Checking…'
-                : saved.data
+                : orderId || saved.data
                   ? 'Resume saved checkout'
                   : `Pay ${money(total)}`
             }
-            disabled={confirm.isPending || count === 0}
+            disabled={pending || count === 0}
             onPress={pay}
           />
           <Text variant="bodySm" color="inkFaint" style={{ textAlign: 'center' }}>

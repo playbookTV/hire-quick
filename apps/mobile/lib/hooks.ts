@@ -12,6 +12,7 @@ import type {
   CancelWindow,
 } from '@hq/shared';
 import { checkoutStore } from './checkout-store.js';
+import { loadOrderSummary, readOrderOutcome } from './order-checkout.js';
 import type { WithdrawalInput } from './withdrawal.js';
 import { withdrawalStore } from './withdrawal-store.js';
 import { useAuth } from './auth-context.js';
@@ -316,6 +317,29 @@ export function useSavedCheckout(eventId: string) {
     enabled: !!user?.id && !!eventId,
     queryFn: () => checkoutStore.load(user!.id, eventId),
     staleTime: 0,
+  });
+}
+
+export function useOrderSummary(orderId: string) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['orderSummary', user?.id, orderId],
+    enabled: !!user && !!orderId,
+    queryFn: () => loadOrderSummary(orderId, (path) => api.get(path)),
+    staleTime: 0,
+  });
+}
+
+export function useResumeOrder(orderId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () =>
+      readOrderOutcome(orderId, await api.post(`/api/payments/orders/${orderId}/checkout/resume`)),
+    onSettled: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: ['orderSummary'] }),
+        qc.invalidateQueries({ queryKey: queryKeys.bookings }),
+      ]),
   });
 }
 

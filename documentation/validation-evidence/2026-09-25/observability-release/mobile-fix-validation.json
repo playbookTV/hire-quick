@@ -1,0 +1,25 @@
+{
+  "mobileTypecheck": "passed",
+  "mobileLint": "passed; two static path warnings",
+  "swiftManifest": "passed",
+  "cameraDependencyRetained": true,
+  "secondSentryDependencyAbsent": true,
+  "generatedProject": "passed",
+  "postInstallHook": {
+    "appAndPodsReferences": "local",
+    "idempotent": true,
+    "productLinksPreserved": true
+  },
+  "uploadCli": "2.58.4 executable resolved directly",
+  "archiveFiles": 477,
+  "artifactValidation": {
+    "android": "passed; APK integrity, existing signing certificate, native Sentry, API origin and mobile Sentry project",
+    "ios": "passed; IPA integrity, bundle/build identity, signed ad hoc profile with registered iPhone, native Sentry, API origin and mobile Sentry project"
+  },
+  "sourceMapUploads": {
+    "android": "confirmed in EAS Gradle log",
+    "ios": "confirmed in EAS Xcode log"
+  },
+  "iosDebugInformationFilesUploaded": 34,
+  "deviceRuntimeTest": "not performed"
+}

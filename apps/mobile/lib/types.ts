@@ -158,6 +158,7 @@ export interface Review {
 
 /** GET /api/bookings[/:id] */
 export interface Booking {
+  orderId?: string | null;
   payoutAvailableAt?: string;
   canDispute?: boolean;
   cancellation?: CancellationSummary | null;

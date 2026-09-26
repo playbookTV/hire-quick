@@ -144,6 +144,7 @@ export default function IdVerification(): React.JSX.Element {
               <Button
                 key={idType}
                 label={idType}
+                selected={identity.idType === idType}
                 variant={identity.idType === idType ? 'primary' : 'ghost'}
                 disabled={busy}
                 onPress={() => setIdentity((v) => ({ ...v, idType, idNumber: '' }))}

@@ -19,6 +19,7 @@ import { Icon } from '../../components/Icon.js';
 import { SkeletonCard } from '../../components/Skeleton.js';
 import { EmptyState } from '../../components/EmptyState.js';
 import { shadowSm } from '../../theme/shadows.js';
+import { heldFundsCopy } from '../../lib/payment-copy.js';
 import { fonts } from '../../theme/fonts.js';
 import {
   useApplications,
@@ -258,6 +259,34 @@ export default function Applications(): React.JSX.Element {
     );
   };
 
+  if (event.isLoading || savedCheckout.isLoading)
+    return (
+      <Box flex={1} backgroundColor="bgCanvas">
+        <AppBar title="Applications" showBack inset />
+        <SkeletonCard lines={3} />
+      </Box>
+    );
+  if (event.isError || !event.data || savedCheckout.isError)
+    return (
+      <Box flex={1} backgroundColor="bgCanvas">
+        <AppBar title="Applications" showBack inset />
+        <Screen scroll>
+          <EmptyState
+            icon="alert-circle"
+            title={
+              savedCheckout.isError ? 'Couldn’t restore checkout' : 'Couldn’t load event details'
+            }
+            subtitle="Your selections are kept. Retry before choosing staff or continuing payment."
+            actionLabel="Try again"
+            onAction={() => {
+              void event.refetch();
+              void savedCheckout.refetch();
+            }}
+          />
+        </Screen>
+      </Box>
+    );
+
   return (
     <Box flex={1} backgroundColor="bgCanvas">
       <AppBar title="Applications" showBack inset />
@@ -351,7 +380,7 @@ export default function Applications(): React.JSX.Element {
             }}
           />
           <Text variant="bodySm" color="inkFaint" style={{ textAlign: 'center' }}>
-            {count} {count === 1 ? 'usher' : 'ushers'} · funds held safely until check-in
+            {heldFundsCopy}
           </Text>
         </Box>
       </Screen>

@@ -17,6 +17,8 @@ interface ButtonProps {
   loading?: boolean;
   fullWidth?: boolean;
   leftIcon?: IconName;
+  /** Radio-style selection, for mutually exclusive choices. */
+  selected?: boolean;
 }
 export function Button({
   label,
@@ -27,6 +29,7 @@ export function Button({
   loading = false,
   fullWidth = true,
   leftIcon,
+  selected,
 }: ButtonProps): React.JSX.Element {
   const theme = useTheme();
   const [pressed, setPressed] = useState(false);
@@ -60,7 +63,6 @@ export function Button({
     <AnimatedPressable
       onPress={onPress}
       disabled={inactive}
-      scaleTo={1}
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
       onFocus={() => setFocused(true)}
@@ -70,9 +72,13 @@ export function Button({
       }}
       onHoverIn={() => setHovered(true)}
       onHoverOut={() => setHovered(false)}
-      accessibilityRole="button"
+      accessibilityRole={selected === undefined ? 'button' : 'radio'}
       accessibilityLabel={label}
-      accessibilityState={{ disabled: inactive, busy: loading }}
+      accessibilityState={{
+        disabled: inactive,
+        busy: loading,
+        ...(selected === undefined ? {} : { checked: selected }),
+      }}
       style={{
         alignSelf: fullWidth ? 'stretch' : 'flex-start',
         minHeight: size === 'lg' ? 52 : 44,

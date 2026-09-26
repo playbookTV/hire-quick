@@ -13,14 +13,8 @@ import { EmptyState } from '../../components/EmptyState.js';
 import { Button } from '../../components/Button.js';
 import { Icon, type IconName } from '../../components/Icon.js';
 import { Loading } from '../../components/Loading.js';
-import {
-  useEvent,
-  useMyApplications,
-  useApplyToEvent,
-  useSavedJobs,
-  useSaveJob,
-  useUnsaveJob,
-} from '../../lib/hooks.js';
+import { useEvent, useMyApplications, useApplyToEvent, useSavedJobs } from '../../lib/hooks.js';
+import { useJobBookmark } from '../../lib/use-job-bookmark.js';
 import { hapticSelection } from '../../lib/haptics.js';
 import { useToast } from '../../lib/toast.js';
 import { money, shortDate, formatTimeRange } from '../../lib/format.js';
@@ -65,16 +59,14 @@ export default function EventDetails(): React.JSX.Element {
   const applications = useMyApplications();
   const { user } = useAuth();
   const saved = useSavedJobs();
-  const saveJob = useSaveJob();
-  const unsaveJob = useUnsaveJob();
+  const bookmark = useJobBookmark();
   const toast = useToast();
   const isSaved = (saved.data ?? []).some((s) => s.id === id);
 
   const onToggleSave = (): void => {
     if (!id) return;
     hapticSelection();
-    if (isSaved) unsaveJob.mutate(id);
-    else saveJob.mutate(id);
+    void bookmark.toggle(id, isSaved);
   };
 
   const onApply = (): void => {
@@ -215,17 +207,40 @@ export default function EventDetails(): React.JSX.Element {
               : closed
                 ? 'This job is no longer available'
                 : !verified
-                  ? 'Verify your identity to apply'
+                  ? user?.usher?.verificationStatus === 'PENDING'
+                    ? 'Check verification status'
+                    : 'Verify your identity to apply'
                   : 'Apply for this job'
           }
-          onPress={onApply}
+          onPress={() => {
+            if (verified) onApply();
+            else
+              router.push(
+                user?.usher?.verificationStatus === 'PENDING'
+                  ? '/(verification)/awaiting-approval'
+                  : '/(verification)/id-verification',
+              );
+          }}
           loading={apply.isPending}
-          disabled={alreadyApplied || closed || !verified || applications.isLoading}
+          disabled={alreadyApplied || closed || applications.isLoading}
         />
         <Button
-          label={isSaved ? 'Saved · remove' : 'Save for later'}
+          label={
+            saved.isError
+              ? 'Retry saved jobs'
+              : bookmark.pending.has(id ?? '')
+                ? 'Updating…'
+                : isSaved
+                  ? 'Saved · remove'
+                  : 'Save for later'
+          }
+          loading={bookmark.pending.has(id ?? '')}
+          disabled={saved.isLoading}
           variant="ghost"
-          onPress={onToggleSave}
+          onPress={() => {
+            if (saved.isError) void saved.refetch();
+            else onToggleSave();
+          }}
         />
       </Box>
     </Box>
