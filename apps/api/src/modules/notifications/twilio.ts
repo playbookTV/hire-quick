@@ -1,5 +1,6 @@
 /** WhatsApp OTP delivery via Twilio Programmable Messaging, not Twilio Verify. */
 import { env } from '../../env.js';
+import { logger } from '../../logger.js';
 import { record } from './test-recorder.js';
 
 export function whatsappConfigured(): boolean {
@@ -40,7 +41,7 @@ export async function sendWhatsAppOtp(to: string, code: string): Promise<boolean
       },
     );
     if (!response.ok) {
-      console.log(`[twilio] WhatsApp request failed: ${String(response.status)}`);
+      logger.warn(`[twilio] WhatsApp request failed: ${String(response.status)}`);
       return false;
     }
     const message = (await response.json()) as {
@@ -59,7 +60,7 @@ export async function sendWhatsAppOtp(to: string, code: string): Promise<boolean
   } catch {
     // Provider responses and thrown errors may contain credentials, recipients,
     // or OTPs. Never log their body, message, or cause.
-    console.log('[twilio] WhatsApp transport request failed');
+    logger.warn('[twilio] WhatsApp transport request failed');
     return false;
   }
 }

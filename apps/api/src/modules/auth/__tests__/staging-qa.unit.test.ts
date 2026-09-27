@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock('@hq/database', () => ({ prisma: { $transaction: mocks.transaction } }));
 vi.mock('../../../env.js', () => ({ env: mocks.env }));
+vi.mock('../../../logger.js', () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 vi.mock('../../../app.js', () => ({ ApiError: class extends Error {
   constructor(public statusCode: number, public code: string, message: string) { super(message); }
 } }));

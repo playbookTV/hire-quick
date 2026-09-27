@@ -5,6 +5,7 @@
  */
 import { SignJWT, importPKCS8 } from 'jose';
 import { env } from '../../env.js';
+import { logger } from '../../logger.js';
 
 import { record } from './test-recorder.js';
 export { sentNotifications, clearSentNotifications, type SentRecord } from './test-recorder.js';
@@ -13,7 +14,7 @@ const IS_TEST = env.NODE_ENV === 'test';
 
 function log(message: string): void {
   // Only fixed channel labels / HTTP status codes; never destinations or bodies.
-  console.log(`[brevo] ${message}`);
+  logger.warn(`[brevo] ${message}`);
 }
 
 async function providerFetch(url: string, init: RequestInit): Promise<Response | null> {

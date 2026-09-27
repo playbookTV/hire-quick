@@ -1,6 +1,8 @@
 import type { Prisma, PrismaClient } from '@hq/database';
 import { checkoutResponseSchema, type CheckoutResponse } from '@hq/shared';
 import { ApiError } from '../../app.js';
+import { logger } from '../../logger.js';
+import { reportError } from '../../observability/reporting.js';
 import { lockOrderLifecycle } from '../events/staffing.js';
 import { expireUnpaidOrder, holdExpiredOrderForRefund, holdOrder } from './ledger/ledger.js';
 import { driveRefund, type Deps } from './service.js';
@@ -212,7 +214,10 @@ export async function reconcileCheckouts(deps: Deps, now = new Date()): Promise<
     });
     for (const checkout of page) {
       try { await reconcileCheckout(deps, checkout.orderId, now); }
-      catch { console.error('[checkout] recovery deferred', checkout.orderId); }
+      catch (err) {
+        logger.error({ err, code: 'CHECKOUT_RECOVERY_DEFERRED', orderId: checkout.orderId }, 'checkout recovery deferred');
+        reportError(err, { code: 'CHECKOUT_RECOVERY_DEFERRED' });
+      }
     }
     if (page.length < 100) break;
     after = page[page.length - 1]!.orderId;
