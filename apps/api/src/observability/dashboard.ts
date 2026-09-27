@@ -1,3 +1,4 @@
+import { safeSmileTags } from '@hq/shared';
 import { z } from 'zod';
 import type { MonitorCheck, MonitoringSnapshot, MonitorStatus } from '@hq/shared';
 
@@ -43,6 +44,7 @@ const issueSchema = z.array(
       .union([z.string().regex(/^\d+$/), z.number().int().nonnegative()])
       .refine((value) => Number.isSafeInteger(Number(value))),
     lastSeen: z.unknown().optional(),
+    title: z.string().optional(),
   }),
 );
 
@@ -131,6 +133,7 @@ export function createMonitoringDashboard(
     redis: () => Promise<unknown>;
     fetch?: typeof fetch;
     now?: () => number;
+    smile?: () => Promise<MonitoringSnapshot['smile']>;
   },
 ) {
   const fetcher = deps.fetch ?? fetch;
@@ -247,6 +250,7 @@ export function createMonitoringDashboard(
           .map((i) => ({
             id: i.id,
             reference: i.shortId,
+            ...(safeSmileTags({ code: i.title }).code ? { diagnosticCode: i.title! } : {}),
             project: i.project.slug,
             level: i.level,
             events: Number(i.count),
@@ -259,11 +263,12 @@ export function createMonitoringDashboard(
     }
   }
   async function collect(): Promise<MonitoringSnapshot> {
-    const [dbOk, redisOk, checks, sentry] = await Promise.all([
+    const [dbOk, redisOk, checks, sentry, smile] = await Promise.all([
       database(),
       redis(),
       Promise.all(resources.map(readCheck)),
       readIssues(),
+      deps.smile?.().catch(() => ({ status: 'unavailable' as const })),
     ]);
     const observedAt = iso();
     const service = (key: string, name: string, ok: boolean, detail: string): MonitorCheck => ({
@@ -305,6 +310,7 @@ export function createMonitoringDashboard(
       ],
       betterStack: { checks, dashboardUrl: 'https://uptime.betterstack.com/' },
       sentry,
+      ...(smile ? { smile } : {}),
       logsUrl: 'https://railway.com/project/396c28f8-30ac-4fd8-ba96-684e9a27d0e6',
     };
   }

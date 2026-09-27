@@ -1,0 +1,12 @@
+{
+  "status": "passed",
+  "desktop": true,
+  "mobileWidth": 390,
+  "noHorizontalOverflow": true,
+  "refreshAndUnavailableRecovery": true,
+  "handledEvidenceFailureCaptured": true,
+  "identityAndRawErrorRemoved": true,
+  "sentryRequestsIntercepted": true,
+  "realMessagesSent": 0,
+  "pageErrors": []
+}

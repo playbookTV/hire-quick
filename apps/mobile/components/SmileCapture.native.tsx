@@ -1,7 +1,9 @@
+import { reportSmile } from '../lib/monitoring.js';
 import { Text } from 'react-native';
 import { CaptureType, JobType, UseSmileIDBuilder } from '@smileid/usesmileid';
 import { faceAnalyzer } from '../lib/smile-providers.js';
 import { startKyc, type SmileCaptureProps } from '../lib/kyc.js';
+import { smileSubmissionDetails, smileSubmissionInterceptor } from '../lib/smile-submission-monitoring.js';
 
 /** Full-screen SDK owns safe areas and camera UI. Never treat submission as approval. */
 export default function SmileCapture({
@@ -18,18 +20,27 @@ export default function SmileCapture({
         b.config((c) => {
           c.enableCrashReporting = false;
         });
-        b.network((n) =>
+        b.network((n) => {
           n.config((c) => {
             c.jobType = JobType.biometricKyc;
             c.token = session.token;
-            c.onTokenExpired = async () => (await startKyc(identity, session.referenceId)).token;
+            c.onTokenExpired = async () => {
+              try { return (await startKyc(identity, session.referenceId)).token; }
+              catch (error) {
+                reportSmile('SMILE_TOKEN_REFRESH_FAILED', session.referenceId);
+                throw error;
+              }
+            };
             c.partnerConfig((p) => {
               p.partnerId = session.partnerId;
               p.useSandbox = session.sandbox;
               // The backend binds the callback URL into the token. Do not override it.
             });
-          }),
-        );
+          });
+          n.interceptors((i) => i.add(smileSubmissionInterceptor((details) =>
+            reportSmile('SMILE_CAPTURE_FAILED', session.referenceId, details),
+          )));
+        });
         b.biometricKYCParams = {
           country: 'NG',
           idType: identity.idType === 'NIN' ? 'NIN_V2' : 'BVN',
@@ -61,7 +72,10 @@ export default function SmileCapture({
         b.onResult = (result) => {
           if (result.status === 'success') onSubmitted();
           else if (result.status === 'cancelled') onCancelled();
-          else onFailure();
+          else {
+            reportSmile('SMILE_CAPTURE_FAILED', session.referenceId, smileSubmissionDetails(result.error));
+            onFailure();
+          }
         };
       }}
     />

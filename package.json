@@ -36,6 +36,9 @@
       "@types/react": "~19.2.0",
       "postcss": ">=8.5.10",
       "js-yaml": ">=4.2.0"
+    },
+    "patchedDependencies": {
+      "supertest@7.2.2": "patches/supertest@7.2.2.patch"
     }
   },
   "devDependencies": {

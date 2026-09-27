@@ -10,10 +10,10 @@ interface Approval {
   id: string;
   kind: string;
   status: string;
-  checker: { phone: string } | null;
+  checker: { phone: string | null; email: string | null } | null;
   updatedAt: string;
   amountKobo: number;
-  maker: { phone: string };
+  maker: { phone: string | null; email: string | null };
   createdAt: string;
   payload: {
     bookingId?: string;
@@ -122,7 +122,7 @@ export function Approvals() {
             </Btn>
           </div>
           <p>
-            {selected.status} · Requested by {selected.maker.phone} ·{' '}
+            {selected.status} · Requested by {selected.maker.email ?? selected.maker.phone ?? 'Admin'} ·{' '}
             {shortDate(selected.createdAt)}
           </p>
           <p>
@@ -136,7 +136,7 @@ export function Approvals() {
           </p>
           <p>
             {selected.checker
-              ? `Decision by ${selected.checker.phone} · ${shortDate(selected.updatedAt)}`
+              ? `Decision by ${selected.checker.email ?? selected.checker.phone ?? 'Admin'} · ${shortDate(selected.updatedAt)}`
               : 'Awaiting a checker decision'}
           </p>
           {selected.status === 'APPROVED' ? (
@@ -199,7 +199,7 @@ export function Approvals() {
             <td className="px-4 py-2">
               {a.status === 'APPROVED' ? 'Approved · processing' : a.status}
             </td>
-            <td className="px-4 py-2">{a.maker.phone}</td>
+            <td className="px-4 py-2">{a.maker.email ?? a.maker.phone ?? 'Admin'}</td>
             <td className="space-x-2 px-4 py-2">
               <Btn
                 disabled={loading || !!error || actions.disabled(a.id)}

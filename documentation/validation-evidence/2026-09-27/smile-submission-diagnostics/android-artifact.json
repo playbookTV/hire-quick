@@ -1,0 +1,20 @@
+{
+  "platform": "android",
+  "buildId": "dddf008c-bf2d-4b4e-8319-25e546484c25",
+  "version": "0.0.1",
+  "buildNumber": "14",
+  "artifactUrl": "https://expo.dev/artifacts/eas/FSikSsosNrfNFvclEVvFQHNBJGkMChoZ5uNTbzUuekw.apk",
+  "localArtifact": "/private/tmp/hq-smile-diagnostics-artifacts/android.apk",
+  "sizeBytes": 168779055,
+  "sha256": "88f62ec1e2484b73943b0bcc865c0236776bd9f101b14edd88dbca7fff930f5e",
+  "zipIntegrity": "passed",
+  "signerCertificateSha256": "7bfd30f0ae773e266f2389476e13815bda73e764bc95a7b07bdac5b5e07b108d",
+  "signingCertificateMatchesBuild9": true,
+  "nativeSentryPresent": true,
+  "stagingApiOriginPresent": true,
+  "mobileSentryProjectPresent": true,
+  "bundleSizeBytes": 9505636,
+  "smileCaptureReportingPresent": true,
+  "smileTokenRefreshReportingPresent": true,
+  "immediateDiagnosticTagsPresent": true
+}

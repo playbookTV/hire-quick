@@ -5,6 +5,7 @@ import { holdOrder, markCheckedIn, releaseBooking, requestWithdrawal } from '../
 import { driveTransfer, initChargeForOrder, refundBookingToClient } from '../service.js';
 import { dispatchPaystackEvent } from '../webhooks/paystack-webhook.js';
 import { InMemoryPaystack, type PaystackPort } from '../port/paystack-port.js';
+import { HttpPaystack } from '../port/http-paystack.js';
 import { createScenario, teardown, type Scenario } from './fixtures.js';
 
 vi.mock('../../audit.js', () => ({ writeAudit: vi.fn() }));
@@ -63,6 +64,45 @@ async function operationStatus(id: string) {
 }
 
 describe('terminal payment callbacks', () => {
+  it.each(['abandoned', 'blocked', 'rejected'])(
+    'recovers a %s withdrawal once without issuing another transfer', async status => {
+      const { s, id, reference, op } = await withdrawal();
+      const fetcher = vi.fn<typeof fetch>().mockImplementation(async (url, options) => {
+        expect(options?.method ?? 'GET').toBe('GET');
+        expect(String(url)).toContain(`/transfer/verify/${reference}`);
+        return new Response(JSON.stringify({ status: true, data: {
+          status, reference, amount: 50_000, currency: 'NGN',
+        } }));
+      });
+      const paystack = new HttpPaystack('sk_test_fixture', fetcher);
+      await driveTransfer({ prisma, paystack }, op);
+      await driveTransfer({ prisma, paystack }, op);
+      expect(await operationStatus(op.id)).toBe('FAILED');
+      expect((await prisma.withdrawal.findUniqueOrThrow({ where: { id } })).status).toBe('FAILED');
+      expect((await prisma.wallet.findUniqueOrThrow({ where: { id: s.walletId } })).availableBalance).toBe(85_000);
+      expect(await prisma.walletLedger.count({ where: { withdrawalId: id, entryType: 'REVERSAL' } })).toBe(1);
+      expect(fetcher).toHaveBeenCalledTimes(1);
+    },
+  );
+  it.each(['abandoned', 'blocked', 'rejected'])(
+    'releases a %s sweep reservation without inventing a payout', async status => {
+      const { op, reference } = await sweep();
+      const fetcher = vi.fn<typeof fetch>().mockImplementation(async (_url, options) => {
+        expect(options?.method ?? 'GET').toBe('GET');
+        return new Response(JSON.stringify({ status: true, data: {
+          status, reference, amount: 10_000, currency: 'NGN',
+        } }));
+      });
+      const paystack = new HttpPaystack('sk_test_fixture', fetcher);
+      await driveTransfer({ prisma, paystack }, op);
+      await driveTransfer({ prisma, paystack }, op);
+      expect(await operationStatus(op.id)).toBe('FAILED');
+      expect(await prisma.escrowLedger.count({ where: {
+        bookingId: null, entryType: 'COMMISSION_SWEEP', createdAt: { gte: sweepStart! },
+      } })).toBe(0);
+      expect(fetcher).toHaveBeenCalledTimes(1);
+    },
+  );
   it('records success atomically with a pending withdrawal and recovery never reissues it', async () => {
     const { s, id, reference, op } = await withdrawal();
     await Promise.all(Array.from({ length: 3 }, () =>

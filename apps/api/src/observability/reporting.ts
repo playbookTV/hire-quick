@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/node';
 import { logger } from '../logger.js';
+import { reportTaggedSmileError } from './smile.js';
 
 export type AlarmCode = 'RECONCILIATION_ERROR' | 'RECONCILIATION_REVIEW' | 'AUDIT_CHAIN_BROKEN';
 
@@ -7,6 +8,7 @@ export function reportError(
   error: unknown,
   tags: { reqId?: string; code?: string; job?: string },
 ): void {
+  if (reportTaggedSmileError(error)) return;
   Sentry.withScope((scope) => {
     scope.setTags(tags);
     Sentry.captureException(error);

@@ -1,0 +1,60 @@
+{
+  "checkedAt": "2026-09-27T21:06:26.335579+00:00",
+  "head": "ce1e9c2c2955537e7131012db87857628701b40a",
+  "scope": "Dirty workspace; narrow SQL migration separately rehearsed against deployed migration inventory",
+  "before": {
+    "mutationTests": 7,
+    "failedBecauseMutationAllowed": 7
+  },
+  "focusedAfter": {
+    "passed": 21,
+    "failed": 0
+  },
+  "node26Broad": {
+    "passed": 939,
+    "failed": 1,
+    "skipped": 1,
+    "failure": "profile onboarding admin GET returned HTTP 400; isolated rerun passed 8/8; cause unestablished"
+  },
+  "node22Broad": {
+    "node": "22.23.3",
+    "passed": 940,
+    "failed": 0,
+    "skipped": 1,
+    "files": 103,
+    "providerLifecyclePassed": 50,
+    "skipReason": "Live R2 credentials deliberately absent",
+    "schema": "hq_validation_20260927210415_b6322686",
+    "cleanupVerified": true
+  },
+  "checks": {
+    "workspaceTypecheck": "passed",
+    "workspaceLint": "passed",
+    "testSourceTypecheck": "passed",
+    "testSourceLint": "passed",
+    "trackedMigrations": "passed",
+    "schemaDrift": "zero"
+  },
+  "narrowUpgradeRehearsal": {
+    "passed": true,
+    "priorMigrations": 10,
+    "newMigrations": 1,
+    "damagedRowPreserved": true,
+    "feeMigrationExcluded": true,
+    "cleanupVerified": true
+  },
+  "sourceHashes": {
+    "packages/database/prisma/migrations/20260927210000_preserve_audit_history/migration.sql": "d7da1ffd1cdee8d2a827ffdc8f3d73d90d3cf4a998e082bd9b2343a4056832ea",
+    "apps/api/src/modules/audit/__tests__/append-only.test.ts": "090070e24405c5da98d50459a29f7c4f4e807d1955e6599b8fbffc324eeca0c0",
+    "apps/api/src/modules/audit/__tests__/integrity.test.ts": "b61c28a293d5900c2280168ab05a992031b395cf33c3f97f8bb2176d9e12e27e",
+    "apps/api/src/modules/__tests__/compliance.test.ts": "0000d744197009ee0f078597d82f63af83506523722f7448409e9cd464959a34",
+    "apps/api/src/modules/audit/README.md": "0f568532ff3714b77a1a2113dca146ab744758dec049e357d1968bcdce158886"
+  },
+  "logHashes": {
+    "hq-audit-guard-before.log": "0c7b19496e48e0d8e878d49576a1637e99c3ad600dad13de256a5b5294c73d27",
+    "hq-audit-guard-after.log": "02066a858e49a94d555d4689f8d671b225342c0a2ea557b15c831ce3fa710613",
+    "hq-audit-guard-full.log": "09c3af47901d84ef74c23498d335f7bb7a89f8237ac6901c6b2888bebf6fea53",
+    "hq-audit-guard-node22.log": "0480f55feff5419f3db3d96629901e5e12c52e470d0ff04c8d357aa43ff69c3c",
+    "hq-audit-onboarding-recheck.log": "6ca41462466e47a40de4f4c13b250ff811c72dd28f0b2ebe02d252c0c9e9cf3e"
+  }
+}

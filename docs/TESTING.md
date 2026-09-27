@@ -14,9 +14,11 @@
 
 A filename containing `unit` is not a universal no-infrastructure guarantee. Check the selected suite. Root `pnpm test` runs workspace test scripts; admin/mobile currently have no independent package `test` scripts. Some mobile controller tests run from API test suites. Passing backend tests does not prove native UX behavior.
 
+Supertest 7.2.2 has a tracked [address-family patch](../patches/supertest@7.2.2.patch). Its original implementation always connected to IPv4 even when its test server bound IPv6. On macOS, a different IPv4 service can own the same port, causing intermittent foreign responses or resets. Install through pnpm so the patch is applied. The [transport regression](../apps/api/src/__tests__/http-test-transport.test.ts) deliberately places separate IPv4 and IPv6 servers on the same port and verifies that requests reach the intended server. Keep that regression when upgrading Supertest; remove the patch only when the replacement passes it. These transport checks require IPv6 loopback support.
+
 ## Database isolation is mandatory
 
-Never run the API suite against production or the ordinary shared development database. Tests write fixtures and can inspect global ledger/audit aggregates. [The disposable guard](../apps/api/src/modules/auth/__tests__/assert-disposable-db.ts) accepts a generated `hq_validation_<14 digits>_<8 hex>` schema or `CI=true` with a local database named `hirequick_test`. It also verifies `current_schema()`; not every historical suite has this guard, so absence of a rejection does not make a target safe.
+Never run the API suite against production or the ordinary shared development database. Tests write fixtures and can inspect global ledger/audit aggregates. [The disposable guard](../apps/api/src/modules/auth/__tests__/assert-disposable-db.ts) accepts a generated `hq_validation_<14 digits>_<8 hex>` schema or `CI=true` with a local database named `hirequick_test`. The [global setup](../apps/api/src/modules/auth/__tests__/database-setup.ts) runs it before any API test file is loaded and verifies `current_schema()`. This includes unit suites: run them through the isolated runner or against the disposable local database below. A rejected target must not be bypassed by removing the guard.
 
 The [API Vitest config](../apps/api/vitest.config.ts) loads root `.env`, runs files serially in a single fork, and sets test/hook timeouts to **120 seconds**. Do not run multiple test processes against one database. Concurrency tests intentionally open independent connections inside a suite.
 

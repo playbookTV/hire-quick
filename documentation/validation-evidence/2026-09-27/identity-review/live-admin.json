@@ -1,0 +1,15 @@
+{
+  "adminStatus": 200,
+  "assets": [
+    {
+      "asset": "/assets/index-BknIlnj_.js",
+      "sha256": "af725a2d507f681928e141ca3630f5c0c88e084d9f646930f2d1f3b2c934d4db",
+      "matchesRelease": true
+    },
+    {
+      "asset": "/assets/index-div8x93z.css",
+      "sha256": "fbb97c6219c1c536539f4c068a66ecee4c0fb9dafef57cdc1ee60bb28da82b65",
+      "matchesRelease": true
+    }
+  ]
+}

@@ -2,6 +2,7 @@ import { createScheduledRuntime, runScheduledProcess, type JobHandlers } from '.
 
 const noop = async (): Promise<void> => {};
 const handlers: JobHandlers = {
+  smileMonitoring: noop,
   autocomplete: noop,
   noshow: noop,
   reconcile: noop,

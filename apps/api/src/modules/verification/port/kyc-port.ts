@@ -1,3 +1,4 @@
+import type { ReviewEvidence } from '../evidence.js';
 /** Provider boundary. Only authenticated server evidence may settle identity. */
 export interface KycIdentity {
   idType: 'NIN' | 'BVN';
@@ -27,10 +28,12 @@ export interface KycWebhook {
   referenceId: string;
   jobId: string;
   userId: string;
+  evidence?: ReviewEvidence | undefined;
 }
 export interface KycPort {
   startSession(referenceId: string, identity: KycIdentity, phone: string): Promise<KycStartResult>;
   getResult(jobId: string, userId: string): Promise<KycResult>;
+  refreshEvidence?(jobId: string, referenceId: string, environment?: string): Promise<void>;
   verifyWebhook(
     rawBody: Buffer,
     headers: Record<string, string | string[] | undefined>,

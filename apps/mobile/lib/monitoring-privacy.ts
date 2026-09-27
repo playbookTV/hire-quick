@@ -1,3 +1,4 @@
+import { safeSmileTags } from '@hq/shared';
 import type { ErrorEvent, StackFrame } from '@sentry/react-native';
 
 function pickDefined<T extends object, K extends keyof T>(value: T, keys: K[]): Pick<T, K> {
@@ -23,6 +24,7 @@ function safeFrames(frames: StackFrame[] | undefined): StackFrame[] | undefined 
 
 /** Retain symbolication metadata without request, account, or screen contents. */
 export function sanitizeMobileEvent(event: ErrorEvent): ErrorEvent {
+  const smile = safeSmileTags(event.tags);
   return {
     type: undefined,
     ...pickDefined(event, [
@@ -36,8 +38,9 @@ export function sanitizeMobileEvent(event: ErrorEvent): ErrorEvent {
       'sdk',
       'debug_meta',
     ]),
-    tags: { service: 'hirequick-mobile' },
-    ...(event.message ? { message: 'HireQuick mobile diagnostic' } : {}),
+    tags: { service: 'hirequick-mobile', ...smile },
+    ...(smile.code ? { fingerprint: ['hirequick', smile.code] } : {}),
+    ...(event.message ? { message: smile.code ?? 'HireQuick mobile diagnostic' } : {}),
     ...(event.exception?.values
       ? {
           exception: {

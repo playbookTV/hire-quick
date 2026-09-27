@@ -1,3 +1,6 @@
+import { reportSmile, tagSmileError } from '../../observability/smile.js';
+import type { Redis } from 'ioredis';
+import { cacheReviewEvidence } from './evidence.js';
 /** Biometric sessions and authenticated Smile ID callbacks (raw body mounted by app.ts). */
 import { z } from 'zod';
 import { Router, type Request, type Response, type NextFunction } from 'express';
@@ -36,15 +39,23 @@ export function kycRouter(deps: { kyc: KycPort }): Router {
       parsed.data.referenceId,
     )
       .then((session) => res.status(201).json(session))
-      .catch(next);
+      .catch((error: unknown) => next(tagSmileError(
+        error instanceof Error ? error : new Error('Smile session failed'), 'SMILE_SESSION_FAILED',
+      )));
   });
   return r;
 }
 
-export function smileWebhookRouter(deps: { kyc: KycPort; realtime: RealtimeGateway }): Router {
+export function smileWebhookRouter(deps: {
+  kyc: KycPort;
+  realtime: RealtimeGateway;
+  redis?: Redis | undefined;
+}): Router {
   const r = Router();
   r.post('/:referenceId/:callbackKey', (req: Request, res: Response, next: NextFunction) => {
-    void handle(req, res).catch(next);
+    void handle(req, res).catch((error: unknown) => next(tagSmileError(
+      error instanceof Error ? error : new Error('Smile callback failed'), 'SMILE_CALLBACK_FAILED',
+    )));
   });
   async function handle(req: Request, res: Response): Promise<void> {
     const parsed = Buffer.isBuffer(req.body)
@@ -56,13 +67,22 @@ export function smileWebhookRouter(deps: { kyc: KycPort; realtime: RealtimeGatew
         )
       : null;
     if (!parsed) {
+      // Invalid callback paths are untrusted; do not attach their reference or secret.
+      reportSmile('SMILE_INVALID_CALLBACK');
       res
         .status(401)
         .json({ error: { code: 'INVALID_WEBHOOK', message: 'unverified or unparseable' } });
       return;
     }
-    const result = await deps.kyc.getResult(parsed.jobId, parsed.userId);
+    const result = await deps.kyc.getResult(parsed.jobId, parsed.userId).catch((error: unknown) => {
+      throw tagSmileError(error instanceof Error ? error : new Error('Smile result unavailable'),
+        'SMILE_RESULT_FETCH_FAILED', parsed.referenceId);
+    });
+    await cacheReviewEvidence(deps.redis, parsed, result);
     const applied = await applyKycResult(prisma, parsed.referenceId, result);
+    if (result.providerStatus === 'error') reportSmile('SMILE_PROVIDER_ERROR', parsed.referenceId);
+    else if (result.providerStatus === 'attention') reportSmile('SMILE_PROVIDER_ATTENTION', parsed.referenceId);
+    if (applied?.decision === 'rejected') reportSmile('SMILE_PROVIDER_REJECTED', parsed.referenceId);
     if (applied) {
       deps.realtime.emitToUser(applied.userId, RT.VERIFICATION_UPDATED, {
         status: applied.decision,

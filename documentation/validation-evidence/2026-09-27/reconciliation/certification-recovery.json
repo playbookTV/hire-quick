@@ -1,0 +1,48 @@
+{
+  "checkedAt": "2026-09-27T22:08:13.944Z",
+  "schemaIsolationConnections": 8,
+  "results": [
+    {
+      "pass": 0,
+      "refund": "RECORDED",
+      "sweep": "FAILED"
+    },
+    {
+      "pass": 1,
+      "refund": "RECORDED",
+      "sweep": "FAILED"
+    }
+  ],
+  "providerReads": [
+    {
+      "method": "GET",
+      "kind": "charge"
+    },
+    {
+      "method": "GET",
+      "kind": "refund"
+    },
+    {
+      "method": "GET",
+      "kind": "transfer"
+    },
+    {
+      "method": "GET",
+      "kind": "charge"
+    },
+    {
+      "method": "GET",
+      "kind": "refund"
+    },
+    {
+      "method": "GET",
+      "kind": "transfer"
+    }
+  ],
+  "providerWrites": 0,
+  "preservedLedgerRows": 4,
+  "appendedRefundRows": 1,
+  "pendingOperations": 0,
+  "commissionSweepRows": 0,
+  "withdrawalUnchanged": true
+}

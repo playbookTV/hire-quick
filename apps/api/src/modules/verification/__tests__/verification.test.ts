@@ -1,8 +1,13 @@
+import express, { type Request, type Response, type NextFunction } from 'express';
+import type { Redis } from 'ioredis';
+import { adminRouter } from '../../admin/routes.js';
+import { smileWebhookRouter } from '../routes.js';
+import { noopGateway } from '../../../realtime/gateway.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import { prisma } from '@hq/database';
-import { createApp } from '../../../app.js';
+import { createApp, type ApiError } from '../../../app.js';
 import { signAccessToken } from '../../auth/tokens.js';
 import { SmileKyc } from '../port/smile-kyc.js';
 import {
@@ -81,6 +86,132 @@ afterEach(async () => {
 });
 
 describe('Authenticated active KYC sessions', () => {
+  it('delivers authenticated callback photos to admin review and gates approval on their availability', async () => {
+    const store = new Map<string, string>();
+    const redis = {
+      get: async (key: string) => store.get(key) ?? null,
+      set: async (key: string, value: string) => {
+        store.set(key, value);
+        return 'OK';
+      },
+    } as unknown as Redis;
+    const provider = new SmileKyc(
+      fixtureConfig,
+      async (url) =>
+        new Response(
+          JSON.stringify(
+            String(url).endsWith('/v3/token')
+              ? { token: 'token' }
+              : { job_id: jobId, user_id: 'user_fixture', status: 'attention' },
+          ),
+        ),
+    );
+    const harness = express();
+    harness.use(
+      '/webhooks/smile-id',
+      express.raw({ type: '*/*' }),
+      smileWebhookRouter({ kyc: provider, redis, realtime: noopGateway }),
+    );
+    harness.use(express.json());
+    harness.use('/api/admin', adminRouter({ kyc: provider, redis, realtime: noopGateway }));
+    harness.use((err: ApiError, _req: Request, res: Response, _next: NextFunction) => {
+      res.status(err.statusCode ?? 500).json({ error: { code: err.code } });
+    });
+    const user = await person();
+    const session = await startBiometricVerification(prisma, user.userId, provider, identity);
+    const record = await current(user.usherId);
+    const token = await signAccessToken(await admin(), 'ADMIN');
+    const callback = JSON.stringify({
+      product: 'biometric_kyc',
+      status: 'attention',
+      partner_params: { job_id: jobId, user_id: 'user_fixture' },
+      image_links: { selfie_image: 'https://smile-results.s3.eu-west-1.amazonaws.com/selfie.jpg' },
+      id_fields: {
+        full_name: 'Test Person',
+        id_number: identity.idNumber,
+        photo_url: 'https://smile-results.s3.eu-west-1.amazonaws.com/id.jpg',
+      },
+    });
+    expect(
+      (
+        await request(harness)
+          .post(callbackPath(session.referenceId))
+          .type('json')
+          .set(signatureHeaders)
+          .send(callback)
+      ).status,
+    ).toBe(200);
+    const detail = await request(harness)
+      .get(`/api/admin/verifications/${record.id}/evidence`)
+      .auth(token, { type: 'bearer' });
+    expect(detail.status).toBe(200);
+    expect(detail.body.evidence).toMatchObject({
+      fullName: 'Test Person',
+      maskedId: '•••••••8901',
+    });
+    expect(JSON.stringify(await current(user.usherId))).not.toContain('selfie.jpg');
+    expect(JSON.stringify(await current(user.usherId))).not.toContain(identity.idNumber);
+    const cached = new Map(store);
+    store.clear();
+    expect(
+      (
+        await request(harness)
+          .post(`/api/admin/verifications/${record.id}/approve`)
+          .auth(token, { type: 'bearer' })
+      ).status,
+    ).toBe(409);
+    for (const [key, value] of cached) store.set(key, value);
+    expect(
+      (
+        await request(harness)
+          .post(`/api/admin/verifications/${record.id}/approve`)
+          .auth(token, { type: 'bearer' })
+      ).status,
+    ).toBe(200);
+    expect((await current(user.usherId)).status).toBe('APPROVED');
+  });
+  it('rejects manual approval of a started capture with no evidence, while allowing rejection', async () => {
+    const user = await person();
+    await startBiometricVerification(prisma, user.userId, kyc, identity);
+    const record = await current(user.usherId);
+    const adminId = await admin();
+    await expect(
+      reviewVerification(prisma, { verificationId: record.id, adminId, decision: 'APPROVED' }),
+    ).rejects.toMatchObject({ code: 'EVIDENCE_REQUIRED' });
+    expect((await current(user.usherId)).status).toBe('PENDING');
+    const token = await signAccessToken(adminId, 'ADMIN');
+    const denied = await request(app)
+      .post(`/api/admin/verifications/${record.id}/approve`)
+      .auth(token, { type: 'bearer' })
+      .send({ evidenceJobId: jobId });
+    expect(denied.status).toBe(409);
+    expect(denied.body.error.code).toBe('EVIDENCE_REQUIRED');
+    const refresh = await request(app)
+      .post(`/api/admin/verifications/${record.id}/evidence/refresh`)
+      .auth(token, { type: 'bearer' });
+    expect(refresh.status).toBe(409);
+    expect(refresh.body.error.code).toBe('NO_PROVIDER_JOB');
+    const detail = await request(app)
+      .get(`/api/admin/verifications/${record.id}/evidence`)
+      .auth(token, { type: 'bearer' });
+    expect(detail.status).toBe(200);
+    expect(detail.body).toEqual({ evidence: null });
+    expect(detail.headers['cache-control']).toBe('no-store');
+    expect(
+      (
+        await request(app)
+          .get(`/api/admin/verifications/${record.id}/evidence`)
+          .auth(user.token, { type: 'bearer' })
+      ).status,
+    ).toBe(403);
+    await reviewVerification(prisma, {
+      verificationId: record.id,
+      adminId,
+      decision: 'REJECTED',
+      reason: 'Capture incomplete',
+    });
+    expect((await current(user.usherId)).status).toBe('REJECTED');
+  });
   it('refreshes an owned pending session without consuming another attempt and rejects other owners', async () => {
     const user = await person();
     const other = await person();
@@ -164,7 +295,9 @@ describe('Authenticated active KYC sessions', () => {
       .auth(user.token, { type: 'bearer' })
       .send({ ...identity, givenNames: 'Amina Fatou', lastName: 'Clearwater', email });
     expect(res.status).toBe(201);
-    const payload = JSON.parse(String((fetcher.mock.calls[0]?.[1]?.body as FormData).get('payload')));
+    const payload = JSON.parse(
+      String((fetcher.mock.calls[0]?.[1]?.body as FormData).get('payload')),
+    );
     expect(payload.email).toBe(email);
     expect(JSON.stringify(res.body)).not.toContain(email);
     const saved = await current(user.usherId);
@@ -199,6 +332,7 @@ describe('Authenticated active KYC sessions', () => {
     const record = await current(user.usherId);
     expect(record).toMatchObject({ status: 'APPROVED', nin: null, bvn: null, govPhotoKey: null });
     expect(record.govLookup).toEqual({
+      environment: 'sandbox',
       idFound: null,
       livenessPassed: null,
       faceMatchScore: null,

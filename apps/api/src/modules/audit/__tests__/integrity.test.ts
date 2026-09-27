@@ -19,6 +19,10 @@ async function isolatedHistory(
   try {
     await prisma.$transaction(
       async (tx) => {
+        // Owner-only fault injection in disposable storage. DDL and all data
+        // changes roll back together even if an assertion or process fails.
+        await tx.$executeRaw`ALTER TABLE audit_logs DISABLE TRIGGER audit_logs_preserve_history`;
+        await tx.$executeRaw`ALTER TABLE audit_chain_head DISABLE TRIGGER audit_head_preserve_history`;
         await tx.auditLog.deleteMany();
         await tx.auditChainHead.deleteMany();
         await test(tx);
@@ -39,6 +43,18 @@ async function seed(tx: Prisma.TransactionClient) {
 }
 
 describe('audit origin, durable head, and snapshot consistency (OVA-145)', () => {
+  it('preserves hashed actor references when the user is deleted', async () =>
+    isolatedHistory(async (tx) => {
+      const user = await tx.user.create({
+        data: { phone: `audit-actor-${randomUUID()}`, role: 'CLIENT', status: 'ACTIVE' },
+      });
+      await writeAudit({ actorId: user.id, action: 'auth.login', target: user.id }, tx);
+      await tx.user.delete({ where: { id: user.id } });
+      const row = await tx.auditLog.findFirstOrThrow();
+      expect(row.actorId).toBe(user.id);
+      expect(await verifyAuditChain(tx)).toEqual({ ok: true, checked: 1, legacy: 0 });
+    }));
+
   it('accepts fresh empty history with an absent or null head', async () =>
     isolatedHistory(async (tx) => {
       expect(await verifyAuditChain(tx)).toEqual({ ok: true, checked: 0, legacy: 0 });

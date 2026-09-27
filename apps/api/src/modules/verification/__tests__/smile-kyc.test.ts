@@ -65,7 +65,8 @@ describe('Smile ID v3 boundary', () => {
       JSON.parse(String((fetcher.mock.calls[0]?.[1]?.body as FormData).get('payload'))).id_type,
     ).toBe('BVN');
     expect(
-      JSON.parse(String((fetcher.mock.calls[0]?.[1]?.body as FormData).get('payload'))).phone_number,
+      JSON.parse(String((fetcher.mock.calls[0]?.[1]?.body as FormData).get('payload')))
+        .phone_number,
     ).toBe('+2348000000000');
   });
   it('binds the sandbox identity email without exposing it in the mobile session', async () => {
@@ -76,7 +77,9 @@ describe('Smile ID v3 boundary', () => {
       { ...identity, givenNames: 'Amina Fatou', lastName: 'Clearwater', email },
       '+2348000000000',
     );
-    const payload = JSON.parse(String((fetcher.mock.calls[0]?.[1]?.body as FormData).get('payload')));
+    const payload = JSON.parse(
+      String((fetcher.mock.calls[0]?.[1]?.body as FormData).get('payload')),
+    );
     expect(payload).toMatchObject({ given_names: 'Amina Fatou', last_name: 'Clearwater', email });
     expect(payload.phone_number).toBeUndefined();
     expect(JSON.stringify(result)).not.toContain(email);
@@ -152,6 +155,39 @@ describe('Smile ID v3 boundary', () => {
       ).rejects.toMatchObject({ code: 'KYC_UNAVAILABLE' });
     },
   );
+  it('retains only safe review evidence from an authenticated callback', () => {
+    const ref = randomUUID();
+    const key = callbackPath(ref).split('/').at(-1)!;
+    const raw = Buffer.from(
+      JSON.stringify({
+        product: 'biometric_kyc',
+        status: 'attention',
+        partner_params: { job_id: jobId, user_id: 'user_fixture' },
+        image_links: {
+          selfie_image:
+            'https://smile-results.s3.eu-west-1.amazonaws.com/selfie.jpg?signature=test',
+        },
+        id_fields: {
+          full_name: 'Test Person',
+          id_number: '12345678901',
+          photo_url: 'https://smile-results.s3.eu-west-1.amazonaws.com/id.jpg?signature=test',
+          address_unparsed: 'Do not retain',
+        },
+        user_provided_info: { given_names: 'Test', last_name: 'Person' },
+      }),
+    );
+    const result = new SmileKyc(fixtureConfig).verifyWebhook(raw, signatureHeaders, ref, key);
+    expect(result).toMatchObject({
+      evidence: {
+        fullName: 'Test Person',
+        maskedId: '•••••••8901',
+        submittedName: 'Test Person',
+        status: 'attention',
+      },
+    });
+    expect(JSON.stringify(result)).not.toContain('12345678901');
+    expect(JSON.stringify(result)).not.toContain('Do not retain');
+  });
   it('never approves when unconfigured', async () => {
     const noop = new NoopKyc();
     await expect(noop.startSession('reference')).rejects.toMatchObject({ code: 'KYC_UNAVAILABLE' });

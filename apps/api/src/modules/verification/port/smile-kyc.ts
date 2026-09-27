@@ -1,7 +1,9 @@
 /** Smile ID v3 API / v12 mobile SDK. See docs/SMILE-ID.md for the trust boundary. */
+import { parseReviewEvidence } from '../evidence.js';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import { ApiError } from '../../../app.js';
+import { tagSmileError } from '../../../observability/smile.js';
 import type { KycIdentity, KycPort, KycResult, KycStartResult } from './kyc-port.js';
 
 export interface SmileConfig {
@@ -83,11 +85,11 @@ export class SmileKyc implements KycPort {
       };
     } catch {
       // Do not leak provider responses, tokens, or identity fields through errors/logs.
-      throw new ApiError(
+      throw tagSmileError(new ApiError(
         503,
         'KYC_UNAVAILABLE',
         'Identity verification is temporarily unavailable. Please try again.',
-      );
+      ), 'SMILE_SESSION_FAILED', referenceId);
     }
   }
   verifyWebhook(
@@ -110,14 +112,48 @@ export class SmileKyc implements KycPort {
       .digest('base64');
     if (!equal(expected, signature)) return null;
     try {
-      const parsed = callbackSchema.parse(JSON.parse(raw.toString('utf8')));
+      const body: unknown = JSON.parse(raw.toString('utf8'));
+      const parsed = callbackSchema.parse(body);
+      const evidence = parseReviewEvidence(body);
       return {
         referenceId,
         jobId: parsed.partner_params.job_id,
         userId: parsed.partner_params.user_id,
+        ...(evidence ? { evidence } : {}),
       };
     } catch {
       return null;
+    }
+  }
+  async refreshEvidence(jobId: string, referenceId: string, environment?: string): Promise<void> {
+    if (!jobIdSchema.safeParse(jobId).success || !z.string().uuid().safeParse(referenceId).success)
+      throw new ApiError(409, 'NO_PROVIDER_JOB', 'No completed capture is available to refresh.');
+    if (environment && environment !== this.cfg.environment)
+      throw new ApiError(
+        409,
+        'KYC_ENVIRONMENT_MISMATCH',
+        'This attempt belongs to a different verification environment.',
+      );
+    try {
+      const token = await this.token();
+      const body = new FormData();
+      body.set(
+        'callback_url',
+        `${this.cfg.callbackUrl.replace(/\/$/, '')}/${referenceId}/${this.callbackKey(referenceId)}`,
+      );
+      const response = await this.fetchImpl(`${this.base}/v3/replay/${encodeURIComponent(jobId)}`, {
+        method: 'POST',
+        headers: { 'SmileID-Partner-ID': this.cfg.partnerId, 'SmileID-Token': token },
+        body,
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!response.ok) throw new Error('replay unavailable');
+    } catch {
+      throw tagSmileError(new ApiError(
+        503,
+        'KYC_UNAVAILABLE',
+        'Identity evidence could not be refreshed. Please try again.',
+      ), 'SMILE_EVIDENCE_REFRESH_FAILED', referenceId);
     }
   }
   async getResult(jobId: string, userId: string): Promise<KycResult> {

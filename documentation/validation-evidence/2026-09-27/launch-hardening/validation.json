@@ -1,0 +1,53 @@
+{
+  "date": "2026-09-27",
+  "scope": "Current dirty workspace, not deployed release certification",
+  "runtime": {
+    "node": "26.8.1",
+    "pnpm": "10.27.0",
+    "postgres": "16",
+    "platform": "macOS ARM64",
+    "database": "temporary local PostgreSQL, disposable isolated schema"
+  },
+  "baseline": {
+    "passed": 920,
+    "failed": 12,
+    "skipped": 1,
+    "files": 102
+  },
+  "after": {
+    "passed": 933,
+    "failed": 0,
+    "skipped": 1,
+    "files": 102,
+    "passingFiles": 101,
+    "skippedFiles": 1
+  },
+  "localProviderLifecycle": {
+    "passed": 50,
+    "failed": 0
+  },
+  "checks": {
+    "prismaGenerate": "passed",
+    "eightConnectionIsolation": "passed",
+    "workspaceTypecheck": "passed",
+    "workspaceLint": "passed",
+    "trackedMigrations": "passed",
+    "migrationDrift": "zero",
+    "testSourceTypecheck": "passed",
+    "testSourceLint": "passed",
+    "unsafeOrdinaryDatabase": "rejected before test collection",
+    "schemaCleanup": "verified"
+  },
+  "schema": "hq_validation_20260927200204_afd985d4",
+  "skipReason": "Live R2 round-trip omitted without storage credentials",
+  "limitations": [
+    "CI Node 22 was not exercised",
+    "No real payment provider or native device acceptance",
+    "Two type-only import corrections during full suite; test-source static checks afterward"
+  ],
+  "logs": {
+    "beforeSha256": "aa617bbafd6ee2a1bb9fbcfed8c27835273e5a7c33cd1b585fcbcddef1bd2189",
+    "afterSha256": "9314187282633ed5e523beaba9370d985ce1455706e1451396e2823f76833460",
+    "unsafeTargetSha256": "9a179c85f57205d4945a641f0055d638b61648a3913dbf25648335fec14bf267"
+  }
+}

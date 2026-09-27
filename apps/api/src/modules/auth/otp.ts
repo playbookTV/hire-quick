@@ -77,7 +77,7 @@ export async function requestOtp(phone: string): Promise<{ sent: boolean; devCod
 export interface AuthResult {
   accessToken: string;
   refreshToken: string;
-  user: { id: string; role: UserRole; phone: string };
+  user: { id: string; role: UserRole; phone: string | null };
 }
 
 export async function verifyOtp(phone: string, code: string, role?: UserRole): Promise<AuthResult> {

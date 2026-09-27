@@ -1,0 +1,8 @@
+{
+  "eventId": "8cfd4755b89e4249ac833c39ee1d46c8",
+  "status": 200,
+  "purpose": "Informational ingestion check; not a real applicant failure",
+  "receivedInSearch": true,
+  "issue": "HIREQUICK-ADMIN-1",
+  "resolved": true
+}

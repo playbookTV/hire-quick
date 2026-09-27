@@ -1,0 +1,20 @@
+{
+  "regressionFailedBefore": true,
+  "mobileFocusedTests": 15,
+  "sharedDiagnosticsTests": 5,
+  "exactReleaseMobileTests": 15,
+  "mobileTypecheck": "passed",
+  "exactReleaseTypecheck": "passed",
+  "mobileLint": "passed with two existing native plugin warnings",
+  "realSdkTokenRefresh": "recovered 401 without diagnostic",
+  "originalErrorAndResponsePreserved": true,
+  "sourcePrivateValuesScan": "494 files, 12 private values, no matches",
+  "actualDeviceSubmission": "awaiting new preview installation and reproduction",
+  "submissionRootCause": "not established",
+  "sharedLint": "passed",
+  "iosPreview": "build 8 finished; package, provisioning, privacy and source-map checks passed",
+  "androidPreview": "build 14 finished; package, signing-certificate, privacy and source-map checks passed",
+  "sourceMaps": "uploaded for both builds",
+  "artifactPrivateValuesScan": "both bundles checked against 12 private values; no matches",
+  "originalDeviceFailure": "not yet reproduced on new build"
+}

@@ -1,0 +1,77 @@
+{
+  "deployment": "a7a398df-19d8-4c0b-b707-10ba82599313",
+  "environment": "staging",
+  "processType": "api",
+  "release": "hq-smile-monitoring-20260927",
+  "sentryConfigured": true,
+  "smileEnvironment": "production",
+  "hashes": {
+    "apps/api/src/app.ts": "9a6e55201f225b2aa57cf6ee8f79f8a3b10cd4c0156df007f4d42839aefeec6e",
+    "apps/api/src/worker.ts": "6d0317932c9be9ad39329f0292488d9590d33c196be14e03a3080eef1d463474",
+    "apps/api/src/observability/dashboard.ts": "7bf7246b12bdcb887258edca48fb9c146c1e2f1d4533654b818b52c333fb50fc",
+    "apps/api/src/observability/init.ts": "2247cbfa2c1be31b52cf74cea7516dd5d4a999055c9a065de80669617f24a150",
+    "apps/api/src/modules/jobs/jobs.ts": "b9fb7aa47717eb4f3bcf11794a24771f3f20a384daae0fe85ce54ca972755975",
+    "apps/api/src/observability/smile.ts": "2ad8ab8bb28d4dd36a5206e29327de801949a8f1a4e3479009c67702af4ce774",
+    "apps/api/src/modules/verification/monitoring.ts": "a39316218a6af681ff81b4e218cfec00637319230cf54207aefc22cef9af694f",
+    "apps/api/src/modules/jobs/runtime.ts": "882e8e86ea28709c0ed4224cdf10aa4e908965e7d801bf82d13b801c8c0644c0"
+  },
+  "database": "up",
+  "redis": "PONG",
+  "observability": {
+    "smile": {
+      "status": "available",
+      "pending": 0,
+      "stalled": 0,
+      "withoutCallback": 0,
+      "rejected": 2,
+      "providerErrors": 0,
+      "checkedAt": "2026-09-27T19:01:56.108Z",
+      "windowDays": 7,
+      "stalledAfterMinutes": 60
+    },
+    "services": [
+      {
+        "key": "api",
+        "status": "up"
+      },
+      {
+        "key": "database",
+        "status": "up"
+      },
+      {
+        "key": "redis",
+        "status": "up"
+      }
+    ],
+    "betterStack": [
+      {
+        "key": "api",
+        "status": "up"
+      },
+      {
+        "key": "checkouts",
+        "status": "up"
+      },
+      {
+        "key": "reconciliation",
+        "status": "down"
+      },
+      {
+        "key": "audit",
+        "status": "down"
+      }
+    ],
+    "sentry": {
+      "status": "connected",
+      "projects": [
+        "react-native",
+        "hirequick-api",
+        "hirequick-worker",
+        "hirequick-admin"
+      ],
+      "issueCount": 3
+    }
+  },
+  "service": "prolific-love",
+  "sourceMatches": true
+}

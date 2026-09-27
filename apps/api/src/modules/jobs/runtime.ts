@@ -7,6 +7,7 @@ export const QUEUE_NAME = 'hirequick-jobs';
 // Money jobs retry durable service entrypoints, never raw provider writes.
 // Retention stays single-attempt pending its deletion outbox (OVA-146).
 export const SCHEDULES = [
+  { name: 'smileMonitoring', pattern: '1-59/5 * * * *', attempts: 1 },
   { name: 'autocomplete', pattern: '*/10 * * * *', attempts: 3 },
   { name: 'noshow', pattern: '3-59/10 * * * *', attempts: 3 },
   { name: 'reconcile', pattern: '17 3 * * *', attempts: 3 },

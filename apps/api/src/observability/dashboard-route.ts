@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { readSmileHealth } from '../modules/verification/monitoring.js';
 import { prisma } from '@hq/database';
 import type { Redis } from 'ioredis';
 import { env } from '../env.js';
@@ -25,6 +26,7 @@ export function monitoringDashboardRouter(redis?: Redis): Router {
     },
     {
       database: () => prisma.$queryRaw`SELECT 1`,
+      smile: () => readSmileHealth(),
       redis: async () => {
         if (!redis || redis.status !== 'ready') throw new Error('Redis unavailable');
         await redis.ping();

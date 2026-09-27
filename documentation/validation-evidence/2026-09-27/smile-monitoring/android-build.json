@@ -1,0 +1,14 @@
+{
+  "id": "0bdf6dd0-29f3-4907-9bb3-18465d2beb48",
+  "status": "FINISHED",
+  "platform": "ANDROID",
+  "distribution": "INTERNAL",
+  "appVersion": "0.0.1",
+  "appBuildVersion": "13",
+  "buildProfile": "preview",
+  "createdAt": "2026-09-27T18:43:22.492Z",
+  "updatedAt": "2026-09-27T19:14:18.259Z",
+  "completedAt": "2026-09-27T19:14:18.086Z",
+  "buildPage": "https://expo.dev/accounts/ovalay-studios/projects/hirequick/builds/0bdf6dd0-29f3-4907-9bb3-18465d2beb48",
+  "artifactUrl": "https://expo.dev/artifacts/eas/QrA9W7QewRu5Xqz-FgCY1wGqyJmoSyMrCUeCZf-B3K4.apk"
+}

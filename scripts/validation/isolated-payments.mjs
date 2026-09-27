@@ -65,6 +65,12 @@ async function command(label, args) {
     // Keep dotenv from importing external provider credentials during test startup.
     PAYSTACK_SECRET_KEY: 'sk_test_isolated_validation',
     BREVO_API_KEY: '',
+    KUDISMS_API_KEY: '',
+    TWILIO_ACCOUNT_SID: '',
+    TWILIO_API_KEY_SID: '',
+    TWILIO_API_KEY_SECRET: '',
+    TWILIO_WHATSAPP_FROM: '',
+    TWILIO_WHATSAPP_CONTENT_SID: '',
     REDIS_URL: '',
     PAYSTACK_WEBHOOK_SECRET: 'isolated-webhook-secret',
     PAYSTACK_OPERATING_RECIPIENT: '',

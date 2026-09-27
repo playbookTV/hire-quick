@@ -15,6 +15,9 @@ import type {
 } from './paystack-port.js';
 
 const BASE = 'https://api.paystack.co';
+// Paystack documents these as conclusive failures: no further processing occurs.
+// https://paystack.com/docs/transfers/how-transfers-work/
+const failedTransferStatuses = new Set(['failed', 'reversed', 'abandoned', 'blocked', 'rejected']);
 
 const textValue = z.string().min(1);
 const koboValue = z.number().int().safe().nonnegative();
@@ -211,7 +214,7 @@ export class HttpPaystack implements PaystackPort {
       const status =
         data.status === 'success'
           ? 'success'
-          : data.status === 'failed' || data.status === 'reversed'
+          : failedTransferStatuses.has(data.status)
             ? 'failed'
             : ['pending', 'otp', 'processing', 'received'].includes(data.status)
               ? 'pending'
@@ -234,7 +237,7 @@ export class HttpPaystack implements PaystackPort {
       );
       if (data.reference !== reference) throw new Error('Paystack transfer reference mismatch');
       if (data.status === 'success') return { status: 'success' };
-      if (data.status === 'failed' || data.status === 'reversed') return { status: 'failed' };
+      if (failedTransferStatuses.has(data.status)) return { status: 'failed' };
       if (['pending', 'otp', 'processing', 'received'].includes(data.status))
         return { status: 'pending' };
       // Callers may dispatch on unknown (not found). An unrecognized existing

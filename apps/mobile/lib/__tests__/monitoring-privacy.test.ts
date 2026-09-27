@@ -2,6 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { sanitizeMobileEvent } from '../monitoring-privacy.js';
 
 describe('mobile crash event privacy', () => {
+  it('keeps a Smile failure searchable without exposing the capture payload', () => {
+    const safe = sanitizeMobileEvent({ type: undefined, message: 'secret',
+      tags: { code: 'SMILE_CAPTURE_FAILED', attempt: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', token: 'secret', sdk_error: 'NETWORK_FORBIDDEN', http_status: '403' },
+      extra: { result: 'secret' }, request: { data: 'secret' } });
+    expect(safe.message).toBe('SMILE_CAPTURE_FAILED');
+    expect(safe.tags?.stage).toBe('capture_submission');
+    expect(safe.tags?.sdk_error).toBe('NETWORK_FORBIDDEN');
+    expect(safe.tags?.http_status).toBe('403');
+    expect(safe.fingerprint).toEqual(['hirequick', 'SMILE_CAPTURE_FAILED']);
+    expect(JSON.stringify(safe)).not.toContain('secret');
+  });
   it('removes customer data while preserving source-map and native symbol identifiers', () => {
     const result = sanitizeMobileEvent({
       type: undefined,

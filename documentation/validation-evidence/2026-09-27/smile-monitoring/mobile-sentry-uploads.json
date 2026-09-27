@@ -1,0 +1,14 @@
+{
+  "android": {
+    "buildId": "0bdf6dd0-29f3-4907-9bb3-18465d2beb48",
+    "status": "FINISHED",
+    "sourceMapsUploaded": true,
+    "debugInformationFilesUploaded": 0
+  },
+  "ios": {
+    "buildId": "7eb98766-c1dc-4034-b689-2c03aa1643b7",
+    "status": "FINISHED",
+    "sourceMapsUploaded": true,
+    "debugInformationFilesUploaded": 5
+  }
+}

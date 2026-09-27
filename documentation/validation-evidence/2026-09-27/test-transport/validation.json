@@ -1,0 +1,41 @@
+{
+  "status": "FIXED AND VERIFIED (local workspace)",
+  "runtime": "Node 22.23.3",
+  "fullRuns": [
+    {
+      "passed": 954,
+      "failed": 0,
+      "skipped": 1,
+      "testFiles": 104,
+      "schemaRemoved": true
+    },
+    {
+      "passed": 954,
+      "failed": 0,
+      "skipped": 1,
+      "testFiles": 104,
+      "schemaRemoved": true
+    }
+  ],
+  "providerLifecyclePerRun": {
+    "passed": 50,
+    "failed": 0
+  },
+  "installedPatchStress": {
+    "requests": 20000,
+    "failures": 0
+  },
+  "checks": {
+    "frozenOfflineInstall": "passed",
+    "workspaceTypecheck": "passed",
+    "workspaceLint": "passed with existing warnings",
+    "testTypecheck": "passed",
+    "testLint": "passed",
+    "migrations": "passed",
+    "migrationDrift": "none",
+    "docs": "passed",
+    "diffWhitespace": "passed"
+  },
+  "hostedCi": "not run",
+  "skipped": "Live R2 storage round-trip requires external credentials"
+}

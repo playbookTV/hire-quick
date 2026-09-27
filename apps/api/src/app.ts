@@ -115,7 +115,7 @@ export function createApp(config: AppConfig = {}): Express {
   }
 
   // Smile ID callback — signed headers and per-attempt callback capability.
-  app.use('/webhooks/smile-id', express.raw({ type: '*/*' }), smileWebhookRouter({ kyc, realtime }));
+  app.use('/webhooks/smile-id', express.raw({ type: '*/*' }), smileWebhookRouter({ kyc, realtime, redis: config.rateLimitRedis }));
 
   // Parse delivery reports with their own smaller limit before general JSON.
   app.use('/webhooks/kudisms', kudiSmsWebhookRouter());
@@ -128,7 +128,7 @@ export function createApp(config: AppConfig = {}): Express {
   app.use('/api/me', privacyRouter(config.storage));
   app.use('/api/me', notificationsRouter());
   app.use('/api/legal', legalRouter());
-  app.use('/api/admin', adminRouter({ realtime, storage: config.storage, paystack: config.paystack, redis: config.rateLimitRedis }));
+  app.use('/api/admin', adminRouter({ kyc, realtime, storage: config.storage, paystack: config.paystack, redis: config.rateLimitRedis }));
   app.use('/api', bookingsRouter({ realtime, paystack: config.paystack }));
   app.use('/api', chatMediaRouter(config.storage));
   app.use('/api', ushersRouter(config.storage));

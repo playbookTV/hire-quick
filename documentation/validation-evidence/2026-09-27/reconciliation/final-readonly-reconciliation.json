@@ -1,0 +1,13 @@
+{
+  "checkedAt": "2026-09-27T22:11:49.128Z",
+  "expectedKobo": 2000000,
+  "actualKobo": 2215000,
+  "driftKobo": 215000,
+  "ok": false,
+  "classification": "drift",
+  "snapshotChanged": false,
+  "staleHeldBookingIds": [],
+  "staleFrozenBookingIds": [],
+  "pendingOperations": 0,
+  "quarantinedOperations": 0
+}

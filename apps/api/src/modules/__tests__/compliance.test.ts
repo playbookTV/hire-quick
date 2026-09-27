@@ -20,30 +20,14 @@ afterAll(async () => {
 });
 
 describe('compliance (NDPR §14)', () => {
-  it('audit chain verifies, detects tampering, and recovers', async () => {
+  it('audit chain verifies after successive appends', async () => {
     await writeAudit({ actorId: null, action: `${tag}.a`, target: 't1' });
     await writeAudit({ actorId: null, action: `${tag}.b`, target: 't2', metadata: { n: 1 } });
 
     expect((await verifyAuditChain()).ok).toBe(true);
 
-    // Tamper the most recent chained row → chain must break detectably.
-    const row = await prisma.auditLog.findFirst({
-      where: { entryHash: { not: null } },
-      orderBy: { seq: 'desc' },
-    });
-    expect(row).toBeTruthy();
-    const original = row!.action;
-
-    await prisma.auditLog.update({ where: { id: row!.id }, data: { action: `${original}-TAMPERED` } });
-    try {
-      const broken = await verifyAuditChain();
-      expect(broken.ok).toBe(false);
-      expect(broken.brokenAt?.reason).toContain('entryHash');
-    } finally {
-      // Restore even when an assertion fails, preserving later suites' chain.
-      await prisma.auditLog.update({ where: { id: row!.id }, data: { action: original } });
-    }
-    expect((await verifyAuditChain()).ok).toBe(true);
+    // Mutation rejection and privileged tamper detection are covered by the
+    // audit suites. Never commit damaged history to the shared test chain.
   });
 
   it('erase pseudonymizes PII and flags the account ANONYMIZED', async () => {
@@ -61,7 +45,7 @@ describe('compliance (NDPR §14)', () => {
     const after = await prisma.user.findUnique({ where: { id: user.id } });
     expect(after?.status).toBe('ANONYMIZED');
     expect(after?.email).toBeNull();
-    expect(after?.phone.startsWith('deleted:')).toBe(true);
+    expect(after?.phone).toMatch(/^deleted:/);
     expect(after?.anonymizedAt).toBeTruthy();
     expect(await prisma.deviceToken.count({ where: { userId: user.id } })).toBe(0);
   });

@@ -21,6 +21,10 @@ export interface MonitorCheck {
 }
 
 export interface MonitoringSnapshot {
+  smile?: {
+    status: 'available'; checkedAt: string; windowDays: 7; stalledAfterMinutes: 60;
+    pending: number; stalled: number; withoutCallback: number; rejected: number; providerErrors: number;
+  } | { status: 'unavailable' };
   observedAt: string;
   refreshAfterSeconds: number;
   environment: string;
@@ -39,6 +43,7 @@ export interface MonitoringSnapshot {
     issues: Array<{
       id: string;
       reference: string;
+      diagnosticCode?: string;
       project: string;
       level: string;
       events: number;

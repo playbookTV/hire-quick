@@ -1,0 +1,47 @@
+{
+  "runtime": "Node 22.23.3",
+  "beforeFix": {
+    "adapterPassed": 68,
+    "adapterFailed": 6
+  },
+  "workspaceFocused": {
+    "passed": 89,
+    "failed": 0
+  },
+  "exactRelease": {
+    "passed": 108,
+    "failed": 0,
+    "migrationDrift": false,
+    "disposableSchemaRemoved": true,
+    "apiBuild": "passed",
+    "apiLint": "passed with existing env.ts regex warning",
+    "testTypecheck": "passed"
+  },
+  "workspaceStatic": {
+    "typecheck": "passed",
+    "lint": "passed with existing warnings",
+    "testTypecheck": "passed",
+    "testLint": "passed"
+  },
+  "providerLifecycle": {
+    "passed": 50,
+    "failed": 0
+  },
+  "workspaceFullRun": {
+    "passed": 947,
+    "failed": 5,
+    "skipped": 1,
+    "failureSuites": [
+      "recruitment-lifecycle",
+      "checkout-recovery",
+      "chat-media",
+      "verification"
+    ],
+    "note": "HTTP response/status/socket failures; no failures in the changed transfer tests. Root cause remains unproven."
+  },
+  "failedSuitesFreshRerun": {
+    "passed": 53,
+    "failed": 0,
+    "disposableSchemaRemoved": true
+  }
+}

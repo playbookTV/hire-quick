@@ -1,3 +1,4 @@
+import { createSmileReporter } from '@hq/shared';
 import * as Sentry from '@sentry/react-native';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Platform } from 'react-native';
@@ -41,3 +42,11 @@ export function reportRenderError(error: Error): void {
 }
 
 export const withMonitoring = Sentry.wrap;
+
+export const reportSmile = createSmileReporter((code, tags, level) => {
+  Sentry.withScope((scope) => {
+    scope.setTags(tags);
+    scope.setFingerprint(['hirequick', code]);
+    Sentry.captureMessage(code, level);
+  });
+});

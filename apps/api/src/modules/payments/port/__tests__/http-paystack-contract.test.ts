@@ -146,6 +146,9 @@ describe('Paystack request contracts', () => {
     ['success', 'success'],
     ['failed', 'failed'],
     ['reversed', 'failed'],
+    ['abandoned', 'failed'],
+    ['blocked', 'failed'],
+    ['rejected', 'failed'],
     ['pending', 'pending'],
     ['otp', 'pending'],
     ['processing', 'pending'],
@@ -158,6 +161,15 @@ describe('Paystack request contracts', () => {
     );
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
+
+  it.each(['abandoned', 'blocked', 'rejected'])(
+    'recognizes a conclusive %s response to transfer initiation',
+    async (status) => {
+      const { api, fetcher } = client({ ...transferData, status });
+      expect(await api.transfer(transfer)).toEqual({ reference: transfer.reference, status: 'failed' });
+      expect(fetcher).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it('selects the NGN balance with other currency accounts present', async () => {
     const { api } = client([

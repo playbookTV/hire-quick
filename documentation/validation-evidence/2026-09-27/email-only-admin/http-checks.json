@@ -1,0 +1,16 @@
+{
+  "/health": 200,
+  "/ready": 200,
+  "/api/admin/users": 401,
+  "admin": 200,
+  "assets": {
+    "/assets/index-DTqCNYQP.js": {
+      "sha256": "e7263d4962e22972d0da962a4787439be8806058627494a71087a1b535e07bf9",
+      "matchesBuild": true
+    },
+    "/assets/index-div8x93z.css": {
+      "sha256": "fbb97c6219c1c536539f4c068a66ecee4c0fb9dafef57cdc1ee60bb28da82b65",
+      "matchesBuild": true
+    }
+  }
+}

@@ -29,11 +29,12 @@ describe('KudiSMS delivery callback', () => {
     const response = await request(app).post(url).send(payload(status, code));
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ ok: true });
-    expect(logs.info).toHaveBeenCalledOnce();
-    expect(logs.info).toHaveBeenCalledWith(
-      { provider: 'kudisms', verified: false, status, code },
-      'SMS delivery report',
-    );
+    // The app also emits a sanitized HTTP completion log. Count delivery
+    // reports specifically, while checking every log below for payload leaks.
+    const reports = logs.info.mock.calls.filter(([, message]) => message === 'SMS delivery report');
+    expect(reports).toEqual([
+      [{ provider: 'kudisms', verified: false, status, code }, 'SMS delivery report'],
+    ]);
     expect(
       JSON.stringify([logs.info.mock.calls, logs.error.mock.calls, logs.warn.mock.calls]),
     ).not.toMatch(/private-reference|private-description|2348012345678/);

@@ -80,6 +80,7 @@ afterAll(async () => {
 function handlers(overrides: Partial<JobHandlers> = {}): JobHandlers {
   const noop: Processor = async () => {};
   return {
+    smileMonitoring: noop,
     autocomplete: noop,
     noshow: noop,
     reconcile: noop,

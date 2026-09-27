@@ -1,0 +1,127 @@
+{
+  "runtime": "v22.23.3",
+  "originalStress": {
+    "requests": 20000,
+    "failures": 18,
+    "outcomes": [
+      {
+        "status": 400,
+        "body": ""
+      },
+      {
+        "status": 403,
+        "body": "Invalid CSRF token"
+      },
+      {
+        "status": 400,
+        "body": "Client sent an HTTP request to an HTTPS server.\n"
+      },
+      {
+        "status": 404,
+        "body": "404 page not found\n"
+      },
+      {
+        "error": "ECONNRESET"
+      },
+      {
+        "status": 403,
+        "body": "Invalid CSRF token"
+      },
+      {
+        "status": 400,
+        "body": "Client sent an HTTP request to an HTTPS server.\n"
+      },
+      {
+        "error": "ECONNRESET"
+      },
+      {
+        "error": "ECONNRESET"
+      },
+      {
+        "status": 400,
+        "body": ""
+      },
+      {
+        "status": 403,
+        "body": "Invalid CSRF token"
+      },
+      {
+        "status": 400,
+        "body": "Client sent an HTTP request to an HTTPS server.\n"
+      },
+      {
+        "status": 404,
+        "body": "404 page not found\n"
+      },
+      {
+        "error": "ECONNRESET"
+      },
+      {
+        "status": 403,
+        "body": "Invalid CSRF token"
+      },
+      {
+        "status": 400,
+        "body": "Client sent an HTTP request to an HTTPS server.\n"
+      },
+      {
+        "error": "ECONNRESET"
+      },
+      {
+        "error": "ECONNRESET"
+      }
+    ]
+  },
+  "addressFamilyExperiment": {
+    "requests": 20000,
+    "failures": 0
+  },
+  "fullSuiteOriginMismatches": [
+    {
+      "method": "POST",
+      "status": 400,
+      "body": "Client sent an HTTP request to an HTTPS server.\n",
+      "error": "Bad Request"
+    },
+    {
+      "method": "GET",
+      "status": 404,
+      "body": "404 page not found\n",
+      "error": "Not Found"
+    },
+    {
+      "method": "GET",
+      "error": "ECONNRESET"
+    }
+  ],
+  "preFixFullRuns": [
+    {
+      "passed": 952,
+      "failed": 0,
+      "skipped": 1,
+      "instrumented": false
+    },
+    {
+      "passed": 952,
+      "failed": 0,
+      "skipped": 1,
+      "instrumented": true
+    },
+    {
+      "passed": 949,
+      "failed": 3,
+      "skipped": 1,
+      "instrumented": true
+    }
+  ],
+  "deterministicBefore": {
+    "passed": 1,
+    "failed": 1,
+    "expectedStatus": 201,
+    "actualStatus": 403
+  },
+  "deterministicAfter": {
+    "passed": 2,
+    "failed": 0
+  }
+}

@@ -1,4 +1,5 @@
 import { prisma } from '@hq/database';
+import { monitorSmileAttempts } from '../verification/monitoring.js';
 import { redisConnection } from './redis.js';
 import { env } from '../../env.js';
 import { logger } from '../../logger.js';
@@ -28,6 +29,7 @@ export function createJobRuntime(): ScheduledRuntime {
   return createScheduledRuntime({
     connection,
     handlers: {
+      smileMonitoring: monitorJob('smileMonitoring', monitorSmileAttempts),
       autocomplete: monitorJob('autocomplete', () => jobAutoComplete(realtime)),
       noshow: monitorJob('noshow', () => jobNoShow(deps, realtime)),
       reconcile: monitorJob('reconcile', () => jobReconcile(deps, realtime), env.BETTER_STACK_RECONCILIATION_HEARTBEAT_URL),

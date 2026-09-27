@@ -1,0 +1,12 @@
+{
+  "deployment": "70a31da4-f096-413d-a768-fbb784bb7dec",
+  "phoneRequired": false,
+  "database": true,
+  "hashes": {
+    "packages/database/prisma/schema.prisma": "6fa7e754bc17eacb61b36740e6591b01de5ccd28affb8a1c00932413705f7d05",
+    "packages/database/prisma/migrations/20260927130000_email_only_admin/migration.sql": "1220ce9c61ae4d4c19ea441a7b6ab548cd92eeea00a399250f6472cf70dc928c",
+    "apps/api/src/modules/admin/routes.ts": "32d9977d3ff81de57c309205d3274369a8a8025ff2b43a8c83b3af2d4fe0fda2",
+    "apps/api/src/modules/auth/otp.ts": "c1adf926b9dbafff0a9f51cacdfb4fa1709d348cd499901e4a6bf98981e5cf0d",
+    "apps/api/src/modules/verification/service.ts": "b4a9321c9d7d94315aa8994790c03760b27e198d464a8f9d1f1340d7f8bb06e0"
+  }
+}

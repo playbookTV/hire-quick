@@ -188,6 +188,24 @@ export function Observability() {
             </p>
           </section>
 
+          <section className="monitor-section" aria-labelledby="smile-title">
+            <header className="monitor-section-heading">
+              <div><h2 id="smile-title">Smile ID submissions</h2>
+                <p className="muted">Latest attempt per person, started within the last 7 days.</p></div>
+              <ExternalLink href="https://studio-templar.sentry.io/issues/?query=provider%3Asmile_id&statsPeriod=7d">Smile ID diagnostics</ExternalLink>
+            </header>
+            {data.smile?.status === 'available' ? <div className="monitor-card">
+              <dl className="monitor-metadata">
+                <div><dt>Pending</dt><dd>{data.smile.pending}</dd></div>
+                <div><dt>Pending over 1 hour</dt><dd>{data.smile.stalled}</dd></div>
+                <div><dt>Of those, no callback received</dt><dd>{data.smile.withoutCallback}</dd></div>
+                <div><dt>Provider error / needs attention</dt><dd>{data.smile.providerErrors}</dd></div>
+                <div><dt>Rejected</dt><dd>{data.smile.rejected}</dd></div>
+              </dl>
+              <p className="muted">Long-pending attempts may include abandoned captures. Rejection is a verification outcome, not a service outage. Last checked {time(data.smile.checkedAt)}.</p>
+            </div> : <p role="status">Smile ID submission counts are currently unavailable.</p>}
+          </section>
+
           <section className="monitor-section" aria-labelledby="errors-title">
             <header className="monitor-section-heading">
               <div>
@@ -225,7 +243,7 @@ export function Observability() {
                           <div>
                             <ExternalLink href={issue.url}>{issue.reference}</ExternalLink>
                             <p className="muted">
-                              {issue.project} · {issue.level}
+                              {issue.project} · {issue.level}{issue.diagnosticCode ? ` · ${issue.diagnosticCode}` : ''}
                             </p>
                           </div>
                           <div className="monitor-issue-count">

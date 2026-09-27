@@ -6,7 +6,7 @@ import { Page, State, Table, Btn, Badge, Pagination, EmptyRow } from '../compone
 interface U {
   id: string;
   role: string;
-  phone: string;
+  phone: string | null;
   email: string | null;
   status: string;
 }
@@ -85,7 +85,7 @@ function UserRecords({ filters }: { filters: string }) {
       {selected && (
         <ReviewPanel aria-label="Review account change">
           <h2>
-            {selected.status === 'SUSPENDED' ? 'Reinstate' : 'Suspend'} {selected.phone}?
+            {selected.status === 'SUSPENDED' ? 'Reinstate' : 'Suspend'} {selected.phone ?? selected.email}?
           </h2>
           <p>
             {selected.status === 'SUSPENDED'
@@ -109,7 +109,7 @@ function UserRecords({ filters }: { filters: string }) {
       <Table head={['Phone', 'Email', 'Role', 'Status', 'Actions']}>
         {q.data?.items.map((u) => (
           <tr key={u.id}>
-            <td>{u.phone}</td>
+            <td>{u.phone ?? '—'}</td>
             <td>{u.email ?? '—'}</td>
             <td>
               <Badge>{u.role}</Badge>

@@ -1,3 +1,4 @@
+import { providerMetadata } from './evidence.js';
 /** One usher lock serializes submissions, provider callbacks and manual review. */
 import type { Prisma, PrismaClient, VerificationRejectReason } from '@hq/database';
 import { consumeUpload, lockUploadOwner } from '../storage/uploads.js';
@@ -56,6 +57,13 @@ export async function startBiometricVerification(
   const usher = await prisma.usher.findUnique({ where: { userId } });
   if (!usher) throw new ApiError(403, 'NOT_AN_USHER', 'only ushers verify identity');
   const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+  const phone = user.phone;
+  if (!phone)
+    throw new ApiError(
+      400,
+      'PHONE_REQUIRED',
+      'A phone number is required for identity verification.',
+    );
   return prisma.$transaction(async (tx) => {
     const current = await lockUsher(tx, usher.id);
     if (reference) {
@@ -69,7 +77,7 @@ export async function startBiometricVerification(
         Date.now() - active.createdAt.getTime() > 60 * 60 * 1000
       )
         throw new ApiError(409, 'STALE_VERIFICATION', 'Start a new identity check.');
-      return kyc.startSession(reference, identity, user.phone);
+      return kyc.startSession(reference, identity, phone);
     }
     // Provider migration must not carry failed Dojah sessions into Smile's cap.
     // Count committed Smile attempts under the same usher lock used to create them.
@@ -78,7 +86,7 @@ export async function startBiometricVerification(
     });
     assertCanStart({ ...current, kycAttempts: smileAttempts });
     const referenceId = randomUUID();
-    const session = await kyc.startSession(referenceId, identity, user.phone);
+    const session = await kyc.startSession(referenceId, identity, phone);
     if (session.referenceId !== referenceId || !session.token)
       throw new ApiError(503, 'KYC_UNAVAILABLE', 'identity verification is unavailable');
     await tx.usherVerification.create({
@@ -87,6 +95,7 @@ export async function startBiometricVerification(
         method: 'BIOMETRIC',
         provider: 'SMILE_ID',
         providerReferenceId: referenceId,
+        govLookup: { environment: session.sandbox ? 'sandbox' : 'production' },
         status: 'PENDING',
         createdAt: await submissionTime(tx, usher.id),
       },
@@ -174,6 +183,7 @@ export async function applyKycResult(prisma: PrismaClient, referenceId: string, 
           where: { id: current.id },
           data: {
             govLookup: {
+              ...providerMetadata(current.govLookup),
               providerJobId: result.providerJobId,
               providerStatus: result.providerStatus ?? 'processing',
             },
@@ -195,6 +205,7 @@ export async function applyKycResult(prisma: PrismaClient, referenceId: string, 
         faceMatchScore: result.faceMatchScore ?? null,
         watchListed: result.watchListed ?? null,
         govLookup: {
+          ...providerMetadata(current.govLookup),
           providerJobId: result.providerJobId ?? null,
           providerStatus: result.providerStatus ?? null,
           livenessPassed: result.livenessPassed ?? null,
@@ -227,6 +238,7 @@ export async function reviewVerification(
     verificationId: string;
     adminId: string;
     decision: 'APPROVED' | 'REJECTED';
+    evidenceJobId?: string | undefined;
     reason?: string;
     reasonCode?: VerificationRejectReason;
   },
@@ -249,6 +261,17 @@ export async function reviewVerification(
       );
     }
     const approved = params.decision === 'APPROVED';
+    const jobId = providerMetadata(current.govLookup).providerJobId;
+    const hasEvidence =
+      current.provider === 'SMILE_ID'
+        ? !!jobId && params.evidenceJobId === jobId
+        : !!current.idDocumentUrl && !!current.selfieUrl;
+    if (approved && !hasEvidence)
+      throw new ApiError(
+        409,
+        'EVIDENCE_REQUIRED',
+        'Identity evidence must be available in this review before approval.',
+      );
     const reviewedAt = new Date();
     await tx.usherVerification.update({
       where: { id: record.id },

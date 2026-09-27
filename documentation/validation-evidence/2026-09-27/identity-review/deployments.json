@@ -1,0 +1,44 @@
+[
+  {
+    "name": "hirequick-worker",
+    "serviceId": "2640683c-6796-4015-92f1-26075852b05c",
+    "latest": {
+      "id": "70a31da4-f096-413d-a768-fbb784bb7dec",
+      "status": "SUCCESS"
+    },
+    "active": [
+      {
+        "id": "70a31da4-f096-413d-a768-fbb784bb7dec",
+        "status": "SUCCESS"
+      }
+    ]
+  },
+  {
+    "name": "prolific-love",
+    "serviceId": "85b4bcff-3dbc-48a9-882c-17da83ed20ef",
+    "latest": {
+      "id": "16e01c6f-724d-4da8-bd82-3368ff536250",
+      "status": "SUCCESS"
+    },
+    "active": [
+      {
+        "id": "16e01c6f-724d-4da8-bd82-3368ff536250",
+        "status": "SUCCESS"
+      }
+    ]
+  },
+  {
+    "name": "hirequick-admin",
+    "serviceId": "42070d14-5076-4a76-855f-1edd118f5485",
+    "latest": {
+      "id": "3854f3a7-d4ca-4db1-9132-322e164b2998",
+      "status": "SUCCESS"
+    },
+    "active": [
+      {
+        "id": "3854f3a7-d4ca-4db1-9132-322e164b2998",
+        "status": "SUCCESS"
+      }
+    ]
+  }
+]

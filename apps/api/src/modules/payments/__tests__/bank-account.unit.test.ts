@@ -1,10 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { prisma } from '@hq/database';
+import type { PrismaClient } from '@hq/database';
 import { createBankAccountForUsher } from '../service.js';
 import { InMemoryPaystack } from '../port/paystack-port.js';
 
 afterEach(() => vi.restoreAllMocks());
 const params = { usherId: 'usher-owner', bankCode: '058', accountNumber: '0123456789' };
+// A real Prisma delegate is a proxy: restoring a spy can leave its shared
+// method undefined for later suites. Inject this unit test's own dependency.
+const prisma = { bankAccount: { create: vi.fn() } } as unknown as PrismaClient;
 
 describe('verified payout bank registration', () => {
   it('persists the server-resolved name and original account including leading zeroes', async () => {

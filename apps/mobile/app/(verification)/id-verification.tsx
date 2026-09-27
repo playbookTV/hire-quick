@@ -1,3 +1,4 @@
+import { reportSmile } from '../../lib/monitoring.js';
 import { useRef, useState, type ComponentType } from 'react';
 import { Platform } from 'react-native';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
@@ -47,14 +48,19 @@ export default function IdVerification(): React.JSX.Element {
     lock.current = true;
     setBusy(true);
     setError(null);
+    let phase: 'load' | 'session' = 'load';
     try {
       // Import before reserving a paid attempt, so missing native modules cannot consume one.
       const captureModule = await import('../../components/SmileCapture.js');
       setSmileCapture(() => captureModule.default);
+      phase = 'session';
       const next = await startKyc(identity, reference);
       setReference(next.referenceId);
       setSession(next);
     } catch (e) {
+      // Validation, expired sessions and attempt limits are expected user outcomes.
+      if (!(e instanceof ApiError) || e.status >= 500)
+        reportSmile(phase === 'load' ? 'SMILE_CAPTURE_LOAD_FAILED' : 'SMILE_SESSION_FAILED', reference);
       setError(
         e instanceof ApiError
           ? userMessage(e)
