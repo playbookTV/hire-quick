@@ -1,0 +1,29 @@
+{
+  "created": true,
+  "admin": {
+    "id": "e2e04354-e6a5-4ded-8b4e-ccff4ccf809d",
+    "email": "review@lyba.io",
+    "phone": null,
+    "role": "ADMIN",
+    "status": "ACTIVE"
+  },
+  "original": {
+    "id": "8175f3e6-b1c9-4b4b-94fa-74d31ac0e32e",
+    "email": "hirequickng@gmail.com",
+    "phone": "+2348036860626",
+    "role": "ADMIN",
+    "status": "ACTIVE"
+  },
+  "emailLoginEligible": true,
+  "audited": true,
+  "auditChain": {
+    "ok": false,
+    "checked": 3,
+    "legacy": 19,
+    "brokenAt": {
+      "id": "866f2718-fe49-4bea-a7a0-a11849730b94",
+      "seq": "30",
+      "reason": "entryHash mismatch (row tampered)"
+    }
+  }
+}

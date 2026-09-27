@@ -1,0 +1,13 @@
+{
+  "dependencyInstall": "offline frozen-lockfile passed",
+  "sharedBuild": "passed",
+  "mobileTypecheck": "passed",
+  "mobileLint": "passed",
+  "androidNativeReleaseBundle": "expo export:embed --dev false --minify true --reset-cache passed",
+  "directExpoBabelPresetResolution": "passed",
+  "babelRuntime": "7.29.7",
+  "babelPresetExpo": "57.0.12",
+  "bundleApiOrigin": "https://prolific-love-production-2775.up.railway.app",
+  "otpRequestEndpointPresent": true,
+  "sourceManifestMatches": true
+}

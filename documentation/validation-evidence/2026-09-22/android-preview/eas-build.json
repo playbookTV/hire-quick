@@ -1,0 +1,43 @@
+{
+  "id": "65b28810-bf92-49bf-843c-fd02501ae0ca",
+  "status": "FINISHED",
+  "platform": "ANDROID",
+  "artifacts": {
+    "buildUrl": "https://expo.dev/artifacts/eas/dHITGW8ecIsiYz3FeAAMdsn2lCoV9Z1lDQmngtjPUck.apk",
+    "applicationArchiveUrl": "https://expo.dev/artifacts/eas/dHITGW8ecIsiYz3FeAAMdsn2lCoV9Z1lDQmngtjPUck.apk"
+  },
+  "fingerprint": {
+    "id": "01a0c43e-e150-7972-8424-d84baaaf5e79",
+    "hash": "cf702c54b21118f4f4e1fb7ac31e1978f66f6d5b"
+  },
+  "initiatingActor": {
+    "id": "8b56743a-e257-454a-b2d6-4eec58eea21c",
+    "displayName": "alphaknight"
+  },
+  "project": {
+    "id": "2b9864f5-7637-4151-983b-8a1bc1c29459",
+    "name": "hirequick",
+    "slug": "hirequick",
+    "ownerAccount": {
+      "id": "2886c3c8-d402-4481-995b-55e41919246a",
+      "name": "ovalay-studios"
+    }
+  },
+  "distribution": "INTERNAL",
+  "buildProfile": "preview",
+  "sdkVersion": "57.0.0",
+  "appVersion": "0.0.1",
+  "appBuildVersion": "5",
+  "priority": "HIGH",
+  "createdAt": "2026-09-22T07:52:25.797Z",
+  "updatedAt": "2026-09-22T08:12:23.634Z",
+  "message": "Approved payment policies: cancellation quotes and held payout screens",
+  "completedAt": "2026-09-22T08:12:23.451Z",
+  "expirationDate": "2026-12-21T07:52:25.831Z",
+  "isForIosSimulator": false,
+  "metrics": {
+    "buildWaitTime": 2394,
+    "buildQueueTime": 4757,
+    "buildDuration": 1190503
+  }
+}

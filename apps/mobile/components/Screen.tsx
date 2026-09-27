@@ -5,7 +5,7 @@
 import type { ReactNode } from 'react';
 import { ScrollView, KeyboardAvoidingView, Platform, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Box } from '../theme/restyle.js';
+import { useTheme, Box } from '../theme/restyle.js';
 
 interface ScreenProps {
   children: ReactNode;
@@ -27,10 +27,16 @@ export function Screen({
   onRefresh,
 }: ScreenProps): React.JSX.Element {
   const insets = useSafeAreaInsets();
-  const pad = padding ? ('500' as const) : ('none' as const);
+  const theme = useTheme();
+  const pad = padding ? ('600' as const) : ('none' as const);
 
   const body = (
-    <Box flex={1} backgroundColor="bgCanvas" paddingHorizontal={pad} style={{ paddingTop: topInset ? insets.top : 0 }}>
+    <Box
+      flex={1}
+      backgroundColor="bgCanvas"
+      paddingHorizontal={pad}
+      style={{ paddingTop: topInset ? insets.top : 0 }}
+    >
       {children}
     </Box>
   );
@@ -45,7 +51,7 @@ export function Screen({
       <Box flex={1} backgroundColor="bgCanvas">
         <ScrollView
           contentContainerStyle={{
-            paddingHorizontal: padding ? 20 : 0,
+            paddingHorizontal: padding ? theme.spacing['600'] : 0,
             paddingTop: topInset ? insets.top + 8 : 8,
             paddingBottom: insets.bottom + 32,
             flexGrow: 1,
@@ -53,7 +59,13 @@ export function Screen({
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           refreshControl={
-            onRefresh ? <RefreshControl refreshing={refreshing ?? false} onRefresh={onRefresh} /> : undefined
+            onRefresh ? (
+              <RefreshControl
+                refreshing={refreshing ?? false}
+                onRefresh={onRefresh}
+                tintColor={theme.colors.brandEmerald}
+              />
+            ) : undefined
           }
         >
           {children}

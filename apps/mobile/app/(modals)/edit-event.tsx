@@ -9,7 +9,7 @@ import { useMemo, useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { updateEventSchema, type UpdateEventInput, kobo, formatNaira, ACCOMMODATION_STATUSES, isLateNight } from '@hq/shared';
+import { updateEventSchema, type UpdateEventInput, kobo, priceBooking, formatNaira, ACCOMMODATION_STATUSES, isLateNight } from '@hq/shared';
 
 import { Screen } from '../../components/Screen.js';
 import { AppBar } from '../../components/AppBar.js';
@@ -23,12 +23,12 @@ import { Banner } from '../../components/Banner.js';
 import { Button } from '../../components/Button.js';
 import { Loading } from '../../components/Loading.js';
 import { Box, Text } from '../../theme/restyle.js';
-import { useEvent, useUpdateEvent } from '../../lib/hooks.js';
+import { useUpdateEvent, useEvent } from '../../lib/hooks.js';
+import { fonts } from '../../theme/fonts.js';
 import { ApiError } from '../../lib/api-error.js';
 import { formatEventDate } from '../../lib/format.js';
+import { EVENT_CATEGORIES, HAIRSTYLE_OPTIONS, TIME_OPTIONS, STATE_OPTIONS } from '../../lib/event-options.js';
 import type { EventResource } from '../../lib/types.js';
-
-const CATEGORIES = ['Wedding', 'Corporate event', 'Concert', 'Conference', 'Party', 'Product launch', 'Religious event', 'Other'];
 
 function pad(n: number): string {
   return String(n).padStart(2, '0');
@@ -58,11 +58,6 @@ function EditEventForm({ event }: { event: EventResource }): React.JSX.Element {
     return opts;
   }, [event.eventDate]);
 
-  const timeOptions = useMemo<SelectOption<string>[]>(() => {
-    const out: SelectOption<string>[] = [];
-    for (let h = 6; h <= 23; h++) for (const m of [0, 30]) out.push({ value: `${pad(h)}:${pad(m)}`, label: `${pad(h)}:${pad(m)}` });
-    return out;
-  }, []);
 
   const {
     control,
@@ -76,6 +71,7 @@ function EditEventForm({ event }: { event: EventResource }): React.JSX.Element {
     defaultValues: {
       title: event.title,
       venue: event.venue,
+      state: event.state ?? '',
       category: event.category,
       eventDate: new Date(event.eventDate),
       startTime: event.startTime,
@@ -83,14 +79,20 @@ function EditEventForm({ event }: { event: EventResource }): React.JSX.Element {
       headcount: event.headcount,
       budgetPerHeadKobo: event.budgetPerHead,
       dressCode: event.dressCode ?? '',
+      hairstyle: event.preferences?.hairstyle ?? '',
       accommodation: event.accommodation ?? undefined,
       requirements: event.preferences?.requirements ?? '',
     },
   });
 
   const values = watch();
-  const total = kobo((values.headcount || 0) * (values.budgetPerHeadKobo || 0));
+  const perHead = priceBooking(kobo(values.budgetPerHeadKobo || 0));
+  const total = kobo((values.headcount || 0) * perHead.gross);
   const lateNight = isLateNight(values.endTime ?? '');
+  const endTimeOptions = useMemo(
+    () => TIME_OPTIONS.filter((o) => o.value > (values.startTime ?? '')),
+    [values.startTime],
+  );
 
   const onSubmit = async (data: UpdateEventInput): Promise<void> => {
     setFormError(null);
@@ -136,6 +138,15 @@ function EditEventForm({ event }: { event: EventResource }): React.JSX.Element {
             </Field>
           )}
         />
+        <Controller
+          control={control}
+          name="state"
+          render={({ field }) => (
+            <Field label="State" helper="Only ushers in this state will see the job." error={errors.state?.message}>
+              <Select title="State" placeholder="Choose state" value={field.value || null} options={STATE_OPTIONS} onSelect={field.onChange} />
+            </Field>
+          )}
+        />
         <Box flexDirection="row" style={{ gap: 16 }}>
           <Box flex={1}>
             <Controller
@@ -154,7 +165,7 @@ function EditEventForm({ event }: { event: EventResource }): React.JSX.Element {
               name="category"
               render={({ field }) => (
                 <Field label="Category" error={errors.category?.message} required>
-                  <Select title="Event category" placeholder="Choose" value={field.value || null} options={CATEGORIES.map((c) => ({ value: c, label: c }))} onSelect={field.onChange} error={!!errors.category} />
+                  <Select title="Event category" placeholder="Choose" value={field.value || null} options={EVENT_CATEGORIES.map((c) => ({ value: c, label: c }))} onSelect={field.onChange} error={!!errors.category} />
                 </Field>
               )}
             />
@@ -167,7 +178,7 @@ function EditEventForm({ event }: { event: EventResource }): React.JSX.Element {
               name="startTime"
               render={({ field }) => (
                 <Field label="Start" error={errors.startTime?.message} required>
-                  <Select title="Start time" value={field.value ?? null} options={timeOptions} onSelect={field.onChange} />
+                  <Select title="Start time" value={field.value ?? null} options={TIME_OPTIONS} onSelect={field.onChange} />
                 </Field>
               )}
             />
@@ -178,7 +189,7 @@ function EditEventForm({ event }: { event: EventResource }): React.JSX.Element {
               name="endTime"
               render={({ field }) => (
                 <Field label="End" error={errors.endTime?.message} required>
-                  <Select title="End time" value={field.value ?? null} options={timeOptions} onSelect={field.onChange} />
+                  <Select title="End time" value={field.value ?? null} options={endTimeOptions} onSelect={field.onChange} />
                 </Field>
               )}
             />
@@ -200,7 +211,7 @@ function EditEventForm({ event }: { event: EventResource }): React.JSX.Element {
           render={({ field }) => (
             <Field label="Budget per head" error={errors.budgetPerHeadKobo?.message} required>
               <Input
-                leftIcon="dollar-sign"
+                prefix="₦"
                 placeholder="e.g. 15000"
                 keyboardType="number-pad"
                 value={field.value ? String(Math.round(field.value / 100)) : ''}
@@ -217,10 +228,10 @@ function EditEventForm({ event }: { event: EventResource }): React.JSX.Element {
 
         <Box backgroundColor="brandEmeraldTintWeak" borderRadius="lg" borderWidth={1} borderColor="brandEmeraldTint" padding="400" marginBottom="400" style={{ gap: 4 }}>
           <Box flexDirection="row" alignItems="center" justifyContent="space-between">
-            <Text variant="label" style={{ fontSize: 15 }} color="inkDefault">Estimated total</Text>
-            <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 22, lineHeight: 28, letterSpacing: -0.3 }} color="brandEmerald">{formatNaira(total)}</Text>
+            <Text variant="labelLg" color="inkDefault">Estimated total</Text>
+            <Text style={{ fontFamily: fonts.sansBold, fontSize: 22, lineHeight: 28, letterSpacing: -0.3 }} color="brandEmerald">{formatNaira(total)}</Text>
           </Box>
-          <Text variant="bodySm" color="inkMuted">{values.headcount} staff × {formatNaira(kobo(values.budgetPerHeadKobo || 0))}</Text>
+          <Text variant="bodySm" color="inkMuted">{values.headcount} staff × {formatNaira(kobo(values.budgetPerHeadKobo || 0))}, plus {formatNaira(kobo((values.headcount || 0) * perHead.fee))} platform fee (15%). Staff receive their full agreed pay.</Text>
         </Box>
 
         <Controller
@@ -229,6 +240,15 @@ function EditEventForm({ event }: { event: EventResource }): React.JSX.Element {
           render={({ field }) => (
             <Field label="Accommodation" helper={lateNight ? 'Required for events ending at or after 10:00 PM' : 'Optional'} error={errors.accommodation?.message} required={lateNight}>
               <Select title="Accommodation" placeholder="Select" value={field.value ?? null} options={ACCOMMODATION_STATUSES.map((s) => ({ value: s, label: s === 'PROVIDED' ? 'Provided' : 'Not provided' }))} onSelect={field.onChange} error={!!errors.accommodation} />
+            </Field>
+          )}
+        />
+        <Controller
+          control={control}
+          name="hairstyle"
+          render={({ field }) => (
+            <Field label="Hairstyle" helper="Optional" error={errors.hairstyle?.message}>
+              <Select title="Hairstyle" value={field.value ?? ''} options={HAIRSTYLE_OPTIONS} onSelect={field.onChange} />
             </Field>
           )}
         />

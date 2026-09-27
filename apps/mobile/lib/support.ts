@@ -1,39 +1,62 @@
-/**
- * Opening a real support conversation. Prefers WhatsApp (the channel Lagos
- * users actually live in — and the one the API already uses for OTP), falls
- * back to email, and only surfaces an in-app message if neither is configured.
- *
- * Configure via EXPO_PUBLIC_SUPPORT_WHATSAPP / EXPO_PUBLIC_SUPPORT_EMAIL.
- * Critique P0: the rejection screen's "Contact support" used to call
- * router.back() — offering help at the most vulnerable moment, then doing
- * nothing. This makes it actually reach someone.
- */
-import { Linking, Alert } from 'react-native';
+/** All existing support entry points open the same hosted Crisp inbox. */
+import { Linking, Alert, Platform } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
+import { randomUUID } from 'expo-crypto';
 import { env } from './env.js';
+import { createCrispSupport } from './crisp-support.js';
+
+const crisp = createCrispSupport({
+  websiteId: env.CRISP_WEBSITE_ID,
+  // Lazy loading lets older native builds use the fallback without crashing startup.
+  load: () => import('crisp-sdk-react-native'),
+  async tokenFor(userId) {
+    const key = `hq.crisp.${env.CRISP_WEBSITE_ID}.${userId}`;
+    const existing = await SecureStore.getItemAsync(key);
+    if (existing) return existing;
+    const token = randomUUID();
+    await SecureStore.setItemAsync(key, token);
+    return token;
+  },
+});
+
+export const setSupportUser = crisp.setUser;
 
 async function tryOpen(url: string): Promise<boolean> {
-  const can = await Linking.canOpenURL(url).catch(() => false);
-  if (!can) return false;
-  await Linking.openURL(url).catch(() => undefined);
-  return true;
+  try {
+    await Linking.openURL(url);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-/** Open the best available support channel, prefilled with `message`. */
-export async function openSupport(message = 'Hi HireQuick support, I need help with my account.'): Promise<void> {
-  if (env.SUPPORT_WHATSAPP) {
-    const ok = await tryOpen(`https://wa.me/${env.SUPPORT_WHATSAPP}?text=${encodeURIComponent(message)}`);
-    if (ok) return;
+export async function openSupport(
+  message = 'Hi HireQuick support, I need help with my account.',
+): Promise<void> {
+  if (env.CRISP_WEBSITE_ID && Platform.OS !== 'web') {
+    try {
+      await crisp.open(message);
+      return;
+    } catch {
+      // Missing native module or failed launch: offer configured contact alternatives.
+    }
   }
-  if (env.SUPPORT_EMAIL) {
-    const ok = await tryOpen(
+  if (
+    env.SUPPORT_WHATSAPP &&
+    (await tryOpen(`https://wa.me/${env.SUPPORT_WHATSAPP}?text=${encodeURIComponent(message)}`))
+  )
+    return;
+  if (
+    env.SUPPORT_EMAIL &&
+    (await tryOpen(
       `mailto:${env.SUPPORT_EMAIL}?subject=${encodeURIComponent('HireQuick support')}&body=${encodeURIComponent(message)}`,
-    );
-    if (ok) return;
-  }
+    ))
+  )
+    return;
   Alert.alert(
-    'Contact support',
+    'Support chat unavailable',
     env.SUPPORT_EMAIL
       ? `Email us at ${env.SUPPORT_EMAIL} and we’ll help you sort this out.`
-      : 'We couldn’t open a support channel on this device. Please reach out from the HireQuick website.',
+      : 'We couldn’t open support chat. Please try again with the latest version of HireQuick.',
   );
 }

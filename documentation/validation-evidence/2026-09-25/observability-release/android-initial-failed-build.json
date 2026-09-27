@@ -1,0 +1,15 @@
+{
+  "id": "ef54e749-8394-44c9-95c9-2c747367cc95",
+  "status": "ERRORED",
+  "platform": "ANDROID",
+  "distribution": "INTERNAL",
+  "buildProfile": "preview",
+  "appVersion": "0.0.1",
+  "appBuildVersion": "10",
+  "createdAt": "2026-09-26T07:02:18.120Z",
+  "completedAt": "2026-09-26T07:15:58.607Z",
+  "error": {
+    "errorCode": "EAS_BUILD_UNKNOWN_GRADLE_ERROR",
+    "message": "Gradle build failed with unknown error. See logs for the \"Run gradlew\" phase for more information."
+  }
+}

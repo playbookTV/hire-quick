@@ -1,0 +1,12 @@
+[
+  {
+    "service": "prolific-love",
+    "dsnConfigured": true,
+    "releaseConfigured": true
+  },
+  {
+    "service": "hirequick-worker",
+    "dsnConfigured": true,
+    "releaseConfigured": true
+  }
+]

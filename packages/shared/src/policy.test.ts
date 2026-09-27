@@ -21,7 +21,7 @@ describe('cancellation policy matrix (PRD §13)', () => {
       clientRefundPct: 100,
       usherPayoutPct: 0,
       usherReputation: 'NONE',
-      lessProcessingFee: true,
+      lessProcessingFee: false,
     });
     expect(policyForCancellation('CLIENT', 'BETWEEN_12_48H')).toMatchObject({
       clientRefundPct: 50,

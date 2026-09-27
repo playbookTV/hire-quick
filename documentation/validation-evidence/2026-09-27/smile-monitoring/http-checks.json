@@ -1,0 +1,28 @@
+[
+  {
+    "path": "/health",
+    "status": 200
+  },
+  {
+    "path": "/ready",
+    "status": 200
+  },
+  {
+    "path": "/api/admin/observability",
+    "status": 401
+  },
+  {
+    "path": "/observability",
+    "status": 200
+  },
+  {
+    "asset": "/assets/index-BiawCzjW.js",
+    "matchesRelease": true,
+    "sha256": "a4bed353caf2b98b88e7d51f392c01793142b668fd1aeced4519437172889f87"
+  },
+  {
+    "asset": "/assets/index-div8x93z.css",
+    "matchesRelease": true,
+    "sha256": "fbb97c6219c1c536539f4c068a66ecee4c0fb9dafef57cdc1ee60bb28da82b65"
+  }
+]

@@ -7,7 +7,7 @@ import { io as ioClient, type Socket as ClientSocket } from 'socket.io-client';
 import { prisma } from '@hq/database';
 import { createApp } from '../../app.js';
 import { attachRealtime } from '../socket.js';
-import { signAccessToken } from '../../modules/auth/tokens.js';
+import { socketToken } from './session-fixture.js';
 import { holdOrder } from '../../modules/payments/ledger/ledger.js';
 import { InMemoryPaystack } from '../../modules/payments/port/paystack-port.js';
 import { createScenario, teardown, type Scenario } from '../../modules/payments/__tests__/fixtures.js';
@@ -58,8 +58,8 @@ describe('realtime booking chat (UXRD §6)', () => {
     await prisma.$transaction((tx) => holdOrder(tx, scenario!.orderId, 'chg_chat')); // → CONFIRMED (unlocks chat)
     const bookingId = scenario.bookingIds[0]!;
 
-    const clientToken = await signAccessToken(scenario.clientUserId, 'CLIENT');
-    const usherToken = await signAccessToken(scenario.usherUserId, 'USHER');
+    const clientToken = await socketToken(scenario.clientUserId, 'CLIENT');
+    const usherToken = await socketToken(scenario.usherUserId, 'USHER');
 
     const clientSock = await connect(clientToken);
     const usherSock = await connect(usherToken);
@@ -95,7 +95,7 @@ describe('realtime booking chat (UXRD §6)', () => {
         data: { role: 'CLIENT', phone: `stranger-${randomUUID()}`, status: 'ACTIVE' },
       });
       extraUserIds.push(stranger.id);
-      const strangerSock = await connect(await signAccessToken(stranger.id, 'CLIENT'));
+      const strangerSock = await connect(await socketToken(stranger.id, 'CLIENT'));
       const joinAck = await emitAck<{ ok: boolean }>(strangerSock, 'room:join', { bookingId });
       expect(joinAck.ok).toBe(false);
       strangerSock.close();

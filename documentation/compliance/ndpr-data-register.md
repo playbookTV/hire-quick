@@ -25,6 +25,12 @@ Per the Nigeria Data Protection Regulation (NDPR) accountability principle and T
 | Financial records | `Order`, `EscrowLedger`, `WalletLedger`, `Withdrawal`, `Payment` | Escrow, payouts, reconciliation | Legal obligation | **7 years**, then purge | retained through erasure |
 | Audit log | `AuditLog` | Accountability, security | Legal obligation | 7 years | retained (tamper-evident chain) |
 
+## Upload processing update (22 September 2026)
+
+`UploadIntent` records the issuing subject ID, purpose/scope, object keys, file type/size, expiry and attachment identity. Subject export includes these records. Unconsumed objects expire after 24 hours; temporary `staging/` objects are scheduled for cleanup after that grace period. `StorageDeletion` retains retry counts, safe failure codes and confirmed completion times. Reference tombstones prevent deleted uploads being reused; metadata pruning/retention remains part of the wider OVA-146 inventory review.
+
+Profile replacement, retention and erasure now commit object-deletion intents with the reference change. A separate worker retries deletes and checks remaining references. Erasure returns queued counts instead of claiming that every object has already been deleted. See [implementation and remaining inventory work](../uploads-2026-09-22.md).
+
 ## Data-subject rights (implemented)
 
 - **Access / portability:** `GET /api/me/export` returns a machine-readable bundle. Audited as `dsar.export`.
@@ -41,3 +47,7 @@ Erasure is **pseudonymization, not deletion**: `Review`/`Dispute`/`Message`/`Aud
 - Confirm retention windows (TRD §23 item 9): currently 30 d OTP, 180 d device tokens, 90 d / 30 d raw KYC docs (verified / rejected), 180 d chat after the dispute window, and 7 y for the financial/KYC *trail* (ledger, not raw documents).
 - Confirm lawful-basis mapping per field.
 - Cross-border transfer assessment (Paystack, Brevo, Neon, storage provider).
+
+## Smile ID biometric processing
+
+New biometric checks send NIN/BVN, names, account phone, consent and selfie/liveness captures to Smile ID. HireQuick retains only the attempt reference, provider job/status, decision and review trail; no new raw ID number or biometric image is persisted locally. Existing manual document retention remains unchanged. Smile-held biometric data requires provider-side retention/deletion configuration and must be included in data-subject request handling; the local storage purge does not delete it. See [Smile ID setup](../../docs/SMILE-ID.md).

@@ -1,0 +1,35 @@
+{
+  "checkedAt": "2026-09-27T21:06:05.739Z",
+  "migration": [
+    {
+      "migration_name": "20260927210000_preserve_audit_history",
+      "checksum": "d7da1ffd1cdee8d2a827ffdc8f3d73d90d3cf4a998e082bd9b2343a4056832ea",
+      "finished_at": "2026-09-27T21:06:05.026Z",
+      "rolled_back_at": null
+    }
+  ],
+  "triggers": [
+    {
+      "relname": "audit_chain_head",
+      "tgname": "audit_head_preserve_history",
+      "tgenabled": "A",
+      "definition": "CREATE TRIGGER audit_head_preserve_history BEFORE DELETE OR TRUNCATE ON public.audit_chain_head FOR EACH STATEMENT EXECUTE FUNCTION reject_audit_history_mutation()"
+    },
+    {
+      "relname": "audit_logs",
+      "tgname": "audit_logs_preserve_history",
+      "tgenabled": "A",
+      "definition": "CREATE TRIGGER audit_logs_preserve_history BEFORE DELETE OR UPDATE OR TRUNCATE ON public.audit_logs FOR EACH STATEMENT EXECUTE FUNCTION reject_audit_history_mutation()"
+    }
+  ],
+  "existingRowsUnchanged": true,
+  "preservedRows": 476,
+  "afterRows": 476,
+  "safeNoopWritesRejected": [
+    true,
+    true,
+    true
+  ],
+  "feeMigrationStillAbsent": true,
+  "privateSnapshotSha256": "9f5d1782c458e1d9c3ebc15f222979229fd6e8ed2ef3a56a8aadde383a485033"
+}

@@ -1,0 +1,20 @@
+Date: 2026-09-16
+Command: pnpm --filter @hq/api exec vitest run src/modules/payments/__tests__/checkout-mobile.unit.test.ts src/realtime/__tests__/security.unit.test.ts src/modules/payments/__tests__/transfer-failure-precedence.unit.test.ts src/modules/payments/__tests__/ledger-amounts.unit.test.ts src/modules/payments/__tests__/commission-limits.unit.test.ts src/modules/payments/port/__tests__/http-checkout-contract.unit.test.ts
+Exit code: 0
+Environment: unused loopback database URLs; Paystack, Brevo and configured Redis keys blank. No external calls.
+
+
+ RUN  v2.1.9 /Users/leslieisah/app-dev/hire-quick/apps/api
+
+ ✓ src/modules/payments/__tests__/checkout-mobile.unit.test.ts (13 tests) 6ms
+ ✓ src/realtime/__tests__/security.unit.test.ts (25 tests) 8ms
+ ✓ src/modules/payments/__tests__/transfer-failure-precedence.unit.test.ts (2 tests) 1ms
+ ✓ src/modules/payments/__tests__/ledger-amounts.unit.test.ts (12 tests) 1ms
+ ✓ src/modules/payments/__tests__/commission-limits.unit.test.ts (3 tests) 1ms
+ ✓ src/modules/payments/port/__tests__/http-checkout-contract.unit.test.ts (14 tests) 5ms
+
+ Test Files  6 passed (6)
+      Tests  69 passed (69)
+   Start at  10:36:35
+   Duration  564ms (transform 175ms, setup 0ms, collect 431ms, tests 23ms, environment 0ms, prepare 30ms)
+

@@ -1,0 +1,119 @@
+{
+  "mode": "test",
+  "amountKobo": 10000,
+  "seededWallet": true,
+  "fundedChargeLifecycle": false,
+  "observations": [
+    {
+      "method": "GET",
+      "path": "/balance",
+      "httpStatus": 200
+    },
+    {
+      "method": "GET",
+      "path": "/transfer/verify/:reference",
+      "httpStatus": 404
+    },
+    {
+      "method": "POST",
+      "path": "/transfer",
+      "httpStatus": 200,
+      "domain": "test",
+      "status": "otp"
+    },
+    {
+      "method": "GET",
+      "path": "/transfer/verify/:reference",
+      "httpStatus": 200,
+      "domain": "test",
+      "status": "otp"
+    },
+    {
+      "method": "GET",
+      "path": "/transfer/verify/:reference",
+      "httpStatus": 200,
+      "domain": "test",
+      "status": "otp"
+    },
+    {
+      "method": "GET",
+      "path": "/transfer/verify/:reference",
+      "httpStatus": 200,
+      "domain": "test",
+      "status": "otp"
+    },
+    {
+      "method": "GET",
+      "path": "/transfer/verify/:reference",
+      "httpStatus": 200,
+      "domain": "test",
+      "status": "otp"
+    },
+    {
+      "method": "GET",
+      "path": "/transfer/verify/:reference",
+      "httpStatus": 200,
+      "domain": "test",
+      "status": "otp"
+    },
+    {
+      "method": "GET",
+      "path": "/transfer/verify/:reference",
+      "httpStatus": 200,
+      "domain": "test",
+      "status": "otp"
+    },
+    {
+      "method": "GET",
+      "path": "/transfer/verify/:reference",
+      "httpStatus": 200,
+      "domain": "test",
+      "status": "otp"
+    },
+    {
+      "method": "GET",
+      "path": "/transfer/verify/:reference",
+      "httpStatus": 200,
+      "domain": "test",
+      "status": "otp"
+    },
+    {
+      "method": "GET",
+      "path": "/transfer/verify/:reference",
+      "httpStatus": 200,
+      "domain": "test",
+      "status": "otp"
+    },
+    {
+      "method": "GET",
+      "path": "/transfer/verify/:reference",
+      "httpStatus": 200,
+      "domain": "test",
+      "status": "otp"
+    },
+    {
+      "method": "GET",
+      "path": "/transfer/verify/:reference",
+      "httpStatus": 200,
+      "domain": "test",
+      "status": "otp"
+    },
+    {
+      "method": "GET",
+      "path": "/balance",
+      "httpStatus": 200
+    }
+  ],
+  "stage": "complete",
+  "firstStatus": "PROCESSING",
+  "reference": "wd_44406204-0b51-4157-b4ee-37db96e9a74b",
+  "providerStatus": "pending",
+  "operationStatus": "PENDING",
+  "walletBalanceKobo": 7000,
+  "walletReversalEntries": 0,
+  "replayStatus": "PROCESSING",
+  "transferPosts": 1,
+  "walletDebitEntries": 1,
+  "balanceDeltaKobo": 0,
+  "result": "pending_terminal_evidence"
+}

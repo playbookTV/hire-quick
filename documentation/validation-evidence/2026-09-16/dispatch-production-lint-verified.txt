@@ -1,0 +1,8 @@
+
+/Users/leslieisah/app-dev/hire-quick/apps/api/src/modules/payments/transfer-dispatch.ts
+  13:10  error  This assertion is unnecessary since the receiver accepts the original type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+  69:28  error  '_lease' is assigned a value but never used                                                   @typescript-eslint/no-unused-vars
+
+✖ 2 problems (2 errors, 0 warnings)
+  1 error and 0 warnings potentially fixable with the `--fix` option.
+

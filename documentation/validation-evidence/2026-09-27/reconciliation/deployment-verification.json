@@ -1,0 +1,22 @@
+[
+  {
+    "service": "prolific-love",
+    "deployment": "8e5c1ba7-a13d-49ec-b45b-ba15e5177580",
+    "mismatches": [],
+    "http": [
+      {
+        "path": "/health",
+        "status": 200
+      },
+      {
+        "path": "/ready",
+        "status": 200
+      }
+    ]
+  },
+  {
+    "service": "hirequick-worker",
+    "deployment": "a574ca4a-668c-4879-8d00-8502f63e31da",
+    "mismatches": []
+  }
+]

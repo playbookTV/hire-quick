@@ -35,7 +35,7 @@ async function login(role: 'CLIENT' | 'USHER'): Promise<{ token: string; userId:
 afterAll(async () => {
   await prisma.booking.deleteMany({ where: { id: { in: bookingIds } } });
   await prisma.event.deleteMany({ where: { id: { in: eventIds } } });
-  await prisma.auditLog.deleteMany({ where: { actorId: { in: userIds } } });
+  // Keep append-only audit rows linked; disposable-schema cleanup removes them.
   // Users cascade to client/usher/wallet/bankAccount/consent/deviceToken/policyAcceptance.
   await prisma.user.deleteMany({ where: { id: { in: userIds } } });
 });
@@ -96,7 +96,7 @@ describe('A2 — venue masking', () => {
 });
 
 describe('B4 — consent capture + push suppression', () => {
-  it('registering a device records push consent; withdrawing it drops device tokens', async () => {
+  it('registering a device requires a separate push grant; withdrawing it drops device tokens', async () => {
     const { token, userId } = await login('USHER');
 
     const reg = await request(app)
@@ -108,8 +108,15 @@ describe('B4 — consent capture + push suppression', () => {
     const granted = await prisma.consentRecord.findUnique({
       where: { userId_purpose: { userId, purpose: 'PUSH_NOTIFICATIONS' } },
     });
-    expect(granted?.granted).toBe(true);
+    expect(granted).toBeNull();
     expect(await prisma.deviceToken.count({ where: { userId } })).toBe(1);
+
+    const explicit = await request(app)
+      .post('/api/me/consents')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ purpose: 'PUSH_NOTIFICATIONS', granted: true });
+    expect(explicit.status).toBe(200);
+    expect(explicit.body.granted).toBe(true);
 
     const wd = await request(app)
       .post('/api/me/consents')

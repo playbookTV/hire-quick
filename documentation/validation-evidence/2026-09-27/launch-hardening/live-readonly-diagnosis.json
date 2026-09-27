@@ -1,0 +1,842 @@
+{
+  "checkedAt": "2026-09-27T19:59:48.381Z",
+  "audit": {
+    "rows": 458,
+    "mismatchCount": 80,
+    "actorRecoveryCount": 51,
+    "mismatches": [
+      {
+        "seq": "30",
+        "action": "auth.login",
+        "createdAt": "2026-06-21T15:47:57.951Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "31",
+        "action": "auth.login",
+        "createdAt": "2026-06-21T15:48:02.980Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "33",
+        "action": "auth.login",
+        "createdAt": "2026-06-21T15:48:39.886Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "34",
+        "action": "auth.login",
+        "createdAt": "2026-06-21T15:48:45.231Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "36",
+        "action": "auth.login",
+        "createdAt": "2026-06-21T15:49:18.375Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "37",
+        "action": "auth.login",
+        "createdAt": "2026-06-21T15:49:22.659Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "59",
+        "action": "dispute.resolve",
+        "createdAt": "2026-06-21T15:57:37.351Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": false,
+        "knownActorRestoresHash": false
+      },
+      {
+        "seq": "61",
+        "action": "dispute.resolve.proposed",
+        "createdAt": "2026-06-21T15:57:59.166Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": false,
+        "knownActorRestoresHash": false
+      },
+      {
+        "seq": "62",
+        "action": "approval.execute",
+        "createdAt": "2026-06-21T15:58:09.238Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": false,
+        "knownActorRestoresHash": false
+      },
+      {
+        "seq": "73",
+        "action": "auth.login",
+        "createdAt": "2026-06-22T09:44:20.256Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "74",
+        "action": "auth.login",
+        "createdAt": "2026-06-22T09:44:33.157Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "76",
+        "action": "auth.login",
+        "createdAt": "2026-06-22T09:45:29.989Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "77",
+        "action": "auth.login",
+        "createdAt": "2026-06-22T09:45:43.259Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "78",
+        "action": "auth.login",
+        "createdAt": "2026-06-22T09:46:38.037Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "79",
+        "action": "auth.login",
+        "createdAt": "2026-06-22T09:46:52.461Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "94",
+        "action": "dispute.resolve",
+        "createdAt": "2026-06-22T10:03:24.427Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": false,
+        "knownActorRestoresHash": false
+      },
+      {
+        "seq": "95",
+        "action": "dispute.resolve.proposed",
+        "createdAt": "2026-06-22T10:04:26.369Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": false,
+        "knownActorRestoresHash": false
+      },
+      {
+        "seq": "96",
+        "action": "approval.execute",
+        "createdAt": "2026-06-22T10:04:52.068Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": false,
+        "knownActorRestoresHash": false
+      },
+      {
+        "seq": "106",
+        "action": "usher.portfolio.add",
+        "createdAt": "2026-06-22T15:56:27.792Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": false,
+        "knownActorRestoresHash": false
+      },
+      {
+        "seq": "107",
+        "action": "usher.portfolio.add",
+        "createdAt": "2026-06-22T15:56:36.814Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": false,
+        "knownActorRestoresHash": false
+      },
+      {
+        "seq": "108",
+        "action": "usher.portfolio.add",
+        "createdAt": "2026-06-22T15:56:45.671Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": false,
+        "knownActorRestoresHash": false
+      },
+      {
+        "seq": "109",
+        "action": "usher.portfolio.add",
+        "createdAt": "2026-06-22T15:56:54.108Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": false,
+        "knownActorRestoresHash": false
+      },
+      {
+        "seq": "110",
+        "action": "usher.portfolio.add",
+        "createdAt": "2026-06-22T15:57:01.953Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": false,
+        "knownActorRestoresHash": false
+      },
+      {
+        "seq": "111",
+        "action": "usher.portfolio.add",
+        "createdAt": "2026-06-22T15:57:33.123Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": false,
+        "knownActorRestoresHash": false
+      },
+      {
+        "seq": "112",
+        "action": "usher.portfolio.remove",
+        "createdAt": "2026-06-22T15:57:40.066Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": false,
+        "knownActorRestoresHash": false
+      },
+      {
+        "seq": "113",
+        "action": "usher.portfolio.add",
+        "createdAt": "2026-06-22T15:58:06.349Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": false,
+        "knownActorRestoresHash": false
+      },
+      {
+        "seq": "114",
+        "action": "usher.avatar.set",
+        "createdAt": "2026-06-22T15:58:28.117Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": false,
+        "knownActorRestoresHash": false
+      },
+      {
+        "seq": "126",
+        "action": "auth.login",
+        "createdAt": "2026-06-23T22:31:08.271Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "127",
+        "action": "auth.login",
+        "createdAt": "2026-06-23T22:31:14.992Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "128",
+        "action": "auth.login",
+        "createdAt": "2026-06-23T22:31:20.448Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "129",
+        "action": "auth.login",
+        "createdAt": "2026-06-23T22:31:27.054Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "130",
+        "action": "auth.login",
+        "createdAt": "2026-06-23T22:32:18.040Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "131",
+        "action": "auth.login",
+        "createdAt": "2026-06-23T22:32:21.998Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "132",
+        "action": "auth.login",
+        "createdAt": "2026-06-23T22:32:30.802Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "133",
+        "action": "auth.login",
+        "createdAt": "2026-06-23T22:32:34.128Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "134",
+        "action": "auth.login",
+        "createdAt": "2026-06-23T22:33:27.156Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "135",
+        "action": "auth.login",
+        "createdAt": "2026-06-23T22:33:28.953Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "136",
+        "action": "auth.login",
+        "createdAt": "2026-06-23T22:33:39.399Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "137",
+        "action": "auth.login",
+        "createdAt": "2026-06-23T22:33:41.104Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "138",
+        "action": "dispute.resolve.proposed",
+        "createdAt": "2026-06-23T22:37:52.118Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": false,
+        "knownActorRestoresHash": false
+      },
+      {
+        "seq": "142",
+        "action": "approval.execute",
+        "createdAt": "2026-06-23T22:38:16.780Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": false,
+        "knownActorRestoresHash": false
+      },
+      {
+        "seq": "144",
+        "action": "usher.portfolio.add",
+        "createdAt": "2026-06-23T22:46:03.590Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": false,
+        "knownActorRestoresHash": false
+      },
+      {
+        "seq": "145",
+        "action": "usher.portfolio.add",
+        "createdAt": "2026-06-23T22:46:10.900Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": false,
+        "knownActorRestoresHash": false
+      },
+      {
+        "seq": "146",
+        "action": "usher.portfolio.add",
+        "createdAt": "2026-06-23T22:46:18.229Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": false,
+        "knownActorRestoresHash": false
+      },
+      {
+        "seq": "147",
+        "action": "usher.portfolio.add",
+        "createdAt": "2026-06-23T22:46:24.988Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": false,
+        "knownActorRestoresHash": false
+      },
+      {
+        "seq": "148",
+        "action": "usher.portfolio.add",
+        "createdAt": "2026-06-23T22:46:31.850Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": false,
+        "knownActorRestoresHash": false
+      },
+      {
+        "seq": "149",
+        "action": "usher.portfolio.add",
+        "createdAt": "2026-06-23T22:46:51.998Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": false,
+        "knownActorRestoresHash": false
+      },
+      {
+        "seq": "150",
+        "action": "usher.portfolio.remove",
+        "createdAt": "2026-06-23T22:46:59.088Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": false,
+        "knownActorRestoresHash": false
+      },
+      {
+        "seq": "151",
+        "action": "usher.portfolio.add",
+        "createdAt": "2026-06-23T22:47:25.455Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": false,
+        "knownActorRestoresHash": false
+      },
+      {
+        "seq": "152",
+        "action": "usher.avatar.set",
+        "createdAt": "2026-06-23T22:47:44.604Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": false,
+        "knownActorRestoresHash": false
+      },
+      {
+        "seq": "163",
+        "action": "dispute.resolve",
+        "createdAt": "2026-06-23T22:52:09.402Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": false,
+        "knownActorRestoresHash": false
+      },
+      {
+        "seq": "164",
+        "action": "dispute.resolve.proposed",
+        "createdAt": "2026-06-23T22:53:00.792Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": false,
+        "knownActorRestoresHash": false
+      },
+      {
+        "seq": "165",
+        "action": "approval.execute",
+        "createdAt": "2026-06-23T22:53:23.224Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": false,
+        "knownActorRestoresHash": false
+      },
+      {
+        "seq": "196",
+        "action": "auth.login",
+        "createdAt": "2026-06-26T10:21:28.327Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "197",
+        "action": "auth.login",
+        "createdAt": "2026-06-26T10:21:40.550Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "202",
+        "action": "auth.login",
+        "createdAt": "2026-06-26T10:24:32.958Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "203",
+        "action": "auth.login",
+        "createdAt": "2026-06-26T10:24:45.663Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "205",
+        "action": "auth.login",
+        "createdAt": "2026-06-26T10:25:50.762Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "206",
+        "action": "auth.login",
+        "createdAt": "2026-06-26T10:26:07.389Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "207",
+        "action": "auth.login",
+        "createdAt": "2026-06-26T10:30:29.114Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "208",
+        "action": "auth.login",
+        "createdAt": "2026-06-26T10:30:45.318Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "209",
+        "action": "auth.login",
+        "createdAt": "2026-06-26T10:32:44.749Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "210",
+        "action": "auth.login",
+        "createdAt": "2026-06-26T10:32:58.039Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "215",
+        "action": "auth.login",
+        "createdAt": "2026-06-27T00:24:38.795Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "219",
+        "action": "auth.login",
+        "createdAt": "2026-06-27T00:29:33.868Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "220",
+        "action": "auth.login",
+        "createdAt": "2026-06-27T00:29:45.323Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "221",
+        "action": "auth.login",
+        "createdAt": "2026-06-27T00:30:53.461Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "222",
+        "action": "auth.login",
+        "createdAt": "2026-06-27T00:31:07.244Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "235",
+        "action": "auth.login",
+        "createdAt": "2026-06-27T09:01:21.953Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "236",
+        "action": "auth.login",
+        "createdAt": "2026-06-27T09:01:34.298Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "237",
+        "action": "auth.login",
+        "createdAt": "2026-06-27T09:02:34.345Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "238",
+        "action": "auth.login",
+        "createdAt": "2026-06-27T09:02:46.412Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "239",
+        "action": "auth.login",
+        "createdAt": "2026-06-27T09:03:51.879Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "240",
+        "action": "auth.login",
+        "createdAt": "2026-06-27T09:04:04.428Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "241",
+        "action": "auth.login",
+        "createdAt": "2026-06-27T09:05:44.405Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "242",
+        "action": "auth.login",
+        "createdAt": "2026-06-27T09:05:56.734Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "243",
+        "action": "auth.login",
+        "createdAt": "2026-06-27T09:07:02.259Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "244",
+        "action": "auth.login",
+        "createdAt": "2026-06-27T09:07:14.250Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "245",
+        "action": "auth.login",
+        "createdAt": "2026-06-27T09:08:18.534Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      },
+      {
+        "seq": "246",
+        "action": "auth.login",
+        "createdAt": "2026-06-27T09:08:30.513Z",
+        "actorNull": true,
+        "actorFromTargetRestoresHash": true,
+        "knownActorRestoresHash": true
+      }
+    ],
+    "brokenLinks": [
+      {
+        "seq": "43",
+        "createdAt": "2026-06-21T15:55:27.750Z",
+        "action": "auth.login",
+        "previousHashPresent": false
+      },
+      {
+        "seq": "47",
+        "createdAt": "2026-06-21T15:56:13.776Z",
+        "action": "auth.login",
+        "previousHashPresent": false
+      },
+      {
+        "seq": "49",
+        "createdAt": "2026-06-21T15:56:20.497Z",
+        "action": "auth.login",
+        "previousHashPresent": false
+      },
+      {
+        "seq": "54",
+        "createdAt": "2026-06-21T15:56:39.990Z",
+        "action": "cmpl-1782057399284.a",
+        "previousHashPresent": false
+      },
+      {
+        "seq": "87",
+        "createdAt": "2026-06-22T10:00:06.711Z",
+        "action": "auth.refresh",
+        "previousHashPresent": false
+      },
+      {
+        "seq": "92",
+        "createdAt": "2026-06-22T10:00:56.588Z",
+        "action": "cmpl-1782122455018.a",
+        "previousHashPresent": false
+      },
+      {
+        "seq": "142",
+        "createdAt": "2026-06-23T22:38:16.780Z",
+        "action": "approval.execute",
+        "previousHashPresent": false
+      },
+      {
+        "seq": "144",
+        "createdAt": "2026-06-23T22:46:03.590Z",
+        "action": "usher.portfolio.add",
+        "previousHashPresent": false
+      },
+      {
+        "seq": "160",
+        "createdAt": "2026-06-23T22:49:50.432Z",
+        "action": "cmpl-1782254988741.a",
+        "previousHashPresent": false
+      },
+      {
+        "seq": "231",
+        "createdAt": "2026-06-27T00:47:56.304Z",
+        "action": "auth.refresh",
+        "previousHashPresent": false
+      },
+      {
+        "seq": "274",
+        "createdAt": "2026-07-01T11:07:32.332Z",
+        "action": "usher.portfolio.add",
+        "previousHashPresent": false
+      },
+      {
+        "seq": "315",
+        "createdAt": "2026-07-09T00:35:31.223Z",
+        "action": "usher.portfolio.add",
+        "previousHashPresent": false
+      },
+      {
+        "seq": "378",
+        "createdAt": "2026-09-12T02:41:01.605Z",
+        "action": "retention.purge",
+        "previousHashPresent": false
+      },
+      {
+        "seq": "487",
+        "createdAt": "2026-09-26T18:43:53.850Z",
+        "action": "auth.refresh",
+        "previousHashPresent": false
+      }
+    ],
+    "headMatches": true,
+    "foreignKeys": [
+      {
+        "count": 0
+      }
+    ]
+  },
+  "reconciliationRuns": [
+    {
+      "createdAt": "2026-09-23T03:17:04.417Z",
+      "action": "reconciliation.run",
+      "expectedKobo": 0,
+      "actualKobo": 200000,
+      "driftKobo": 200000,
+      "classification": "drift",
+      "pendingOperations": 0,
+      "quarantinedOperations": 0,
+      "staleHeldCount": 0,
+      "staleFrozenCount": 0,
+      "snapshotChanged": false
+    },
+    {
+      "createdAt": "2026-09-24T03:17:04.524Z",
+      "action": "reconciliation.run",
+      "expectedKobo": 0,
+      "actualKobo": 200000,
+      "driftKobo": 200000,
+      "classification": "drift",
+      "pendingOperations": 0,
+      "quarantinedOperations": 0,
+      "staleHeldCount": 0,
+      "staleFrozenCount": 0,
+      "snapshotChanged": false
+    },
+    {
+      "createdAt": "2026-09-25T03:17:04.135Z",
+      "action": "reconciliation.run",
+      "expectedKobo": 2000000,
+      "actualKobo": 2215000,
+      "driftKobo": 215000,
+      "classification": "drift",
+      "pendingOperations": 0,
+      "quarantinedOperations": 0,
+      "staleHeldCount": 0,
+      "staleFrozenCount": 0,
+      "snapshotChanged": false
+    },
+    {
+      "createdAt": "2026-09-26T03:17:04.068Z",
+      "action": "reconciliation.run",
+      "expectedKobo": 2000000,
+      "actualKobo": 2215000,
+      "driftKobo": 215000,
+      "classification": "drift",
+      "pendingOperations": 0,
+      "quarantinedOperations": 0,
+      "staleHeldCount": 0,
+      "staleFrozenCount": 0,
+      "snapshotChanged": false
+    },
+    {
+      "createdAt": "2026-09-27T03:17:03.915Z",
+      "action": "reconciliation.run",
+      "expectedKobo": 2000000,
+      "actualKobo": 2215000,
+      "driftKobo": 215000,
+      "classification": "drift",
+      "pendingOperations": 0,
+      "quarantinedOperations": 0,
+      "staleHeldCount": 0,
+      "staleFrozenCount": 0,
+      "snapshotChanged": false
+    }
+  ],
+  "certificate": {
+    "entries": [
+      {
+        "entryType": "RELEASE",
+        "amount": "-85000"
+      },
+      {
+        "entryType": "HOLD",
+        "amount": "200000"
+      },
+      {
+        "entryType": "FEE",
+        "amount": "-15000"
+      }
+    ],
+    "operations": [
+      {
+        "kind": "COMMISSION_SWEEP",
+        "status": "PENDING",
+        "count": 1
+      },
+      {
+        "kind": "BOOKING_REFUND",
+        "status": "PENDING",
+        "count": 1
+      },
+      {
+        "kind": "WITHDRAWAL_TRANSFER",
+        "status": "RECORDED",
+        "count": 1
+      }
+    ]
+  }
+}

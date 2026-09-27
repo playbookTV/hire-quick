@@ -1,10 +1,6 @@
-/**
- * Card — the standard surface used across the file: white/dark panel, 1px
- * border/default, radius lg, 16px padding, Shadow/sm.
- */
+/** Flat bordered Figma surface, with optional accessible press behavior. */
 import type { ReactNode } from 'react';
 import { Box } from '../theme/restyle.js';
-import { shadowSm } from '../theme/shadows.js';
 import { AnimatedPressable } from './Pressable.js';
 
 interface CardProps {
@@ -21,11 +17,14 @@ export function Card({ children, onPress, padded = true }: CardProps): React.JSX
       borderWidth={1}
       borderColor="borderDefault"
       padding={padded ? '400' : 'none'}
-      style={shadowSm}
     >
       {children}
     </Box>
   );
   if (!onPress) return inner;
-  return <AnimatedPressable onPress={onPress}>{inner}</AnimatedPressable>;
+  return (
+    <AnimatedPressable onPress={onPress} accessibilityRole="button">
+      {inner}
+    </AnimatedPressable>
+  );
 }

@@ -1,0 +1,27 @@
+[
+  {
+    "url": "https://prolific-love-production-2775.up.railway.app/health",
+    "status": 200,
+    "cacheControl": null
+  },
+  {
+    "url": "https://prolific-love-production-2775.up.railway.app/ready",
+    "status": 200,
+    "cacheControl": "no-store"
+  },
+  {
+    "url": "https://prolific-love-production-2775.up.railway.app/api/admin/observability",
+    "status": 401,
+    "cacheControl": null
+  },
+  {
+    "url": "https://hirequick-admin-production.up.railway.app/observability",
+    "status": 200,
+    "cacheControl": null,
+    "assets": [
+      "/assets/index-DhwQQNPz.js",
+      "/assets/index-div8x93z.css"
+    ],
+    "assetsMatchRelease": true
+  }
+]

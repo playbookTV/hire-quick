@@ -11,6 +11,13 @@ export default function Index(): React.JSX.Element {
 
   if (status === 'loading') return <Loading />;
   if (status === 'guest' || !user) return <Redirect href="/(auth)/welcome" />;
+  if (
+    user.role === 'CLIENT' &&
+    (!user.client?.displayName || user.client.displayName === user.phone)
+  )
+    return <Redirect href="/(auth)/complete-profile" />;
+  if (user.role === 'USHER' && (!user.usher?.displayName || !user.usher.bio))
+    return <Redirect href="/(verification)/profile-setup" />;
   if (user.role === 'USHER') return <Redirect href="/(usher)/home" />;
   return <Redirect href="/(client)/home" />;
 }

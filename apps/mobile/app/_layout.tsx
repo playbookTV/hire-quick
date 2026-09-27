@@ -3,11 +3,11 @@
  * safe-area → Restyle theme (light/dark by system) → React Query → Auth → router.
  */
 import { useEffect } from 'react';
-import { useColorScheme } from 'react-native';
+import { AppState, Platform, useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider } from '@shopify/restyle';
-import { QueryClientProvider } from '@tanstack/react-query';
+import { focusManager, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
@@ -17,12 +17,26 @@ import { useAppFonts } from '../theme/fonts.js';
 import { queryClient } from '../lib/query.js';
 import { AuthProvider } from '../lib/auth-context.js';
 import { ToastProvider } from '../lib/toast.js';
+import { withMonitoring } from '../lib/monitoring.js';
+
+// expo-router renders this for any uncaught render error below the root, instead
+// of crashing the whole app. Named export must be `ErrorBoundary`.
+export { ErrorScreen as ErrorBoundary } from '../components/ErrorScreen.js';
 
 void SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout(): React.JSX.Element | null {
+function RootLayout(): React.JSX.Element | null {
   const scheme = useColorScheme();
   const [fontsLoaded, fontError] = useAppFonts();
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    focusManager.setFocused(AppState.currentState === 'active');
+    const subscription = AppState.addEventListener('change', (state) => {
+      focusManager.setFocused(state === 'active');
+    });
+    return () => subscription.remove();
+  }, []);
 
   useEffect(() => {
     if (fontsLoaded || fontError) void SplashScreen.hideAsync();
@@ -57,3 +71,5 @@ export default function RootLayout(): React.JSX.Element | null {
     </GestureHandlerRootView>
   );
 }
+
+export default withMonitoring(RootLayout);

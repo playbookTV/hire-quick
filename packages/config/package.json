@@ -8,10 +8,17 @@
     "./eslint": "./eslint.config.mjs",
     "./vitest": "./vitest.preset.ts"
   },
-  "files": ["tsconfig.base.json", "eslint.config.mjs", "vitest.preset.ts"],
+  "files": [
+    "tsconfig.base.json",
+    "eslint.config.mjs",
+    "vitest.preset.ts"
+  ],
   "dependencies": {
     "@eslint/js": "^9.17.0",
     "eslint-plugin-security": "^3.0.1",
     "typescript-eslint": "^8.18.1"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
   }
 }

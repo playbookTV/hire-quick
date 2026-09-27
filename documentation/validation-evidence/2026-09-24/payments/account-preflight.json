@@ -1,0 +1,28 @@
+{
+  "checkedAt": "2026-09-24T17:41:11.927Z",
+  "mode": "test",
+  "readOnly": true,
+  "observations": [
+    {
+      "path": "/balance",
+      "httpStatus": 200,
+      "ok": true,
+      "ngnBalanceKobo": 2200000
+    },
+    {
+      "path": "/transfer/verify/:prior-reference",
+      "httpStatus": 200,
+      "ok": true,
+      "domain": "test",
+      "status": "success",
+      "amountKobo": 10000
+    },
+    {
+      "path": "/transferrecipient?perPage=100&page=1",
+      "httpStatus": 200,
+      "ok": true,
+      "activeTestNgnRecipients": 1,
+      "total": 1
+    }
+  ]
+}

@@ -1,8 +1,4 @@
-/**
- * AppBar — matches Figma `AppBar` (17:2): 56px canvas bar, a 40px back control
- * with a 24px chevron, and a Heading/S title (Fraunces 18/24). `right` is an
- * optional trailing slot.
- */
+/** Figma AppBar: canvas, 44px back control, Archivo title and optional trailing action. */
 import type { ReactNode } from 'react';
 import { Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,7 +14,13 @@ interface AppBarProps {
   inset?: boolean;
 }
 
-export function AppBar({ title, showBack = false, onBack, right, inset = true }: AppBarProps): React.JSX.Element {
+export function AppBar({
+  title,
+  showBack = false,
+  onBack,
+  right,
+  inset = true,
+}: AppBarProps): React.JSX.Element {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const back = onBack ?? (() => router.back());
@@ -28,7 +30,7 @@ export function AppBar({ title, showBack = false, onBack, right, inset = true }:
       <Box
         flexDirection="row"
         alignItems="center"
-        style={{ height: 56, paddingLeft: 12, paddingRight: 16, gap: 6 }}
+        style={{ minHeight: 56, paddingLeft: 24, paddingRight: 24, gap: 12 }}
       >
         {showBack ? (
           <Pressable
@@ -36,12 +38,12 @@ export function AppBar({ title, showBack = false, onBack, right, inset = true }:
             hitSlop={8}
             accessibilityRole="button"
             accessibilityLabel="Go back"
-            style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}
+            style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
           >
             <Icon name="chevron-left" size={24} color="inkStrong" />
           </Pressable>
         ) : null}
-        <Text variant="headingS" style={{ flex: 1 }} numberOfLines={1}>
+        <Text variant="headingS" style={{ flex: 1 }}>
           {title}
         </Text>
         {right}

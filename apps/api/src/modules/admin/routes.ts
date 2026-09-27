@@ -1,3 +1,6 @@
+import { hasReviewPhotos, providerMetadata, readReviewEvidence } from '../verification/evidence.js';
+import type { KycPort } from '../verification/port/kyc-port.js';
+import { cancellationView, releaseInformation } from '../payments/cancellation.js';
 /**
  * Admin API (TRD §15). All routes require an ADMIN role; money actions go
  * through the maker-checker service. Every mutation is audit-logged.
@@ -8,11 +11,23 @@ import { prisma } from '@hq/database';
 import { ApiError } from '../../app.js';
 import { requireAuth, requireRole, type AuthedRequest } from '../auth/middleware.js';
 import { writeAudit } from '../audit.js';
-import { resolveDispute, createRefund, decideApproval, APPROVAL_THRESHOLD_KOBO } from './service.js';
+import {
+  resolveDispute,
+  createRefund,
+  proposeCancellation,
+  decideApproval,
+  APPROVAL_THRESHOLD_KOBO,
+} from './service.js';
 import { createMilestoneTierSchema, updateMilestoneTierSchema } from '@hq/shared';
 import type { RealtimeGateway } from '../../realtime/gateway.js';
 import type { PaystackPort } from '../payments/port/paystack-port.js';
 import { type StoragePort, presignDoc } from '../storage/storage.js';
+import { authorizedChatMediaKey } from '../storage/chat-media.js';
+import { pageQuery, pageResult } from './pagination.js';
+import { paymentOperationsRouter } from './payment-operations.js';
+import { reviewVerification } from '../verification/service.js';
+import type { Redis } from 'ioredis';
+import { monitoringDashboardRouter } from '../../observability/dashboard-route.js';
 
 type Handler = (req: AuthedRequest, res: Response) => Promise<void>;
 const wrap =
@@ -21,20 +36,39 @@ const wrap =
     h(req as AuthedRequest, res).catch(next);
   };
 
-const rejectSchema = z.object({ reason: z.string().min(3).max(500) });
+const REJECT_REASON_CODES = [
+  'UNCLEAR_ID',
+  'SELFIE_MISMATCH',
+  'LIVENESS_FAILED',
+  'ID_NOT_FOUND',
+  'NAME_MISMATCH',
+  'WATCHLISTED',
+  'EXPIRED_DOCUMENT',
+  'POOR_IMAGE',
+  'OTHER',
+] as const;
+const rejectSchema = z.object({
+  reason: z.string().min(3).max(500),
+  reasonCode: z.enum(REJECT_REASON_CODES).optional(),
+});
 
 export function adminRouter(deps: {
   realtime: RealtimeGateway;
+  kyc?: KycPort | undefined;
   storage?: StoragePort | undefined;
   paystack?: PaystackPort | undefined;
+  redis?: Redis | undefined;
 }): Router {
   const r = Router();
   r.use(requireAuth, requireRole('ADMIN'));
+  r.use(monitoringDashboardRouter(deps.redis));
+  r.use(paymentOperationsRouter());
 
   // Refund/dispute execution issues a real Paystack refund, so those routes
   // can't run without a configured port.
   const requirePaystack = (): PaystackPort => {
-    if (!deps.paystack) throw new ApiError(503, 'PAYMENTS_UNAVAILABLE', 'payments are not configured');
+    if (!deps.paystack)
+      throw new ApiError(503, 'PAYMENTS_UNAVAILABLE', 'payments are not configured');
     return deps.paystack;
   };
 
@@ -42,13 +76,18 @@ export function adminRouter(deps: {
   r.get(
     '/stats',
     wrap(async (_req, res) => {
-      const [pendingVerifications, openDisputes, pendingApprovals, users, held] = await Promise.all([
-        prisma.usherVerification.count({ where: { status: 'PENDING' } }),
-        prisma.dispute.count({ where: { status: { in: ['OPEN', 'UNDER_REVIEW'] } } }),
-        prisma.approval.count({ where: { status: 'PENDING' } }),
-        prisma.user.count(),
-        prisma.payment.aggregate({ where: { escrowStatus: 'HELD' }, _sum: { grossAmount: true } }),
-      ]);
+      const [pendingVerifications, openDisputes, pendingApprovals, users, held] = await Promise.all(
+        [
+          prisma.usherVerification.count({ where: { status: 'PENDING' } }),
+          prisma.dispute.count({ where: { status: { in: ['OPEN', 'UNDER_REVIEW'] } } }),
+          prisma.approval.count({ where: { status: 'PENDING' } }),
+          prisma.user.count(),
+          prisma.payment.aggregate({
+            where: { escrowStatus: 'HELD' },
+            _sum: { grossAmount: true },
+          }),
+        ],
+      );
       res.json({
         pendingVerifications,
         openDisputes,
@@ -64,7 +103,10 @@ export function adminRouter(deps: {
   r.get(
     '/verifications',
     wrap(async (req, res) => {
-      const status = z.enum(['PENDING', 'APPROVED', 'REJECTED']).catch('PENDING').parse(req.query.status);
+      const status = z
+        .enum(['PENDING', 'APPROVED', 'REJECTED'])
+        .catch('PENDING')
+        .parse(req.query.status);
       const list = await prisma.usherVerification.findMany({
         where: { status },
         orderBy: { createdAt: 'asc' },
@@ -81,28 +123,56 @@ export function adminRouter(deps: {
       const resolved = await Promise.all(
         list.map(async (v) => ({
           ...v,
-          idDocumentUrl: await presignDoc(deps.storage, v.idDocumentUrl),
-          selfieUrl: await presignDoc(deps.storage, v.selfieUrl),
+          idDocumentUrl: v.idDocumentUrl ? await presignDoc(deps.storage, v.idDocumentUrl) : null,
+          selfieUrl: v.selfieUrl ? await presignDoc(deps.storage, v.selfieUrl) : null,
         })),
       );
+      res.setHeader('Cache-Control', 'no-store');
       res.json(resolved);
     }),
   );
+
+  r.get('/verifications/:id/evidence', wrap(async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    const record = await prisma.usherVerification.findUnique({ where: { id: String(req.params.id) } });
+    if (!record) throw new ApiError(404, 'NOT_FOUND', 'Verification not found.');
+    const metadata = providerMetadata(record.govLookup);
+    const evidence = await readReviewEvidence(deps.redis, record.providerReferenceId, metadata.providerJobId ?? null);
+    await writeAudit({ actorId: req.auth.userId, action: 'verification.evidence_read', target: record.id });
+    res.json({ evidence });
+  }));
+
+  r.post('/verifications/:id/evidence/refresh', wrap(async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    const record = await prisma.usherVerification.findUnique({ where: { id: String(req.params.id) } });
+    if (!record) throw new ApiError(404, 'NOT_FOUND', 'Verification not found.');
+    const metadata = providerMetadata(record.govLookup);
+    if (record.provider !== 'SMILE_ID' || !metadata.providerJobId || !record.providerReferenceId)
+      throw new ApiError(409, 'NO_PROVIDER_JOB', 'No capture result has been received for this attempt.');
+    if (!deps.redis || !deps.kyc?.refreshEvidence)
+      throw new ApiError(503, 'KYC_UNAVAILABLE', 'Identity evidence is temporarily unavailable.');
+    const reserved = await deps.redis.set(`kyc:refresh:${record.id}`, '1', 'EX', 30, 'NX');
+    if (!reserved) throw new ApiError(429, 'REFRESH_PENDING', 'An evidence refresh was requested. Please wait a few seconds.');
+    await deps.kyc.refreshEvidence(metadata.providerJobId, record.providerReferenceId, metadata.environment);
+    await writeAudit({ actorId: req.auth.userId, action: 'verification.evidence_refresh', target: record.id });
+    res.status(202).json({ requested: true });
+  }));
 
   r.post(
     '/verifications/:id/approve',
     wrap(async (req, res) => {
       const id = String(req.params.id);
-      const v = await prisma.usherVerification.findUnique({ where: { id } });
-      if (!v) throw new ApiError(404, 'NOT_FOUND', 'verification not found');
-      await prisma.$transaction([
-        prisma.usherVerification.update({
-          where: { id },
-          data: { status: 'APPROVED', reviewedById: req.auth.userId, reviewedAt: new Date() },
-        }),
-        prisma.usher.update({ where: { id: v.usherId }, data: { verificationStatus: 'VERIFIED' } }),
-      ]);
-      await writeAudit({ actorId: req.auth.userId, action: 'verification.approve', target: id });
+      const record = await prisma.usherVerification.findUnique({ where: { id } });
+      const jobId = providerMetadata(record?.govLookup).providerJobId;
+      const evidence = await readReviewEvidence(deps.redis, record?.providerReferenceId ?? null, jobId ?? null);
+      const result = await reviewVerification(prisma, {
+        verificationId: id,
+        adminId: req.auth.userId,
+        decision: 'APPROVED',
+        evidenceJobId: hasReviewPhotos(evidence) ? jobId : undefined,
+      });
+      if (result.changed)
+        await writeAudit({ actorId: req.auth.userId, action: 'verification.approve', target: id });
       res.json({ id, status: 'APPROVED' });
     }),
   );
@@ -111,17 +181,21 @@ export function adminRouter(deps: {
     '/verifications/:id/reject',
     wrap(async (req, res) => {
       const id = String(req.params.id);
-      const { reason } = rejectSchema.parse(req.body);
-      const v = await prisma.usherVerification.findUnique({ where: { id } });
-      if (!v) throw new ApiError(404, 'NOT_FOUND', 'verification not found');
-      await prisma.$transaction([
-        prisma.usherVerification.update({
-          where: { id },
-          data: { status: 'REJECTED', reviewedById: req.auth.userId, reason, reviewedAt: new Date() },
-        }),
-        prisma.usher.update({ where: { id: v.usherId }, data: { verificationStatus: 'REJECTED' } }),
-      ]);
-      await writeAudit({ actorId: req.auth.userId, action: 'verification.reject', target: id, metadata: { reason } });
+      const { reason, reasonCode } = rejectSchema.parse(req.body);
+      const result = await reviewVerification(prisma, {
+        verificationId: id,
+        adminId: req.auth.userId,
+        decision: 'REJECTED',
+        reason,
+        reasonCode: reasonCode ?? 'OTHER',
+      });
+      if (result.changed)
+        await writeAudit({
+          actorId: req.auth.userId,
+          action: 'verification.reject',
+          target: id,
+          metadata: { reason, reasonCode: reasonCode ?? 'OTHER' },
+        });
       res.json({ id, status: 'REJECTED' });
     }),
   );
@@ -147,8 +221,184 @@ export function adminRouter(deps: {
       const { outcome, resolution } = z
         .object({ outcome: z.enum(['RELEASE', 'REFUND']), resolution: z.string().min(3).max(1000) })
         .parse(req.body);
-      const out = await resolveDispute(req.auth.userId, String(req.params.id), outcome, resolution, requirePaystack(), deps.realtime);
+      const out = await resolveDispute(
+        req.auth.userId,
+        String(req.params.id),
+        outcome,
+        resolution,
+        requirePaystack(),
+        deps.realtime,
+      );
       res.json(out);
+    }),
+  );
+
+  r.get(
+    '/bookings',
+    wrap(async (req, res) => {
+      const page = pageQuery.parse(req.query);
+      const query = z.string().max(120).default('').parse(req.query.query).trim();
+      const uuid = z.string().uuid().safeParse(query);
+      const rows = await prisma.booking.findMany({
+        where: query
+          ? {
+              OR: [
+                ...(uuid.success ? [{ id: uuid.data }] : []),
+                { event: { title: { contains: query, mode: 'insensitive' } } },
+                { event: { client: { displayName: { contains: query, mode: 'insensitive' } } } },
+                { usher: { displayName: { contains: query, mode: 'insensitive' } } },
+              ],
+            }
+          : {},
+        select: {
+          id: true,
+          status: true,
+          amount: true,
+          createdAt: true,
+          event: { select: { title: true } },
+          usher: { select: { displayName: true } },
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: page.limit + 1,
+        ...(page.cursor ? { cursor: { id: page.cursor }, skip: 1 } : {}),
+      });
+      res.json(pageResult(rows, page.limit));
+    }),
+  );
+
+  // Read-only case context; money decisions still use the existing guarded service.
+  r.get(
+    '/bookings/:id/review',
+    wrap(async (req, res) => {
+      const id = z.string().uuid().parse(req.params.id);
+      const booking = await prisma.booking.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          status: true,
+          amount: true,
+          attendanceMethod: true,
+          arrivalAssertedAt: true,
+          checkedInAt: true,
+          completedAt: true,
+          event: {
+            select: {
+              title: true,
+              venue: true,
+              eventDate: true,
+              startTime: true,
+              endTime: true,
+              client: { select: { user: { select: { id: true, phone: true } } } },
+            },
+          },
+          usher: { select: { displayName: true, user: { select: { id: true, phone: true } } } },
+          payment: {
+            select: { grossAmount: true, usherPayout: true, platformFee: true, escrowStatus: true },
+          },
+          conversation: {
+            select: {
+              messages: {
+                orderBy: { createdAt: 'asc' },
+                select: {
+                  id: true,
+                  senderId: true,
+                  contentType: true,
+                  content: true,
+                  createdAt: true,
+                },
+              },
+            },
+          },
+          disputes: {
+            select: {
+              id: true,
+              reason: true,
+              note: true,
+              status: true,
+              resolution: true,
+              createdAt: true,
+              raisedBy: { select: { id: true, phone: true } },
+            },
+            orderBy: { createdAt: 'asc' },
+          },
+        },
+      });
+      if (!booking) throw new ApiError(404, 'NOT_FOUND', 'Booking not found');
+      await writeAudit({ actorId: req.auth.userId, action: 'admin.booking.review', target: id });
+      const messages = await Promise.all(
+        (booking.conversation?.messages ?? []).map(async (message) => {
+          const key = authorizedChatMediaKey(message, {
+            bookingId: id,
+            clientUserId: booking.event.client.user.id,
+            usherUserId: booking.usher.user.id,
+          });
+          return {
+            id: message.id,
+            sender: message.senderId === booking.event.client.user.id ? 'Client' : 'Usher',
+            contentType: message.contentType,
+            content: message.contentType === 'TEXT' ? message.content : null,
+            createdAt: message.createdAt,
+            mediaUrl: key && deps.storage ? await deps.storage.presignDownload(key) : null,
+          };
+        }),
+      );
+      const refund = await prisma.paymentOperation.findUnique({
+        where: { dedupeKey: `BOOKING_REFUND:${id}` },
+        select: { id: true, status: true, providerRef: true, updatedAt: true, payload: true },
+      });
+      const refundApprovals = await prisma.approval.findMany({
+        where: { kind: 'REFUND', payload: { path: ['bookingId'], equals: id } },
+        select: { id: true, status: true, amountKobo: true, updatedAt: true },
+        orderBy: { createdAt: 'desc' },
+      });
+      const cancellation = await cancellationView(prisma, refund);
+      res.json({
+        ...booking,
+        ...releaseInformation(booking.event),
+        cancellation,
+        conversation: undefined,
+        messages,
+        refund: refund ? { ...refund, payload: undefined } : null,
+        refundApprovals,
+      });
+    }),
+  );
+
+  r.get(
+    '/cancellations',
+    wrap(async (req, res) => {
+      const page = pageQuery.parse(req.query);
+      const rows = await prisma.paymentOperation.findMany({
+        where: {
+          kind: 'BOOKING_REFUND',
+          status: { in: ['PENDING', 'PROVIDER_OK'] },
+          OR: ['CLIENT_CANCEL_V1', 'CLIENT_CANCEL_V2'].map((policy) => ({
+            payload: { path: ['cancellation', 'policy'], equals: policy },
+          })),
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: page.limit + 1,
+        ...(page.cursor ? { cursor: { id: page.cursor }, skip: 1 } : {}),
+      });
+      const items = await Promise.all(
+        rows.map(async (op) => ({
+          id: op.id,
+          createdAt: op.createdAt,
+          bookingId: (op.payload as { bookingId: string }).bookingId,
+          cancellation: await cancellationView(prisma, op),
+        })),
+      );
+      res.json(pageResult(items, page.limit));
+    }),
+  );
+
+  r.post(
+    '/bookings/:id/cancellation-approval',
+    wrap(async (req, res) => {
+      const { reason } = z.object({ reason: z.string().min(3).max(500) }).parse(req.body);
+      res.json(
+        await proposeCancellation(req.auth.userId, z.string().uuid().parse(req.params.id), reason),
+      );
     }),
   );
 
@@ -157,9 +407,19 @@ export function adminRouter(deps: {
     '/refunds',
     wrap(async (req, res) => {
       const { bookingId, amountKobo, reason } = z
-        .object({ bookingId: z.string().uuid(), amountKobo: z.number().int().positive(), reason: z.string().min(3).max(500) })
+        .object({
+          bookingId: z.string().uuid(),
+          amountKobo: z.number().int().positive(),
+          reason: z.string().min(3).max(500),
+        })
         .parse(req.body);
-      const out = await createRefund(req.auth.userId, bookingId, amountKobo, reason, requirePaystack());
+      const out = await createRefund(
+        req.auth.userId,
+        bookingId,
+        amountKobo,
+        reason,
+        requirePaystack(),
+      );
       res.json(out);
     }),
   );
@@ -168,12 +428,18 @@ export function adminRouter(deps: {
   r.get(
     '/approvals',
     wrap(async (req, res) => {
-      const status = z.enum(['PENDING', 'APPROVED', 'REJECTED', 'EXECUTED']).catch('PENDING').parse(req.query.status);
+      const status = z
+        .enum(['PENDING', 'APPROVED', 'REJECTED', 'EXECUTED'])
+        .catch('PENDING')
+        .parse(req.query.status);
       res.json(
         await prisma.approval.findMany({
           where: { status },
           orderBy: { createdAt: 'desc' },
-          include: { maker: { select: { phone: true } }, checker: { select: { phone: true } } },
+          include: {
+            maker: { select: { phone: true, email: true } },
+            checker: { select: { phone: true, email: true } },
+          },
         }),
       );
     }),
@@ -183,7 +449,13 @@ export function adminRouter(deps: {
     '/approvals/:id',
     wrap(async (req, res) => {
       const { decision } = z.object({ decision: z.enum(['approve', 'reject']) }).parse(req.body);
-      await decideApproval(req.auth.userId, String(req.params.id), decision, requirePaystack(), deps.realtime);
+      await decideApproval(
+        req.auth.userId,
+        String(req.params.id),
+        decision,
+        requirePaystack(),
+        deps.realtime,
+      );
       res.json({ ok: true });
     }),
   );
@@ -192,14 +464,16 @@ export function adminRouter(deps: {
   r.get(
     '/ledger',
     wrap(async (req, res) => {
-      const limit = Math.min(Number(req.query.limit ?? 100), 250);
-      res.json(
-        await prisma.escrowLedger.findMany({
-          orderBy: { createdAt: 'desc' },
-          take: limit,
-          include: { booking: { select: { id: true, event: { select: { title: true } } } } },
-        }),
-      );
+      const page = pageQuery.parse(req.query);
+      const bookingId = z.string().uuid().optional().parse(req.query.bookingId);
+      const entries = await prisma.escrowLedger.findMany({
+        where: { ...(bookingId ? { bookingId } : {}) },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: page.limit + (page.paged ? 1 : 0),
+        ...(page.cursor ? { cursor: { id: page.cursor }, skip: 1 } : {}),
+        include: { booking: { select: { id: true, event: { select: { title: true } } } } },
+      });
+      res.json(page.paged ? pageResult(entries, page.limit) : entries);
     }),
   );
 
@@ -207,15 +481,27 @@ export function adminRouter(deps: {
   r.get(
     '/users',
     wrap(async (req, res) => {
-      const q = typeof req.query.query === 'string' ? req.query.query : undefined;
-      res.json(
-        await prisma.user.findMany({
-          where: q ? { OR: [{ phone: { contains: q } }, { email: { contains: q } }] } : {},
-          orderBy: { createdAt: 'desc' },
-          take: 100,
-          select: { id: true, role: true, phone: true, email: true, status: true, createdAt: true },
-        }),
-      );
+      const page = pageQuery.parse(req.query);
+      const q = z.string().trim().max(200).optional().parse(req.query.query);
+      const role = z.enum(['CLIENT', 'USHER', 'ADMIN']).optional().parse(req.query.role);
+      const users = await prisma.user.findMany({
+        where: {
+          ...(q
+            ? {
+                OR: [
+                  { phone: { contains: q } },
+                  { email: { contains: q, mode: 'insensitive' as const } },
+                ],
+              }
+            : {}),
+          ...(role ? { role } : {}),
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: page.limit + (page.paged ? 1 : 0),
+        ...(page.cursor ? { cursor: { id: page.cursor }, skip: 1 } : {}),
+        select: { id: true, role: true, phone: true, email: true, status: true, createdAt: true },
+      });
+      res.json(page.paged ? pageResult(users, page.limit) : users);
     }),
   );
 
@@ -255,7 +541,12 @@ export function adminRouter(deps: {
           ...(body.active === undefined ? {} : { active: body.active }),
         },
       });
-      await writeAudit({ actorId: req.auth.userId, action: 'milestoneTier.create', target: tier.id, metadata: body });
+      await writeAudit({
+        actorId: req.auth.userId,
+        action: 'milestoneTier.create',
+        target: tier.id,
+        metadata: body,
+      });
       res.status(201).json(tier);
     }),
   );
@@ -278,7 +569,12 @@ export function adminRouter(deps: {
       if (body.description !== undefined) data.description = body.description;
       if (body.active !== undefined) data.active = body.active;
       const tier = await prisma.milestoneTier.update({ where: { id }, data });
-      await writeAudit({ actorId: req.auth.userId, action: 'milestoneTier.update', target: id, metadata: body });
+      await writeAudit({
+        actorId: req.auth.userId,
+        action: 'milestoneTier.update',
+        target: id,
+        metadata: body,
+      });
       res.json(tier);
     }),
   );
@@ -289,7 +585,11 @@ export function adminRouter(deps: {
     wrap(async (req, res) => {
       const id = String(req.params.id);
       const tier = await prisma.milestoneTier.update({ where: { id }, data: { active: false } });
-      await writeAudit({ actorId: req.auth.userId, action: 'milestoneTier.deactivate', target: id });
+      await writeAudit({
+        actorId: req.auth.userId,
+        action: 'milestoneTier.deactivate',
+        target: id,
+      });
       res.json({ id: tier.id, active: tier.active });
     }),
   );
@@ -318,7 +618,8 @@ export function adminRouter(deps: {
       const id = String(req.params.id);
       const m = await prisma.usherMilestone.findUnique({ where: { id } });
       if (!m) throw new ApiError(404, 'NOT_FOUND', 'milestone not found');
-      if (m.status !== 'UNLOCKED') throw new ApiError(409, 'ALREADY_FULFILLED', 'milestone already fulfilled');
+      if (m.status !== 'UNLOCKED')
+        throw new ApiError(409, 'ALREADY_FULFILLED', 'milestone already fulfilled');
       const updated = await prisma.usherMilestone.update({
         where: { id },
         data: { status: 'FULFILLED', fulfilledAt: new Date(), fulfilledById: req.auth.userId },

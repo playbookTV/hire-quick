@@ -11,7 +11,8 @@ export default tseslint.config(
       '**/node_modules/**',
       '**/*.config.*',
       // Tests are excluded from the build tsconfig, so the type-aware parser
-      // can't resolve them; they're validated by vitest + tsc instead.
+      // can't resolve them; CI uses eslint.tests.config.mjs and dedicated
+      // no-emit tsconfig.tests.json projects in addition to Vitest.
       '**/*.test.ts',
       '**/__tests__/**',
       '**/prisma/**',

@@ -1,0 +1,15 @@
+{
+  "sizeBytes": 163797859,
+  "sha256": "12de87c92d0ce50d5338356fa5841aed31c45a5b5e2bd325d88acf79f89e6bdc",
+  "signerCertificateSha256": "7bfd30f0ae773e266f2389476e13815bda73e764bc95a7b07bdac5b5e07b108d",
+  "signingCertificateMatchesBuild8": true,
+  "zipIntegrity": "passed",
+  "stagingApiOriginPresent": true,
+  "designAssets": {
+    "figmaWelcomePhoto": "res/-i.jpg",
+    "archivoRegular": "res/Gg.ttf",
+    "manropeRegular": "res/KA.ttf"
+  },
+  "designFontNamesPresent": true,
+  "bundleSizeBytes": 8498884
+}

@@ -1,0 +1,319 @@
+{
+  "version": 1,
+  "schema": "hq_validation_cert_da0f42d91c174d589daedb5550956a86",
+  "createdAt": "2026-09-24T17:50:17.697Z",
+  "reference": "hq-896c7540-d202-42c6-b4ac-b4ad9c49ff47",
+  "openingBalanceKobo": 2200000,
+  "currentBalanceKobo": 2215000,
+  "posts": [
+    "/transaction/initialize:hq-896c7540-d202-42c6-b4ac-b4ad9c49ff47",
+    "/refund:BOOKING_REFUND:4ec37f4a-fb62-4142-9929-5ae6871b72df",
+    "/transfer:wd_e03a562a-9a30-4f49-9be3-72d7426a5977",
+    "/transfer:sweep_cert_8e027985f8404ac4ac06bce5c2d7fa67"
+  ],
+  "observations": [
+    {
+      "method": "GET",
+      "path": "/balance",
+      "httpStatus": 200
+    },
+    {
+      "method": "POST",
+      "path": "/transaction/initialize",
+      "httpStatus": 200
+    },
+    {
+      "method": "GET",
+      "path": "/balance",
+      "httpStatus": 200
+    },
+    {
+      "method": "GET",
+      "path": "/transaction/verify/:reference",
+      "httpStatus": 200,
+      "domain": "test",
+      "status": "success",
+      "amount": 200000,
+      "fees": 3000
+    },
+    {
+      "method": "GET",
+      "path": "/balance",
+      "httpStatus": 200
+    },
+    {
+      "method": "GET",
+      "path": "/transaction/verify/:reference",
+      "httpStatus": 200,
+      "domain": "test",
+      "status": "success",
+      "amount": 200000,
+      "fees": 3000
+    },
+    {
+      "method": "GET",
+      "path": "/refund",
+      "httpStatus": 200
+    },
+    {
+      "method": "POST",
+      "path": "/refund",
+      "httpStatus": 200,
+      "domain": "test",
+      "status": "pending",
+      "amount": 100000
+    },
+    {
+      "method": "GET",
+      "path": "/transaction/verify/:reference",
+      "httpStatus": 200,
+      "domain": "test",
+      "status": "reversal-pending",
+      "amount": 200000,
+      "fees": 3000
+    },
+    {
+      "method": "GET",
+      "path": "/refund",
+      "httpStatus": 200
+    },
+    {
+      "method": "GET",
+      "path": "/balance",
+      "httpStatus": 200
+    },
+    {
+      "method": "GET",
+      "path": "/transfer/verify/:reference",
+      "httpStatus": 404,
+      "rejectionCategory": "other"
+    },
+    {
+      "method": "POST",
+      "path": "/transfer",
+      "httpStatus": 200,
+      "domain": "test",
+      "status": "otp",
+      "amount": 85000
+    },
+    {
+      "method": "GET",
+      "path": "/transfer/verify/:reference",
+      "httpStatus": 200,
+      "domain": "test",
+      "status": "otp",
+      "amount": 85000
+    },
+    {
+      "method": "GET",
+      "path": "/balance",
+      "httpStatus": 200
+    },
+    {
+      "method": "GET",
+      "path": "/transfer/verify/:reference",
+      "httpStatus": 404,
+      "rejectionCategory": "other"
+    },
+    {
+      "method": "POST",
+      "path": "/transfer",
+      "httpStatus": 200,
+      "domain": "test",
+      "status": "otp",
+      "amount": 15000
+    },
+    {
+      "method": "GET",
+      "path": "/transfer/verify/:reference",
+      "httpStatus": 200,
+      "domain": "test",
+      "status": "otp",
+      "amount": 15000
+    },
+    {
+      "method": "GET",
+      "path": "/balance",
+      "httpStatus": 200
+    },
+    {
+      "method": "GET",
+      "path": "/transaction/verify/:reference",
+      "httpStatus": 200,
+      "domain": "test",
+      "status": "reversal-pending",
+      "amount": 200000,
+      "fees": 3000
+    },
+    {
+      "method": "GET",
+      "path": "/refund",
+      "httpStatus": 200
+    },
+    {
+      "method": "GET",
+      "path": "/transaction/verify/:reference",
+      "httpStatus": 200,
+      "domain": "test",
+      "status": "reversal-pending",
+      "amount": 200000,
+      "fees": 3000
+    },
+    {
+      "method": "GET",
+      "path": "/refund",
+      "httpStatus": 200
+    },
+    {
+      "method": "GET",
+      "path": "/balance",
+      "httpStatus": 200
+    },
+    {
+      "method": "GET",
+      "path": "/transfer/verify/:reference",
+      "httpStatus": 200,
+      "domain": "test",
+      "status": "success",
+      "amount": 85000
+    },
+    {
+      "method": "GET",
+      "path": "/balance",
+      "httpStatus": 200
+    },
+    {
+      "method": "GET",
+      "path": "/transaction/verify/:reference",
+      "httpStatus": 200,
+      "domain": "test",
+      "status": "reversal-pending",
+      "amount": 200000,
+      "fees": 3000
+    },
+    {
+      "method": "GET",
+      "path": "/refund",
+      "httpStatus": 200
+    },
+    {
+      "method": "GET",
+      "path": "/transaction/verify/:reference",
+      "httpStatus": 200,
+      "domain": "test",
+      "status": "reversal-pending",
+      "amount": 200000,
+      "fees": 3000
+    },
+    {
+      "method": "GET",
+      "path": "/refund",
+      "httpStatus": 200
+    },
+    {
+      "method": "GET",
+      "path": "/balance",
+      "httpStatus": 200
+    },
+    {
+      "method": "GET",
+      "path": "/transfer/verify/:reference",
+      "httpStatus": 200,
+      "domain": "test",
+      "status": "otp",
+      "amount": 15000
+    },
+    {
+      "method": "GET",
+      "path": "/transfer/verify/:reference",
+      "httpStatus": 200,
+      "domain": "test",
+      "status": "otp",
+      "amount": 15000
+    },
+    {
+      "method": "GET",
+      "path": "/balance",
+      "httpStatus": 200
+    }
+  ],
+  "result": {
+    "walletBalanceKobo": 0,
+    "withdrawals": [
+      {
+        "id": "e03a562a-9a30-4f49-9be3-72d7426a5977",
+        "status": "PAID",
+        "amount": 85000,
+        "paystackTransferRef": "wd_e03a562a-9a30-4f49-9be3-72d7426a5977"
+      }
+    ],
+    "operations": [
+      {
+        "kind": "COMMISSION_SWEEP",
+        "status": "PENDING",
+        "dedupeKey": "COMMISSION_SWEEP:cert_8e027985f8404ac4ac06bce5c2d7fa67",
+        "attempts": 4
+      },
+      {
+        "kind": "WITHDRAWAL_TRANSFER",
+        "status": "RECORDED",
+        "dedupeKey": "WITHDRAWAL_TRANSFER:e03a562a-9a30-4f49-9be3-72d7426a5977",
+        "attempts": 3
+      },
+      {
+        "kind": "BOOKING_REFUND",
+        "status": "PENDING",
+        "dedupeKey": "BOOKING_REFUND:4ec37f4a-fb62-4142-9929-5ae6871b72df",
+        "attempts": 6
+      }
+    ],
+    "entries": [
+      {
+        "_sum": {
+          "amount": -85000
+        },
+        "_count": 1,
+        "entryType": "RELEASE"
+      },
+      {
+        "_sum": {
+          "amount": 200000
+        },
+        "_count": 2,
+        "entryType": "HOLD"
+      },
+      {
+        "_sum": {
+          "amount": -15000
+        },
+        "_count": 1,
+        "entryType": "FEE"
+      }
+    ],
+    "expectedPrincipalKobo": 115000,
+    "observedBalanceDeltaKobo": 15000,
+    "deltaDriftKobo": -100000,
+    "accountReconciliationCertified": false,
+    "sessionComplete": false
+  },
+  "mode": "test",
+  "recipient": "existing TEST recipient ending 7716; same recipient used for diagnostic withdrawal and commission",
+  "checkoutUI": {
+    "modeShown": "TEST",
+    "merchantDisplay": "Ovalay Academy",
+    "finalText": "Payment Successful; You paid NGN 2,000 to Ovalay Academy"
+  },
+  "limitations": [
+    "Synthetic historical attendance",
+    "Polling-based local recovery, not provider-originated callback delivery",
+    "No live merchant approval",
+    "Pending operations retained in isolated schema"
+  ],
+  "evidenceRefreshedAt": "2026-09-24T18:06:24.085Z",
+  "sweepApprovalAttempt": {
+    "httpStatus": 400,
+    "result": "rejected; transfer remains awaiting approval",
+    "newTransferPosts": 0,
+    "otpRetained": false
+  }
+}

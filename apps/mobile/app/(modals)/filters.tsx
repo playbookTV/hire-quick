@@ -9,7 +9,7 @@
  * static note states it.
  */
 import { useMemo, useState } from 'react';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Box, Text } from '../../theme/restyle.js';
 import { Screen } from '../../components/Screen.js';
@@ -35,18 +35,24 @@ const RATE_CEILINGS: { label: string; kobo: number }[] = [
 
 export default function Filters(): React.JSX.Element {
   const router = useRouter();
+  const { query = '' } = useLocalSearchParams<{ query?: string }>();
   const insets = useSafeAreaInsets();
   // Draft starts from whatever the feed currently has applied.
   const [draft, setDraft] = useState<DiscoverFilters>(() => getDiscoverFilters());
 
   // Live count against the draft so "Show results" reflects reality, not a guess.
-  const preview = useUshers(useMemo(() => toUsherQuery(draft), [draft]));
+  const preview = useUshers(
+    useMemo(() => ({ ...toUsherQuery(draft), query: query.trim() || undefined }), [draft, query]),
+  );
   const count = preview.data?.length ?? 0;
 
   const patch = (p: Partial<DiscoverFilters>): void => setDraft((d) => ({ ...d, ...p }));
 
   const noun = count === 1 ? 'result' : 'results';
-  const buttonLabel = preview.isLoading ? 'Show results' : `Show ${count} ${noun}`;
+  const buttonLabel =
+    preview.isFetching || preview.isError || !preview.data
+      ? 'Apply filters'
+      : `Show ${count} ${noun}`;
 
   return (
     <Box flex={1} backgroundColor="bgCanvas">
@@ -57,7 +63,11 @@ export default function Filters(): React.JSX.Element {
           <Box style={{ gap: 12 }}>
             <Text variant="headingS">Availability</Text>
             <Box flexDirection="row" flexWrap="wrap" style={{ gap: 8 }}>
-              <Chip label="Any time" selected={!draft.availableOn} onPress={() => patch({ availableOn: undefined })} />
+              <Chip
+                label="Any time"
+                selected={!draft.availableOn}
+                onPress={() => patch({ availableOn: undefined })}
+              />
               <Chip
                 label="Available today"
                 selected={!!draft.availableOn}
@@ -70,7 +80,11 @@ export default function Filters(): React.JSX.Element {
           <Box style={{ gap: 12 }}>
             <Text variant="headingS">Location</Text>
             <Box flexDirection="row" flexWrap="wrap" style={{ gap: 8 }}>
-              <Chip label="Anywhere" selected={!draft.location} onPress={() => patch({ location: undefined })} />
+              <Chip
+                label="Anywhere"
+                selected={!draft.location}
+                onPress={() => patch({ location: undefined })}
+              />
               {LOCATIONS.map((loc) => (
                 <Chip
                   key={loc}
@@ -86,9 +100,21 @@ export default function Filters(): React.JSX.Element {
           <Box style={{ gap: 12 }}>
             <Text variant="headingS">Minimum rating</Text>
             <Box flexDirection="row" flexWrap="wrap" style={{ gap: 8 }}>
-              <Chip label="Any" selected={!draft.minRating} onPress={() => patch({ minRating: undefined })} />
-              <Chip label="4★ +" selected={draft.minRating === 4} onPress={() => patch({ minRating: draft.minRating === 4 ? undefined : 4 })} />
-              <Chip label="4.5★ +" selected={draft.minRating === 4.5} onPress={() => patch({ minRating: draft.minRating === 4.5 ? undefined : 4.5 })} />
+              <Chip
+                label="Any"
+                selected={!draft.minRating}
+                onPress={() => patch({ minRating: undefined })}
+              />
+              <Chip
+                label="4★ +"
+                selected={draft.minRating === 4}
+                onPress={() => patch({ minRating: draft.minRating === 4 ? undefined : 4 })}
+              />
+              <Chip
+                label="4.5★ +"
+                selected={draft.minRating === 4.5}
+                onPress={() => patch({ minRating: draft.minRating === 4.5 ? undefined : 4.5 })}
+              />
             </Box>
           </Box>
 
@@ -96,7 +122,11 @@ export default function Filters(): React.JSX.Element {
           <Box style={{ gap: 12 }}>
             <Text variant="headingS">Max day rate</Text>
             <Box flexDirection="row" flexWrap="wrap" style={{ gap: 8 }}>
-              <Chip label="Any" selected={!draft.maxRate} onPress={() => patch({ maxRate: undefined })} />
+              <Chip
+                label="Any"
+                selected={!draft.maxRate}
+                onPress={() => patch({ maxRate: undefined })}
+              />
               {RATE_CEILINGS.map((r) => (
                 <Chip
                   key={r.kobo}
@@ -115,14 +145,33 @@ export default function Filters(): React.JSX.Element {
         </Box>
 
         <Box style={{ flex: 1, minHeight: 20 }} />
+        {preview.isError ? (
+          <Box style={{ gap: 8, marginBottom: 16 }}>
+            <Banner
+              tone="info"
+              message="We couldn’t check the result count. You can still apply these filters."
+            />
+            <Button
+              label="Retry result count"
+              variant="ghost"
+              onPress={() => {
+                void preview.refetch();
+              }}
+            />
+          </Box>
+        ) : null}
         <Box flexDirection="row" style={{ gap: 12, paddingBottom: insets.bottom }}>
           <Box>
-            <Button label="Reset" variant="secondary" fullWidth={false} onPress={() => setDraft({})} />
+            <Button
+              label="Reset"
+              variant="secondary"
+              fullWidth={false}
+              onPress={() => setDraft({})}
+            />
           </Box>
           <Box flex={1}>
             <Button
               label={buttonLabel}
-              loading={preview.isLoading}
               onPress={() => {
                 setDiscoverFilters(draft);
                 router.back();

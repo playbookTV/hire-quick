@@ -1,0 +1,15 @@
+{
+  "reason": "Unreleased payment changes excluded before distribution",
+  "builds": [
+    {
+      "id": "6f09cc08-b30d-4dd0-b811-41be78e43b9c",
+      "platform": "ANDROID",
+      "appBuildVersion": "12"
+    },
+    {
+      "id": "744d6eb1-f962-47b4-9d6b-1bf75b7afe79",
+      "platform": "IOS",
+      "appBuildVersion": "6"
+    }
+  ]
+}

@@ -51,7 +51,7 @@ export function AvatarPicker({ size = 96 }: { size?: number }): React.JSX.Elemen
             width: badge,
             height: badge,
             borderRadius: badge / 2,
-            backgroundColor: theme.colors.brandEmerald,
+            backgroundColor: theme.colors.brandSurface,
             borderWidth: 2,
             borderColor: theme.colors.bgCanvas,
             alignItems: 'center',

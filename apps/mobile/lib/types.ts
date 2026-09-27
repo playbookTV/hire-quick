@@ -1,9 +1,12 @@
+import type { CancellationSummary } from '@hq/shared';
 /**
  * Shapes of the API resources the mobile app consumes. Enums come from
  * `@hq/shared` so client and server agree; the rest mirror the Prisma rows the
  * routes return (money fields are integer kobo).
  */
 import type { UserRole, EventStatus, NotificationType } from '@hq/shared';
+export type { ApplicationStatus } from '@hq/shared';
+import type { ApplicationStatus } from '@hq/shared';
 
 export type UsherVerifyState = 'PENDING' | 'VERIFIED' | 'REJECTED';
 
@@ -39,6 +42,8 @@ export interface UsherProfile {
   ratingAvg: number;
   ratingCount: number;
   completedJobsCount: number;
+  /** Nigerian state; ushers only see jobs in their state. */
+  state: string | null;
   /** Base area in Lagos; powers discovery's location filter. */
   city: string | null;
   /** Spoken languages; powers discovery's language filter. */
@@ -68,6 +73,7 @@ export interface EventResource {
   clientId: string;
   title: string;
   venue: string;
+  state: string | null;
   category: string;
   eventDate: string;
   startTime: string;
@@ -76,10 +82,11 @@ export interface EventResource {
   budgetPerHead: number;
   dressCode: string | null;
   accommodation: 'PROVIDED' | 'NOT_PROVIDED' | null;
-  preferences: { requirements?: string } | null;
+  preferences: { requirements?: string; hairstyle?: string } | null;
   status: EventStatus;
   createdAt: string;
   _count?: { applications: number; bookings: number };
+  staffing?: { confirmed: number; reserved: number; vacated: number; available: number };
 }
 
 /** GET /api/me/notifications — one persisted inbox row. */
@@ -151,16 +158,53 @@ export interface Review {
 
 /** GET /api/bookings[/:id] */
 export interface Booking {
+  orderId?: string | null;
+  payoutAvailableAt?: string;
+  canDispute?: boolean;
+  cancellation?: CancellationSummary | null;
+  unreadCount?: number;
+  refund?: {
+    id: string;
+    status: string;
+    providerRef: string | null;
+    createdAt: string;
+    updatedAt: string;
+  } | null;
   id: string;
   eventId: string;
   usherId: string;
   status: string;
   amount: number;
+  staffPay?: number | null;
+  /** Detail response only; never confuse gross booking amount with net earnings. */
+  payment?: {
+    grossAmount: number;
+    platformFee: number;
+    usherPayout: number;
+    escrowStatus: string;
+  } | null;
   createdAt: string;
   /** Enriched on list/detail: event summary + the host (client) name. */
-  event?: Partial<EventResource> & { title: string; eventDate: string; startTime: string; client?: { displayName: string } };
+  arrivalAssertedAt?: string | null;
+  checkedInAt?: string | null;
+  completedAt?: string | null;
+  myReview?: { id: string; rating: number; comment: string | null } | null;
+  disputes?: {
+    id: string;
+    reason: string;
+    note: string | null;
+    status: string;
+    resolution: string | null;
+    createdAt: string;
+  }[];
+  event?: Partial<EventResource> & {
+    title: string;
+    eventDate: string;
+    startTime: string;
+    client?: { displayName: string };
+  };
   /** Enriched on list: the booked usher's name/phone. */
-  usher?: { displayName: string | null; user: { phone: string } };
+  usher?: { displayName: string | null; user?: { phone: string } };
 }
 
 /** GET /api/bookings/:id/messages */
@@ -171,13 +215,13 @@ export interface Message {
   contentType: 'TEXT' | 'IMAGE' | 'VOICE';
   content: string;
   flagged: boolean;
+  seenAt?: string | null;
   createdAt: string;
 }
 
-export type ApplicationStatus = 'APPLIED' | 'SHORTLISTED' | 'ACCEPTED' | 'REJECTED';
-
 /** GET /api/events/:id/applications */
 export interface Application {
+  booking?: { id: string; status: string } | null;
   id: string;
   status: ApplicationStatus;
   createdAt: string;
@@ -198,6 +242,7 @@ export interface Application {
 
 /** GET /api/me/applications — the usher's own applications, with the event. */
 export interface MyApplication {
+  booking?: { id: string; status: string } | null;
   id: string;
   status: ApplicationStatus;
   createdAt: string;

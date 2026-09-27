@@ -1,0 +1,4 @@
+
+> @hq/api@0.0.0 typecheck /Users/leslieisah/app-dev/hire-quick/apps/api
+> tsc -b
+

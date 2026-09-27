@@ -1,35 +1,18 @@
-const API =
-  (import.meta.env.VITE_API_URL as string | undefined) ??
-  'https://prolific-love-production-2775.up.railway.app';
+import { createAdminSession, type AdminRequestOptions } from './session';
+export { AdminApiError, AdminSessionChanged } from './session';
 
-let token: string | null = localStorage.getItem('hq_admin_token');
+const API = (import.meta.env.VITE_API_URL as string | undefined) ?? 'https://prolific-love-production-2775.up.railway.app';
 
-export function setToken(t: string | null): void {
-  token = t;
-  if (t) localStorage.setItem('hq_admin_token', t);
-  else localStorage.removeItem('hq_admin_token');
-}
-export function getToken(): string | null {
-  return token;
-}
-
-export async function api<T>(
-  path: string,
-  opts: { method?: string; body?: unknown } = {},
-): Promise<T> {
-  const res = await fetch(`${API}${path}`, {
-    method: opts.method ?? 'GET',
-    headers: {
-      'content-type': 'application/json',
-      ...(token ? { authorization: `Bearer ${token}` } : {}),
-    },
-    body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
-  });
-  if (!res.ok) {
-    const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
-    throw new Error(err?.error?.message ?? `HTTP ${res.status}`);
-  }
-  return (await res.json()) as T;
+// Storage is accessed only inside lifecycle operations so denial is recoverable.
+export const adminSession = createAdminSession({
+  read: () => sessionStorage.getItem('hq_admin_session'),
+  write: (value) => sessionStorage.setItem('hq_admin_session', value),
+  discardLegacy: () => localStorage.removeItem('hq_admin_token'),
+  fetch: (...args) => fetch(...args),
+  baseUrl: API,
+});
+export function api<T>(path: string, opts: AdminRequestOptions = {}): Promise<T> {
+  return adminSession.request<T>(path, opts);
 }
 
 export function naira(kobo: number): string {

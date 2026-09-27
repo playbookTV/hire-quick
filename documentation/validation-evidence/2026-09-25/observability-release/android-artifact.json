@@ -1,0 +1,17 @@
+{
+  "platform": "android",
+  "buildId": "2f3be311-4fa6-4b17-a9f4-e8bcb7a677d0",
+  "version": "0.0.1",
+  "buildNumber": "11",
+  "artifactUrl": "https://expo.dev/artifacts/eas/CljW5KYdclYsc8SwfFxJK-mxSxrgsliY1C91T5je3-E.apk",
+  "localArtifact": "/private/tmp/hq-release-artifacts/android.apk",
+  "sizeBytes": 168810023,
+  "sha256": "c0cef00b11f781a43921665aadaab9100b7cdba8ff153ae709c021274c424583",
+  "zipIntegrity": "passed",
+  "signerCertificateSha256": "7bfd30f0ae773e266f2389476e13815bda73e764bc95a7b07bdac5b5e07b108d",
+  "signingCertificateMatchesBuild9": true,
+  "nativeSentryPresent": true,
+  "stagingApiOriginPresent": true,
+  "mobileSentryProjectPresent": true,
+  "bundleSizeBytes": 9536600
+}

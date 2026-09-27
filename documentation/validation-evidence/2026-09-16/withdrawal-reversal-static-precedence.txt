@@ -1,0 +1,66 @@
+Withdrawal reversal reference fix — validation evidence, 2026-09-16
+
+Provenance: copied from the retained exec_command/write_stdin tool results in
+the reversal_reference_fix agent task. These commands were not rerun to create
+this file. No separate shell log was captured. Working directory for every
+command: /Users/leslieisah/app-dev/hire-quick
+
+Command: pnpm --filter @hq/api typecheck
+Session: 57975
+Exit code: 0
+Output:
+
+> @hq/api@0.0.0 typecheck /Users/leslieisah/app-dev/hire-quick/apps/api
+> tsc -b
+
+Command: pnpm --filter @hq/api typecheck:tests
+Session: 15413
+Exit code: 0
+Output:
+
+> @hq/api@0.0.0 typecheck:tests /Users/leslieisah/app-dev/hire-quick/apps/api
+> tsc -p tsconfig.tests.json
+
+Command: pnpm --filter @hq/api exec eslint src/modules/payments/withdrawal-reversal.ts src/modules/payments/__tests__/terminal-operations.test.ts src/modules/payments/__tests__/withdrawal-reversal.test.ts
+Session: 57730
+Exit code: 0
+Output:
+
+/Users/leslieisah/app-dev/hire-quick/apps/api/src/modules/payments/__tests__/terminal-operations.test.ts
+  0:0  warning  File ignored because of a matching ignore pattern. Use "--no-ignore" to disable file ignore settings or use "--no-warn-ignored" to suppress this warning
+
+/Users/leslieisah/app-dev/hire-quick/apps/api/src/modules/payments/__tests__/withdrawal-reversal.test.ts
+  0:0  warning  File ignored because of a matching ignore pattern. Use "--no-ignore" to disable file ignore settings or use "--no-warn-ignored" to suppress this warning
+
+✖ 2 problems (0 errors, 2 warnings)
+
+The production lint configuration ignored tests. Both tests were subsequently
+checked with their dedicated configuration:
+
+Command: pnpm exec eslint --config eslint.tests.config.mjs apps/api/src/modules/payments/__tests__/terminal-operations.test.ts apps/api/src/modules/payments/__tests__/withdrawal-reversal.test.ts
+Session: 33029
+Exit code: 0
+Output: empty
+
+Command: DATABASE_URL='postgresql://unused:unused@127.0.0.1:1/unused' DIRECT_URL='postgresql://unused:unused@127.0.0.1:1/unused' PAYSTACK_SECRET_KEY='' PAYSTACK_PUBLIC_KEY='' BREVO_API_KEY='' pnpm --filter @hq/api exec vitest run src/modules/payments/__tests__/transfer-failure-precedence.unit.test.ts
+Session: 21899
+Exit code: 0
+Output:
+
+ RUN  v2.1.9 /Users/leslieisah/app-dev/hire-quick/apps/api
+
+ ✓ src/modules/payments/__tests__/transfer-failure-precedence.unit.test.ts (2 tests) 8ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  11:02:10
+   Duration  1.03s (transform 341ms, setup 0ms, collect 858ms, tests 8ms, environment 0ms, prepare 38ms)
+
+Command: git diff --check -- apps/api/src/modules/payments/withdrawal-reversal.ts apps/api/src/modules/payments/__tests__/terminal-operations.test.ts apps/api/src/modules/payments/__tests__/withdrawal-reversal.test.ts
+Result chunk: e9ca87
+Exit code: 0
+Output: empty
+
+Scope: static checks and two pure precedence tests only. No database test or
+provider operation was run by this agent. Database verification is owned by
+the root orchestrator.

@@ -1,0 +1,42 @@
+[
+  {
+    "name": "Redis",
+    "serviceId": "2dbb70c4-a61f-4c1e-bf3e-c2116d531c9f",
+    "deployments": [
+      {
+        "id": "c819707d-de20-42cb-9855-9970da27208d",
+        "status": "SUCCESS"
+      }
+    ]
+  },
+  {
+    "name": "hirequick-worker",
+    "serviceId": "2640683c-6796-4015-92f1-26075852b05c",
+    "deployments": [
+      {
+        "id": "9e641bbb-e0d4-49af-8609-677ee497979c",
+        "status": "SUCCESS"
+      }
+    ]
+  },
+  {
+    "name": "prolific-love",
+    "serviceId": "85b4bcff-3dbc-48a9-882c-17da83ed20ef",
+    "deployments": [
+      {
+        "id": "6693f714-0a33-481a-9ad2-ae36f585cf60",
+        "status": "SUCCESS"
+      }
+    ]
+  },
+  {
+    "name": "hirequick-admin",
+    "serviceId": "42070d14-5076-4a76-855f-1edd118f5485",
+    "deployments": [
+      {
+        "id": "da277167-e4da-4c01-b9c7-6af147dca0a7",
+        "status": "SUCCESS"
+      }
+    ]
+  }
+]

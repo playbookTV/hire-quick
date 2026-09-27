@@ -4,6 +4,8 @@ import {
   kobo,
   naira,
   splitFee,
+  priceBooking,
+  bookingAllocation,
   pctOf,
   sumKobo,
   formatNaira,
@@ -33,7 +35,7 @@ describe('money (kobo)', () => {
     );
   });
 
-  it('15% platform fee on ₦10,000', () => {
+  it('preserves the legacy fee deducted from ₦10,000', () => {
     const { fee, payout } = splitFee(naira(10_000), PLATFORM_FEE_BPS);
     expect(fee).toBe(150_000); // ₦1,500
     expect(payout).toBe(850_000); // ₦8,500
@@ -73,5 +75,27 @@ describe('refundWithFeeDeduction (C2 scaffold)', () => {
   it('rejects out-of-range basis points', () => {
     expect(() => refundWithFeeDeduction(kobo(1000), 10_001)).toThrow(MoneyError);
     expect(() => refundWithFeeDeduction(kobo(1000), -1)).toThrow(MoneyError);
+  });
+});
+
+
+describe('client-paid platform fee', () => {
+  it('adds ₦1,500 to ₦10,000 pay without reducing the usher payout', () => {
+    expect(priceBooking(naira(10_000))).toEqual({ gross: 1_150_000, fee: 150_000, payout: 1_000_000 });
+    expect(bookingAllocation(1_150_000, 1_000_000)).toEqual({ fee: 150_000, payout: 1_000_000 });
+    expect(bookingAllocation(1_000_000, null)).toEqual({ fee: 150_000, payout: 850_000 });
+  });
+  it('rejects an inconsistent saved price and invalid staff pay', () => {
+    expect(() => bookingAllocation(1_000_000, 1_000_000)).toThrow(MoneyError);
+    expect(() => priceBooking(kobo(-1))).toThrow(MoneyError);
+  });
+  it('conserves odd kobo and rounds each booking before batching', () => {
+    fc.assert(fc.property(fc.integer({ min: 0, max: 1_867_000_000 }), (base) => {
+      const price = priceBooking(kobo(base));
+      expect(price.payout).toBe(base);
+      expect(price.fee).toBe(Math.floor(base * 15 / 100));
+      expect(price.gross).toBe(price.payout + price.fee);
+    }));
+    expect(priceBooking(kobo(10_007)).gross * 3).toBe(34_524);
   });
 });

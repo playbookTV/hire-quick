@@ -1,7 +1,12 @@
 # HireQuick — User Experience Requirements Document (UXRD)
 
+> **Pricing amendment — 26 September 2026:** new checkouts add a 15% client-paid platform fee to agreed staff pay. Ushers receive their full agreed pay. Cancellation percentages apply separately to staff pay and the added fee; the fee is refunded proportionally. Existing orders retain their recorded terms. See [client-paid fee policy](payments/client-paid-fee-policy-2026-09-26.md).
+
+
+> **Policy amendment — approved 21 September 2026:** completion keeps funds in escrow until event end + 72 hours; undisputed completed bookings then become eligible for wallet release. Client cancellations use 100% / 50% / 0% refunds at >48h / 12–48h inclusive / <12h, with the former fee-deducted pricing (superseded for new checkouts by the 26 September amendment) and no processing-fee deduction from the refund. See the [approved decision and implementation criteria](payments/approved-settlement-policy-2026-09-21.md). Local implementation is tracked in OVA-136/137; see the [implementation and validation record](payments/settlement-implementation-2026-09-21.md). Deployment remains separately recorded.
+
 **Version:** 2.1
-**v2.1 changes:** platform fee shown as informational (never added to the client total); usher self-check-in + client-passive auto-complete in the attendance flow; wallet "available vs withdraw-to-bank" clarified; booking-status label↔DB-enum mapping; cancellation processing-fee copy flagged as pending. Flagged inline as **[v2.1]**.
+**v2.1 changes:** platform fee display superseded by the 26 September amendment; usher self-check-in + client-passive auto-complete in the attendance flow; wallet "available vs withdraw-to-bank" clarified; booking-status label↔DB-enum mapping; cancellation processing-fee copy flagged as pending. Flagged inline as **[v2.1]**.
 **Prepared for:** HireQuick
 **Prepared by:** Leslie Williams
 **Launch market:** Lagos, Nigeria
@@ -75,7 +80,7 @@ Target: under 2 minutes. Role choice is explicit and changeable only via support
 Home → Create Event →
 **Basic info:** title, venue, date, time, category.
 **Staffing requirements:** **number of staff needed (headcount)**, role, dress code, **budget per head**, special instructions, and any preference fields (see §6.4 note).
-**Review:** shows total estimated cost (budget per head × headcount, with fees displayed) → Publish → Success.
+**Review:** shows total estimated cost (budget per head × headcount, plus the platform fee) → Publish → Success.
 
 The event now carries a headcount and a per-head budget, and every downstream screen reasons in "X of N".
 
@@ -109,9 +114,9 @@ Chat unlocks **per confirmed booking** (after payment), not merely on acceptance
 
 ### 6.9 Payments **[v2 — escrow language]**
 
-Booking summary (per-head × count, platform fee shown **for transparency only**, total) → Proceed to Payment → Paystack checkout → **Funds Held in Escrow** confirmation (not "paid to staff") → bookings confirmed.
+Booking summary (per-head × count, client-paid platform fee added on top, total) → Proceed to Payment → Paystack checkout → **Funds Held in Escrow** confirmation (not "paid to staff") → bookings confirmed.
 
-> **Fee display [v2.1]:** the 15% platform fee is borne by the usher (deducted from payout), so the **client's total is exactly `budget per head × count`** — the fee is shown as an informational line, never added to what the client pays. The UI must not imply the fee is additive (resolves the Exec §6 ↔ UX inconsistency).
+> **Fee display [26 September 2026]:** the client pays `budget per head × count` plus the sum of each booking’s 15% platform fee. Show staff subtotal, added fee and total. Usher job screens show the full agreed pay; no platform fee is deducted. Saved legacy orders show their original price.
 The success screen explicitly states money is held safely and released only after attendance is verified. This is a trust moment and is designed as one.
 
 ### 6.10 Event Day
@@ -126,7 +131,7 @@ After completion, the client rates each usher (1–5 + optional comment), and us
 
 ### 6.12 Cancellation Experience **[v2 — new]**
 
-When a client cancels a confirmed booking, a sheet shows the exact outcome — refund amount, any usher compensation, and timing — based on how close to the event it is (PRD §13), and requires explicit confirmation. No cancellation executes without the user seeing its financial consequence first. **[v2.1]** Whether a processing-fee deduction appears in the >48h "full refund" case depends on PRD §13 † (TRD §23 Q4) — don't hard-code that line until it's settled.
+When a client cancels a confirmed booking, a sheet shows the exact outcome — refund amount, any usher compensation, and timing — based on how close to the event it is (PRD §13), and requires explicit confirmation. No cancellation executes without the user seeing its financial consequence first. **Approved 21 September 2026:** show no processing-fee deduction from the client refund. Show total retained, platform fee retained and usher compensation separately; use the approved exact 12/48-hour boundaries (PRD §13).
 
 ### 6.13 Dispute Experience **[v2 — new]**
 
@@ -160,7 +165,7 @@ Notification → Open invitation → Review details → Accept / Decline. Accept
 
 ### 7.6 Wallet **[v2]**
 
-Current balance, **pending (in-escrow) earnings** shown distinctly from **available** balance, completed earnings, withdrawal history. **Action:** Withdraw to bank. The distinction between held and withdrawable money is explicit so ushers understand escrow. **[v2.1]** *Available* = payouts released into the wallet when bookings completed (verified or auto-completed); the actual bank transfer fires only on *Withdraw*. A first withdrawal requires saving a bank account; if a transfer fails (e.g. wrong details) the money stays in the wallet and the usher is prompted to fix it — never lost (TRD §10).
+Current balance, **pending (in-escrow) earnings** shown distinctly from **available** balance, completed earnings, withdrawal history. **Action:** Withdraw to bank. The distinction between held and withdrawable money is explicit so ushers understand escrow. **[v2.1]** *Available* = payouts released after booking completion and event end + 72 hours with no unresolved dispute; completed earnings remain *pending* before release; the actual bank transfer fires only on *Withdraw*. A first withdrawal requires saving a bank account; if a transfer fails (e.g. wrong details) the money stays in the wallet and the usher is prompted to fix it — never lost (TRD §10).
 
 ### 7.7 Calendar
 
@@ -223,7 +228,7 @@ New application · applicant shortlisted · invitation received · invitation ac
 **Primary — OTP.** Client taps *Generate Code*; app shows a 6-digit code (e.g. 482913); usher enters it on site; success moves that booking to *Checked In*. Per-usher, so a multi-staff event tracks each arrival.
 **Secondary — QR.** Client displays a QR; usher scans it; same result.
 **Usher self-check-in [v2.1].** The usher also has an *I've arrived* action on their own booking, used when the client is slow or unavailable. It records arrival and, combined with the end-of-event auto-complete, guarantees the usher isn't left unpaid by a passive client (see §6.10, PRD §8).
-Roster view shows live check-in progress ("5 of 6 checked in"). At completion (client-confirmed **or** auto-completed at event end + grace), status advances to *Completed → Paid*.
+Roster view shows live check-in progress ("5 of 6 checked in"). At completion (client-confirmed **or** auto-completed at event end + grace), status advances to *Completed* with funds held. At event end + 72 hours, an undisputed completed booking becomes eligible for wallet release and then *Paid*. Completion copy must not promise available funds; show the release deadline and any dispute hold.
 
 ---
 

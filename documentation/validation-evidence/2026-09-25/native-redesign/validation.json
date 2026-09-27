@@ -1,0 +1,17 @@
+{
+  "frozenLockfileInstall": "passed",
+  "sharedBuild": "passed",
+  "mobileTypecheck": "passed",
+  "mobileLint": "passed",
+  "sourceArchiveMatchesWorkspace": true,
+  "sourceFiles": 542,
+  "nativeDeviceTesting": "not performed",
+  "apiOrigin": "https://prolific-love-production-2775.up.railway.app",
+  "androidNativeBuild": "finished: build 9",
+  "iosNativeBuild": "finished: build 3",
+  "androidArtifactInspection": "passed",
+  "iosArtifactInspection": "passed",
+  "iosCryptographicSignatureChecks": "passed; macOS certificate-chain trust not established",
+  "iosDirectInstallRegistration": "no registered device returned by Expo at final check",
+  "storeSubmission": false
+}

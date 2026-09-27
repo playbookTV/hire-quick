@@ -1,20 +1,22 @@
+import { useAuth } from '../../lib/auth-context.js';
 /**
  * Cancellation — matches Figma `Client / 21 Cancellation` (39:468). Live: reads
  * the booking, computes the refund split from the shared policy matrix
  * (`@hq/shared/policy`), and cancels via `useCancelBooking`. The API only
- * executes full-refund windows; late windows return an explained error.
+ * settles the approved split or retains the request for two-admin approval.
  */
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { cancelWindow, policyForCancellation } from '@hq/shared';
+import { ApiError } from '../../lib/api-error.js';
 import { Box, Text } from '../../theme/restyle.js';
 import { Screen } from '../../components/Screen.js';
 import { AppBar } from '../../components/AppBar.js';
 import { IconCircle } from '../../components/IconCircle.js';
 import { KeyValueRow } from '../../components/KeyValueRow.js';
 import { Button } from '../../components/Button.js';
+import { EmptyState } from '../../components/EmptyState.js';
 import { Loading } from '../../components/Loading.js';
-import { useBooking, useCancelBooking } from '../../lib/hooks.js';
+import { useBooking, useCancelBooking, useCancellationQuote } from '../../lib/hooks.js';
 import { useToast } from '../../lib/toast.js';
 import { openSupport } from '../../lib/support.js';
 import { Banner } from '../../components/Banner.js';
@@ -22,26 +24,23 @@ import { money } from '../../lib/format.js';
 
 const WINDOW_NOTE: Record<string, string> = {
   GT_48H: 'You’re cancelling more than 48 hours out — full refund.',
-  BETWEEN_12_48H: 'Cancelling within 48 hours of the event splits the fee with the usher.',
-  LT_12H: 'Cancelling within 12 hours forfeits your refund to the usher.',
+  BETWEEN_12_48H:
+    'You receive a 50% refund. The remaining amount covers usher compensation and the platform fee.',
+  LT_12H:
+    'No client refund is due. The booking amount covers usher compensation and the platform fee.',
 };
-
-function startDate(eventDate: string, startTime: string): Date {
-  const d = new Date(eventDate);
-  const [h, m] = startTime.split(':').map(Number);
-  d.setUTCHours(h ?? 0, m ?? 0, 0, 0);
-  return d;
-}
 
 export default function Cancellation(): React.JSX.Element {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { booking: bookingId } = useLocalSearchParams<{ booking: string }>();
   const booking = useBooking(bookingId ?? '');
+  const quote = useCancellationQuote(bookingId ?? '');
+  const { user } = useAuth();
   const cancel = useCancelBooking(bookingId ?? '');
   const toast = useToast();
 
-  if (booking.isLoading || !booking.data) {
+  if (booking.isLoading || quote.isLoading) {
     return (
       <Box flex={1} backgroundColor="bgCanvas">
         <AppBar title="Cancel booking" showBack inset />
@@ -50,29 +49,88 @@ export default function Cancellation(): React.JSX.Element {
     );
   }
 
+  if (booking.isError || !booking.data || quote.isError || !quote.data)
+    return (
+      <Box flex={1} backgroundColor="bgCanvas">
+        <AppBar title="Cancel booking" showBack inset />
+        <EmptyState
+          icon="alert-circle"
+          title="Couldn’t load this booking"
+          subtitle="Retry to see your refund before cancelling."
+          actionLabel="Try again"
+          onAction={() => {
+            void booking.refetch();
+            void quote.refetch();
+          }}
+        />
+      </Box>
+    );
+  if (!quote.data.eligible)
+    return (
+      <Box flex={1} backgroundColor="bgCanvas">
+        <AppBar title="Cancellation status" showBack inset />
+        <Screen scroll>
+          <Text variant="body">
+            This booking is no longer available for a new cancellation. View its current status and
+            any refund updates.
+          </Text>
+          <Button
+            label="View booking"
+            onPress={() =>
+              router.replace({
+                pathname: '/(modals)/booking-details',
+                params: { booking: bookingId },
+              })
+            }
+          />
+        </Screen>
+      </Box>
+    );
   const b = booking.data;
-  const gross = b.amount;
   const ev = b.event;
-  const window = ev ? cancelWindow(startDate(ev.eventDate, ev.startTime), new Date()) : 'GT_48H';
-  const outcome = policyForCancellation('CLIENT', window);
-  const refund = Math.floor((gross * outcome.clientRefundPct) / 100);
-  const usherShare = Math.floor((gross * outcome.usherPayoutPct) / 100);
-  // The API only self-executes full (100%) client refunds; late windows split the
-  // usher payout and must be settled by support (server returns 409 otherwise).
-  // Guard the action so the user is routed to support instead of tapping into a
-  // confusing failure (C11).
-  const selfServe = outcome.clientRefundPct === 100;
+  const window = quote.data.window;
+  const outcome = quote.data;
+  const refund = quote.data.refundKobo;
+  const usherShare = quote.data.usherCompensationKobo;
+  const selfServe = quote.data.selfServe;
   const supportMessage = `Hi HireQuick support — I need to cancel my booking for "${ev?.title ?? 'my event'}" but it's inside the late-cancellation window. Booking ID: ${bookingId ?? ''}.`;
 
   const onCancel = (): void => {
-    cancel.mutate(undefined, {
-      onSuccess: () => {
-        toast.success(`${money(refund)} will be refunded.`, 'Booking cancelled');
-        router.dismissAll();
+    cancel.mutate(
+      { expectedWindow: quote.data.window, expectedRefundKobo: refund },
+      {
+        onSuccess: (result) => {
+          const actualRefund = result.settlement?.refundKobo ?? refund;
+          if (result.status === 'AWAITING_APPROVAL')
+            toast.info(
+              'Your cancellation is reserved at these amounts and awaits two-admin approval. Funds remain held.',
+            );
+          else if (result.status === 'PROCESSING')
+            toast.info(
+              'Your cancellation is processing. Funds remain held until the refund is confirmed.',
+            );
+          else if (result.status === 'FAILED')
+            toast.error('The refund failed. Contact support to review this cancellation.');
+          else
+            toast.success(
+              actualRefund > 0
+                ? `A ${money(actualRefund)} refund has been recorded. Bank processing times can vary.`
+                : 'No client refund is due. Usher compensation has been credited.',
+              'Cancellation recorded',
+            );
+          router.replace({ pathname: '/(modals)/booking-details', params: { booking: b.id } });
+        },
+        onError: (e: unknown) => {
+          if (e instanceof ApiError && e.code === 'REFUND_PENDING') {
+            toast.info('Your refund request is processing. Check the booking for updates.');
+            router.replace({ pathname: '/(modals)/booking-details', params: { booking: b.id } });
+            return;
+          }
+          toast.error(e instanceof Error ? e.message : 'Please try again.', 'Couldn’t cancel');
+          void quote.refetch();
+        },
       },
-      onError: (e: unknown) =>
-        toast.error(e instanceof Error ? e.message : 'This cancellation needs support to settle.', 'Couldn’t cancel'),
-    });
+    );
   };
 
   return (
@@ -88,13 +146,38 @@ export default function Cancellation(): React.JSX.Element {
             {ev ? ev.title : 'Review the refund before confirming.'}
           </Text>
 
-          <Box alignSelf="stretch" backgroundColor="bgSurface" borderWidth={1} borderColor="borderDefault" borderRadius="lg" padding="400" style={{ gap: 12 }}>
-            <KeyValueRow label="Refund to you" value={`${money(refund)}  (${outcome.clientRefundPct}%)`} tone="success" />
-            <KeyValueRow label="Usher compensation" value={money(usherShare)} />
-            <KeyValueRow label="Processing fee" value="Non-refundable" tone="muted" />
+          <Box
+            alignSelf="stretch"
+            backgroundColor="bgSurface"
+            borderWidth={1}
+            borderColor="borderDefault"
+            borderRadius="lg"
+            padding="400"
+            style={{ gap: 12 }}
+          >
+            <KeyValueRow
+              label={user?.role === 'USHER' ? 'Refund to client' : 'Refund to you'}
+              value={`${money(refund)}  (${outcome.clientRefundPct}%)`}
+              tone="success"
+            />
+            <KeyValueRow label="Amount retained" value={money(usherShare)} />
+            <KeyValueRow
+              label="Platform fee retained"
+              value={money(quote.data.platformFeeKobo)}
+            />
+            <KeyValueRow label="Usher compensation" value={money(quote.data.usherPayoutKobo)} />
+            <KeyValueRow
+              label="Processing fee deduction"
+              value={
+                quote.data.processingFeeKobo === 0 ? 'None' : money(quote.data.processingFeeKobo)
+              }
+              tone="muted"
+            />
             <Box style={{ width: 100, height: 1 }} backgroundColor="borderDefault" />
             <Box flexDirection="row" alignItems="center" justifyContent="space-between">
-              <Text variant="titleM">You receive</Text>
+              <Text variant="titleM">
+                {user?.role === 'USHER' ? 'Client receives' : 'You receive'}
+              </Text>
               <Text variant="amountM" color="brandEmerald">
                 {money(refund)}
               </Text>
@@ -102,14 +185,23 @@ export default function Cancellation(): React.JSX.Element {
           </Box>
 
           <Text variant="bodySm" color="inkFaint" style={{ textAlign: 'center' }}>
-            {WINDOW_NOTE[window]}
+            {user?.role === 'USHER'
+              ? 'Cancelling refunds the client. You will not earn this booking’s payout and your reliability may be affected.'
+              : WINDOW_NOTE[window]}
           </Text>
 
+          {quote.data.requiresApproval ? (
+            <Banner
+              tone="info"
+              title="Admin approval required"
+              message="Confirming reserves these amounts. Two different admins must approve before settlement; funds remain held while they review."
+            />
+          ) : null}
           {selfServe ? null : (
             <Banner
               tone="warning"
               title="This cancellation needs support"
-              message="Because the usher is owed part of the fee, our team settles late cancellations by hand so the split is fair. Message support and we’ll sort it quickly."
+              message="Contact support to review this booking’s current cancellation status before making another request."
             />
           )}
         </Box>
@@ -117,9 +209,24 @@ export default function Cancellation(): React.JSX.Element {
         <Box style={{ flex: 1, minHeight: 20 }} />
         <Box style={{ gap: 12, paddingBottom: insets.bottom }}>
           {selfServe ? (
-            <Button label={cancel.isPending ? 'Cancelling…' : 'Cancel booking'} variant="danger" onPress={onCancel} disabled={cancel.isPending} />
+            <Button
+              label={
+                cancel.isPending
+                  ? 'Submitting…'
+                  : quote.data.requiresApproval
+                    ? 'Request cancellation'
+                    : 'Confirm cancellation'
+              }
+              variant="danger"
+              onPress={onCancel}
+              disabled={cancel.isPending || !quote.data.eligible}
+            />
           ) : (
-            <Button label="Contact support to cancel" variant="primary" onPress={() => void openSupport(supportMessage)} />
+            <Button
+              label="Contact support to cancel"
+              variant="primary"
+              onPress={() => void openSupport(supportMessage)}
+            />
           )}
           <Button label="Keep booking" variant="ghost" onPress={() => router.back()} />
         </Box>

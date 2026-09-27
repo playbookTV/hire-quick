@@ -1,31 +1,17 @@
-/**
- * Worker process entrypoint — runs the scheduled jobs (separate from the API
- * process). Start with `pnpm --filter @hq/api worker`. Needs REDIS_URL.
- */
-import { createQueue, createWorker, scheduleAll } from './modules/jobs/queues.js';
-import { env } from './env.js';
+/** Scheduled jobs run separately from the API and require REDIS_URL. */
+import './observability/init.js';
+import { logger } from './logger.js';
+import { flushMonitoring, reportError } from './observability/reporting.js';
+import { createJobRuntime } from './modules/jobs/queues.js';
+import { runScheduledProcess } from './modules/jobs/runtime.js';
 
 async function main(): Promise<void> {
-  const queue = createQueue();
-  await scheduleAll(queue);
-
-  const worker = createWorker();
-  worker.on('failed', (job, err) => {
-     
-    console.error(`[worker] ${job?.name ?? 'job'} failed: ${err.message}`);
-  });
-  worker.on('completed', (job) => {
-     
-    console.log(`[worker] ${job.name} completed`);
-  });
-
-  const safeUrl = env.REDIS_URL.replace(/:[^:@]+@/, ':****@');
-   
-  console.log(`hirequick worker started (redis ${safeUrl})`);
+  await runScheduledProcess(createJobRuntime(), (message) => logger.info(message));
 }
 
-main().catch((e: unknown) => {
-   
-  console.error(e);
-  process.exit(1);
+void main().catch(async (error: unknown) => {
+  logger.error({ err: error }, 'worker startup failed');
+  reportError(error, { code: 'WORKER_STARTUP_FAILED' });
+  await flushMonitoring();
+  process.exitCode = 1;
 });

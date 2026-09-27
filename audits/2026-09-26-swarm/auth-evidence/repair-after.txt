@@ -1,0 +1,24 @@
+
+ RUN  v2.1.9 /Users/leslieisah/app-dev/hire-quick
+
+ ✓ apps/api/src/modules/auth/__tests__/middleware.unit.test.ts > HTTP live-role authorization > allows unchanged CLIENT sessions
+ ✓ apps/api/src/modules/auth/__tests__/middleware.unit.test.ts > HTTP live-role authorization > allows unchanged USHER sessions
+ ✓ apps/api/src/modules/auth/__tests__/middleware.unit.test.ts > HTTP live-role authorization > allows unchanged ADMIN sessions
+ ✓ apps/api/src/modules/auth/__tests__/middleware.unit.test.ts > HTTP live-role authorization > rejects a downgraded ADMIN token before any protected mutation, and applies the new role to a fresh token
+ ✓ apps/api/src/modules/auth/__tests__/middleware.unit.test.ts > HTTP live-role authorization > does not promote an old CLIENT token when its account becomes ADMIN
+ ✓ apps/api/src/modules/auth/__tests__/middleware.unit.test.ts > HTTP live-role authorization > preserves inactive-account rejection for SUSPENDED, including a changed role
+ ✓ apps/api/src/modules/auth/__tests__/middleware.unit.test.ts > HTTP live-role authorization > preserves inactive-account rejection for ANONYMIZED, including a changed role
+ ✓ apps/api/src/modules/auth/__tests__/middleware.unit.test.ts > HTTP live-role authorization > rejects missing accounts, anonymous requests and malformed tokens
+ ✓ apps/api/src/modules/auth/__tests__/middleware.unit.test.ts > HTTP live-role authorization > preserves legacy access without a session binding when the role is current
+ ✓ audits/2026-09-26-swarm/auth-evidence/lifecycle.test.ts > real JWT and HTTP/socket authorization with isolated persistence > allows the current administrator and denies anonymous, malformed and lower-role tokens
+ ✓ audits/2026-09-26-swarm/auth-evidence/lifecycle.test.ts > real JWT and HTTP/socket authorization with isolated persistence > rejects stale administrator authority after a live role downgrade on HTTP and sockets
+ ✓ audits/2026-09-26-swarm/auth-evidence/lifecycle.test.ts > real JWT and HTTP/socket authorization with isolated persistence > denies existing access after live status becomes SUSPENDED
+ ✓ audits/2026-09-26-swarm/auth-evidence/lifecycle.test.ts > real JWT and HTTP/socket authorization with isolated persistence > denies existing access after live status becomes ANONYMIZED
+ ✓ audits/2026-09-26-swarm/auth-evidence/lifecycle.test.ts > real JWT and HTTP/socket authorization with isolated persistence > denies access when the account no longer exists
+ ✓ audits/2026-09-26-swarm/auth-evidence/lifecycle.test.ts > real JWT and HTTP/socket authorization with isolated persistence > documents logout semantics: revoked refresh binding denies sockets while existing REST access survives
+
+ Test Files  2 passed (2)
+      Tests  15 passed (15)
+   Start at  11:58:32
+   Duration  1.42s (transform 160ms, setup 0ms, collect 725ms, tests 177ms, environment 0ms, prepare 156ms)
+

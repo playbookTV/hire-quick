@@ -20,7 +20,8 @@ export function formatTimeRange(start: string, end: string): string {
   return `${to12h(start)} – ${to12h(end)}`;
 }
 
-function to12h(hhmm: string): string {
+/** "16:00" → "4:00 PM". Exported so pickers can show friendly 12h labels. */
+export function to12h(hhmm: string): string {
   const [hStr, m] = hhmm.split(':');
   const h = Number(hStr);
   if (Number.isNaN(h)) return hhmm;

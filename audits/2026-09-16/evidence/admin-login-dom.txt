@@ -1,0 +1,30 @@
+- complementary:
+  - generic: HireQuick admin
+  - navigation:
+    - link "Dashboard" [active]:
+      - /url: /
+    - link "Verifications":
+      - /url: /verifications
+    - link "Disputes":
+      - /url: /disputes
+    - link "Approvals":
+      - /url: /approvals
+    - link "Ledger":
+      - /url: /ledger
+    - link "Users":
+      - /url: /users
+  - button "Log out"
+- main:
+  - heading "Dashboard" [level=1]
+  - generic: Pending verifications
+  - generic: "0"
+  - generic: Open disputes
+  - generic: "0"
+  - generic: Pending approvals
+  - generic: "0"
+  - generic: Users
+  - generic: "24"
+  - generic: Escrow held
+  - generic: ₦0.00
+  - generic: Approval threshold
+  - generic: ₦50,000.00

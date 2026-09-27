@@ -1,0 +1,14 @@
+{
+  "id": "b2a3a360-0fdf-4078-b94e-f1deaaed9d4d",
+  "status": "FINISHED",
+  "platform": "IOS",
+  "distribution": "INTERNAL",
+  "appVersion": "0.0.1",
+  "appBuildVersion": "8",
+  "buildProfile": "preview",
+  "createdAt": "2026-09-27T21:16:28.249Z",
+  "updatedAt": "2026-09-27T21:25:28.319Z",
+  "completedAt": "2026-09-27T21:25:28.008Z",
+  "buildPage": "https://expo.dev/accounts/ovalay-studios/projects/hirequick/builds/b2a3a360-0fdf-4078-b94e-f1deaaed9d4d",
+  "artifactUrl": "https://expo.dev/artifacts/eas/RK7bvC9vUy8wkyjmdhFnFlnLr31YAkGedn2NaSYWqg0.ipa"
+}

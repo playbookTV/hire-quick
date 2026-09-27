@@ -1,0 +1,10 @@
+{
+  "deployment": "d715ba54-1296-480b-bf81-c1f25b5b7981",
+  "sha256": {
+    "apps/api/src/env.ts": "44dde779218640e1dd665633dd810261c8dd53be81e37e2715c738b2f964ac9b",
+    "apps/api/src/modules/auth/otp.ts": "5aa7b77a580952f7d3613a9c35ef4f1ac246ce4bf6dc732990272889592f5cba",
+    "apps/api/src/modules/auth/staging-qa.ts": "638d0a079798b383ad761d3a52ec61cdc80de2cab5bcb5c6a7a7cdd1675ed3cb",
+    "apps/api/src/modules/auth/__tests__/otp-env.unit.test.ts": "0a92e2f76d83bf529b81a18b2a11748187e6dd599c5728d0965209b15d2635ae",
+    "apps/api/src/modules/auth/__tests__/staging-qa.unit.test.ts": "ead8e41a91e27e6ae33153cc241d9118621ecde727443d08cbc00f4c513d6c7a"
+  }
+}

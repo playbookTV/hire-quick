@@ -1,16 +1,27 @@
+import { useRef } from 'react';
 /**
  * React Query hooks over the API. Auth mutations skip the bearer token; the
  * verify screen feeds the result into `useAuth().login`.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { CreateEventInput, UpdateEventInput, UserRole } from '@hq/shared';
+import type {
+  CreateEventInput,
+  UpdateEventInput,
+  UserRole,
+  CancelBookingInput,
+  CancelWindow,
+} from '@hq/shared';
+import { checkoutStore } from './checkout-store.js';
+import { loadOrderSummary, readOrderOutcome } from './order-checkout.js';
+import type { WithdrawalInput } from './withdrawal.js';
+import { withdrawalStore } from './withdrawal-store.js';
+import { useAuth } from './auth-context.js';
 import { api, request, newIdempotencyKey } from './client.js';
 import { queryKeys } from './query.js';
 import type {
   EventResource,
   AuthResult,
   Booking,
-  Message,
   Application,
   MyApplication,
   UsherListItem,
@@ -20,7 +31,6 @@ import type {
   BankAccount,
   Bank,
   Availability,
-  ConfirmResult,
   NotificationFeed,
   Invitation,
 } from './types.js';
@@ -28,7 +38,11 @@ import type {
 export function useRequestOtp() {
   return useMutation({
     mutationFn: (phone: string) =>
-      api.post<{ sent: boolean; devCode?: string }>('/auth/otp/request', { phone }, { auth: false }),
+      api.post<{ sent: boolean; devCode?: string }>(
+        '/auth/otp/request',
+        { phone },
+        { auth: false },
+      ),
   });
 }
 
@@ -47,6 +61,7 @@ export function useUpdateProfile() {
       bio?: string;
       yearsExperience?: number;
       businessName?: string;
+      state?: string;
       city?: string;
       languages?: string[];
       dayRateKobo?: number;
@@ -128,7 +143,11 @@ export function useUpdateEvent(id: string) {
 
 // ---------------------------------------------------------------- bookings
 export function useBookings() {
-  return useQuery({ queryKey: queryKeys.bookings, queryFn: () => api.get<Booking[]>('/api/bookings') });
+  return useQuery({
+    queryKey: queryKeys.bookings,
+    queryFn: () => api.get<Booking[]>('/api/bookings'),
+    refetchInterval: 15_000,
+  });
 }
 
 export function useBooking(id: string) {
@@ -136,30 +155,22 @@ export function useBooking(id: string) {
     queryKey: queryKeys.booking(id),
     queryFn: () => api.get<Booking>(`/api/bookings/${id}`),
     enabled: !!id,
-  });
-}
-
-export function useBookingMessages(id: string) {
-  return useQuery({
-    queryKey: queryKeys.bookingMessages(id),
-    queryFn: () => api.get<Message[]>(`/api/bookings/${id}/messages`),
-    enabled: !!id,
-    refetchInterval: 5000, // light polling until Socket.IO is wired
-  });
-}
-
-export function useSendMessage(bookingId: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (content: string) => api.post<Message>(`/api/bookings/${bookingId}/messages`, { content }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.bookingMessages(bookingId) }),
+    refetchInterval: (query) =>
+      query.state.data &&
+      ['PAID', 'REFUNDED', 'CANCELLED', 'NO_SHOW'].includes(query.state.data.status) &&
+      (!query.state.data.refund || ['RECORDED', 'FAILED'].includes(query.state.data.refund.status))
+        ? false
+        : 15_000,
   });
 }
 
 export function useGenerateCheckin(bookingId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => api.post<{ generated: boolean; code: string }>(`/api/bookings/${bookingId}/checkin/generate`),
+    mutationFn: () =>
+      api.post<{ generated: boolean; code: string; expiresAt: string }>(
+        `/api/bookings/${bookingId}/checkin/generate`,
+      ),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.booking(bookingId) }),
   });
 }
@@ -167,47 +178,67 @@ export function useGenerateCheckin(bookingId: string) {
 export function useVerifyCheckin(bookingId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (code: string) => api.post<{ status: string }>(`/api/bookings/${bookingId}/checkin/verify`, { code }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.booking(bookingId) }),
+    mutationFn: (code: string) =>
+      api.post<{ status: string }>(`/api/bookings/${bookingId}/checkin/verify`, { code }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.bookings }),
   });
 }
 
 export function useCompleteBooking(bookingId: string) {
   const qc = useQueryClient();
+  // REL-H1: Idempotency key keeps the route consistent with all other
+  // money-mutating endpoints; stable across retries within the same session.
+  const idemKey = useRef(newIdempotencyKey());
   return useMutation({
-    mutationFn: () => api.post<{ status: string }>(`/api/bookings/${bookingId}/complete`),
-    onSuccess: () =>
-      Promise.all([
+    mutationFn: () =>
+      api.post<{ status: string }>(`/api/bookings/${bookingId}/complete`, undefined, {
+        idempotencyKey: idemKey.current,
+      }),
+    onSuccess: () => {
+      idemKey.current = newIdempotencyKey();
+      return Promise.all([
         qc.invalidateQueries({ queryKey: queryKeys.booking(bookingId) }),
         qc.invalidateQueries({ queryKey: queryKeys.bookings }),
-      ]),
+      ]);
+    },
   });
 }
 
 export function useCreateDispute(bookingId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (vars: { reason: string; note?: string }) => api.post<{ id: string }>(`/api/bookings/${bookingId}/disputes`, vars),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.booking(bookingId) }),
+    mutationFn: (vars: { reason: string; note?: string }) =>
+      api.post<{ id: string }>(`/api/bookings/${bookingId}/disputes`, vars),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.bookings }),
   });
 }
 
 export function useCreateReview(bookingId: string) {
+  const qc = useQueryClient();
   return useMutation({
-    mutationFn: (vars: { rating: number; comment?: string }) => api.post<{ id: string }>(`/api/bookings/${bookingId}/reviews`, vars),
+    mutationFn: (vars: { rating: number; comment?: string }) =>
+      api.post<{ id: string }>(`/api/bookings/${bookingId}/reviews`, vars),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.bookings }),
   });
 }
 
 export function useCancelBooking(bookingId: string) {
   const qc = useQueryClient();
+  const idemKey = useRef(newIdempotencyKey());
   return useMutation({
-    mutationFn: (reason?: string) =>
-      api.post<{ status: string }>(`/api/bookings/${bookingId}/cancel`, { reason }, { idempotencyKey: newIdempotencyKey() }),
-    onSuccess: () =>
-      Promise.all([
+    mutationFn: (confirmation?: CancelBookingInput) =>
+      api.post<{ status: string; settlement?: { refundKobo: number } }>(
+        `/api/bookings/${bookingId}/cancel`,
+        confirmation ?? {},
+        { idempotencyKey: idemKey.current },
+      ),
+    onSuccess: () => {
+      idemKey.current = newIdempotencyKey();
+      return Promise.all([
         qc.invalidateQueries({ queryKey: queryKeys.booking(bookingId) }),
         qc.invalidateQueries({ queryKey: queryKeys.bookings }),
-      ]),
+      ]);
+    },
   });
 }
 
@@ -215,7 +246,8 @@ export function useCancelBooking(bookingId: string) {
 export function useApplyToEvent() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (eventId: string) => api.post<{ id: string; status: string }>(`/api/events/${eventId}/apply`),
+    mutationFn: (eventId: string) =>
+      api.post<{ id: string; status: string }>(`/api/events/${eventId}/apply`),
     onSuccess: (_d, eventId) =>
       Promise.all([
         qc.invalidateQueries({ queryKey: queryKeys.event(eventId) }),
@@ -252,7 +284,8 @@ export function useSavedJobs() {
 export function useSaveJob() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (eventId: string) => api.post<{ id: string; saved: boolean }>(`/api/events/${eventId}/save`),
+    mutationFn: (eventId: string) =>
+      api.post<{ id: string; saved: boolean }>(`/api/events/${eventId}/save`),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.savedJobs }),
   });
 }
@@ -270,18 +303,57 @@ export function usePatchApplication(eventId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (vars: { id: string; status: 'SHORTLISTED' | 'ACCEPTED' | 'REJECTED' }) =>
-      api.patch<{ id: string; status: string }>(`/api/applications/${vars.id}`, { status: vars.status }),
+      api.patch<{ id: string; status: string }>(`/api/applications/${vars.id}`, {
+        status: vars.status,
+      }),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.applications(eventId) }),
+  });
+}
+
+export function useSavedCheckout(eventId: string) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['savedCheckout', user?.id, eventId],
+    enabled: !!user?.id && !!eventId,
+    queryFn: () => checkoutStore.load(user!.id, eventId),
+    staleTime: 0,
+  });
+}
+
+export function useOrderSummary(orderId: string) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['orderSummary', user?.id, orderId],
+    enabled: !!user && !!orderId,
+    queryFn: () => loadOrderSummary(orderId, (path) => api.get(path)),
+    staleTime: 0,
+  });
+}
+
+export function useResumeOrder(orderId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () =>
+      readOrderOutcome(orderId, await api.post(`/api/payments/orders/${orderId}/checkout/resume`)),
+    onSettled: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: ['orderSummary'] }),
+        qc.invalidateQueries({ queryKey: queryKeys.bookings }),
+      ]),
   });
 }
 
 export function useConfirmEvent(eventId: string) {
   const qc = useQueryClient();
+  const { user } = useAuth();
   return useMutation({
-    mutationFn: (vars: { applicationIds: string[]; email: string }) =>
-      api.post<ConfirmResult>(`/api/events/${eventId}/confirm`, vars, { idempotencyKey: newIdempotencyKey() }),
-    onSuccess: () =>
+    mutationFn: (vars: { applicationIds: string[]; email: string }) => {
+      if (!user) throw new Error('Sign in to resume checkout.');
+      return checkoutStore.submit(user.id, eventId, vars);
+    },
+    onSettled: () =>
       Promise.all([
+        qc.invalidateQueries({ queryKey: ['savedCheckout'] }),
         qc.invalidateQueries({ queryKey: queryKeys.event(eventId) }),
         qc.invalidateQueries({ queryKey: queryKeys.bookings }),
       ]),
@@ -293,7 +365,8 @@ function qs(filters?: Record<string, unknown>): string {
   if (!filters) return '';
   const p = new URLSearchParams();
   for (const [k, v] of Object.entries(filters)) {
-    if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') p.set(k, String(v));
+    if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean')
+      p.set(k, String(v));
   }
   const s = p.toString();
   return s ? `?${s}` : '';
@@ -324,15 +397,24 @@ export function useUsherReviews(id: string) {
 
 // -------------------------------------------------------------------- wallet
 export function useWallet() {
-  return useQuery({ queryKey: queryKeys.wallet, queryFn: () => api.get<WalletSummary>('/api/payments/wallet') });
+  return useQuery({
+    queryKey: queryKeys.wallet,
+    queryFn: () => api.get<WalletSummary>('/api/payments/wallet'),
+  });
 }
 
 export function useWalletActivity() {
-  return useQuery({ queryKey: queryKeys.walletActivity, queryFn: () => api.get<WalletActivity[]>('/api/payments/wallet/activity') });
+  return useQuery({
+    queryKey: queryKeys.walletActivity,
+    queryFn: () => api.get<WalletActivity[]>('/api/payments/wallet/activity'),
+  });
 }
 
 export function useBankAccounts() {
-  return useQuery({ queryKey: queryKeys.bankAccounts, queryFn: () => api.get<BankAccount[]>('/api/payments/bank-accounts') });
+  return useQuery({
+    queryKey: queryKeys.bankAccounts,
+    queryFn: () => api.get<BankAccount[]>('/api/payments/bank-accounts'),
+  });
 }
 
 /** Nigerian banks for the withdraw picker (static — cache hard). */
@@ -367,16 +449,49 @@ export function useAddBankAccount() {
 
 export function useWithdraw() {
   const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (vars: { bankAccountId: string; amountKobo: number }) =>
-      api.post<{ id: string; status: string }>('/api/payments/withdrawals', vars, { idempotencyKey: newIdempotencyKey() }),
-    onSuccess: () =>
-      Promise.all([
+  const { user } = useAuth();
+  const userId = user?.id;
+  const pendingKey = ['withdrawal-attempt', userId] as const;
+  const saved = useQuery({
+    queryKey: pendingKey,
+    queryFn: () => withdrawalStore.load(userId!),
+    enabled: !!userId,
+    staleTime: 0,
+  });
+  const mutation = useMutation({
+    mutationFn: async (vars: WithdrawalInput) => {
+      if (!userId) throw new Error('Sign in to check your withdrawal.');
+      return withdrawalStore.submit(userId, vars);
+    },
+    onSuccess: () => {
+      return Promise.all([
+        qc.invalidateQueries({ queryKey: pendingKey }),
         qc.invalidateQueries({ queryKey: queryKeys.wallet }),
         qc.invalidateQueries({ queryKey: queryKeys.walletActivity }),
+        qc.invalidateQueries({ queryKey: ['withdrawals'] }),
         qc.invalidateQueries({ queryKey: queryKeys.me }),
-      ]),
+      ]);
+    },
+    onError: () => qc.invalidateQueries({ queryKey: pendingKey }),
   });
+  const acknowledgment = useMutation({
+    mutationFn: async (withdrawalId: string) => {
+      if (!userId) throw new Error('Sign in to acknowledge this withdrawal.');
+      await withdrawalStore.acknowledge(userId, withdrawalId);
+    },
+    onSuccess: () => {
+      qc.setQueryData(pendingKey, null);
+    },
+  });
+  return {
+    ...mutation,
+    savedAttempt: saved.data,
+    isRestoring: saved.isPending || saved.isFetching,
+    restoreError: saved.error,
+    retryRestore: saved.refetch,
+    acknowledge: acknowledgment.mutateAsync,
+    isAcknowledging: acknowledgment.isPending,
+  };
 }
 
 // --------------------------------------------------------- verification / availability
@@ -392,7 +507,20 @@ export function useSubmitVerification() {
 export function useMyVerifications() {
   return useQuery({
     queryKey: ['verification'] as const,
-    queryFn: () => api.get<{ id: string; status: string; reason: string | null; createdAt: string }[]>('/api/me/verification'),
+    refetchInterval: 20_000,
+    queryFn: () =>
+      api.get<
+        {
+          id: string;
+          status: string;
+          reason: string | null;
+          createdAt: string;
+          idDocumentUrl: string | null;
+          selfieUrl: string | null;
+          method: string;
+          govLookup: { providerStatus?: string } | null;
+        }[]
+      >('/api/me/verification'),
   });
 }
 
@@ -429,7 +557,8 @@ export function useNotifications() {
 export function useMarkNotificationRead() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => request<{ read: boolean }>(`/api/me/notifications/${id}/read`, { method: 'PATCH' }),
+    mutationFn: (id: string) =>
+      request<{ read: boolean }>(`/api/me/notifications/${id}/read`, { method: 'PATCH' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.notifications }),
   });
 }
@@ -470,5 +599,90 @@ export function useRespondInvitation(id: string) {
       void qc.invalidateQueries({ queryKey: queryKeys.myApplications });
       void qc.invalidateQueries({ queryKey: queryKeys.notifications });
     },
+  });
+}
+
+export function useAssertArrival(bookingId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<{ arrived: boolean }>(`/api/bookings/${bookingId}/arrived`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.bookings }),
+  });
+}
+
+export interface SentInvitation {
+  id: string;
+  status: string;
+  createdAt: string;
+  usher: { id: string; displayName: string | null };
+}
+export function useSentInvitations(eventId: string) {
+  return useQuery({
+    queryKey: ['sentInvitations', eventId],
+    queryFn: () => api.get<SentInvitation[]>(`/api/events/${eventId}/invitations`),
+    enabled: !!eventId,
+    refetchInterval: 20_000,
+  });
+}
+export function useInviteStaff() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ eventId, usherId }: { eventId: string; usherId: string }) =>
+      api.post<{ id: string; status: string }>(`/api/events/${eventId}/invite`, { usherId }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sentInvitations'] }),
+  });
+}
+
+export interface WithdrawalRecord {
+  id: string;
+  amount: number;
+  status: 'REQUESTED' | 'PROCESSING' | 'PAID' | 'FAILED';
+  reference: string | null;
+  createdAt: string;
+  updatedAt: string;
+  bank: { code: string; accountName: string; last4: string };
+}
+export function useWithdrawalHistory(cursor?: string) {
+  return useQuery({
+    queryKey: ['withdrawals', 'history', cursor ?? 'first'],
+    queryFn: () =>
+      api.get<{ items: WithdrawalRecord[]; nextCursor: string | null }>(
+        `/api/payments/withdrawals${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`,
+      ),
+  });
+}
+export function useWithdrawalRecord(id: string) {
+  return useQuery({
+    queryKey: ['withdrawals', id],
+    queryFn: () => api.get<WithdrawalRecord>(`/api/payments/withdrawals/${id}`),
+    enabled: !!id,
+    refetchInterval: (query) =>
+      ['REQUESTED', 'PROCESSING'].includes(query.state.data?.status ?? '') ? 10_000 : false,
+  });
+}
+
+export function useCancellationQuote(id: string) {
+  return useQuery({
+    queryKey: ['cancellationQuote', id],
+    queryFn: () =>
+      api.get<{
+        actor: 'CLIENT' | 'USHER';
+        window: CancelWindow;
+        refundKobo: number;
+        usherCompensationKobo: number;
+        processingFeeKobo: number;
+        platformFeeKobo: number;
+        usherPayoutKobo: number;
+        requiresApproval: boolean;
+        clientRefundPct: number;
+        usherPayoutPct: number;
+        gross: number;
+        eligible: boolean;
+        selfServe: boolean;
+        quotedAt: string;
+      }>(`/api/bookings/${id}/cancellation-quote`),
+    enabled: !!id,
+    staleTime: 0,
+    refetchInterval: 30_000,
   });
 }

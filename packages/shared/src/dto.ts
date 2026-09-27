@@ -5,7 +5,7 @@
  */
 import { z } from 'zod';
 import { ACCOMMODATION_STATUSES, REWARD_TYPES } from './enums.js';
-import { MAX_INT32_KOBO } from './money.js';
+import { MAX_INT32_KOBO, priceBooking, kobo } from './money.js';
 
 export const uuid = z.string().uuid();
 
@@ -69,6 +69,7 @@ export type CheckinVerifyInput = z.infer<typeof checkinVerifySchema>;
 export const eventFields = z.object({
   title: z.string().min(3).max(120),
   venue: z.string().min(2).max(200),
+  state: z.string().min(2).max(40).optional(),
   category: z.string().min(2).max(60),
   eventDate: z.coerce.date(),
   startTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
@@ -76,6 +77,7 @@ export const eventFields = z.object({
   headcount: z.number().int().min(1).max(100),
   budgetPerHeadKobo: z.number().int().positive().max(MAX_INT32_KOBO),
   dressCode: z.string().max(200).optional(),
+  hairstyle: z.string().max(60).optional(),
   accommodation: z.enum(ACCOMMODATION_STATUSES).optional(),
   requirements: z.string().max(2000).optional(),
 });
@@ -90,12 +92,19 @@ export const createEventSchema = eventFields
     message: 'Accommodation must be disclosed for events ending at or after 10:00 PM.',
     path: ['accommodation'],
   })
-  // The aggregate charge (Order.gross = headcount × budgetPerHead) must also fit
+  // The aggregate charge (Order.gross = headcount × (staff pay + platform fee)) must also fit
   // the signed 32-bit Int money column, not just each field on its own.
-  .refine((e) => e.headcount * e.budgetPerHeadKobo <= MAX_INT32_KOBO, {
-    message: 'Total event budget exceeds the maximum allowed.',
-    path: ['budgetPerHeadKobo'],
-  });
+  .refine(
+    (e) =>
+      Number.isInteger(e.budgetPerHeadKobo) &&
+      e.budgetPerHeadKobo > 0 &&
+      e.budgetPerHeadKobo <= MAX_INT32_KOBO &&
+      e.headcount * priceBooking(kobo(e.budgetPerHeadKobo)).gross <= MAX_INT32_KOBO,
+    {
+      message: 'Total event budget exceeds the maximum allowed.',
+      path: ['budgetPerHeadKobo'],
+    },
+  );
 export type CreateEventInput = z.infer<typeof createEventSchema>;
 
 /**
@@ -105,7 +114,11 @@ export type CreateEventInput = z.infer<typeof createEventSchema>;
  */
 export const updateEventSchema = eventFields.partial().superRefine((e, ctx) => {
   if (e.startTime != null && e.endTime != null && e.endTime <= e.startTime) {
-    ctx.addIssue({ code: 'custom', message: 'End time must be after the start time.', path: ['endTime'] });
+    ctx.addIssue({
+      code: 'custom',
+      message: 'End time must be after the start time.',
+      path: ['endTime'],
+    });
   }
 });
 export type UpdateEventInput = z.infer<typeof updateEventSchema>;
@@ -140,6 +153,8 @@ export type SetAvailabilityInput = z.infer<typeof setAvailabilitySchema>;
 
 /** POST /bookings/:id/cancel — client cancels a confirmed booking (policy applies). */
 export const cancelBookingSchema = z.object({
+  expectedWindow: z.enum(['GT_48H', 'BETWEEN_12_48H', 'LT_12H']).optional(),
+  expectedRefundKobo: z.number().int().min(0).max(2_147_483_647).optional(),
   reason: z.string().max(500).optional(),
 });
 export type CancelBookingInput = z.infer<typeof cancelBookingSchema>;

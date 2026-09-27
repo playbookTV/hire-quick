@@ -1,0 +1,17 @@
+{
+  "ios": {
+    "buildId": "32e27886-fc67-4e66-98e6-e7146384f053",
+    "release": "com.ovalay.hirequick@0.0.1+5",
+    "sourceMaps": "uploaded",
+    "debugInformationFilesUploaded": 34,
+    "sourceMapDebugId": "5617a941-ccfa-4c7b-a325-5b8fd5c10389",
+    "evidence": "Completed EAS Xcode log"
+  },
+  "android": {
+    "buildId": "2f3be311-4fa6-4b17-a9f4-e8bcb7a677d0",
+    "release": "com.hirequick.mobile@0.0.1+11",
+    "sourceMaps": "uploaded",
+    "sourceMapDebugId": "54eaf2d5-37a9-4e91-b17a-e16a2727f9e3",
+    "evidence": "EAS Gradle log"
+  }
+}

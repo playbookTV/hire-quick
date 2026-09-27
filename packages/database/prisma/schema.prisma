@@ -10,6 +10,41 @@ datasource db {
   directUrl = env("DIRECT_URL") // direct for migrations + concurrency tests
 }
 
+// Upload keys are single-use references. Clients can PUT only the staging key;
+// finalization copies verified bytes to the immutable key before attachment.
+model UploadIntent {
+  key             String   @id
+  stagingKey      String   @unique
+  ownerId         String   @db.Uuid
+  scopeId         String   @db.Uuid
+  purpose         String
+  contentType     String
+  byteSize        Int
+  expiresAt       DateTime @db.Timestamptz(6)
+  attachExpiresAt DateTime @db.Timestamptz(6)
+  finalizedAt     DateTime? @db.Timestamptz(6)
+  consumedBy      String?
+  consumedAt      DateTime? @db.Timestamptz(6)
+  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([ownerId])
+  @@index([consumedAt, attachExpiresAt])
+  @@map("upload_intents")
+}
+
+// Retain successful tombstones too: a deleted key can never be reattached.
+model StorageDeletion {
+  key           String   @id
+  attempts      Int      @default(0)
+  nextAttemptAt DateTime @default(now()) @db.Timestamptz(6)
+  completedAt   DateTime? @db.Timestamptz(6)
+  lastError     String?
+  createdAt     DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([completedAt, nextAttemptAt])
+  @@map("storage_deletions")
+}
+
 // ---------- enums ----------
 enum UserRole {
   CLIENT
@@ -34,6 +69,25 @@ enum VerificationStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+/** How an usher proved identity. BIOMETRIC = Smile ID (NIN/BVN + liveness + face-match). */
+enum VerificationMethod {
+  DOCUMENT
+  BIOMETRIC
+}
+
+/** Standardised rejection codes so reviewers don't free-type and analytics can group. */
+enum VerificationRejectReason {
+  UNCLEAR_ID
+  SELFIE_MISMATCH
+  LIVENESS_FAILED
+  ID_NOT_FOUND
+  NAME_MISMATCH
+  WATCHLISTED
+  EXPIRED_DOCUMENT
+  POOR_IMAGE
+  OTHER
 }
 
 enum AvailabilityStatus {
@@ -203,7 +257,9 @@ enum MilestoneStatus {
 }
 
 enum NotificationType {
+  CHECKOUT_UPDATED
   INVITATION_RECEIVED
+  APPLICATION_RECEIVED
   BOOKING_CONFIRMED
   PAYOUT_RELEASED
   NEW_MESSAGE
@@ -215,7 +271,8 @@ model User {
   id           String     @id @default(uuid()) @db.Uuid
   role         UserRole
   email        String?    @unique
-  phone        String     @unique
+  // Only ADMIN accounts with an email may omit phone (enforced by a DB CHECK).
+  phone        String?    @unique
   passwordHash String?
   status       UserStatus @default(PENDING)
   createdAt    DateTime   @default(now()) @db.Timestamptz(6)
@@ -264,11 +321,14 @@ model Usher {
   bio                String?
   yearsExperience    Int              @default(0)
   verificationStatus UsherVerifyState @default(PENDING)
+  verifiedAt         DateTime?        @db.Timestamptz(6) // when KYC last passed
+  kycAttempts        Int              @default(0) // biometric attempts; caps resubmits
   reliabilityScore   Float            @default(100)
   ratingAvg          Float            @default(0)
   ratingCount        Int              @default(0)
   completedJobsCount Int              @default(0) // denormalized rank key; bumped on each completion
   avatarKey          String? // server-owned storage key for the profile photo; null = initials fallback
+  state              String? // Nigerian state (e.g. "Lagos"); ushers only see jobs in their state
   city               String? // base area in Lagos (e.g. "Lekki"); powers the location discovery filter
   languages          String[]         @default([]) // spoken languages; powers the language discovery filter
   dayRateKobo        Int? // indicative day rate — display + discovery filter only; escrow math uses Event.budgetPerHead
@@ -288,22 +348,37 @@ model Usher {
 }
 
 model UsherVerification {
-  id            String             @id @default(uuid()) @db.Uuid
-  usherId       String             @db.Uuid
-  usher         Usher              @relation(fields: [usherId], references: [id], onDelete: Cascade)
-  idDocumentUrl String
-  selfieUrl     String
-  status        VerificationStatus @default(PENDING)
-  reviewedById  String?            @db.Uuid
-  reviewedBy    User?              @relation("VerificationReviewer", fields: [reviewedById], references: [id])
+  id            String              @id @default(uuid()) @db.Uuid
+  usherId       String              @db.Uuid
+  usher         Usher               @relation(fields: [usherId], references: [id], onDelete: Cascade)
+  method        VerificationMethod  @default(DOCUMENT)
+  // Manual-upload flow only (null for biometric, which captures via the provider).
+  idDocumentUrl String?
+  selfieUrl     String?
+  status        VerificationStatus  @default(PENDING)
+  reviewedById  String?             @db.Uuid
+  reviewedBy    User?               @relation("VerificationReviewer", fields: [reviewedById], references: [id])
   reason        String?
-  createdAt     DateTime           @default(now()) @db.Timestamptz(6)
+  reasonCode    VerificationRejectReason?
+  // Smile ID biometric KYC. Legacy Dojah history is retained. No raw IDs/photos
+  // are stored by the provider adapter; govLookup contains curated status only.
+  provider         String?
+  providerReferenceId String? @map("dojahReferenceId")
+  nin              String?
+  bvn              String?
+  livenessPassed   Boolean?
+  faceMatchScore   Float?
+  watchListed      Boolean?
+  govPhotoKey      String?
+  govLookup        Json?
+  createdAt        DateTime           @default(now()) @db.Timestamptz(6)
   // Set when status leaves PENDING (VERIFIED/REJECTED). Drives NDPR retention
   // (TRD §14): raw ID doc + selfie deleted 90 days after VERIFIED / 30 after
   // REJECTED, leaving only the pass/fail status + reviewer/audit trail.
-  reviewedAt    DateTime?          @db.Timestamptz(6)
+  reviewedAt       DateTime?          @db.Timestamptz(6)
 
   @@index([usherId])
+  @@index([providerReferenceId], map: "usher_verifications_dojahReferenceId_idx")
   @@map("usher_verifications")
 }
 
@@ -338,12 +413,13 @@ model Event {
   client        Client         @relation(fields: [clientId], references: [id])
   title         String
   venue         String
+  state         String? // Nigerian state the event is in; powers usher↔job state matching
   eventDate     DateTime       @db.Date
   startTime     String // "HH:MM"
   endTime       String // "HH:MM" — drives auto-complete (§12)
   category      String
   headcount     Int
-  budgetPerHead Int // kobo
+  budgetPerHead Int // kobo, full agreed staff pay before the client-paid platform fee
   dressCode     String?
   accommodation Accommodation? // required by API when endTime >= 22:00 (late-night safety, visible to staff)
   preferences   Json?
@@ -359,6 +435,7 @@ model Event {
 
   @@index([clientId])
   @@index([status])
+  @@index([state])
   @@map("events")
 }
 
@@ -404,6 +481,34 @@ model SavedJob {
 }
 
 // ---------- orders / bookings / payments ----------
+enum CheckoutState {
+  CREATED
+  INITIALIZING
+  READY
+  REVIEW
+  EXPIRED
+  PAID
+  REFUND_PENDING
+  REFUNDED
+}
+
+model Checkout {
+  orderId          String        @id @db.Uuid
+  order            Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  reference        String        @unique
+  email            String
+  authorizationUrl String?
+  state            CheckoutState @default(CREATED)
+  attemptedAt      DateTime?      @db.Timestamptz(6)
+  expiresAt        DateTime       @db.Timestamptz(6)
+  lastCheckedAt    DateTime?      @db.Timestamptz(6)
+  createdAt        DateTime       @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime       @updatedAt @db.Timestamptz(6)
+
+  @@index([state, expiresAt])
+  @@map("checkouts")
+}
+
 model Order {
   id                String      @id @default(uuid()) @db.Uuid
   clientId          String      @db.Uuid
@@ -411,12 +516,13 @@ model Order {
   eventId           String      @db.Uuid
   event             Event       @relation(fields: [eventId], references: [id])
   paystackChargeRef String?
-  grossAmount       Int // kobo — Σ per-head over this batch
+  grossAmount       Int // kobo — Σ client allocations including per-booking platform fees
   status            OrderStatus @default(PENDING)
   createdAt         DateTime    @default(now()) @db.Timestamptz(6)
   updatedAt         DateTime    @updatedAt @db.Timestamptz(6)
 
   bookings Booking[]
+  checkout Checkout?
 
   @@index([clientId])
   @@index([eventId])
@@ -431,7 +537,8 @@ model Booking {
   usher             Usher             @relation(fields: [usherId], references: [id])
   orderId           String?           @db.Uuid
   order             Order?            @relation(fields: [orderId], references: [id])
-  amount            Int // kobo, = event.budgetPerHead at confirmation
+  amount            Int // kobo, total client allocation including platform fee
+  staffPay          Int? // agreed staff pay at checkout; null preserves legacy fee-deducted orders
   status            BookingStatus     @default(PENDING_PAYMENT)
   attendanceMethod  AttendanceMethod?
   arrivalAssertedAt DateTime?         @db.Timestamptz(6)
@@ -459,7 +566,7 @@ model Payment {
   bookingId           String       @unique @db.Uuid
   booking             Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   grossAmount         Int // kobo
-  platformFee         Int // kobo (15%)
+  platformFee         Int // kobo (15% of agreed staff pay for new bookings)
   usherPayout         Int // kobo (gross − fee)
   paystackChargeRef   String? // denormalized from order
   paystackTransferRef String? // null in wallet model (transfer at withdrawal)
@@ -789,11 +896,15 @@ model PaymentOperation {
   status      PaymentOpStatus @default(PENDING)
   payload     Json // params needed to resume the operation
   attempts    Int             @default(0)
+  recoveryAttempts Int        @default(0)
+  nextAttemptAt DateTime?      @db.Timestamptz(6)
+  quarantinedAt DateTime?      @db.Timestamptz(6)
   lastError   String?
   createdAt   DateTime        @default(now()) @db.Timestamptz(6)
   updatedAt   DateTime        @updatedAt @db.Timestamptz(6)
 
   @@index([status])
+  @@index([status, quarantinedAt, nextAttemptAt])
   @@map("payment_operations")
 }
 

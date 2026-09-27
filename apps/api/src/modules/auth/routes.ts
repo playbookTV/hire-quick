@@ -1,9 +1,10 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { z } from 'zod';
-import { prisma } from '@hq/database';
-import { ApiError } from '../../app.js';
 import { requestOtp, verifyOtp } from './otp.js';
-import { signAccessToken, signRefreshToken, verifyRefreshToken, revokeRefreshToken } from './tokens.js';
+import { adminEmailSchema, requestAdminEmailOtp, verifyAdminEmailOtp } from './admin-email-otp.js';
+import { ApiError } from '../../app.js';
+import { revokeRefreshToken } from './tokens.js';
+import { rotateRefreshToken } from './rotation.js';
 import { writeAudit } from '../audit.js';
 
 type Handler = (req: Request, res: Response) => Promise<void>;
@@ -21,9 +22,40 @@ const otpVerifySchema = z.object({
   role: z.enum(['CLIENT', 'USHER']).optional(),
 });
 const refreshSchema = z.object({ refreshToken: z.string().min(10) });
+const adminOtpRequestSchema = z.object({ email: adminEmailSchema }).strict();
+const adminOtpVerifySchema = z
+  .object({
+    email: adminEmailSchema,
+    code: z.string().regex(/^\d{6}$/),
+  })
+  .strict();
 
 export function authRouter(): Router {
   const r = Router();
+
+  r.post(
+    '/admin/otp/request',
+    wrap(async (req, res) => {
+      const { email } = adminOtpRequestSchema.parse(req.body);
+      const out = await requestAdminEmailOtp(email);
+      if (!out.sent) {
+        throw new ApiError(
+          502,
+          'OTP_DELIVERY_FAILED',
+          'We could not send your email code. Please try again.',
+        );
+      }
+      res.status(200).json(out);
+    }),
+  );
+
+  r.post(
+    '/admin/otp/verify',
+    wrap(async (req, res) => {
+      const { email, code } = adminOtpVerifySchema.parse(req.body);
+      res.status(200).json(await verifyAdminEmailOtp(email, code));
+    }),
+  );
 
   r.post(
     '/otp/request',
@@ -48,32 +80,7 @@ export function authRouter(): Router {
     '/refresh',
     wrap(async (req, res) => {
       const { refreshToken } = refreshSchema.parse(req.body);
-      let userId: string;
-      let jti: string;
-      try {
-        ({ userId, jti } = await verifyRefreshToken(refreshToken));
-      } catch {
-        throw new ApiError(401, 'INVALID_REFRESH', 'invalid or expired refresh token');
-      }
-      // Denylist check: a token revoked on logout, or already consumed by an
-      // earlier rotation, must not mint a new pair.
-      if (await prisma.revokedToken.findUnique({ where: { jti } })) {
-        throw new ApiError(401, 'INVALID_REFRESH', 'refresh token has been revoked');
-      }
-      const user = await prisma.user.findUnique({ where: { id: userId } });
-      // Any non-ACTIVE state (SUSPENDED, ANONYMIZED, PENDING) must not mint tokens.
-      if (!user || user.status !== 'ACTIVE') {
-        throw new ApiError(401, 'INVALID_REFRESH', 'user not active');
-      }
-      // Rotation: issue a fresh pair and burn the presented token so it can't be
-      // replayed (single-use refresh).
-      const [accessToken, newRefresh] = await Promise.all([
-        signAccessToken(user.id, user.role),
-        signRefreshToken(user.id),
-        revokeRefreshToken(refreshToken),
-      ]);
-      await writeAudit({ actorId: user.id, action: 'auth.refresh', target: user.id });
-      res.status(200).json({ accessToken, refreshToken: newRefresh });
+      res.status(200).json(await rotateRefreshToken(refreshToken));
     }),
   );
 
@@ -85,7 +92,12 @@ export function authRouter(): Router {
       const parsed = refreshSchema.safeParse(req.body);
       if (parsed.success) {
         const revoked = await revokeRefreshToken(parsed.data.refreshToken);
-        if (revoked) await writeAudit({ actorId: revoked.userId, action: 'auth.logout', target: revoked.userId });
+        if (revoked)
+          await writeAudit({
+            actorId: revoked.userId,
+            action: 'auth.logout',
+            target: revoked.userId,
+          });
       }
       res.status(204).end();
     }),

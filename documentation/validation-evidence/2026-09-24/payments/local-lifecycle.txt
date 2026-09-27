@@ -1,0 +1,188 @@
+{"check":"direct_connection","schema":"public","version":"PostgreSQL 18.6 (6569466)","pooled":false,"logPath":"/var/folders/41/yxr1sd8s2sb_wfpl_vdcmj440000gn/T/hq_validation_20260924174009_18e77909.log"}
+Created disposable schema hq_validation_20260924174009_18e77909
+PASS raw SQL isolation on eight distinct concurrent direct connections
+START Prisma generation
+warn The configuration property `package.json#prisma` is deprecated and will be removed in Prisma 7. Please migrate to a Prisma config file (e.g., `prisma.config.ts`).
+For more information, see: https://pris.ly/prisma-config
+
+Prisma schema loaded from prisma/schema.prisma
+
+✔ Generated Prisma Client (v6.19.3) to ./../../node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client in 208ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Need your database queries to be 1000x faster? Accelerate offers you that and more: https://pris.ly/tip-2-accelerate
+
+PASS Prisma generation
+START Workspace typecheck
+• turbo 2.9.18
+
+   • Packages in scope: @hq/admin, @hq/api, @hq/config, @hq/database, @hq/mobile, @hq/shared, @hq/website
+   • Running typecheck in 7 packages
+   • Remote caching disabled
+
+@hq/shared:build: cache bypass, force executing 244b9e039cf438f3
+@hq/website:typecheck: cache bypass, force executing aceaaaa74a7a9781
+@hq/shared:typecheck: cache bypass, force executing 002f7fe49048770e
+@hq/shared:typecheck: 
+@hq/shared:typecheck: > @hq/shared@0.0.0 typecheck /Users/leslieisah/app-dev/hire-quick/packages/shared
+@hq/shared:typecheck: > tsc -b
+@hq/shared:typecheck: 
+@hq/website:typecheck: 
+@hq/website:typecheck: > @hq/website@0.0.0 typecheck /Users/leslieisah/app-dev/hire-quick/apps/website
+@hq/website:typecheck: > tsc --noEmit
+@hq/website:typecheck: 
+@hq/shared:build: 
+@hq/shared:build: > @hq/shared@0.0.0 build /Users/leslieisah/app-dev/hire-quick/packages/shared
+@hq/shared:build: > tsc -b
+@hq/shared:build: 
+@hq/database:typecheck: cache bypass, force executing 697ff5b21b647b56
+@hq/mobile:typecheck: cache bypass, force executing d84df121ae3788b3
+@hq/database:build: cache bypass, force executing 1b00b50d3d69b0cd
+@hq/admin:typecheck: cache bypass, force executing 3e3e4314f1fc83fd
+@hq/database:build: 
+@hq/database:build: > @hq/database@0.0.0 build /Users/leslieisah/app-dev/hire-quick/packages/database
+@hq/database:build: > tsc -b
+@hq/database:build: 
+@hq/database:typecheck: 
+@hq/database:typecheck: > @hq/database@0.0.0 typecheck /Users/leslieisah/app-dev/hire-quick/packages/database
+@hq/database:typecheck: > tsc -b
+@hq/database:typecheck: 
+@hq/admin:typecheck: 
+@hq/admin:typecheck: > @hq/admin@0.0.0 typecheck /Users/leslieisah/app-dev/hire-quick/apps/admin
+@hq/admin:typecheck: > tsc --noEmit
+@hq/admin:typecheck: 
+@hq/mobile:typecheck: 
+@hq/mobile:typecheck: > @hq/mobile@0.0.0 typecheck /Users/leslieisah/app-dev/hire-quick/apps/mobile
+@hq/mobile:typecheck: > tsc --noEmit
+@hq/mobile:typecheck: 
+@hq/api:typecheck: cache bypass, force executing 22fc1fe0f584448c
+@hq/api:typecheck: 
+@hq/api:typecheck: > @hq/api@0.0.0 typecheck /Users/leslieisah/app-dev/hire-quick/apps/api
+@hq/api:typecheck: > tsc -b
+@hq/api:typecheck: 
+
+ Tasks:    8 successful, 8 total
+Cached:    0 cached, 8 total
+  Time:    6.008s 
+
+PASS Workspace typecheck
+START Workspace lint
+• turbo 2.9.18
+
+   • Packages in scope: @hq/admin, @hq/api, @hq/config, @hq/database, @hq/mobile, @hq/shared, @hq/website
+   • Running lint in 7 packages
+   • Remote caching disabled
+
+@hq/admin:lint: cache bypass, force executing 2f2d0f67e75d6d92
+@hq/shared:lint: cache bypass, force executing 83a08be2cf58a60f
+@hq/api:lint: cache bypass, force executing a77df6bee4c92cee
+@hq/website:lint: cache bypass, force executing c7e73b9be6642983
+@hq/database:lint: cache bypass, force executing d8b765ac435276f3
+@hq/mobile:lint: cache bypass, force executing b7aa2b3d87a14267
+@hq/website:lint: 
+@hq/website:lint: > @hq/website@0.0.0 lint /Users/leslieisah/app-dev/hire-quick/apps/website
+@hq/website:lint: > eslint .
+@hq/website:lint: 
+@hq/database:lint: 
+@hq/database:lint: > @hq/database@0.0.0 lint /Users/leslieisah/app-dev/hire-quick/packages/database
+@hq/database:lint: > eslint .
+@hq/database:lint: 
+@hq/shared:lint: 
+@hq/shared:lint: > @hq/shared@0.0.0 lint /Users/leslieisah/app-dev/hire-quick/packages/shared
+@hq/shared:lint: > eslint .
+@hq/shared:lint: 
+@hq/mobile:lint: 
+@hq/mobile:lint: > @hq/mobile@0.0.0 lint /Users/leslieisah/app-dev/hire-quick/apps/mobile
+@hq/mobile:lint: > eslint .
+@hq/mobile:lint: 
+@hq/api:lint: 
+@hq/api:lint: > @hq/api@0.0.0 lint /Users/leslieisah/app-dev/hire-quick/apps/api
+@hq/api:lint: > eslint .
+@hq/api:lint: 
+@hq/admin:lint: 
+@hq/admin:lint: > @hq/admin@0.0.0 lint /Users/leslieisah/app-dev/hire-quick/apps/admin
+@hq/admin:lint: > eslint .
+@hq/admin:lint: 
+
+ Tasks:    6 successful, 6 total
+Cached:    0 cached, 6 total
+  Time:    14.802s 
+
+PASS Workspace lint
+START Tracked migrations
+warn The configuration property `package.json#prisma` is deprecated and will be removed in Prisma 7. Please migrate to a Prisma config file (e.g., `prisma.config.ts`).
+For more information, see: https://pris.ly/prisma-config
+
+Prisma schema loaded from prisma/schema.prisma
+Datasource "db": PostgreSQL database "neondb", schema "hq_validation_20260924174009_18e77909" at "[REDACTED]"
+
+9 migrations found in prisma/migrations
+
+Applying migration `0_init`
+Applying migration `20260625145005_add_usher_discovery_client_business_notifications`
+Applying migration `20260627121512_drop_audit_actor_fk`
+Applying migration `20260628120000_compliance_remediation_consent_denylist_bvn`
+Applying migration `20260701000000_client_feedback_round1`
+Applying migration `20260914190000_checkout_recovery`
+Applying migration `20260914193000_checkout_notifications`
+Applying migration `20260921183840_payment_recovery_schedule`
+Applying migration `20260922160357_upload_intents_and_storage_deletions`
+
+┌─────────────────────────────────────────────────────────┐
+│  Update available 6.19.3 -> 8.0.0-rc.15                 │
+│                                                         │
+│  This is a major update - please follow the guide at    │
+│  https://pris.ly/d/major-version-upgrade                │
+│                                                         │
+│  Run the following to update                            │
+│    npm i --save-dev prisma@latest                       │
+│    npm i @prisma/client@latest                          │
+└─────────────────────────────────────────────────────────┘
+The following migration(s) have been applied:
+
+migrations/
+  └─ 0_init/
+    └─ migration.sql
+  └─ 20260625145005_add_usher_discovery_client_business_notifications/
+    └─ migration.sql
+  └─ 20260627121512_drop_audit_actor_fk/
+    └─ migration.sql
+  └─ 20260628120000_compliance_remediation_consent_denylist_bvn/
+    └─ migration.sql
+  └─ 20260701000000_client_feedback_round1/
+    └─ migration.sql
+  └─ 20260914190000_checkout_recovery/
+    └─ migration.sql
+  └─ 20260914193000_checkout_notifications/
+    └─ migration.sql
+  └─ 20260921183840_payment_recovery_schedule/
+    └─ migration.sql
+  └─ 20260922160357_upload_intents_and_storage_deletions/
+    └─ migration.sql
+      
+All migrations have been successfully applied.
+PASS Tracked migrations
+START Migration drift
+warn The configuration property `package.json#prisma` is deprecated and will be removed in Prisma 7. Please migrate to a Prisma config file (e.g., `prisma.config.ts`).
+For more information, see: https://pris.ly/prisma-config
+
+No difference detected.
+
+PASS Migration drift
+START Local provider lifecycle integration
+
+ RUN  v2.1.9 /Users/leslieisah/app-dev/hire-quick
+
+ ✓ scripts/validation/paystack-lifecycle.test.ts (2 tests) 133789ms
+   ✓ InMemoryPaystack full service lifecycle > conserves charge, refunds, payouts and fees with replay-safe final zero balance 71668ms
+   ✓ HttpPaystack loopback transport full service lifecycle > conserves charge, refunds, payouts and fees with replay-safe final zero balance 62118ms
+ ✓ scripts/validation/ui-recovery.test.ts (36 tests) 20ms
+
+ Test Files  2 passed (2)
+      Tests  38 passed (38)
+   Start at  18:41:05
+   Duration  135.62s (transform 435ms, setup 0ms, collect 1.61s, tests 133.81s, environment 0ms, prepare 56ms)
+
+PASS Local provider lifecycle integration
+PASS removed disposable schema hq_validation_20260924174009_18e77909

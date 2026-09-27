@@ -1,0 +1,21 @@
+{
+  "kind": "Pure extracted-source probes, not a rendered/native test or backend integration test",
+  "at": "2026-09-18T18:34:04.684Z",
+  "cancellationBoundary": [
+    {
+      "actualHoursUntilEvent": 47.5,
+      "uiStart": "2026-10-03T18:00:00.000Z",
+      "serverStart": "2026-10-03T17:00:00.000Z",
+      "uiWindow": "GT_48H",
+      "serverWindow": "BETWEEN_12_48H"
+    },
+    {
+      "actualHoursUntilEvent": 11.5,
+      "uiStart": "2026-10-03T18:00:00.000Z",
+      "serverStart": "2026-10-03T17:00:00.000Z",
+      "uiWindow": "BETWEEN_12_48H",
+      "serverWindow": "LT_12H"
+    }
+  ],
+  "withdrawnBadge": "TypeError: Cannot read properties of undefined (reading 'label')"
+}

@@ -12,8 +12,10 @@ const API_URL = envStr(process.env.EXPO_PUBLIC_API_URL, 'http://localhost:4000')
 
 export const env = {
   API_URL: API_URL.replace(/\/$/, ''),
-  /** Dev convenience: the API echoes the OTP as `devCode` when SMS isn't wired. */
+  /** Show developer tools only in development builds. */
   IS_DEV: __DEV__,
+  /** Public Crisp workspace identifier; never put a Crisp API key here. */
+  CRISP_WEBSITE_ID: envStr(process.env.EXPO_PUBLIC_CRISP_WEBSITE_ID).trim(),
   /** Support WhatsApp in E.164 digits only, e.g. "2348012345678" (no "+"). */
   SUPPORT_WHATSAPP: envStr(process.env.EXPO_PUBLIC_SUPPORT_WHATSAPP).replace(/[^\d]/g, ''),
   /** Support email, used if WhatsApp isn't configured/installed. */

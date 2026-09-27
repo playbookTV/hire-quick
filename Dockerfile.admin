@@ -6,7 +6,9 @@ COPY . .
 # Baked at build time; defaults to the live API. Railway passes service vars as build args.
 ARG VITE_API_URL=https://prolific-love-production-2775.up.railway.app
 ENV VITE_API_URL=$VITE_API_URL
-RUN pnpm install --frozen-lockfile && pnpm --filter @hq/admin build
+RUN pnpm install --frozen-lockfile \
+  && pnpm --filter @hq/shared build \
+  && pnpm --filter @hq/admin build
 
 FROM node:22-slim AS runtime
 WORKDIR /app

@@ -1,0 +1,9 @@
+{
+  "snapshotAt": "2026-09-27T20:56:54.123Z",
+  "sourceRows": 476,
+  "actorReferencesReconstructed": 51,
+  "unresolvedEntryHashes": 29,
+  "missingPredecessors": 14,
+  "fullChainRecovered": false,
+  "liveDatabaseChanged": false
+}

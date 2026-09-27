@@ -1,37 +1,11 @@
-/**
- * Access + refresh JWTs persisted in the device keychain (expo-secure-store).
- * The API uses short-lived access tokens with rotating refresh tokens, so we
- * always overwrite the pair together.
- */
+/** One atomic keychain envelope; a logout tombstone prevents legacy resurrection. */
 import * as SecureStore from 'expo-secure-store';
+import { createSessionStore, type TokenPair } from './session-store.js';
+import { createSessionKeychain } from './session-keychain.js';
 
-const ACCESS_KEY = 'hq.access';
-const REFRESH_KEY = 'hq.refresh';
+export const sessionStore = createSessionStore(createSessionKeychain(SecureStore));
 
-export interface TokenPair {
-  accessToken: string;
-  refreshToken: string;
-}
-
-export async function getTokens(): Promise<TokenPair | null> {
-  const [accessToken, refreshToken] = await Promise.all([
-    SecureStore.getItemAsync(ACCESS_KEY),
-    SecureStore.getItemAsync(REFRESH_KEY),
-  ]);
-  if (!accessToken || !refreshToken) return null;
-  return { accessToken, refreshToken };
-}
-
-export async function saveTokens(pair: TokenPair): Promise<void> {
-  await Promise.all([
-    SecureStore.setItemAsync(ACCESS_KEY, pair.accessToken),
-    SecureStore.setItemAsync(REFRESH_KEY, pair.refreshToken),
-  ]);
-}
-
-export async function clearTokens(): Promise<void> {
-  await Promise.all([
-    SecureStore.deleteItemAsync(ACCESS_KEY),
-    SecureStore.deleteItemAsync(REFRESH_KEY),
-  ]);
-}
+export type { TokenPair } from './session-store.js';
+export async function getTokens(): Promise<TokenPair | null> { return (await sessionStore.snapshot()).tokens; }
+export async function saveTokens(pair: TokenPair): Promise<void> { await sessionStore.replace(pair); }
+export async function clearTokens(): Promise<void> { await sessionStore.end().completion; }

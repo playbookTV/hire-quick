@@ -1,0 +1,144 @@
+{
+  "observedAt": "2026-09-27",
+  "mode": "test",
+  "currency": "NGN",
+  "balanceKobo": 2215000,
+  "ledgerMeta": {
+    "total": 12,
+    "skipped": 0,
+    "perPage": 100,
+    "page": 1,
+    "pageCount": 1
+  },
+  "ledger": [
+    {
+      "id": 2493374083,
+      "createdAt": "2026-09-24T17:56:49.000Z",
+      "differenceKobo": -85000,
+      "balanceKobo": 2215000,
+      "model": "Transfer",
+      "modelRow": 1036442748
+    },
+    {
+      "id": 2493369688,
+      "createdAt": "2026-09-24T17:52:45.000Z",
+      "differenceKobo": -100000,
+      "balanceKobo": 2300000,
+      "model": "Refund",
+      "modelRow": 18410487
+    },
+    {
+      "id": 2493368760,
+      "createdAt": "2026-09-24T17:51:48.000Z",
+      "differenceKobo": 200000,
+      "balanceKobo": 2400000,
+      "model": "Transaction",
+      "modelRow": 6591132582
+    },
+    {
+      "id": 2493049375,
+      "createdAt": "2026-09-24T12:04:32.000Z",
+      "differenceKobo": 2000000,
+      "balanceKobo": 2200000,
+      "model": "Transaction",
+      "modelRow": 6590154215
+    },
+    {
+      "id": 2490265204,
+      "createdAt": "2026-09-21T19:22:56.000Z",
+      "differenceKobo": -10000,
+      "balanceKobo": 200000,
+      "model": "Transfer",
+      "modelRow": 1035579092
+    },
+    {
+      "id": 2488765740,
+      "createdAt": "2026-09-20T12:53:40.000Z",
+      "differenceKobo": -1500000,
+      "balanceKobo": 210000,
+      "model": "Refund",
+      "modelRow": 18347082
+    },
+    {
+      "id": 2488765704,
+      "createdAt": "2026-09-20T12:53:34.000Z",
+      "differenceKobo": -1500000,
+      "balanceKobo": 1710000,
+      "model": "Refund",
+      "modelRow": 18347080
+    },
+    {
+      "id": 2488765679,
+      "createdAt": "2026-09-20T12:53:28.000Z",
+      "differenceKobo": -2500000,
+      "balanceKobo": 3210000,
+      "model": "Refund",
+      "modelRow": 18347078
+    },
+    {
+      "id": 2488765565,
+      "createdAt": "2026-09-20T12:53:22.000Z",
+      "differenceKobo": -2500000,
+      "balanceKobo": 5710000,
+      "model": "Refund",
+      "modelRow": 18347077
+    },
+    {
+      "id": 2488765536,
+      "createdAt": "2026-09-20T12:53:17.000Z",
+      "differenceKobo": -1500000,
+      "balanceKobo": 8210000,
+      "model": "Refund",
+      "modelRow": 18347073
+    },
+    {
+      "id": 2488765468,
+      "createdAt": "2026-09-20T12:53:11.000Z",
+      "differenceKobo": -1500000,
+      "balanceKobo": 9710000,
+      "model": "Refund",
+      "modelRow": 18347069
+    },
+    {
+      "id": 2488765424,
+      "createdAt": "2026-09-20T12:53:05.000Z",
+      "differenceKobo": -1500000,
+      "balanceKobo": 11210000,
+      "model": "Refund",
+      "modelRow": 18347068
+    }
+  ],
+  "earlyTransactions": [
+    {
+      "id": 4790059844,
+      "amountKobo": 100000,
+      "status": "abandoned",
+      "createdAt": "2025-03-18T16:53:03.000Z"
+    },
+    {
+      "id": 4790043860,
+      "amountKobo": 100000,
+      "status": "success",
+      "createdAt": "2025-03-18T16:46:57.000Z"
+    },
+    {
+      "id": 4790043284,
+      "amountKobo": 100000,
+      "status": "abandoned",
+      "createdAt": "2025-03-18T16:46:44.000Z"
+    },
+    {
+      "id": 4789990332,
+      "amountKobo": 100000,
+      "status": "success",
+      "createdAt": "2025-03-18T16:19:37.000Z"
+    },
+    {
+      "id": 2562488359,
+      "amountKobo": 10000,
+      "status": "success",
+      "createdAt": "2023-02-23T13:18:29.000Z"
+    }
+  ],
+  "transactionPaginationCaveat": "List reports 17 total but returned 14 records. Historical transaction list completeness is not claimed; cash bridge is based on 12 provider balance-ledger entries and independently checked application aggregates."
+}

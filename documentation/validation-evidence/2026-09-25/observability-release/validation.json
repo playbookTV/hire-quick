@@ -1,0 +1,38 @@
+{
+  "build": "passed",
+  "typechecks": "passed",
+  "lint": "passed with one env regex warning",
+  "mobilePrivacyTests": 2,
+  "sharedTests": 62,
+  "providerLifecycleAndRecoveryTests": 50,
+  "focusedDeployedSnapshotTests": 18,
+  "fullApiSuite": {
+    "passed": 871,
+    "failed": 22,
+    "skipped": 1,
+    "passedSuites": 86,
+    "failedSuites": [
+      "events/recruitment-lifecycle",
+      "storage/chat-media",
+      "ushers/wiring",
+      "auth/auth",
+      "notifications/kudisms-webhook",
+      "payments/concurrency",
+      "notifications/notifications"
+    ],
+    "skippedSuites": 1,
+    "durationSeconds": 5582.05,
+    "temporarySchemaRemoved": true,
+    "limitations": [
+      "Remote database timeouts and connection interruptions",
+      "Mocked Prisma bankAccount.create missing",
+      "OTP and notification transport assertions",
+      "Callback log-count expectations",
+      "Cancellation response expectation RECORDED versus REFUNDED",
+      "Retention spy assertion"
+    ]
+  },
+  "hostedMigrations": "already up to date; no hosted schema changes",
+  "sourceSecretScan": "passed",
+  "mobileArchive": "474 files matched; no forbidden files"
+}

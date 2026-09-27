@@ -1,0 +1,22 @@
+{
+  "frozenLockfileInstall": "passed",
+  "sharedBuild": "passed",
+  "mobileTypecheck": "passed",
+  "mobileLint": "passed",
+  "androidNativeReleaseBundle": "passed",
+  "stagingApiOriginPresent": true,
+  "sourceManifestMatches": true,
+  "archiveFileCount": 443,
+  "privateEnvironmentOrRedisDataIncluded": false,
+  "releaseBundlePolicyCopy": {
+    "Earnings stay held through 72 hours after event end": true,
+    "awaits two-admin approval": true,
+    "The remaining allocation pays the usher": true,
+    "No client refund is due. Usher compensation has been credited.": true
+  },
+  "apkInspection": "passed",
+  "signingCertificateMatchesBuild4": true,
+  "versionCodeIncreasedFrom": 4,
+  "versionCodeIncreasedTo": 5,
+  "onDeviceInteraction": "not performed"
+}

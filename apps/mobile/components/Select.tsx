@@ -7,6 +7,7 @@ import { Modal, Pressable, FlatList } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, Box, Text } from '../theme/restyle.js';
 import { Icon } from './Icon.js';
+import { useMotionPreference } from '../lib/use-motion-preference.js';
 
 export interface SelectOption<T extends string> {
   label: string;
@@ -20,6 +21,8 @@ interface SelectProps<T extends string> {
   placeholder?: string;
   error?: boolean;
   title?: string;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
 }
 
 export function Select<T extends string>({
@@ -29,9 +32,12 @@ export function Select<T extends string>({
   placeholder = 'Select…',
   error = false,
   title,
+  accessibilityLabel,
+  accessibilityHint,
 }: SelectProps<T>): React.JSX.Element {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const reducedMotion = useMotionPreference();
   const [open, setOpen] = useState(false);
   const selected = options.find((o) => o.value === value);
 
@@ -40,12 +46,15 @@ export function Select<T extends string>({
       <Pressable
         onPress={() => setOpen(true)}
         accessibilityRole="button"
-        accessibilityLabel={selected?.label ?? placeholder}
-        accessibilityHint={title}
+        accessibilityLabel={accessibilityLabel ?? title ?? placeholder}
+        accessibilityValue={{ text: selected?.label ?? placeholder }}
+        accessibilityState={{ expanded: open }}
+        accessibilityHint={accessibilityHint ?? title}
         style={{
           flexDirection: 'row',
           alignItems: 'center',
-          height: 52,
+          minHeight: 52,
+          paddingVertical: 12,
           paddingHorizontal: 16,
           borderRadius: theme.borderRadii.md,
           borderWidth: 1.5,
@@ -59,8 +68,16 @@ export function Select<T extends string>({
         <Icon name="chevron-down" size={20} color="inkMuted" />
       </Pressable>
 
-      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
-        <Pressable style={{ flex: 1, backgroundColor: theme.colors.overlay }} onPress={() => setOpen(false)}>
+      <Modal
+        visible={open}
+        transparent
+        animationType={reducedMotion ? 'none' : 'slide'}
+        onRequestClose={() => setOpen(false)}
+      >
+        <Pressable
+          style={{ flex: 1, backgroundColor: theme.colors.overlay }}
+          onPress={() => setOpen(false)}
+        >
           <Box flex={1} justifyContent="flex-end">
             <Pressable onPress={(e) => e.stopPropagation()}>
               <Box

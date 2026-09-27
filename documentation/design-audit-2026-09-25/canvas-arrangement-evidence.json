@@ -1,0 +1,5143 @@
+{
+  "fileKey": "Ep6MkJEc079aM6I0pQbwhw",
+  "date": "2026-09-25",
+  "before": [
+    {
+      "page": "2:85",
+      "name": "② Account & Verification",
+      "nodes": [
+        {
+          "id": "14:2",
+          "name": "B01 / Profile setup / Default",
+          "type": "FRAME",
+          "x": 0,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "14:59",
+          "name": "B02 / Identity verification / Default",
+          "type": "FRAME",
+          "x": 450,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "14:116",
+          "name": "B03 / Awaiting approval / Default",
+          "type": "FRAME",
+          "x": 900,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "14:151",
+          "name": "B04 / Verification rejected / Default",
+          "type": "FRAME",
+          "x": 1350,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "22:48",
+          "name": "A01 / Welcome / Default",
+          "type": "FRAME",
+          "x": 1800,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "22:75",
+          "name": "A02 / Choose role / Default",
+          "type": "FRAME",
+          "x": 2250,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "22:104",
+          "name": "A03 / Phone entry / Default",
+          "type": "FRAME",
+          "x": 2700,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "22:134",
+          "name": "A04 / Verify OTP / Default",
+          "type": "FRAME",
+          "x": 3150,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "22:168",
+          "name": "A04 / Verify OTP / Incorrect code",
+          "type": "FRAME",
+          "x": 3600,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "22:212",
+          "name": "A05 / Complete client profile / Default",
+          "type": "FRAME",
+          "x": 4050,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "45:747",
+          "name": "A01 / Welcome / Default · Dark",
+          "type": "FRAME",
+          "x": 4500,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "45:762",
+          "name": "B02 / Identity verification / Default · Dark",
+          "type": "FRAME",
+          "x": 4950,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "59:143",
+          "name": "A03 / Phone entry / Invalid number",
+          "type": "FRAME",
+          "x": 4500,
+          "y": 950,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "59:178",
+          "name": "A04 / Verify OTP / Code expired",
+          "type": "FRAME",
+          "x": 4950,
+          "y": 950,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "59:213",
+          "name": "A04 / Verify OTP / Number locked",
+          "type": "FRAME",
+          "x": 5400,
+          "y": 950,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "2085:680",
+          "name": "QA / OTP / Compact keyboard / 320 × 740",
+          "type": "FRAME",
+          "x": 5870,
+          "y": 0,
+          "w": 320,
+          "h": 740,
+          "children": 6
+        },
+        {
+          "id": "2085:722",
+          "name": "QA / OTP / 200% text / 320 × 740",
+          "type": "FRAME",
+          "x": 6270,
+          "y": 0,
+          "w": 320,
+          "h": 740,
+          "children": 5
+        },
+        {
+          "id": "2085:773",
+          "name": "QA / Identity / Compact keyboard / 320 × 740",
+          "type": "FRAME",
+          "x": 6670,
+          "y": 0,
+          "w": 320,
+          "h": 740,
+          "children": 6
+        },
+        {
+          "id": "2085:831",
+          "name": "QA / Identity / 200% text / 320 × 740",
+          "type": "FRAME",
+          "x": 7070,
+          "y": 0,
+          "w": 320,
+          "h": 740,
+          "children": 5
+        }
+      ]
+    },
+    {
+      "page": "2:86",
+      "name": "③ Client",
+      "nodes": [
+        {
+          "id": "23:2",
+          "name": "C01 / Home / Default",
+          "type": "FRAME",
+          "x": 0,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "23:106",
+          "name": "C02 / Discover staff / Default",
+          "type": "FRAME",
+          "x": 450,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "23:207",
+          "name": "C03 / Events / Default",
+          "type": "FRAME",
+          "x": 900,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "23:296",
+          "name": "C04 / Event detail / Default",
+          "type": "FRAME",
+          "x": 1350,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "23:405",
+          "name": "C05 / Messages / Default",
+          "type": "FRAME",
+          "x": 1800,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "23:471",
+          "name": "C06 / Profile / Default",
+          "type": "FRAME",
+          "x": 2250,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "41:258",
+          "name": "C03 / Events / No events yet",
+          "type": "FRAME",
+          "x": 0,
+          "y": 950,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "41:307",
+          "name": "C05 / Messages / No confirmed bookings",
+          "type": "FRAME",
+          "x": 450,
+          "y": 950,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "41:357",
+          "name": "C01 / Home / Loading",
+          "type": "FRAME",
+          "x": 900,
+          "y": 950,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "41:419",
+          "name": "C02 / Discover staff / No matches",
+          "type": "FRAME",
+          "x": 1350,
+          "y": 950,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "41:483",
+          "name": "C04 / Event detail / Started under-staffed",
+          "type": "FRAME",
+          "x": 1800,
+          "y": 950,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "45:391",
+          "name": "C01 / Home / Default · Dark",
+          "type": "FRAME",
+          "x": 0,
+          "y": 1900,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "45:444",
+          "name": "C04 / Event detail / Default · Dark",
+          "type": "FRAME",
+          "x": 450,
+          "y": 1900,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "45:540",
+          "name": "C02 / Discover staff / Default · Dark",
+          "type": "FRAME",
+          "x": 900,
+          "y": 1900,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "55:564",
+          "name": "C04 / Event detail / Failed to load",
+          "type": "FRAME",
+          "x": 2250,
+          "y": 1900,
+          "w": 390,
+          "h": 844,
+          "children": 3
+        },
+        {
+          "id": "55:591",
+          "name": "C03 / Events / Failed to load",
+          "type": "FRAME",
+          "x": 2700,
+          "y": 1900,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "55:642",
+          "name": "C05 / Messages / Refresh failed",
+          "type": "FRAME",
+          "x": 3150,
+          "y": 1900,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "2048:1754",
+          "name": "QA / Discover / 320px · long name",
+          "type": "FRAME",
+          "x": 3660,
+          "y": 0,
+          "w": 320,
+          "h": 740,
+          "children": 4
+        }
+      ]
+    },
+    {
+      "page": "2:87",
+      "name": "④ Usher",
+      "nodes": [
+        {
+          "id": "8:2",
+          "name": "D05 / Wallet / Loaded",
+          "type": "FRAME",
+          "x": 0,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "8:94",
+          "name": "D02 / Jobs / Available",
+          "type": "FRAME",
+          "x": 450,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "12:177",
+          "name": "D01 / Home / Verified",
+          "type": "FRAME",
+          "x": 900,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "12:261",
+          "name": "D03 / Availability / Month",
+          "type": "FRAME",
+          "x": 1350,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "12:425",
+          "name": "D06 / Profile / Verified",
+          "type": "FRAME",
+          "x": 1800,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "31:264",
+          "name": "D04 / Messages / Default",
+          "type": "FRAME",
+          "x": 2250,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "31:329",
+          "name": "G03 / Edit usher profile / Default",
+          "type": "FRAME",
+          "x": 2700,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "33:315",
+          "name": "D02 / Jobs / Loading",
+          "type": "FRAME",
+          "x": 900,
+          "y": 950,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "33:376",
+          "name": "D02 / Jobs / Empty",
+          "type": "FRAME",
+          "x": 1350,
+          "y": 950,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "33:433",
+          "name": "D02 / Jobs / Failed to load",
+          "type": "FRAME",
+          "x": 1800,
+          "y": 950,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "33:492",
+          "name": "D02 / Jobs / Offline stale",
+          "type": "FRAME",
+          "x": 2250,
+          "y": 950,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "40:497",
+          "name": "D05 / Wallet / Balance unavailable",
+          "type": "FRAME",
+          "x": 0,
+          "y": 1900,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "40:555",
+          "name": "D05 / Wallet / No earnings yet",
+          "type": "FRAME",
+          "x": 450,
+          "y": 1900,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "40:608",
+          "name": "D01 / Home / Verification pending",
+          "type": "FRAME",
+          "x": 900,
+          "y": 1900,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "40:677",
+          "name": "G01 / Notifications / Permission denied",
+          "type": "FRAME",
+          "x": 1350,
+          "y": 1900,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "41:2597",
+          "name": "Dark mode — same components, mode switched on the frame",
+          "type": "TEXT",
+          "x": 0,
+          "y": 2780,
+          "w": 845,
+          "h": 34,
+          "children": 0
+        },
+        {
+          "id": "41:2598",
+          "name": "D01 / Home / Verified · Dark",
+          "type": "FRAME",
+          "x": 0,
+          "y": 2850,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "41:2643",
+          "name": "D02 / Jobs / Available · Dark",
+          "type": "FRAME",
+          "x": 450,
+          "y": 2850,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "41:2660",
+          "name": "D05 / Wallet / Loaded · Dark",
+          "type": "FRAME",
+          "x": 900,
+          "y": 2850,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "41:2694",
+          "name": "D06 / Profile / Verified · Dark",
+          "type": "FRAME",
+          "x": 1350,
+          "y": 2850,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "41:2775",
+          "name": "D03 / Availability / Month · Dark",
+          "type": "FRAME",
+          "x": 1800,
+          "y": 2850,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "60:885",
+          "name": "D03 / Availability / Save failed",
+          "type": "FRAME",
+          "x": 0,
+          "y": 3850,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "60:1044",
+          "name": "D06 / Profile / Loading",
+          "type": "FRAME",
+          "x": 450,
+          "y": 3850,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "64:943",
+          "name": "D05 / Wallet / Offline",
+          "type": "FRAME",
+          "x": 900,
+          "y": 3850,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "2048:1007",
+          "name": "QA / Wallet / 320px · large amount",
+          "type": "FRAME",
+          "x": 3210,
+          "y": 0,
+          "w": 320,
+          "h": 740,
+          "children": 4
+        },
+        {
+          "id": "2088:1746",
+          "name": "QA / Wallet / 200% text / 390 × 844",
+          "type": "FRAME",
+          "x": 3610,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "2088:1853",
+          "name": "QA / Wallet navigation / 200% labels",
+          "type": "FRAME",
+          "x": 4080,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        }
+      ]
+    },
+    {
+      "page": "2:88",
+      "name": "⑤ Shared Booking & Money",
+      "nodes": [
+        {
+          "id": "24:2",
+          "name": "E06 / Create event / 1 Basics",
+          "type": "FRAME",
+          "x": 0,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "24:60",
+          "name": "E06 / Create event / 2 Staffing",
+          "type": "FRAME",
+          "x": 450,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "24:115",
+          "name": "E06 / Create event / 3 Review",
+          "type": "FRAME",
+          "x": 900,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "24:169",
+          "name": "E09 / Applications / Selecting",
+          "type": "FRAME",
+          "x": 1350,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "24:239",
+          "name": "E10 / Confirm & pay / Default",
+          "type": "FRAME",
+          "x": 1800,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "24:307",
+          "name": "E11 / Payment status / Needs checking",
+          "type": "FRAME",
+          "x": 2250,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "24:365",
+          "name": "E11 / Payment status / Confirmed",
+          "type": "FRAME",
+          "x": 2700,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "24:401",
+          "name": "E11 / Payment status / Reservation expired",
+          "type": "FRAME",
+          "x": 3150,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "24:439",
+          "name": "E12 / Payment failed / Default",
+          "type": "FRAME",
+          "x": 3600,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "26:124",
+          "name": "F01 / My bookings / Active",
+          "type": "FRAME",
+          "x": 0,
+          "y": 950,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "26:177",
+          "name": "F02 / Booking details / Confirmed",
+          "type": "FRAME",
+          "x": 450,
+          "y": 950,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "26:251",
+          "name": "F03 / Event day / Roster",
+          "type": "FRAME",
+          "x": 900,
+          "y": 950,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "26:320",
+          "name": "F04 / Check in / Code entry",
+          "type": "FRAME",
+          "x": 1350,
+          "y": 950,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "26:359",
+          "name": "F05 / Booking chat / Default",
+          "type": "FRAME",
+          "x": 1800,
+          "y": 950,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "26:411",
+          "name": "F06 / Cancellation / Quote",
+          "type": "FRAME",
+          "x": 2250,
+          "y": 950,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "26:458",
+          "name": "F07 / Open a dispute / Default",
+          "type": "FRAME",
+          "x": 2700,
+          "y": 950,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "26:500",
+          "name": "F08 / Review counterpart / Default",
+          "type": "FRAME",
+          "x": 3150,
+          "y": 950,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "27:233",
+          "name": "G01 / Notifications / Default",
+          "type": "FRAME",
+          "x": 0,
+          "y": 1900,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "27:296",
+          "name": "G02 / Account settings / Default",
+          "type": "FRAME",
+          "x": 450,
+          "y": 1900,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "27:352",
+          "name": "G04 / Privacy & data / Default",
+          "type": "FRAME",
+          "x": 900,
+          "y": 1900,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "27:404",
+          "name": "G05 / Withdraw / Amount",
+          "type": "FRAME",
+          "x": 1350,
+          "y": 1900,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "27:447",
+          "name": "G05 / Withdraw / Review",
+          "type": "FRAME",
+          "x": 1800,
+          "y": 1900,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "27:487",
+          "name": "G05 / Withdraw / Processing",
+          "type": "FRAME",
+          "x": 2250,
+          "y": 1900,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "27:528",
+          "name": "G06 / Withdrawal history / Default",
+          "type": "FRAME",
+          "x": 2700,
+          "y": 1900,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "27:579",
+          "name": "G07 / Withdrawal details / Default",
+          "type": "FRAME",
+          "x": 3150,
+          "y": 1900,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "27:622",
+          "name": "G08 / Privacy policy / Default",
+          "type": "FRAME",
+          "x": 3600,
+          "y": 1900,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "28:338",
+          "name": "E01 / Staff profile / Default",
+          "type": "FRAME",
+          "x": 0,
+          "y": 2850,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "28:395",
+          "name": "E02 / Discover filters / Default",
+          "type": "FRAME",
+          "x": 450,
+          "y": 2850,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "28:446",
+          "name": "E03 / Invite to an event / Default",
+          "type": "FRAME",
+          "x": 900,
+          "y": 2850,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "28:481",
+          "name": "E04 / Invitations / Usher",
+          "type": "FRAME",
+          "x": 1350,
+          "y": 2850,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "28:529",
+          "name": "E05 / Invitation detail / Default",
+          "type": "FRAME",
+          "x": 1800,
+          "y": 2850,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "28:593",
+          "name": "E07 / Event published / Default",
+          "type": "FRAME",
+          "x": 2250,
+          "y": 2850,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "28:620",
+          "name": "E08 / Edit event / Partly locked",
+          "type": "FRAME",
+          "x": 2700,
+          "y": 2850,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "28:677",
+          "name": "E13 / Job details / Can apply",
+          "type": "FRAME",
+          "x": 3150,
+          "y": 2850,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "28:745",
+          "name": "H01 / Not found / Default",
+          "type": "FRAME",
+          "x": 3600,
+          "y": 2850,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "38:463",
+          "name": "E13 / Job details / Filled while viewing",
+          "type": "FRAME",
+          "x": 0,
+          "y": 3800,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "38:509",
+          "name": "E13 / Job details / Already applied",
+          "type": "FRAME",
+          "x": 450,
+          "y": 3800,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "38:556",
+          "name": "F04 / Check in / Not yet open",
+          "type": "FRAME",
+          "x": 900,
+          "y": 3800,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "38:594",
+          "name": "F04 / Check in / Code incorrect",
+          "type": "FRAME",
+          "x": 1350,
+          "y": 3800,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "38:641",
+          "name": "F04 / Check in / Already checked in",
+          "type": "FRAME",
+          "x": 1800,
+          "y": 3800,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "38:672",
+          "name": "F04 / Check in / Completed, held",
+          "type": "FRAME",
+          "x": 2250,
+          "y": 3800,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "38:707",
+          "name": "F02 / Booking details / Client cancelled",
+          "type": "FRAME",
+          "x": 2700,
+          "y": 3800,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "38:752",
+          "name": "F05 / Booking chat / Send failed",
+          "type": "FRAME",
+          "x": 3150,
+          "y": 3800,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "38:801",
+          "name": "E09 / Applications / Capacity reached",
+          "type": "FRAME",
+          "x": 3600,
+          "y": 3800,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "38:864",
+          "name": "F02 / Booking details / Disputed",
+          "type": "FRAME",
+          "x": 4050,
+          "y": 3800,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "43:586",
+          "name": "ANNOTATION — E10 / Confirm & pay",
+          "type": "FRAME",
+          "x": 1800,
+          "y": -371,
+          "w": 390,
+          "h": 360,
+          "children": 5
+        },
+        {
+          "id": "43:600",
+          "name": "ANNOTATION — E11 / Payment status / Needs checking",
+          "type": "FRAME",
+          "x": 2250,
+          "y": -288,
+          "w": 390,
+          "h": 274,
+          "children": 4
+        },
+        {
+          "id": "43:611",
+          "name": "ANNOTATION — F02 / Booking details / Confirmed",
+          "type": "FRAME",
+          "x": 450,
+          "y": 617,
+          "w": 390,
+          "h": 320,
+          "children": 5
+        },
+        {
+          "id": "43:625",
+          "name": "ANNOTATION — F03 / Event day / Roster",
+          "type": "FRAME",
+          "x": 900,
+          "y": 681,
+          "w": 390,
+          "h": 274,
+          "children": 4
+        },
+        {
+          "id": "43:636",
+          "name": "ANNOTATION — F04 / Check in / Code entry",
+          "type": "FRAME",
+          "x": 1350,
+          "y": 681,
+          "w": 390,
+          "h": 274,
+          "children": 4
+        },
+        {
+          "id": "43:647",
+          "name": "ANNOTATION — F06 / Cancellation / Quote",
+          "type": "FRAME",
+          "x": 2250,
+          "y": 643,
+          "w": 390,
+          "h": 294,
+          "children": 4
+        },
+        {
+          "id": "43:658",
+          "name": "ANNOTATION — F07 / Open a dispute",
+          "type": "FRAME",
+          "x": 2700,
+          "y": 662,
+          "w": 390,
+          "h": 274,
+          "children": 4
+        },
+        {
+          "id": "45:565",
+          "name": "E10 / Confirm & pay / Default · Dark",
+          "type": "FRAME",
+          "x": 4950,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "45:622",
+          "name": "E11 / Payment status / Confirmed · Dark",
+          "type": "FRAME",
+          "x": 5400,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "45:646",
+          "name": "F02 / Booking details / Confirmed · Dark",
+          "type": "FRAME",
+          "x": 5850,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "45:705",
+          "name": "F05 / Booking chat / Default · Dark",
+          "type": "FRAME",
+          "x": 6300,
+          "y": 0,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "53:634",
+          "name": "E10 / Confirm & pay / Submitting",
+          "type": "FRAME",
+          "x": 0,
+          "y": 4750,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "53:665",
+          "name": "E10 / Confirm & pay / Selection changed",
+          "type": "FRAME",
+          "x": 450,
+          "y": 4750,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "53:711",
+          "name": "G05 / Withdraw / Failed",
+          "type": "FRAME",
+          "x": 900,
+          "y": 4750,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "53:752",
+          "name": "G05 / Withdraw / No bank account",
+          "type": "FRAME",
+          "x": 1350,
+          "y": 4750,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "53:786",
+          "name": "B03 / Awaiting approval / Status unavailable",
+          "type": "FRAME",
+          "x": 1800,
+          "y": 4750,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "53:824",
+          "name": "F03 / Event day / Roster out of date",
+          "type": "FRAME",
+          "x": 2250,
+          "y": 4750,
+          "w": 390,
+          "h": 844,
+          "children": 3
+        },
+        {
+          "id": "53:877",
+          "name": "F01 / My bookings / None yet",
+          "type": "FRAME",
+          "x": 2700,
+          "y": 4750,
+          "w": 390,
+          "h": 844,
+          "children": 3
+        },
+        {
+          "id": "53:902",
+          "name": "G06 / Withdrawal history / None yet",
+          "type": "FRAME",
+          "x": 3150,
+          "y": 4750,
+          "w": 390,
+          "h": 844,
+          "children": 3
+        },
+        {
+          "id": "54:736",
+          "name": "F08 / Review / Locked until release",
+          "type": "FRAME",
+          "x": 0,
+          "y": 5700,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "54:783",
+          "name": "F08 / Review / Already submitted",
+          "type": "FRAME",
+          "x": 450,
+          "y": 5700,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "54:821",
+          "name": "E09 / Applications / None yet",
+          "type": "FRAME",
+          "x": 900,
+          "y": 5700,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "54:853",
+          "name": "F05 / Booking chat / Loading history",
+          "type": "FRAME",
+          "x": 1350,
+          "y": 5700,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "54:895",
+          "name": "E11 / Payment status / Late payment refund",
+          "type": "FRAME",
+          "x": 1800,
+          "y": 5700,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "54:952",
+          "name": "F02 / Booking details / Refund in progress",
+          "type": "FRAME",
+          "x": 2250,
+          "y": 5700,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "63:837",
+          "name": "F04 / Check in / Offline",
+          "type": "FRAME",
+          "x": 0,
+          "y": 6650,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "63:882",
+          "name": "F03 / Event day / Offline",
+          "type": "FRAME",
+          "x": 450,
+          "y": 6650,
+          "w": 390,
+          "h": 844,
+          "children": 4
+        },
+        {
+          "id": "63:944",
+          "name": "F02 / Booking details / Offline",
+          "type": "FRAME",
+          "x": 900,
+          "y": 6650,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "63:1002",
+          "name": "G05 / Withdraw / Offline",
+          "type": "FRAME",
+          "x": 1350,
+          "y": 6650,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "63:1043",
+          "name": "G02 / Account settings / Save failed",
+          "type": "FRAME",
+          "x": 1800,
+          "y": 6650,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "63:1081",
+          "name": "G04 / Privacy & data / Consent not saved",
+          "type": "FRAME",
+          "x": 2250,
+          "y": 6650,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "76:920",
+          "name": "F06 / Cancellation / Band changed",
+          "type": "FRAME",
+          "x": 0,
+          "y": 7550,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "76:970",
+          "name": "E05 / Invitation detail / Closed",
+          "type": "FRAME",
+          "x": 450,
+          "y": 7550,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "2067:958",
+          "name": "E10 / Cancellation policy / Full terms",
+          "type": "FRAME",
+          "x": 10300,
+          "y": 5800,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "2067:1003",
+          "name": "E10 / Cancellation policy / Dark",
+          "type": "FRAME",
+          "x": 10750,
+          "y": 5800,
+          "w": 390,
+          "h": 844,
+          "children": 5
+        },
+        {
+          "id": "2073:1413",
+          "name": "QA / Policy / 200% app text / 320 × 740",
+          "type": "FRAME",
+          "x": 11200,
+          "y": 5800,
+          "w": 320,
+          "h": 740,
+          "children": 5
+        },
+        {
+          "id": "2086:1459",
+          "name": "QA / Check-in / Compact keyboard / 320 × 740",
+          "type": "FRAME",
+          "x": 11600,
+          "y": 0,
+          "w": 320,
+          "h": 740,
+          "children": 6
+        },
+        {
+          "id": "2086:1506",
+          "name": "QA / Check-in / 200% text / 320 × 740",
+          "type": "FRAME",
+          "x": 12000,
+          "y": 0,
+          "w": 320,
+          "h": 740,
+          "children": 5
+        },
+        {
+          "id": "2086:1550",
+          "name": "QA / Dispute entry / Compact keyboard / 320 × 740",
+          "type": "FRAME",
+          "x": 12400,
+          "y": 0,
+          "w": 320,
+          "h": 740,
+          "children": 6
+        },
+        {
+          "id": "2086:1605",
+          "name": "QA / Dispute entry / 200% text / 320 × 740",
+          "type": "FRAME",
+          "x": 12800,
+          "y": 0,
+          "w": 320,
+          "h": 740,
+          "children": 5
+        },
+        {
+          "id": "2086:1653",
+          "name": "QA / Checkout / Compact / 320 × 740",
+          "type": "FRAME",
+          "x": 13200,
+          "y": 0,
+          "w": 320,
+          "h": 740,
+          "children": 5
+        },
+        {
+          "id": "2086:1727",
+          "name": "QA / Checkout / 200% text / 320 × 740",
+          "type": "FRAME",
+          "x": 13600,
+          "y": 0,
+          "w": 320,
+          "h": 740,
+          "children": 5
+        },
+        {
+          "id": "2086:1801",
+          "name": "QA / Withdrawal / Compact keyboard / 320 × 740",
+          "type": "FRAME",
+          "x": 14000,
+          "y": 0,
+          "w": 320,
+          "h": 740,
+          "children": 6
+        }
+      ]
+    },
+    {
+      "page": "2:89",
+      "name": "⑥ Admin",
+      "nodes": [
+        {
+          "id": "29:2",
+          "name": "AD01 / Admin login / Default",
+          "type": "FRAME",
+          "x": 0,
+          "y": 0,
+          "w": 1440,
+          "h": 900,
+          "children": 1
+        },
+        {
+          "id": "29:17",
+          "name": "AD02 / Dashboard / Default",
+          "type": "FRAME",
+          "x": 1540,
+          "y": 0,
+          "w": 1440,
+          "h": 900,
+          "children": 2
+        },
+        {
+          "id": "29:94",
+          "name": "AD03 / Verifications / Default",
+          "type": "FRAME",
+          "x": 3080,
+          "y": 0,
+          "w": 1440,
+          "h": 900,
+          "children": 2
+        },
+        {
+          "id": "29:163",
+          "name": "AD04 / Disputes / Default",
+          "type": "FRAME",
+          "x": 4620,
+          "y": 0,
+          "w": 1440,
+          "h": 900,
+          "children": 2
+        },
+        {
+          "id": "29:241",
+          "name": "AD05 / Approvals / Default",
+          "type": "FRAME",
+          "x": 6160,
+          "y": 0,
+          "w": 1440,
+          "h": 900,
+          "children": 2
+        },
+        {
+          "id": "29:324",
+          "name": "AD06 / Bookings & refunds / Default",
+          "type": "FRAME",
+          "x": 7700,
+          "y": 0,
+          "w": 1440,
+          "h": 900,
+          "children": 2
+        },
+        {
+          "id": "29:400",
+          "name": "AD07 / Payment ops / Default",
+          "type": "FRAME",
+          "x": 9240,
+          "y": 0,
+          "w": 1440,
+          "h": 900,
+          "children": 2
+        },
+        {
+          "id": "29:469",
+          "name": "AD08 / Escrow ledger / Default",
+          "type": "FRAME",
+          "x": 10780,
+          "y": 0,
+          "w": 1440,
+          "h": 900,
+          "children": 2
+        },
+        {
+          "id": "29:541",
+          "name": "AD09 / Users / Default",
+          "type": "FRAME",
+          "x": 12320,
+          "y": 0,
+          "w": 1440,
+          "h": 900,
+          "children": 2
+        },
+        {
+          "id": "45:52",
+          "name": "AD02 / Dashboard / Loading",
+          "type": "FRAME",
+          "x": 0,
+          "y": 1000,
+          "w": 1440,
+          "h": 900,
+          "children": 2
+        },
+        {
+          "id": "45:105",
+          "name": "AD03 / Verifications / Queue clear",
+          "type": "FRAME",
+          "x": 1540,
+          "y": 1000,
+          "w": 1440,
+          "h": 900,
+          "children": 2
+        },
+        {
+          "id": "45:145",
+          "name": "AD04 / Disputes / None open",
+          "type": "FRAME",
+          "x": 3080,
+          "y": 1000,
+          "w": 1440,
+          "h": 900,
+          "children": 2
+        },
+        {
+          "id": "45:185",
+          "name": "AD06 / Bookings & refunds / No results",
+          "type": "FRAME",
+          "x": 4620,
+          "y": 1000,
+          "w": 1440,
+          "h": 900,
+          "children": 2
+        },
+        {
+          "id": "45:231",
+          "name": "AD07 / Payment ops / All balanced",
+          "type": "FRAME",
+          "x": 6160,
+          "y": 1000,
+          "w": 1440,
+          "h": 900,
+          "children": 2
+        },
+        {
+          "id": "45:287",
+          "name": "AD08 / Escrow ledger / No entries for filter",
+          "type": "FRAME",
+          "x": 7700,
+          "y": 1000,
+          "w": 1440,
+          "h": 900,
+          "children": 2
+        },
+        {
+          "id": "45:327",
+          "name": "AD05 / Approvals / Cannot self-approve",
+          "type": "FRAME",
+          "x": 9240,
+          "y": 1000,
+          "w": 1440,
+          "h": 900,
+          "children": 2
+        },
+        {
+          "id": "45:805",
+          "name": "AD08 / Escrow ledger / Default · Dark",
+          "type": "FRAME",
+          "x": 0,
+          "y": 2000,
+          "w": 1440,
+          "h": 900,
+          "children": 2
+        },
+        {
+          "id": "58:66",
+          "name": "AD09 / Users / Loading",
+          "type": "FRAME",
+          "x": 0,
+          "y": 3000,
+          "w": 1440,
+          "h": 900,
+          "children": 2
+        },
+        {
+          "id": "58:150",
+          "name": "AD03 / Verifications / Evidence unavailable",
+          "type": "FRAME",
+          "x": 1540,
+          "y": 3000,
+          "w": 1440,
+          "h": 900,
+          "children": 2
+        },
+        {
+          "id": "58:223",
+          "name": "AD05 / Approvals / Execution uncertain",
+          "type": "FRAME",
+          "x": 3080,
+          "y": 3000,
+          "w": 1440,
+          "h": 900,
+          "children": 2
+        },
+        {
+          "id": "58:288",
+          "name": "AD02 / Dashboard / Failed to load",
+          "type": "FRAME",
+          "x": 4620,
+          "y": 3000,
+          "w": 1440,
+          "h": 900,
+          "children": 2
+        },
+        {
+          "id": "2064:116",
+          "name": "Admin / Dispute / Review client refund",
+          "type": "FRAME",
+          "x": 13860,
+          "y": 0,
+          "w": 1440,
+          "h": 900,
+          "children": 2
+        },
+        {
+          "id": "2092:484",
+          "name": "QA / Admin / Disputes / 1024px",
+          "type": "FRAME",
+          "x": 15380,
+          "y": 0,
+          "w": 1024,
+          "h": 900,
+          "children": 2
+        },
+        {
+          "id": "2092:594",
+          "name": "QA / Admin / Disputes / stacked / 768px",
+          "type": "FRAME",
+          "x": 16484,
+          "y": 0,
+          "w": 768,
+          "h": 1024,
+          "children": 2
+        },
+        {
+          "id": "2092:704",
+          "name": "QA / Admin / Approvals / request cards / 768px",
+          "type": "FRAME",
+          "x": 17332,
+          "y": 0,
+          "w": 768,
+          "h": 1024,
+          "children": 2
+        },
+        {
+          "id": "2093:796",
+          "name": "QA / Admin / Disputes / 320px reflow",
+          "type": "FRAME",
+          "x": 18180,
+          "y": 0,
+          "w": 320,
+          "h": 740,
+          "children": 2
+        },
+        {
+          "id": "2093:908",
+          "name": "QA / Admin / Approvals / 320px reflow",
+          "type": "FRAME",
+          "x": 18580,
+          "y": 0,
+          "w": 320,
+          "h": 740,
+          "children": 2
+        }
+      ]
+    }
+  ],
+  "after": [
+    {
+      "pageId": "2:85",
+      "createdNodeIds": [
+        "2122:621",
+        "2122:622",
+        "2122:623",
+        "2122:624",
+        "2122:625",
+        "2122:626",
+        "2122:627",
+        "2122:628",
+        "2122:629",
+        "2122:630",
+        "2122:631",
+        "2122:632",
+        "2122:633",
+        "2122:634",
+        "2122:635",
+        "2122:636",
+        "2122:637",
+        "2122:638",
+        "2122:639",
+        "2122:640",
+        "2122:641",
+        "2122:642",
+        "2122:643",
+        "2122:644",
+        "2122:645",
+        "2122:646",
+        "2122:647",
+        "2122:648",
+        "2122:658",
+        "2122:659",
+        "2122:660",
+        "2122:661",
+        "2122:662",
+        "2122:663",
+        "2122:664"
+      ],
+      "mutatedNodeIds": [
+        "22:48",
+        "22:75",
+        "22:104",
+        "22:134",
+        "22:212",
+        "59:143",
+        "22:168",
+        "59:178",
+        "59:213",
+        "45:747",
+        "2085:680",
+        "2085:722",
+        "14:2",
+        "14:59",
+        "14:116",
+        "14:151",
+        "53:786",
+        "45:762",
+        "2085:773",
+        "2085:831"
+      ],
+      "placed": [
+        {
+          "id": "22:48",
+          "section": "2122:621",
+          "parent": "2122:621",
+          "name": "A01 / Welcome / Default",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 64,
+          "y": 556
+        },
+        {
+          "id": "22:75",
+          "section": "2122:621",
+          "parent": "2122:621",
+          "name": "A02 / Choose role / Default",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 534,
+          "y": 556
+        },
+        {
+          "id": "22:104",
+          "section": "2122:621",
+          "parent": "2122:621",
+          "name": "A03 / Phone entry / Default",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 1004,
+          "y": 556
+        },
+        {
+          "id": "22:134",
+          "section": "2122:621",
+          "parent": "2122:621",
+          "name": "A04 / Verify OTP / Default",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 1474,
+          "y": 556
+        },
+        {
+          "id": "22:212",
+          "section": "2122:621",
+          "parent": "2122:621",
+          "name": "A05 / Complete client profile / Default",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 1944,
+          "y": 556
+        },
+        {
+          "id": "59:143",
+          "section": "2122:621",
+          "parent": "2122:621",
+          "name": "A03 / Phone entry / Invalid number",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 64,
+          "y": 1608
+        },
+        {
+          "id": "22:168",
+          "section": "2122:621",
+          "parent": "2122:621",
+          "name": "A04 / Verify OTP / Incorrect code",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 534,
+          "y": 1608
+        },
+        {
+          "id": "59:178",
+          "section": "2122:621",
+          "parent": "2122:621",
+          "name": "A04 / Verify OTP / Code expired",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 1004,
+          "y": 1608
+        },
+        {
+          "id": "59:213",
+          "section": "2122:621",
+          "parent": "2122:621",
+          "name": "A04 / Verify OTP / Number locked",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 1474,
+          "y": 1608
+        },
+        {
+          "id": "45:747",
+          "section": "2122:621",
+          "parent": "2122:621",
+          "name": "A01 / Welcome / Default · Dark",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 64,
+          "y": 2660
+        },
+        {
+          "id": "2085:680",
+          "section": "2122:621",
+          "parent": "2122:621",
+          "name": "QA / OTP / Compact keyboard / 320 × 740",
+          "w": 320,
+          "h": 740,
+          "children": 6,
+          "x": 534,
+          "y": 2660
+        },
+        {
+          "id": "2085:722",
+          "section": "2122:621",
+          "parent": "2122:621",
+          "name": "QA / OTP / 200% text / 320 × 740",
+          "w": 320,
+          "h": 740,
+          "children": 5,
+          "x": 1004,
+          "y": 2660
+        },
+        {
+          "id": "14:2",
+          "section": "2122:639",
+          "parent": "2122:639",
+          "name": "B01 / Profile setup / Default",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 64,
+          "y": 4104
+        },
+        {
+          "id": "14:59",
+          "section": "2122:639",
+          "parent": "2122:639",
+          "name": "B02 / Identity verification / Default",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 534,
+          "y": 4104
+        },
+        {
+          "id": "14:116",
+          "section": "2122:639",
+          "parent": "2122:639",
+          "name": "B03 / Awaiting approval / Default",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 1004,
+          "y": 4104
+        },
+        {
+          "id": "14:151",
+          "section": "2122:639",
+          "parent": "2122:639",
+          "name": "B04 / Verification rejected / Default",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 1474,
+          "y": 4104
+        },
+        {
+          "id": "53:786",
+          "section": "2122:639",
+          "parent": "2122:639",
+          "name": "B03 / Awaiting approval / Status unavailable",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 64,
+          "y": 5156
+        },
+        {
+          "id": "45:762",
+          "section": "2122:639",
+          "parent": "2122:639",
+          "name": "B02 / Identity verification / Default · Dark",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 64,
+          "y": 6208
+        },
+        {
+          "id": "2085:773",
+          "section": "2122:639",
+          "parent": "2122:639",
+          "name": "QA / Identity / Compact keyboard / 320 × 740",
+          "w": 320,
+          "h": 740,
+          "children": 6,
+          "x": 534,
+          "y": 6208
+        },
+        {
+          "id": "2085:831",
+          "section": "2122:639",
+          "parent": "2122:639",
+          "name": "QA / Identity / 200% text / 320 × 740",
+          "w": 320,
+          "h": 740,
+          "children": 5,
+          "x": 1004,
+          "y": 6208
+        }
+      ],
+      "sections": [
+        {
+          "id": "2122:621",
+          "name": "01 · Join HireQuick",
+          "w": 2398,
+          "h": 3308,
+          "rows": [
+            {
+              "label": "Main path → choose a role → verify phone → complete client profile",
+              "ids": [
+                "22:48",
+                "22:75",
+                "22:104",
+                "22:134",
+                "22:212"
+              ]
+            },
+            {
+              "label": "Phone and code recovery",
+              "ids": [
+                "59:143",
+                "22:168",
+                "59:178",
+                "59:213"
+              ]
+            },
+            {
+              "label": "Theme and accessibility checks",
+              "ids": [
+                "45:747",
+                "2085:680",
+                "2085:722"
+              ]
+            }
+          ],
+          "x": 0,
+          "y": 260
+        },
+        {
+          "id": "2122:639",
+          "name": "02 · Set up an usher account",
+          "w": 2398,
+          "h": 3308,
+          "rows": [
+            {
+              "label": "Profile → identity → approval · rejection is a recovery branch",
+              "ids": [
+                "14:2",
+                "14:59",
+                "14:116",
+                "14:151"
+              ]
+            },
+            {
+              "label": "Approval recovery",
+              "ids": [
+                "53:786"
+              ]
+            },
+            {
+              "label": "Theme and accessibility checks",
+              "ids": [
+                "45:762",
+                "2085:773",
+                "2085:831"
+              ]
+            }
+          ],
+          "x": 0,
+          "y": 3808
+        }
+      ],
+      "violations": [],
+      "remainingRootFrames": []
+    },
+    {
+      "pageId": "2:86",
+      "createdNodeIds": [
+        "2122:5344",
+        "2122:5345",
+        "2122:5346",
+        "2122:5347",
+        "2122:5348",
+        "2122:5349",
+        "2122:5350",
+        "2122:5351",
+        "2122:5352",
+        "2122:5353",
+        "2122:5354",
+        "2122:5355",
+        "2122:5356",
+        "2122:5357",
+        "2122:5358",
+        "2122:5359",
+        "2122:5360",
+        "2122:5361",
+        "2122:5362",
+        "2122:5363",
+        "2122:5364",
+        "2122:5365",
+        "2122:5366",
+        "2122:5367",
+        "2122:5368",
+        "2122:5369",
+        "2122:5370",
+        "2122:5371",
+        "2122:5372",
+        "2122:5373",
+        "2122:5374",
+        "2122:5375",
+        "2122:5376",
+        "2122:5377",
+        "2122:5378",
+        "2122:5379",
+        "2122:5380",
+        "2122:5381"
+      ],
+      "mutatedNodeIds": [
+        "23:2",
+        "23:106",
+        "41:357",
+        "41:419",
+        "45:391",
+        "45:540",
+        "2048:1754",
+        "23:207",
+        "23:296",
+        "41:258",
+        "41:483",
+        "55:591",
+        "55:564",
+        "45:444",
+        "23:405",
+        "23:471",
+        "41:307",
+        "55:642"
+      ],
+      "placed": [
+        {
+          "id": "23:2",
+          "section": "2122:5344",
+          "parent": "2122:5344",
+          "name": "C01 / Home / Default",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 64,
+          "y": 556
+        },
+        {
+          "id": "23:106",
+          "section": "2122:5344",
+          "parent": "2122:5344",
+          "name": "C02 / Discover staff / Default",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 534,
+          "y": 556
+        },
+        {
+          "id": "41:357",
+          "section": "2122:5344",
+          "parent": "2122:5344",
+          "name": "C01 / Home / Loading",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 64,
+          "y": 1608
+        },
+        {
+          "id": "41:419",
+          "section": "2122:5344",
+          "parent": "2122:5344",
+          "name": "C02 / Discover staff / No matches",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 534,
+          "y": 1608
+        },
+        {
+          "id": "45:391",
+          "section": "2122:5344",
+          "parent": "2122:5344",
+          "name": "C01 / Home / Default · Dark",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 64,
+          "y": 2660
+        },
+        {
+          "id": "45:540",
+          "section": "2122:5344",
+          "parent": "2122:5344",
+          "name": "C02 / Discover staff / Default · Dark",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 534,
+          "y": 2660
+        },
+        {
+          "id": "2048:1754",
+          "section": "2122:5344",
+          "parent": "2122:5344",
+          "name": "QA / Discover / 320px · long name",
+          "w": 320,
+          "h": 740,
+          "children": 4,
+          "x": 1004,
+          "y": 2660
+        },
+        {
+          "id": "23:207",
+          "section": "2122:5357",
+          "parent": "2122:5357",
+          "name": "C03 / Events / Default",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 64,
+          "y": 4104
+        },
+        {
+          "id": "23:296",
+          "section": "2122:5357",
+          "parent": "2122:5357",
+          "name": "C04 / Event detail / Default",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 534,
+          "y": 4104
+        },
+        {
+          "id": "41:258",
+          "section": "2122:5357",
+          "parent": "2122:5357",
+          "name": "C03 / Events / No events yet",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 64,
+          "y": 5156
+        },
+        {
+          "id": "41:483",
+          "section": "2122:5357",
+          "parent": "2122:5357",
+          "name": "C04 / Event detail / Started under-staffed",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 534,
+          "y": 5156
+        },
+        {
+          "id": "55:591",
+          "section": "2122:5357",
+          "parent": "2122:5357",
+          "name": "C03 / Events / Failed to load",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 1004,
+          "y": 5156
+        },
+        {
+          "id": "55:564",
+          "section": "2122:5357",
+          "parent": "2122:5357",
+          "name": "C04 / Event detail / Failed to load",
+          "w": 390,
+          "h": 844,
+          "children": 3,
+          "x": 1474,
+          "y": 5156
+        },
+        {
+          "id": "45:444",
+          "section": "2122:5357",
+          "parent": "2122:5357",
+          "name": "C04 / Event detail / Default · Dark",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 64,
+          "y": 6208
+        },
+        {
+          "id": "23:405",
+          "section": "2122:5370",
+          "parent": "2122:5370",
+          "name": "C05 / Messages / Default",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 64,
+          "y": 7652
+        },
+        {
+          "id": "23:471",
+          "section": "2122:5370",
+          "parent": "2122:5370",
+          "name": "C06 / Profile / Default",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 534,
+          "y": 7652
+        },
+        {
+          "id": "41:307",
+          "section": "2122:5370",
+          "parent": "2122:5370",
+          "name": "C05 / Messages / No confirmed bookings",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 64,
+          "y": 8704
+        },
+        {
+          "id": "55:642",
+          "section": "2122:5370",
+          "parent": "2122:5370",
+          "name": "C05 / Messages / Refresh failed",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 534,
+          "y": 8704
+        }
+      ],
+      "sections": [
+        {
+          "id": "2122:5344",
+          "name": "01 · Find staff",
+          "w": 2398,
+          "h": 3308,
+          "rows": [
+            {
+              "label": "Main path",
+              "ids": [
+                "23:2",
+                "23:106"
+              ]
+            },
+            {
+              "label": "Loading and empty results",
+              "ids": [
+                "41:357",
+                "41:419"
+              ]
+            },
+            {
+              "label": "Theme and compact-screen checks",
+              "ids": [
+                "45:391",
+                "45:540",
+                "2048:1754"
+              ]
+            }
+          ],
+          "x": 0,
+          "y": 260
+        },
+        {
+          "id": "2122:5357",
+          "name": "02 · Manage events",
+          "w": 2398,
+          "h": 3308,
+          "rows": [
+            {
+              "label": "Main path",
+              "ids": [
+                "23:207",
+                "23:296"
+              ]
+            },
+            {
+              "label": "Empty, understaffed and recovery states",
+              "ids": [
+                "41:258",
+                "41:483",
+                "55:591",
+                "55:564"
+              ]
+            },
+            {
+              "label": "Theme check",
+              "ids": [
+                "45:444"
+              ]
+            }
+          ],
+          "x": 0,
+          "y": 3808
+        },
+        {
+          "id": "2122:5370",
+          "name": "03 · Messages and profile",
+          "w": 2398,
+          "h": 2256,
+          "rows": [
+            {
+              "label": "Main destinations",
+              "ids": [
+                "23:405",
+                "23:471"
+              ]
+            },
+            {
+              "label": "Message states",
+              "ids": [
+                "41:307",
+                "55:642"
+              ]
+            }
+          ],
+          "x": 0,
+          "y": 7356
+        }
+      ],
+      "violations": [],
+      "remainingRootFrames": []
+    },
+    {
+      "pageId": "2:87",
+      "createdNodeIds": [
+        "2122:5382",
+        "2122:5383",
+        "2122:5384",
+        "2122:5385",
+        "2122:5386",
+        "2122:5387",
+        "2122:5388",
+        "2122:5389",
+        "2122:5390",
+        "2122:5391",
+        "2122:5392",
+        "2122:5393",
+        "2122:5394",
+        "2122:5395",
+        "2122:5396",
+        "2122:5397",
+        "2122:5398",
+        "2122:5399",
+        "2122:5400",
+        "2122:5401",
+        "2122:5402",
+        "2122:5403",
+        "2122:5404",
+        "2122:5405",
+        "2122:5406",
+        "2122:5407",
+        "2122:5408",
+        "2122:5409",
+        "2122:5410",
+        "2122:5411",
+        "2122:5412",
+        "2122:5413",
+        "2122:5414",
+        "2122:5415",
+        "2122:5416",
+        "2122:5417",
+        "2122:5418",
+        "2122:5419",
+        "2122:5420",
+        "2122:5421",
+        "2122:5422",
+        "2122:5423",
+        "2122:5424",
+        "2122:5425",
+        "2122:5426",
+        "2122:5427",
+        "2122:5428"
+      ],
+      "mutatedNodeIds": [
+        "12:177",
+        "8:94",
+        "40:608",
+        "33:315",
+        "33:376",
+        "33:433",
+        "33:492",
+        "41:2597",
+        "41:2598",
+        "41:2643",
+        "12:261",
+        "31:264",
+        "12:425",
+        "31:329",
+        "60:885",
+        "60:1044",
+        "40:677",
+        "41:2775",
+        "41:2694",
+        "8:2",
+        "40:555",
+        "40:497",
+        "64:943",
+        "41:2660",
+        "2048:1007",
+        "2088:1746",
+        "2088:1853"
+      ],
+      "placed": [
+        {
+          "id": "12:177",
+          "section": "2122:5382",
+          "parent": "2122:5382",
+          "name": "D01 / Home / Verified",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 64,
+          "y": 556
+        },
+        {
+          "id": "8:94",
+          "section": "2122:5382",
+          "parent": "2122:5382",
+          "name": "D02 / Jobs / Available",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 534,
+          "y": 556
+        },
+        {
+          "id": "40:608",
+          "section": "2122:5382",
+          "parent": "2122:5382",
+          "name": "D01 / Home / Verification pending",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 64,
+          "y": 1608
+        },
+        {
+          "id": "33:315",
+          "section": "2122:5382",
+          "parent": "2122:5382",
+          "name": "D02 / Jobs / Loading",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 534,
+          "y": 1608
+        },
+        {
+          "id": "33:376",
+          "section": "2122:5382",
+          "parent": "2122:5382",
+          "name": "D02 / Jobs / Empty",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 1004,
+          "y": 1608
+        },
+        {
+          "id": "33:433",
+          "section": "2122:5382",
+          "parent": "2122:5382",
+          "name": "D02 / Jobs / Failed to load",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 64,
+          "y": 2660
+        },
+        {
+          "id": "33:492",
+          "section": "2122:5382",
+          "parent": "2122:5382",
+          "name": "D02 / Jobs / Offline stale",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 534,
+          "y": 2660
+        },
+        {
+          "id": "41:2598",
+          "section": "2122:5382",
+          "parent": "2122:5382",
+          "name": "D01 / Home / Verified · Dark",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 64,
+          "y": 3712
+        },
+        {
+          "id": "41:2643",
+          "section": "2122:5382",
+          "parent": "2122:5382",
+          "name": "D02 / Jobs / Available · Dark",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 534,
+          "y": 3712
+        },
+        {
+          "id": "12:261",
+          "section": "2122:5397",
+          "parent": "2122:5397",
+          "name": "D03 / Availability / Month",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 64,
+          "y": 5156
+        },
+        {
+          "id": "31:264",
+          "section": "2122:5397",
+          "parent": "2122:5397",
+          "name": "D04 / Messages / Default",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 534,
+          "y": 5156
+        },
+        {
+          "id": "12:425",
+          "section": "2122:5397",
+          "parent": "2122:5397",
+          "name": "D06 / Profile / Verified",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 1004,
+          "y": 5156
+        },
+        {
+          "id": "31:329",
+          "section": "2122:5397",
+          "parent": "2122:5397",
+          "name": "G03 / Edit usher profile / Default",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 1474,
+          "y": 5156
+        },
+        {
+          "id": "60:885",
+          "section": "2122:5397",
+          "parent": "2122:5397",
+          "name": "D03 / Availability / Save failed",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 64,
+          "y": 6208
+        },
+        {
+          "id": "60:1044",
+          "section": "2122:5397",
+          "parent": "2122:5397",
+          "name": "D06 / Profile / Loading",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 534,
+          "y": 6208
+        },
+        {
+          "id": "40:677",
+          "section": "2122:5397",
+          "parent": "2122:5397",
+          "name": "G01 / Notifications / Permission denied",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 1004,
+          "y": 6208
+        },
+        {
+          "id": "41:2775",
+          "section": "2122:5397",
+          "parent": "2122:5397",
+          "name": "D03 / Availability / Month · Dark",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 64,
+          "y": 7260
+        },
+        {
+          "id": "41:2694",
+          "section": "2122:5397",
+          "parent": "2122:5397",
+          "name": "D06 / Profile / Verified · Dark",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 534,
+          "y": 7260
+        },
+        {
+          "id": "8:2",
+          "section": "2122:5412",
+          "parent": "2122:5412",
+          "name": "D05 / Wallet / Loaded",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 64,
+          "y": 8704
+        },
+        {
+          "id": "40:555",
+          "section": "2122:5412",
+          "parent": "2122:5412",
+          "name": "D05 / Wallet / No earnings yet",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 64,
+          "y": 9756
+        },
+        {
+          "id": "40:497",
+          "section": "2122:5412",
+          "parent": "2122:5412",
+          "name": "D05 / Wallet / Balance unavailable",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 534,
+          "y": 9756
+        },
+        {
+          "id": "64:943",
+          "section": "2122:5412",
+          "parent": "2122:5412",
+          "name": "D05 / Wallet / Offline",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 1004,
+          "y": 9756
+        },
+        {
+          "id": "41:2660",
+          "section": "2122:5412",
+          "parent": "2122:5412",
+          "name": "D05 / Wallet / Loaded · Dark",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 64,
+          "y": 10808
+        },
+        {
+          "id": "2048:1007",
+          "section": "2122:5412",
+          "parent": "2122:5412",
+          "name": "QA / Wallet / 320px · large amount",
+          "w": 320,
+          "h": 740,
+          "children": 4,
+          "x": 534,
+          "y": 10808
+        },
+        {
+          "id": "2088:1746",
+          "section": "2122:5412",
+          "parent": "2122:5412",
+          "name": "QA / Wallet / 200% text / 390 × 844",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 1004,
+          "y": 10808
+        },
+        {
+          "id": "2088:1853",
+          "section": "2122:5412",
+          "parent": "2122:5412",
+          "name": "QA / Wallet navigation / 200% labels",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 1474,
+          "y": 10808
+        }
+      ],
+      "sections": [
+        {
+          "id": "2122:5382",
+          "name": "01 · Find work",
+          "w": 2398,
+          "h": 4360,
+          "rows": [
+            {
+              "label": "Main path",
+              "ids": [
+                "12:177",
+                "8:94"
+              ]
+            },
+            {
+              "label": "Verification, loading and empty states",
+              "ids": [
+                "40:608",
+                "33:315",
+                "33:376"
+              ]
+            },
+            {
+              "label": "Recovery",
+              "ids": [
+                "33:433",
+                "33:492"
+              ]
+            },
+            {
+              "label": "Theme checks",
+              "ids": [
+                "41:2598",
+                "41:2643"
+              ]
+            }
+          ],
+          "x": 0,
+          "y": 260
+        },
+        {
+          "id": "2122:5397",
+          "name": "02 · Manage your working profile",
+          "w": 2398,
+          "h": 3308,
+          "rows": [
+            {
+              "label": "Main destinations · profile → edit profile",
+              "ids": [
+                "12:261",
+                "31:264",
+                "12:425",
+                "31:329"
+              ]
+            },
+            {
+              "label": "Recovery and permissions",
+              "ids": [
+                "60:885",
+                "60:1044",
+                "40:677"
+              ]
+            },
+            {
+              "label": "Theme checks",
+              "ids": [
+                "41:2775",
+                "41:2694"
+              ]
+            }
+          ],
+          "x": 0,
+          "y": 4860
+        },
+        {
+          "id": "2122:5412",
+          "name": "03 · Earnings and withdrawals",
+          "w": 2398,
+          "h": 3308,
+          "rows": [
+            {
+              "label": "Main destination",
+              "ids": [
+                "8:2"
+              ]
+            },
+            {
+              "label": "Empty and recovery states",
+              "ids": [
+                "40:555",
+                "40:497",
+                "64:943"
+              ]
+            },
+            {
+              "label": "Theme and accessibility checks",
+              "ids": [
+                "41:2660",
+                "2048:1007",
+                "2088:1746",
+                "2088:1853"
+              ]
+            }
+          ],
+          "x": 0,
+          "y": 8408
+        }
+      ],
+      "violations": [],
+      "remainingRootFrames": []
+    },
+    {
+      "pageId": "2:88",
+      "createdNodeIds": [
+        "2122:5429",
+        "2122:5430",
+        "2122:5431",
+        "2122:5432",
+        "2122:5433",
+        "2122:5434",
+        "2122:5435",
+        "2122:5436",
+        "2122:5437",
+        "2122:5438",
+        "2122:5439",
+        "2122:5440",
+        "2122:5441",
+        "2122:5442",
+        "2122:5443",
+        "2122:5444",
+        "2122:5445",
+        "2122:5446",
+        "2122:5447",
+        "2122:5448",
+        "2122:5449",
+        "2122:5450",
+        "2122:5451",
+        "2122:5452",
+        "2122:5453",
+        "2122:5454",
+        "2122:5455",
+        "2122:5456",
+        "2122:5457",
+        "2122:5458",
+        "2122:5459",
+        "2122:5460",
+        "2122:5461",
+        "2122:5462",
+        "2122:5463",
+        "2122:5464",
+        "2122:5465",
+        "2122:5466",
+        "2122:5467",
+        "2122:5468",
+        "2122:5469",
+        "2122:5470",
+        "2122:5471",
+        "2122:5472",
+        "2122:5473",
+        "2122:5474",
+        "2122:5475",
+        "2122:5476",
+        "2122:5477",
+        "2122:5478",
+        "2122:5479",
+        "2122:5480",
+        "2122:5481",
+        "2122:5482",
+        "2122:5483",
+        "2122:5484",
+        "2122:5485",
+        "2122:5486",
+        "2122:5487",
+        "2122:5488",
+        "2122:5489",
+        "2122:5490",
+        "2122:5491",
+        "2122:5492",
+        "2122:5493",
+        "2122:5494",
+        "2122:5495",
+        "2122:5496",
+        "2122:5497",
+        "2122:5498",
+        "2122:5499",
+        "2122:5500",
+        "2122:5501",
+        "2122:5502",
+        "2122:5503",
+        "2122:5504",
+        "2122:5505",
+        "2122:5506",
+        "2122:5507",
+        "2122:5508",
+        "2122:5509",
+        "2122:5510",
+        "2122:5511",
+        "2122:5512",
+        "2122:5513",
+        "2122:5514",
+        "2122:5515",
+        "2122:5516",
+        "2122:5517",
+        "2122:5518",
+        "2122:5519",
+        "2122:5520",
+        "2122:5521",
+        "2122:5522",
+        "2122:5523",
+        "2122:5524",
+        "2122:5525",
+        "2122:5526",
+        "2122:5527",
+        "2122:5528",
+        "2122:5529",
+        "2122:5530",
+        "2122:5531",
+        "2122:5532",
+        "2122:5533",
+        "2122:5534",
+        "2122:5535",
+        "2122:5536",
+        "2122:5537",
+        "2122:5538",
+        "2122:5539",
+        "2122:5540",
+        "2122:5541",
+        "2122:5542",
+        "2122:5543",
+        "2122:5544",
+        "2122:5545",
+        "2122:5546",
+        "2122:5547",
+        "2122:5548",
+        "2122:5549",
+        "2122:5550",
+        "2122:5551",
+        "2122:5552",
+        "2122:5553",
+        "2122:5554",
+        "2122:5555",
+        "2122:5556",
+        "2122:5557",
+        "2122:5558",
+        "2122:5559",
+        "2122:5560",
+        "2122:5561",
+        "2122:5562",
+        "2122:5563",
+        "2122:5564",
+        "2122:5565",
+        "2122:5566",
+        "2122:5567",
+        "2122:5568",
+        "2122:5569",
+        "2122:5570",
+        "2122:5571",
+        "2122:5572",
+        "2122:5573",
+        "2122:5574",
+        "2122:5575",
+        "2122:5576",
+        "2122:5577",
+        "2122:5578",
+        "2122:5579",
+        "2122:5580",
+        "2122:5581",
+        "2122:5582",
+        "2122:5583",
+        "2122:5584",
+        "2122:5585",
+        "2122:5586",
+        "2122:5587",
+        "2122:5588",
+        "2122:5589"
+      ],
+      "mutatedNodeIds": [
+        "24:2",
+        "24:60",
+        "24:115",
+        "28:593",
+        "28:620",
+        "28:395",
+        "28:338",
+        "28:446",
+        "28:677",
+        "28:481",
+        "28:529",
+        "38:509",
+        "38:463",
+        "76:970",
+        "24:169",
+        "24:239",
+        "53:634",
+        "2067:958",
+        "54:821",
+        "38:801",
+        "53:665",
+        "45:565",
+        "2067:1003",
+        "2086:1653",
+        "2086:1727",
+        "2073:1413",
+        "43:586",
+        "24:307",
+        "24:365",
+        "24:439",
+        "24:401",
+        "54:895",
+        "45:622",
+        "43:600",
+        "26:124",
+        "26:177",
+        "26:251",
+        "53:877",
+        "63:944",
+        "63:882",
+        "53:824",
+        "38:707",
+        "54:952",
+        "38:864",
+        "45:646",
+        "43:611",
+        "43:625",
+        "26:320",
+        "38:641",
+        "38:672",
+        "38:556",
+        "38:594",
+        "63:837",
+        "2086:1459",
+        "2086:1506",
+        "43:636",
+        "26:359",
+        "54:853",
+        "38:752",
+        "45:705",
+        "26:411",
+        "76:920",
+        "26:458",
+        "2086:1550",
+        "2086:1605",
+        "43:647",
+        "43:658",
+        "26:500",
+        "54:736",
+        "54:783",
+        "27:404",
+        "27:447",
+        "27:487",
+        "27:528",
+        "27:579",
+        "53:752",
+        "53:711",
+        "63:1002",
+        "53:902",
+        "2086:1801",
+        "27:233",
+        "27:296",
+        "27:352",
+        "27:622",
+        "63:1043",
+        "63:1081",
+        "28:745"
+      ],
+      "placed": [
+        {
+          "id": "24:2",
+          "section": "2122:5429",
+          "parent": "2122:5429",
+          "name": "E06 / Create event / 1 Basics",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 64,
+          "y": 556
+        },
+        {
+          "id": "24:60",
+          "section": "2122:5429",
+          "parent": "2122:5429",
+          "name": "E06 / Create event / 2 Staffing",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 534,
+          "y": 556
+        },
+        {
+          "id": "24:115",
+          "section": "2122:5429",
+          "parent": "2122:5429",
+          "name": "E06 / Create event / 3 Review",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 1004,
+          "y": 556
+        },
+        {
+          "id": "28:593",
+          "section": "2122:5429",
+          "parent": "2122:5429",
+          "name": "E07 / Event published / Default",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 1474,
+          "y": 556
+        },
+        {
+          "id": "28:620",
+          "section": "2122:5429",
+          "parent": "2122:5429",
+          "name": "E08 / Edit event / Partly locked",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 1944,
+          "y": 556
+        },
+        {
+          "id": "28:395",
+          "section": "2122:5438",
+          "parent": "2122:5438",
+          "name": "E02 / Discover filters / Default",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 2702,
+          "y": 556
+        },
+        {
+          "id": "28:338",
+          "section": "2122:5438",
+          "parent": "2122:5438",
+          "name": "E01 / Staff profile / Default",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 3172,
+          "y": 556
+        },
+        {
+          "id": "28:446",
+          "section": "2122:5438",
+          "parent": "2122:5438",
+          "name": "E03 / Invite to an event / Default",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 3642,
+          "y": 556
+        },
+        {
+          "id": "28:677",
+          "section": "2122:5445",
+          "parent": "2122:5445",
+          "name": "E13 / Job details / Can apply",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 5340,
+          "y": 556
+        },
+        {
+          "id": "28:481",
+          "section": "2122:5445",
+          "parent": "2122:5445",
+          "name": "E04 / Invitations / Usher",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 5810,
+          "y": 556
+        },
+        {
+          "id": "28:529",
+          "section": "2122:5445",
+          "parent": "2122:5445",
+          "name": "E05 / Invitation detail / Default",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 6280,
+          "y": 556
+        },
+        {
+          "id": "38:509",
+          "section": "2122:5445",
+          "parent": "2122:5445",
+          "name": "E13 / Job details / Already applied",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 5340,
+          "y": 1608
+        },
+        {
+          "id": "38:463",
+          "section": "2122:5445",
+          "parent": "2122:5445",
+          "name": "E13 / Job details / Filled while viewing",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 5810,
+          "y": 1608
+        },
+        {
+          "id": "76:970",
+          "section": "2122:5445",
+          "parent": "2122:5445",
+          "name": "E05 / Invitation detail / Closed",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 6280,
+          "y": 1608
+        },
+        {
+          "id": "24:169",
+          "section": "2122:5456",
+          "parent": "2122:5456",
+          "name": "E09 / Applications / Selecting",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 64,
+          "y": 3052
+        },
+        {
+          "id": "24:239",
+          "section": "2122:5456",
+          "parent": "2122:5456",
+          "name": "E10 / Confirm & pay / Default",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 534,
+          "y": 3052
+        },
+        {
+          "id": "53:634",
+          "section": "2122:5456",
+          "parent": "2122:5456",
+          "name": "E10 / Confirm & pay / Submitting",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 1004,
+          "y": 3052
+        },
+        {
+          "id": "2067:958",
+          "section": "2122:5456",
+          "parent": "2122:5456",
+          "name": "E10 / Cancellation policy / Full terms",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 64,
+          "y": 4104
+        },
+        {
+          "id": "54:821",
+          "section": "2122:5456",
+          "parent": "2122:5456",
+          "name": "E09 / Applications / None yet",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 64,
+          "y": 5156
+        },
+        {
+          "id": "38:801",
+          "section": "2122:5456",
+          "parent": "2122:5456",
+          "name": "E09 / Applications / Capacity reached",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 534,
+          "y": 5156
+        },
+        {
+          "id": "53:665",
+          "section": "2122:5456",
+          "parent": "2122:5456",
+          "name": "E10 / Confirm & pay / Selection changed",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 1004,
+          "y": 5156
+        },
+        {
+          "id": "45:565",
+          "section": "2122:5456",
+          "parent": "2122:5456",
+          "name": "E10 / Confirm & pay / Default · Dark",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 64,
+          "y": 6208
+        },
+        {
+          "id": "2067:1003",
+          "section": "2122:5456",
+          "parent": "2122:5456",
+          "name": "E10 / Cancellation policy / Dark",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 534,
+          "y": 6208
+        },
+        {
+          "id": "2086:1653",
+          "section": "2122:5456",
+          "parent": "2122:5456",
+          "name": "QA / Checkout / Compact / 320 × 740",
+          "w": 320,
+          "h": 740,
+          "children": 5,
+          "x": 1004,
+          "y": 6208
+        },
+        {
+          "id": "2086:1727",
+          "section": "2122:5456",
+          "parent": "2122:5456",
+          "name": "QA / Checkout / 200% text / 320 × 740",
+          "w": 320,
+          "h": 740,
+          "children": 5,
+          "x": 1474,
+          "y": 6208
+        },
+        {
+          "id": "2073:1413",
+          "section": "2122:5456",
+          "parent": "2122:5456",
+          "name": "QA / Policy / 200% app text / 320 × 740",
+          "w": 320,
+          "h": 740,
+          "children": 5,
+          "x": 1944,
+          "y": 6208
+        },
+        {
+          "id": "43:586",
+          "section": "2122:5456",
+          "parent": "2122:5456",
+          "name": "ANNOTATION — E10 / Confirm & pay",
+          "w": 390,
+          "h": 360,
+          "children": 5,
+          "x": 64,
+          "y": 7260
+        },
+        {
+          "id": "24:307",
+          "section": "2122:5477",
+          "parent": "2122:5477",
+          "name": "E11 / Payment status / Needs checking",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 2702,
+          "y": 3052
+        },
+        {
+          "id": "24:365",
+          "section": "2122:5477",
+          "parent": "2122:5477",
+          "name": "E11 / Payment status / Confirmed",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 3172,
+          "y": 3052
+        },
+        {
+          "id": "24:439",
+          "section": "2122:5477",
+          "parent": "2122:5477",
+          "name": "E12 / Payment failed / Default",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 2702,
+          "y": 4104
+        },
+        {
+          "id": "24:401",
+          "section": "2122:5477",
+          "parent": "2122:5477",
+          "name": "E11 / Payment status / Reservation expired",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 3172,
+          "y": 4104
+        },
+        {
+          "id": "54:895",
+          "section": "2122:5477",
+          "parent": "2122:5477",
+          "name": "E11 / Payment status / Late payment refund",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 3642,
+          "y": 4104
+        },
+        {
+          "id": "45:622",
+          "section": "2122:5477",
+          "parent": "2122:5477",
+          "name": "E11 / Payment status / Confirmed · Dark",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 2702,
+          "y": 5156
+        },
+        {
+          "id": "43:600",
+          "section": "2122:5477",
+          "parent": "2122:5477",
+          "name": "ANNOTATION — E11 / Payment status / Needs checking",
+          "w": 390,
+          "h": 274,
+          "children": 4,
+          "x": 2702,
+          "y": 6208
+        },
+        {
+          "id": "26:124",
+          "section": "2122:5491",
+          "parent": "2122:5491",
+          "name": "F01 / My bookings / Active",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 5340,
+          "y": 3052
+        },
+        {
+          "id": "26:177",
+          "section": "2122:5491",
+          "parent": "2122:5491",
+          "name": "F02 / Booking details / Confirmed",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 5810,
+          "y": 3052
+        },
+        {
+          "id": "26:251",
+          "section": "2122:5491",
+          "parent": "2122:5491",
+          "name": "F03 / Event day / Roster",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 6280,
+          "y": 3052
+        },
+        {
+          "id": "53:877",
+          "section": "2122:5491",
+          "parent": "2122:5491",
+          "name": "F01 / My bookings / None yet",
+          "w": 390,
+          "h": 844,
+          "children": 3,
+          "x": 5340,
+          "y": 4104
+        },
+        {
+          "id": "63:944",
+          "section": "2122:5491",
+          "parent": "2122:5491",
+          "name": "F02 / Booking details / Offline",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 5810,
+          "y": 4104
+        },
+        {
+          "id": "63:882",
+          "section": "2122:5491",
+          "parent": "2122:5491",
+          "name": "F03 / Event day / Offline",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 6280,
+          "y": 4104
+        },
+        {
+          "id": "53:824",
+          "section": "2122:5491",
+          "parent": "2122:5491",
+          "name": "F03 / Event day / Roster out of date",
+          "w": 390,
+          "h": 844,
+          "children": 3,
+          "x": 6750,
+          "y": 4104
+        },
+        {
+          "id": "38:707",
+          "section": "2122:5491",
+          "parent": "2122:5491",
+          "name": "F02 / Booking details / Client cancelled",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 5340,
+          "y": 5156
+        },
+        {
+          "id": "54:952",
+          "section": "2122:5491",
+          "parent": "2122:5491",
+          "name": "F02 / Booking details / Refund in progress",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 5810,
+          "y": 5156
+        },
+        {
+          "id": "38:864",
+          "section": "2122:5491",
+          "parent": "2122:5491",
+          "name": "F02 / Booking details / Disputed",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 6280,
+          "y": 5156
+        },
+        {
+          "id": "45:646",
+          "section": "2122:5491",
+          "parent": "2122:5491",
+          "name": "F02 / Booking details / Confirmed · Dark",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 5340,
+          "y": 6208
+        },
+        {
+          "id": "43:611",
+          "section": "2122:5491",
+          "parent": "2122:5491",
+          "name": "ANNOTATION — F02 / Booking details / Confirmed",
+          "w": 390,
+          "h": 320,
+          "children": 5,
+          "x": 5340,
+          "y": 7260
+        },
+        {
+          "id": "43:625",
+          "section": "2122:5491",
+          "parent": "2122:5491",
+          "name": "ANNOTATION — F03 / Event day / Roster",
+          "w": 390,
+          "h": 274,
+          "children": 4,
+          "x": 5810,
+          "y": 7260
+        },
+        {
+          "id": "26:320",
+          "section": "2122:5512",
+          "parent": "2122:5512",
+          "name": "F04 / Check in / Code entry",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 64,
+          "y": 8220
+        },
+        {
+          "id": "38:641",
+          "section": "2122:5512",
+          "parent": "2122:5512",
+          "name": "F04 / Check in / Already checked in",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 534,
+          "y": 8220
+        },
+        {
+          "id": "38:672",
+          "section": "2122:5512",
+          "parent": "2122:5512",
+          "name": "F04 / Check in / Completed, held",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 1004,
+          "y": 8220
+        },
+        {
+          "id": "38:556",
+          "section": "2122:5512",
+          "parent": "2122:5512",
+          "name": "F04 / Check in / Not yet open",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 64,
+          "y": 9272
+        },
+        {
+          "id": "38:594",
+          "section": "2122:5512",
+          "parent": "2122:5512",
+          "name": "F04 / Check in / Code incorrect",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 534,
+          "y": 9272
+        },
+        {
+          "id": "63:837",
+          "section": "2122:5512",
+          "parent": "2122:5512",
+          "name": "F04 / Check in / Offline",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 1004,
+          "y": 9272
+        },
+        {
+          "id": "2086:1459",
+          "section": "2122:5512",
+          "parent": "2122:5512",
+          "name": "QA / Check-in / Compact keyboard / 320 × 740",
+          "w": 320,
+          "h": 740,
+          "children": 6,
+          "x": 64,
+          "y": 10324
+        },
+        {
+          "id": "2086:1506",
+          "section": "2122:5512",
+          "parent": "2122:5512",
+          "name": "QA / Check-in / 200% text / 320 × 740",
+          "w": 320,
+          "h": 740,
+          "children": 5,
+          "x": 534,
+          "y": 10324
+        },
+        {
+          "id": "43:636",
+          "section": "2122:5512",
+          "parent": "2122:5512",
+          "name": "ANNOTATION — F04 / Check in / Code entry",
+          "w": 390,
+          "h": 274,
+          "children": 4,
+          "x": 64,
+          "y": 11272
+        },
+        {
+          "id": "26:359",
+          "section": "2122:5528",
+          "parent": "2122:5528",
+          "name": "F05 / Booking chat / Default",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 2702,
+          "y": 8220
+        },
+        {
+          "id": "54:853",
+          "section": "2122:5528",
+          "parent": "2122:5528",
+          "name": "F05 / Booking chat / Loading history",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 2702,
+          "y": 9272
+        },
+        {
+          "id": "38:752",
+          "section": "2122:5528",
+          "parent": "2122:5528",
+          "name": "F05 / Booking chat / Send failed",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 3172,
+          "y": 9272
+        },
+        {
+          "id": "45:705",
+          "section": "2122:5528",
+          "parent": "2122:5528",
+          "name": "F05 / Booking chat / Default · Dark",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 2702,
+          "y": 10324
+        },
+        {
+          "id": "26:411",
+          "section": "2122:5538",
+          "parent": "2122:5538",
+          "name": "F06 / Cancellation / Quote",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 5340,
+          "y": 8220
+        },
+        {
+          "id": "76:920",
+          "section": "2122:5538",
+          "parent": "2122:5538",
+          "name": "F06 / Cancellation / Band changed",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 5810,
+          "y": 8220
+        },
+        {
+          "id": "26:458",
+          "section": "2122:5538",
+          "parent": "2122:5538",
+          "name": "F07 / Open a dispute / Default",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 6280,
+          "y": 8220
+        },
+        {
+          "id": "2086:1550",
+          "section": "2122:5538",
+          "parent": "2122:5538",
+          "name": "QA / Dispute entry / Compact keyboard / 320 × 740",
+          "w": 320,
+          "h": 740,
+          "children": 6,
+          "x": 5340,
+          "y": 9272
+        },
+        {
+          "id": "2086:1605",
+          "section": "2122:5538",
+          "parent": "2122:5538",
+          "name": "QA / Dispute entry / 200% text / 320 × 740",
+          "w": 320,
+          "h": 740,
+          "children": 5,
+          "x": 5810,
+          "y": 9272
+        },
+        {
+          "id": "43:647",
+          "section": "2122:5538",
+          "parent": "2122:5538",
+          "name": "ANNOTATION — F06 / Cancellation / Quote",
+          "w": 390,
+          "h": 294,
+          "children": 4,
+          "x": 5340,
+          "y": 10220
+        },
+        {
+          "id": "43:658",
+          "section": "2122:5538",
+          "parent": "2122:5538",
+          "name": "ANNOTATION — F07 / Open a dispute",
+          "w": 390,
+          "h": 274,
+          "children": 4,
+          "x": 5810,
+          "y": 10220
+        },
+        {
+          "id": "26:500",
+          "section": "2122:5551",
+          "parent": "2122:5551",
+          "name": "F08 / Review counterpart / Default",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 64,
+          "y": 12146
+        },
+        {
+          "id": "54:736",
+          "section": "2122:5551",
+          "parent": "2122:5551",
+          "name": "F08 / Review / Locked until release",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 64,
+          "y": 13198
+        },
+        {
+          "id": "54:783",
+          "section": "2122:5551",
+          "parent": "2122:5551",
+          "name": "F08 / Review / Already submitted",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 534,
+          "y": 13198
+        },
+        {
+          "id": "27:404",
+          "section": "2122:5559",
+          "parent": "2122:5559",
+          "name": "G05 / Withdraw / Amount",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 2702,
+          "y": 12146
+        },
+        {
+          "id": "27:447",
+          "section": "2122:5559",
+          "parent": "2122:5559",
+          "name": "G05 / Withdraw / Review",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 3172,
+          "y": 12146
+        },
+        {
+          "id": "27:487",
+          "section": "2122:5559",
+          "parent": "2122:5559",
+          "name": "G05 / Withdraw / Processing",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 3642,
+          "y": 12146
+        },
+        {
+          "id": "27:528",
+          "section": "2122:5559",
+          "parent": "2122:5559",
+          "name": "G06 / Withdrawal history / Default",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 4112,
+          "y": 12146
+        },
+        {
+          "id": "27:579",
+          "section": "2122:5559",
+          "parent": "2122:5559",
+          "name": "G07 / Withdrawal details / Default",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 4582,
+          "y": 12146
+        },
+        {
+          "id": "53:752",
+          "section": "2122:5559",
+          "parent": "2122:5559",
+          "name": "G05 / Withdraw / No bank account",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 2702,
+          "y": 13198
+        },
+        {
+          "id": "53:711",
+          "section": "2122:5559",
+          "parent": "2122:5559",
+          "name": "G05 / Withdraw / Failed",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 3172,
+          "y": 13198
+        },
+        {
+          "id": "63:1002",
+          "section": "2122:5559",
+          "parent": "2122:5559",
+          "name": "G05 / Withdraw / Offline",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 3642,
+          "y": 13198
+        },
+        {
+          "id": "53:902",
+          "section": "2122:5559",
+          "parent": "2122:5559",
+          "name": "G06 / Withdrawal history / None yet",
+          "w": 390,
+          "h": 844,
+          "children": 3,
+          "x": 4112,
+          "y": 13198
+        },
+        {
+          "id": "2086:1801",
+          "section": "2122:5559",
+          "parent": "2122:5559",
+          "name": "QA / Withdrawal / Compact keyboard / 320 × 740",
+          "w": 320,
+          "h": 740,
+          "children": 6,
+          "x": 2702,
+          "y": 14250
+        },
+        {
+          "id": "27:233",
+          "section": "2122:5575",
+          "parent": "2122:5575",
+          "name": "G01 / Notifications / Default",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 5340,
+          "y": 12146
+        },
+        {
+          "id": "27:296",
+          "section": "2122:5575",
+          "parent": "2122:5575",
+          "name": "G02 / Account settings / Default",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 5810,
+          "y": 12146
+        },
+        {
+          "id": "27:352",
+          "section": "2122:5575",
+          "parent": "2122:5575",
+          "name": "G04 / Privacy & data / Default",
+          "w": 390,
+          "h": 844,
+          "children": 4,
+          "x": 6280,
+          "y": 12146
+        },
+        {
+          "id": "27:622",
+          "section": "2122:5575",
+          "parent": "2122:5575",
+          "name": "G08 / Privacy policy / Default",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 6750,
+          "y": 12146
+        },
+        {
+          "id": "63:1043",
+          "section": "2122:5575",
+          "parent": "2122:5575",
+          "name": "G02 / Account settings / Save failed",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 5340,
+          "y": 13198
+        },
+        {
+          "id": "63:1081",
+          "section": "2122:5575",
+          "parent": "2122:5575",
+          "name": "G04 / Privacy & data / Consent not saved",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 5810,
+          "y": 13198
+        },
+        {
+          "id": "28:745",
+          "section": "2122:5575",
+          "parent": "2122:5575",
+          "name": "H01 / Not found / Default",
+          "w": 390,
+          "h": 844,
+          "children": 5,
+          "x": 6280,
+          "y": 13198
+        }
+      ],
+      "sections": [
+        {
+          "id": "2122:5429",
+          "name": "01 · Create and publish an event",
+          "w": 2398,
+          "h": 1204,
+          "rows": [
+            {
+              "label": "Basics → staffing → review → published → manage edits",
+              "ids": [
+                "24:2",
+                "24:60",
+                "24:115",
+                "28:593",
+                "28:620"
+              ]
+            }
+          ],
+          "x": 0,
+          "y": 260
+        },
+        {
+          "id": "2122:5438",
+          "name": "02 · Find and invite staff",
+          "w": 2398,
+          "h": 1204,
+          "rows": [
+            {
+              "label": "Filters → staff profile → invite to an event",
+              "ids": [
+                "28:395",
+                "28:338",
+                "28:446"
+              ]
+            }
+          ],
+          "x": 2638,
+          "y": 260
+        },
+        {
+          "id": "2122:5445",
+          "name": "03 · Apply or respond to an invitation",
+          "w": 2398,
+          "h": 2256,
+          "rows": [
+            {
+              "label": "Apply for a job · or open an invitation → view details",
+              "ids": [
+                "28:677",
+                "28:481",
+                "28:529"
+              ]
+            },
+            {
+              "label": "Applied, filled and closed states",
+              "ids": [
+                "38:509",
+                "38:463",
+                "76:970"
+              ]
+            }
+          ],
+          "x": 5276,
+          "y": 260
+        },
+        {
+          "id": "2122:5456",
+          "name": "04 · Select staff and pay",
+          "w": 2398,
+          "h": 4928,
+          "rows": [
+            {
+              "label": "Applications → confirm & pay → submitting",
+              "ids": [
+                "24:169",
+                "24:239",
+                "53:634"
+              ]
+            },
+            {
+              "label": "Full cancellation terms · opens from checkout",
+              "ids": [
+                "2067:958"
+              ]
+            },
+            {
+              "label": "Empty, capacity and selection recovery",
+              "ids": [
+                "54:821",
+                "38:801",
+                "53:665"
+              ]
+            },
+            {
+              "label": "Theme and accessibility checks",
+              "ids": [
+                "45:565",
+                "2067:1003",
+                "2086:1653",
+                "2086:1727",
+                "2073:1413"
+              ]
+            },
+            {
+              "label": "Implementation notes",
+              "ids": [
+                "43:586"
+              ]
+            }
+          ],
+          "x": 0,
+          "y": 2756
+        },
+        {
+          "id": "2122:5477",
+          "name": "05 · Resolve payment status",
+          "w": 2398,
+          "h": 3790,
+          "rows": [
+            {
+              "label": "Checking payment → confirmed",
+              "ids": [
+                "24:307",
+                "24:365"
+              ]
+            },
+            {
+              "label": "Failed, expired and late-payment recovery",
+              "ids": [
+                "24:439",
+                "24:401",
+                "54:895"
+              ]
+            },
+            {
+              "label": "Theme check",
+              "ids": [
+                "45:622"
+              ]
+            },
+            {
+              "label": "Implementation notes",
+              "ids": [
+                "43:600"
+              ]
+            }
+          ],
+          "x": 2638,
+          "y": 2756
+        },
+        {
+          "id": "2122:5491",
+          "name": "06 · Manage a confirmed booking",
+          "w": 2398,
+          "h": 4888,
+          "rows": [
+            {
+              "label": "Main path",
+              "ids": [
+                "26:124",
+                "26:177",
+                "26:251"
+              ]
+            },
+            {
+              "label": "Empty and offline states",
+              "ids": [
+                "53:877",
+                "63:944",
+                "63:882",
+                "53:824"
+              ]
+            },
+            {
+              "label": "Cancelled, refund and dispute branches",
+              "ids": [
+                "38:707",
+                "54:952",
+                "38:864"
+              ]
+            },
+            {
+              "label": "Theme check",
+              "ids": [
+                "45:646"
+              ]
+            },
+            {
+              "label": "Implementation notes",
+              "ids": [
+                "43:611",
+                "43:625"
+              ]
+            }
+          ],
+          "x": 5276,
+          "y": 2756
+        },
+        {
+          "id": "2122:5512",
+          "name": "07 · Check in and verify attendance",
+          "w": 2398,
+          "h": 3686,
+          "rows": [
+            {
+              "label": "Code entry → already checked in → completed, held",
+              "ids": [
+                "26:320",
+                "38:641",
+                "38:672"
+              ]
+            },
+            {
+              "label": "Not open, incorrect code and offline",
+              "ids": [
+                "38:556",
+                "38:594",
+                "63:837"
+              ]
+            },
+            {
+              "label": "Keyboard and large-text checks",
+              "ids": [
+                "2086:1459",
+                "2086:1506"
+              ]
+            },
+            {
+              "label": "Implementation notes",
+              "ids": [
+                "43:636"
+              ]
+            }
+          ],
+          "x": 0,
+          "y": 7924
+        },
+        {
+          "id": "2122:5528",
+          "name": "08 · Chat with your booking counterpart",
+          "w": 2398,
+          "h": 3308,
+          "rows": [
+            {
+              "label": "Main destination",
+              "ids": [
+                "26:359"
+              ]
+            },
+            {
+              "label": "Loading and retry",
+              "ids": [
+                "54:853",
+                "38:752"
+              ]
+            },
+            {
+              "label": "Theme check",
+              "ids": [
+                "45:705"
+              ]
+            }
+          ],
+          "x": 2638,
+          "y": 7924
+        },
+        {
+          "id": "2122:5538",
+          "name": "09 · Cancel a booking or open a dispute",
+          "w": 2398,
+          "h": 2654,
+          "rows": [
+            {
+              "label": "Cancellation quote → changed band · or open a dispute",
+              "ids": [
+                "26:411",
+                "76:920",
+                "26:458"
+              ]
+            },
+            {
+              "label": "Dispute keyboard and large-text checks",
+              "ids": [
+                "2086:1550",
+                "2086:1605"
+              ]
+            },
+            {
+              "label": "Implementation notes",
+              "ids": [
+                "43:647",
+                "43:658"
+              ]
+            }
+          ],
+          "x": 5276,
+          "y": 7924
+        },
+        {
+          "id": "2122:5551",
+          "name": "10 · Review after completion",
+          "w": 2398,
+          "h": 2256,
+          "rows": [
+            {
+              "label": "Write a review",
+              "ids": [
+                "26:500"
+              ]
+            },
+            {
+              "label": "Review states",
+              "ids": [
+                "54:736",
+                "54:783"
+              ]
+            }
+          ],
+          "x": 0,
+          "y": 11850
+        },
+        {
+          "id": "2122:5559",
+          "name": "11 · Withdraw earnings and track transfers",
+          "w": 2398,
+          "h": 3204,
+          "rows": [
+            {
+              "label": "Amount → review → processing → history → details",
+              "ids": [
+                "27:404",
+                "27:447",
+                "27:487",
+                "27:528",
+                "27:579"
+              ]
+            },
+            {
+              "label": "Bank, failed-transfer, offline and empty-history states",
+              "ids": [
+                "53:752",
+                "53:711",
+                "63:1002",
+                "53:902"
+              ]
+            },
+            {
+              "label": "Keyboard check",
+              "ids": [
+                "2086:1801"
+              ]
+            }
+          ],
+          "x": 2638,
+          "y": 11850
+        },
+        {
+          "id": "2122:5575",
+          "name": "12 · Account, privacy and notifications",
+          "w": 2398,
+          "h": 2256,
+          "rows": [
+            {
+              "label": "Notifications · settings → privacy → policy",
+              "ids": [
+                "27:233",
+                "27:296",
+                "27:352",
+                "27:622"
+              ]
+            },
+            {
+              "label": "Save recovery and unavailable destinations",
+              "ids": [
+                "63:1043",
+                "63:1081",
+                "28:745"
+              ]
+            }
+          ],
+          "x": 5276,
+          "y": 11850
+        }
+      ],
+      "violations": [],
+      "remainingRootFrames": []
+    },
+    {
+      "pageId": "2:89",
+      "createdNodeIds": [
+        "2122:5590",
+        "2122:5591",
+        "2122:5592",
+        "2122:5593",
+        "2122:5594",
+        "2122:5595",
+        "2122:5596",
+        "2122:5597",
+        "2122:5598",
+        "2122:5599",
+        "2122:5600",
+        "2122:5601",
+        "2122:5602",
+        "2122:5603",
+        "2122:5604",
+        "2122:5605",
+        "2122:5606",
+        "2122:5607",
+        "2122:5608",
+        "2122:5609",
+        "2122:5610",
+        "2122:5611",
+        "2122:5612",
+        "2122:5613",
+        "2122:5614",
+        "2122:5615",
+        "2122:5616",
+        "2122:5617",
+        "2122:5618",
+        "2122:5619",
+        "2122:5620",
+        "2122:5621",
+        "2122:5622",
+        "2122:5623",
+        "2122:5624",
+        "2122:5625",
+        "2122:5626",
+        "2122:5627",
+        "2122:5628",
+        "2122:5629",
+        "2122:5630",
+        "2122:5631",
+        "2122:5632",
+        "2122:5633",
+        "2122:5634",
+        "2122:5635",
+        "2122:5636",
+        "2122:5637",
+        "2122:5638",
+        "2122:5639",
+        "2122:5640",
+        "2122:5641",
+        "2122:5642"
+      ],
+      "mutatedNodeIds": [
+        "29:2",
+        "29:17",
+        "45:52",
+        "58:288",
+        "29:94",
+        "29:541",
+        "45:105",
+        "58:150",
+        "58:66",
+        "29:163",
+        "2064:116",
+        "29:241",
+        "45:145",
+        "45:327",
+        "58:223",
+        "2092:484",
+        "2092:594",
+        "2093:796",
+        "2092:704",
+        "2093:908",
+        "29:324",
+        "29:400",
+        "29:469",
+        "45:185",
+        "45:231",
+        "45:287",
+        "45:805"
+      ],
+      "placed": [
+        {
+          "id": "29:2",
+          "section": "2122:5590",
+          "parent": "2122:5590",
+          "name": "AD01 / Admin login / Default",
+          "w": 1440,
+          "h": 900,
+          "children": 1,
+          "x": 64,
+          "y": 556
+        },
+        {
+          "id": "29:17",
+          "section": "2122:5590",
+          "parent": "2122:5590",
+          "name": "AD02 / Dashboard / Default",
+          "w": 1440,
+          "h": 900,
+          "children": 2,
+          "x": 1624,
+          "y": 556
+        },
+        {
+          "id": "45:52",
+          "section": "2122:5590",
+          "parent": "2122:5590",
+          "name": "AD02 / Dashboard / Loading",
+          "w": 1440,
+          "h": 900,
+          "children": 2,
+          "x": 64,
+          "y": 1664
+        },
+        {
+          "id": "58:288",
+          "section": "2122:5590",
+          "parent": "2122:5590",
+          "name": "AD02 / Dashboard / Failed to load",
+          "w": 1440,
+          "h": 900,
+          "children": 2,
+          "x": 1624,
+          "y": 1664
+        },
+        {
+          "id": "29:94",
+          "section": "2122:5599",
+          "parent": "2122:5599",
+          "name": "AD03 / Verifications / Default",
+          "w": 1440,
+          "h": 900,
+          "children": 2,
+          "x": 4992,
+          "y": 556
+        },
+        {
+          "id": "29:541",
+          "section": "2122:5599",
+          "parent": "2122:5599",
+          "name": "AD09 / Users / Default",
+          "w": 1440,
+          "h": 900,
+          "children": 2,
+          "x": 6552,
+          "y": 556
+        },
+        {
+          "id": "45:105",
+          "section": "2122:5599",
+          "parent": "2122:5599",
+          "name": "AD03 / Verifications / Queue clear",
+          "w": 1440,
+          "h": 900,
+          "children": 2,
+          "x": 4992,
+          "y": 1664
+        },
+        {
+          "id": "58:150",
+          "section": "2122:5599",
+          "parent": "2122:5599",
+          "name": "AD03 / Verifications / Evidence unavailable",
+          "w": 1440,
+          "h": 900,
+          "children": 2,
+          "x": 6552,
+          "y": 1664
+        },
+        {
+          "id": "58:66",
+          "section": "2122:5599",
+          "parent": "2122:5599",
+          "name": "AD09 / Users / Loading",
+          "w": 1440,
+          "h": 900,
+          "children": 2,
+          "x": 8112,
+          "y": 1664
+        },
+        {
+          "id": "29:163",
+          "section": "2122:5609",
+          "parent": "2122:5609",
+          "name": "AD04 / Disputes / Default",
+          "w": 1440,
+          "h": 900,
+          "children": 2,
+          "x": 64,
+          "y": 3164
+        },
+        {
+          "id": "2064:116",
+          "section": "2122:5609",
+          "parent": "2122:5609",
+          "name": "Admin / Dispute / Review client refund",
+          "w": 1440,
+          "h": 900,
+          "children": 2,
+          "x": 1624,
+          "y": 3164
+        },
+        {
+          "id": "29:241",
+          "section": "2122:5609",
+          "parent": "2122:5609",
+          "name": "AD05 / Approvals / Default",
+          "w": 1440,
+          "h": 900,
+          "children": 2,
+          "x": 3184,
+          "y": 3164
+        },
+        {
+          "id": "45:145",
+          "section": "2122:5609",
+          "parent": "2122:5609",
+          "name": "AD04 / Disputes / None open",
+          "w": 1440,
+          "h": 900,
+          "children": 2,
+          "x": 64,
+          "y": 4272
+        },
+        {
+          "id": "45:327",
+          "section": "2122:5609",
+          "parent": "2122:5609",
+          "name": "AD05 / Approvals / Cannot self-approve",
+          "w": 1440,
+          "h": 900,
+          "children": 2,
+          "x": 1624,
+          "y": 4272
+        },
+        {
+          "id": "58:223",
+          "section": "2122:5609",
+          "parent": "2122:5609",
+          "name": "AD05 / Approvals / Execution uncertain",
+          "w": 1440,
+          "h": 900,
+          "children": 2,
+          "x": 3184,
+          "y": 4272
+        },
+        {
+          "id": "2092:484",
+          "section": "2122:5609",
+          "parent": "2122:5609",
+          "name": "QA / Admin / Disputes / 1024px",
+          "w": 1024,
+          "h": 900,
+          "children": 2,
+          "x": 64,
+          "y": 5380
+        },
+        {
+          "id": "2092:594",
+          "section": "2122:5609",
+          "parent": "2122:5609",
+          "name": "QA / Admin / Disputes / stacked / 768px",
+          "w": 768,
+          "h": 1024,
+          "children": 2,
+          "x": 1624,
+          "y": 5380
+        },
+        {
+          "id": "2093:796",
+          "section": "2122:5609",
+          "parent": "2122:5609",
+          "name": "QA / Admin / Disputes / 320px reflow",
+          "w": 320,
+          "h": 740,
+          "children": 2,
+          "x": 3184,
+          "y": 5380
+        },
+        {
+          "id": "2092:704",
+          "section": "2122:5609",
+          "parent": "2122:5609",
+          "name": "QA / Admin / Approvals / request cards / 768px",
+          "w": 768,
+          "h": 1024,
+          "children": 2,
+          "x": 64,
+          "y": 6612
+        },
+        {
+          "id": "2093:908",
+          "section": "2122:5609",
+          "parent": "2122:5609",
+          "name": "QA / Admin / Approvals / 320px reflow",
+          "w": 320,
+          "h": 740,
+          "children": 2,
+          "x": 1624,
+          "y": 6612
+        },
+        {
+          "id": "29:324",
+          "section": "2122:5627",
+          "parent": "2122:5627",
+          "name": "AD06 / Bookings & refunds / Default",
+          "w": 1440,
+          "h": 900,
+          "children": 2,
+          "x": 4992,
+          "y": 3164
+        },
+        {
+          "id": "29:400",
+          "section": "2122:5627",
+          "parent": "2122:5627",
+          "name": "AD07 / Payment ops / Default",
+          "w": 1440,
+          "h": 900,
+          "children": 2,
+          "x": 6552,
+          "y": 3164
+        },
+        {
+          "id": "29:469",
+          "section": "2122:5627",
+          "parent": "2122:5627",
+          "name": "AD08 / Escrow ledger / Default",
+          "w": 1440,
+          "h": 900,
+          "children": 2,
+          "x": 8112,
+          "y": 3164
+        },
+        {
+          "id": "45:185",
+          "section": "2122:5627",
+          "parent": "2122:5627",
+          "name": "AD06 / Bookings & refunds / No results",
+          "w": 1440,
+          "h": 900,
+          "children": 2,
+          "x": 4992,
+          "y": 4272
+        },
+        {
+          "id": "45:231",
+          "section": "2122:5627",
+          "parent": "2122:5627",
+          "name": "AD07 / Payment ops / All balanced",
+          "w": 1440,
+          "h": 900,
+          "children": 2,
+          "x": 6552,
+          "y": 4272
+        },
+        {
+          "id": "45:287",
+          "section": "2122:5627",
+          "parent": "2122:5627",
+          "name": "AD08 / Escrow ledger / No entries for filter",
+          "w": 1440,
+          "h": 900,
+          "children": 2,
+          "x": 8112,
+          "y": 4272
+        },
+        {
+          "id": "45:805",
+          "section": "2122:5627",
+          "parent": "2122:5627",
+          "name": "AD08 / Escrow ledger / Default · Dark",
+          "w": 1440,
+          "h": 900,
+          "children": 2,
+          "x": 4992,
+          "y": 5380
+        }
+      ],
+      "sections": [
+        {
+          "id": "2122:5590",
+          "name": "01 · Sign in and monitor operations",
+          "w": 4688,
+          "h": 2368,
+          "rows": [
+            {
+              "label": "Main path",
+              "ids": [
+                "29:2",
+                "29:17"
+              ]
+            },
+            {
+              "label": "Dashboard loading and recovery",
+              "ids": [
+                "45:52",
+                "58:288"
+              ]
+            }
+          ],
+          "x": 0,
+          "y": 260
+        },
+        {
+          "id": "2122:5599",
+          "name": "02 · Verify staff and manage users",
+          "w": 4688,
+          "h": 2368,
+          "rows": [
+            {
+              "label": "Main destinations",
+              "ids": [
+                "29:94",
+                "29:541"
+              ]
+            },
+            {
+              "label": "Queue and evidence states",
+              "ids": [
+                "45:105",
+                "58:150",
+                "58:66"
+              ]
+            }
+          ],
+          "x": 4928,
+          "y": 260
+        },
+        {
+          "id": "2122:5609",
+          "name": "03 · Review disputes and approvals",
+          "w": 4688,
+          "h": 4832,
+          "rows": [
+            {
+              "label": "Main path",
+              "ids": [
+                "29:163",
+                "2064:116",
+                "29:241"
+              ]
+            },
+            {
+              "label": "Empty, restricted and uncertain outcomes",
+              "ids": [
+                "45:145",
+                "45:327",
+                "58:223"
+              ]
+            },
+            {
+              "label": "Dispute responsive checks · 1024 → 768 → 320",
+              "ids": [
+                "2092:484",
+                "2092:594",
+                "2093:796"
+              ]
+            },
+            {
+              "label": "Approval responsive checks · 768 → 320",
+              "ids": [
+                "2092:704",
+                "2093:908"
+              ]
+            }
+          ],
+          "x": 0,
+          "y": 2868
+        },
+        {
+          "id": "2122:5627",
+          "name": "04 · Reconcile bookings and money",
+          "w": 4688,
+          "h": 3476,
+          "rows": [
+            {
+              "label": "Main destinations",
+              "ids": [
+                "29:324",
+                "29:400",
+                "29:469"
+              ]
+            },
+            {
+              "label": "Empty and balanced states",
+              "ids": [
+                "45:185",
+                "45:231",
+                "45:287"
+              ]
+            },
+            {
+              "label": "Ledger theme check",
+              "ids": [
+                "45:805"
+              ]
+            }
+          ],
+          "x": 4928,
+          "y": 2868
+        }
+      ],
+      "violations": [],
+      "remainingRootFrames": []
+    }
+  ],
+  "checks": {
+    "screenFrames": 178,
+    "uniqueScreenIds": 178,
+    "sections": 24,
+    "violations": [],
+    "unassignedRootFrames": []
+  },
+  "deferred": [
+    "Marketing",
+    "Prototype wiring"
+  ]
+}

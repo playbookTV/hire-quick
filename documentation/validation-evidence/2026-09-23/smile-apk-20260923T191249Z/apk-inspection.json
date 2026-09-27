@@ -1,0 +1,21 @@
+{
+  "sha256": "e9c29b2c0d1cf0bed3e683b843c1531724d3a42d646317eefec0d1f9d6751c27",
+  "sizeBytes": 164645135,
+  "signerCertificateSha256": "7bfd30f0ae773e266f2389476e13815bda73e764bc95a7b07bdac5b5e07b108d",
+  "manifest": {
+    "package": "com.hirequick.mobile",
+    "versionCode": 8,
+    "versionName": "0.0.1"
+  },
+  "stagingApiOriginPresent": true,
+  "policyCopyPresent": {
+    "Earnings stay held through 72 hours after event end": true,
+    "awaits two-admin approval": true,
+    "The remaining allocation pays the usher": true
+  },
+  "smileFlowPresent": true,
+  "nativeSmileCameraPresent": true,
+  "apiKeyAbsentFromBundle": true,
+  "signingCertificateMatchesBuild6": true,
+  "zipIntegrity": "passed"
+}

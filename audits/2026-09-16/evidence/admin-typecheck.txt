@@ -1,0 +1,4 @@
+
+> @hq/admin@0.0.0 typecheck /Users/leslieisah/app-dev/hire-quick/apps/admin
+> tsc --noEmit
+

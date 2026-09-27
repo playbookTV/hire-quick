@@ -1,0 +1,46 @@
+Transfer dispatch lease correction — 2026-09-16
+Working directory: /Users/leslieisah/app-dev/hire-quick
+Each listed output file was captured by redirecting stdout and stderr.
+
+pnpm --filter @hq/api typecheck
+Exit 0; output: dispatch-api-typecheck.txt
+
+pnpm --filter @hq/api typecheck:tests
+First exit 2; output: dispatch-api-test-typecheck.txt
+The installed Vitest assertion types do not support toHaveBeenCalledExactlyOnceWith.
+Replaced with equivalent separate count and argument assertions.
+Rerun exit 0; output: dispatch-api-test-typecheck-final.txt
+
+pnpm exec eslint apps/api/src/modules/payments/service.ts apps/api/src/modules/payments/transfer-dispatch.ts apps/api/src/modules/payments/webhooks/paystack-webhook.ts
+Exit 1; output: dispatch-production-lint.txt
+Parser configuration error: ambiguous tsconfigRootDir after concurrent root
+configuration edits. No lint findings were evaluated by this invocation.
+
+pnpm --filter @hq/api exec eslint src/modules/payments/service.ts src/modules/payments/transfer-dispatch.ts src/modules/payments/webhooks/paystack-webhook.ts
+Exit 1; output: dispatch-production-lint-final.txt
+Same parser configuration error. Root orchestrator notified to coordinate the
+configuration owner; production lint is not claimed as passed in this record.
+
+Subsequent production lint after the root fixed global tsconfigRootDir:
+pnpm exec eslint apps/api/src/modules/payments/service.ts apps/api/src/modules/payments/transfer-dispatch.ts apps/api/src/modules/payments/webhooks/paystack-webhook.ts scripts/check-docs.mjs
+First exit 1; output: dispatch-production-lint-verified.txt
+Found an unnecessary narrowed payload cast and unused destructured lease.
+Removed the cast and used a copy/delete to remove lease metadata, preserving
+owner checks and payload contents.
+Final rerun exit 0; output: dispatch-production-lint-pass.txt (empty)
+API production typecheck repeated after these two fixes:
+pnpm --filter @hq/api typecheck
+Exit 0; output: dispatch-api-typecheck-final.txt
+
+git diff --check -- apps/api/src/modules/payments/service.ts apps/api/src/modules/payments/transfer-dispatch.ts apps/api/src/modules/payments/webhooks/paystack-webhook.ts apps/api/src/modules/payments/__tests__/transfer-dispatch.test.ts apps/api/src/modules/payments/__tests__/withdrawal-outcomes.test.ts apps/api/src/modules/payments/__tests__/commission-limits.unit.test.ts
+Exit 0; output empty (retained tool result chunk e2ccd1).
+
+pnpm exec eslint --config eslint.tests.config.mjs apps/api/src/modules/payments/__tests__/transfer-dispatch.test.ts apps/api/src/modules/payments/__tests__/withdrawal-outcomes.test.ts apps/api/src/modules/payments/__tests__/commission-limits.unit.test.ts apps/api/src/modules/payments/__tests__/withdrawal-reversal.test.ts
+Exit 0; output: dispatch-test-lint.txt (empty)
+
+DATABASE_URL='postgresql://unused:unused@127.0.0.1:1/unused' DIRECT_URL='postgresql://unused:unused@127.0.0.1:1/unused' PAYSTACK_SECRET_KEY='' PAYSTACK_PUBLIC_KEY='' BREVO_API_KEY='' pnpm --filter @hq/api exec vitest run src/modules/payments/__tests__/transfer-failure-precedence.unit.test.ts src/modules/payments/__tests__/commission-limits.unit.test.ts
+Exit 0; output: dispatch-pure.txt
+5 tests passed across 2 files.
+
+Database tests are delegated to the root's serial disposable-schema runner.
+No database tests or provider operations were executed by this agent.

@@ -1,0 +1,34 @@
+[
+  {
+    "service": "Redis",
+    "deployment": "c819707d-de20-42cb-9855-9970da27208d",
+    "status": "SUCCESS",
+    "createdAt": "2026-09-05T10:24:36.004Z",
+    "domains": []
+  },
+  {
+    "service": "hirequick-worker",
+    "deployment": "9e641bbb-e0d4-49af-8609-677ee497979c",
+    "status": "SUCCESS",
+    "createdAt": "2026-09-26T06:58:49.241Z",
+    "domains": []
+  },
+  {
+    "service": "prolific-love",
+    "deployment": "6693f714-0a33-481a-9ad2-ae36f585cf60",
+    "status": "SUCCESS",
+    "createdAt": "2026-09-26T07:41:08.462Z",
+    "domains": [
+      "prolific-love-production-2775.up.railway.app"
+    ]
+  },
+  {
+    "service": "hirequick-admin",
+    "deployment": "da277167-e4da-4c01-b9c7-6af147dca0a7",
+    "status": "SUCCESS",
+    "createdAt": "2026-09-26T06:58:40.794Z",
+    "domains": [
+      "hirequick-admin-production.up.railway.app"
+    ]
+  }
+]

@@ -1,0 +1,25 @@
+{
+  "checkedAt": "2026-09-27T22:08:41.083Z",
+  "publicSnapshotUnchanged": true,
+  "publicExpectedKobo": 2000000,
+  "certificationExpectedKobo": 15000,
+  "certificationPendingOperations": 0,
+  "certificationEntries": [
+    {
+      "entryType": "REFUND",
+      "amount": "-100000"
+    },
+    {
+      "entryType": "RELEASE",
+      "amount": "-85000"
+    },
+    {
+      "entryType": "HOLD",
+      "amount": "200000"
+    },
+    {
+      "entryType": "FEE",
+      "amount": "-15000"
+    }
+  ]
+}

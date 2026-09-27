@@ -1,0 +1,38 @@
+{
+  "checkedAt": "2026-09-22T19:52:30.408Z",
+  "results": [
+    {
+      "path": "/health",
+      "method": "GET",
+      "status": 200,
+      "body": {
+        "status": "ok"
+      }
+    },
+    {
+      "path": "/api/me/uploads/finalize",
+      "method": "POST",
+      "status": 401,
+      "errorCode": "UNAUTHENTICATED"
+    },
+    {
+      "path": "/api/me/photos/upload-url",
+      "method": "POST",
+      "status": 401,
+      "errorCode": "UNAUTHENTICATED"
+    },
+    {
+      "path": "/api/bookings/00000000-0000-4000-8000-000000000000/messages/page",
+      "method": "GET",
+      "status": 401,
+      "errorCode": "UNAUTHENTICATED"
+    },
+    {
+      "corsStatus": 204,
+      "origin": "https://hirequick-admin-production.up.railway.app"
+    },
+    {
+      "adminStatus": 200
+    }
+  ]
+}

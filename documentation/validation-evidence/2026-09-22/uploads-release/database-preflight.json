@@ -1,0 +1,23 @@
+{
+  "checkedAt": "2026-09-22T19:25:35.297Z",
+  "appliedMigrations": [
+    "20260627121512_drop_audit_actor_fk",
+    "0_init",
+    "20260625145005_add_usher_discovery_client_business_notifications",
+    "20260628120000_compliance_remediation_consent_denylist_bvn",
+    "20260701000000_client_feedback_round1",
+    "20260914190000_checkout_recovery",
+    "20260914193000_checkout_notifications",
+    "20260921183840_payment_recovery_schedule",
+    "20260922160357_upload_intents_and_storage_deletions"
+  ],
+  "newMigration": "20260922160357_upload_intents_and_storage_deletions",
+  "alreadyApplied": true,
+  "target": {
+    "schema": "public",
+    "uploads": true,
+    "deletions": true
+  },
+  "checksumValidation": "passed",
+  "additiveOnly": true
+}

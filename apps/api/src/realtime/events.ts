@@ -18,6 +18,10 @@ export const RT = {
   ORDER_PAID: 'order.paid',
   // Invitations (→ the invited usher).
   INVITATION_RECEIVED: 'invitation.received',
+  // Applications (→ the client who owns the event).
+  APPLICATION_RECEIVED: 'application.received',
+  // KYC verification result (→ the usher being verified).
+  VERIFICATION_UPDATED: 'verification.updated',
   // Withdrawals (→ the usher who owns the wallet).
   WITHDRAWAL_REQUESTED: 'withdrawal.requested',
   WITHDRAWAL_COMPLETED: 'withdrawal.completed',

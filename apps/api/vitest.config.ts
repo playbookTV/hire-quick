@@ -8,6 +8,9 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],
+    // All suites can import destructive DB fixtures. Refuse a configured
+    // application database before any test file is loaded.
+    globalSetup: ['./src/modules/auth/__tests__/database-setup.ts'],
     // 120s ceiling: CI's local Postgres finishes long multi-step flows (e.g. the
     // full booking lifecycle) well under this, but the same flows over Neon's
     // network latency in local runs can exceed 60s.

@@ -9,8 +9,10 @@ import { ApiError } from '../../app.js';
 import { requireAuth, type AuthedRequest } from '../auth/middleware.js';
 import { requireIdempotencyKey } from '../payments/http/middleware.js';
 import { writeAudit } from '../audit.js';
+import { STORAGE_TX } from '../storage/uploads.js';
 import type { StoragePort } from '../storage/storage.js';
 import { buildExport, eraseUser } from './service.js';
+import { setConsent } from './consent.js';
 
 type Handler = (req: AuthedRequest, res: Response) => Promise<void>;
 const wrap =
@@ -24,7 +26,7 @@ const consentSchema = z.object({
   granted: z.boolean(),
 });
 
-export function privacyRouter(storage?: StoragePort): Router {
+export function privacyRouter(_storage?: StoragePort): Router {
   const r = Router();
   r.use(requireAuth);
 
@@ -52,20 +54,13 @@ export function privacyRouter(storage?: StoragePort): Router {
         res.json({ status: 'ALREADY_ERASED', anonymizedAt: user.anonymizedAt });
         return;
       }
-      const { storageKeys } = await prisma.$transaction((tx) => eraseUser(tx, userId));
-      // Delete the underlying KYC/photo objects AFTER the references are scrubbed.
-      // Best-effort and outside the DB tx: a failed object delete leaves an
-      // orphan (no longer referenced) for a storage cleanup job, never a dangling
-      // reference. Skipped when storage isn't configured (dev/legacy URLs).
-      if (storage && storageKeys.length) {
-        await Promise.all(
-          storageKeys.map((k) =>
-            storage.deleteObject(k).catch((e: unknown) => console.error('[erase] storage delete failed', k, e)),
-          ),
-        );
-      }
+      const { storageKeys } = await prisma.$transaction((tx) => eraseUser(tx, userId), STORAGE_TX);
+      // Object I/O runs in the worker; erasure must not wait through provider retries.
+      const pending = await prisma.storageDeletion.count({
+        where: { key: { in: storageKeys }, completedAt: null },
+      });
       await writeAudit({ actorId: userId, action: 'dsar.erase', target: userId });
-      res.json({ status: 'ERASED', objectsDeleted: storage ? storageKeys.length : 0 });
+      res.json({ status: 'ERASED', objectsDeleted: 0, objectsPending: pending });
     }),
   );
 
@@ -88,21 +83,7 @@ export function privacyRouter(storage?: StoragePort): Router {
     wrap(async (req, res) => {
       const { purpose, granted } = consentSchema.parse(req.body);
       const userId = req.auth.userId;
-      const consent = await prisma.consentRecord.upsert({
-        where: { userId_purpose: { userId, purpose } },
-        update: {
-          granted,
-          source: 'EXPLICIT',
-          withdrawnAt: granted ? null : new Date(),
-          ...(granted ? { grantedAt: new Date() } : {}),
-        },
-        create: { userId, purpose, granted, source: 'EXPLICIT' },
-      });
-      if (purpose === 'PUSH_NOTIFICATIONS' && !granted) {
-        await prisma.deviceToken.deleteMany({ where: { userId } });
-      }
-      await writeAudit({ actorId: userId, action: granted ? 'consent.grant' : 'consent.withdraw', target: purpose });
-      res.json({ purpose: consent.purpose, granted: consent.granted });
+      res.json(await setConsent(userId, purpose, granted));
     }),
   );
 

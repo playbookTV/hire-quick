@@ -85,3 +85,9 @@ describe('createEventSchema — money bounds (A5)', () => {
     ).toBe(true);
   });
 });
+
+
+it('rejects totals that overflow only after the client-paid fee is added', () => {
+  expect(createEventSchema.safeParse({ ...base, endTime: '21:00', headcount: 1, budgetPerHeadKobo: 2_000_000_000 }).success).toBe(false);
+  expect(createEventSchema.safeParse({ ...base, endTime: '21:00', budgetPerHeadKobo: -1 }).success).toBe(false);
+});

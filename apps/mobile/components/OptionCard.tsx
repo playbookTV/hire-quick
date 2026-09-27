@@ -84,11 +84,11 @@ export function OptionCard({
             alignItems: 'center',
             justifyContent: 'center',
             borderWidth: selected ? 0 : 1.5,
-            borderColor: theme.colors.borderStrong,
-            backgroundColor: selected ? theme.colors.brandEmerald : theme.colors.bgSurface,
+            borderColor: theme.colors.borderControl,
+            backgroundColor: selected ? theme.colors.selectionFill : theme.colors.bgSurface,
           }}
         >
-          {selected ? <Icon name="check" size={13} color="inverseInk" /> : null}
+          {selected ? <Icon name="check" size={13} color="inkOnSelection" /> : null}
         </Box>
       </Box>
     </Pressable>

@@ -1,0 +1,22 @@
+{
+  "checkedAt": "2026-09-23T19:17:49.572Z",
+  "deployment": "43ceff8b-f5b3-4c7e-b321-f17459d47e0b",
+  "service": "prolific-love",
+  "mode": "staging",
+  "paystackTest": true,
+  "kycMode": "smile",
+  "smileEnvironment": "sandbox",
+  "database": true,
+  "redis": "PONG",
+  "hashes": {
+    "apps/api/src/modules/verification/port/smile-kyc.ts": "5c16810d2146bf6093fce1e7cc0e314e1ab48a5ba89aedac57c49ad1d8a36216",
+    "apps/api/src/modules/verification/service.ts": "bd3ec22cc35ca6f65f2b3dbc3d27e13096c9d04c060f93bc9fd4e4ceabedea4a",
+    "apps/api/src/modules/verification/routes.ts": "a9d72ce5c11463396a9e118b406929428c14812f8cd19a576dd37f6a3e10601e",
+    "apps/api/src/env.ts": "d7c8808c698d95d0568601639d2ffc52987242fb01405f8907fc4df5ba3a7874",
+    "apps/api/src/server.ts": "709410364b9f44675011c4d715e123b8631f6f0058d095ad382ab9ae99d0a142",
+    "packages/database/prisma/schema.prisma": "703616b2ac5e638062aaf340a1f5455706e09127523414e72cfd99ba76e1f77c"
+  },
+  "smileTokenStatus": 200,
+  "smileTokenIssued": true,
+  "sandboxIdentityAndCallbackBound": true
+}

@@ -31,7 +31,7 @@ export function sumKobo(xs: readonly Kobo[]): Kobo {
 }
 
 /**
- * Split a gross amount into the platform fee and the usher payout using basis
+ * Legacy pricing: split a gross amount into the fee and usher payout using basis
  * points. The fee is floored and the payout is the exact remainder, so
  * `fee + payout === gross` always holds (no rounding leak). 15% = 1500 bps.
  */
@@ -42,6 +42,22 @@ export function splitFee(gross: Kobo, feeBps: number): { fee: Kobo; payout: Kobo
   const fee = kobo(Math.floor((gross * feeBps) / 10_000));
   const payout = subKobo(gross, fee);
   return { fee, payout };
+}
+
+/** Price new bookings: the client funds the full staff pay plus the platform fee. */
+export function priceBooking(staffPay: Kobo): { gross: Kobo; fee: Kobo; payout: Kobo } {
+  if (staffPay < 0) throw new MoneyError('staff pay must be non-negative');
+  kobo(staffPay);
+  const fee = kobo(Number((BigInt(staffPay) * BigInt(PLATFORM_FEE_BPS)) / 10_000n));
+  return { gross: addKobo(staffPay, fee), fee, payout: staffPay };
+}
+
+/** Null snapshots identify legacy orders; never reprice an existing checkout. */
+export function bookingAllocation(gross: number, staffPay?: number | null): { fee: Kobo; payout: Kobo } {
+  if (staffPay == null) return splitFee(kobo(gross), PLATFORM_FEE_BPS);
+  const quoted = priceBooking(kobo(staffPay));
+  if (quoted.gross !== gross) throw new MoneyError('booking gross does not match agreed staff pay');
+  return { fee: quoted.fee, payout: quoted.payout };
 }
 
 /**

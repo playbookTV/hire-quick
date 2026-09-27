@@ -1,0 +1,97 @@
+{
+  "project": "Users-leslieisah-app-dev-hire-quick",
+  "signal": "best_effort",
+  "indexed_at": "2026-09-26T09:32:55Z",
+  "metadata": {
+    "generation": "2026-09-26T09:32:55Z",
+    "index_mode": "full",
+    "recorded_at": "2026-09-26T09:32:56Z",
+    "recording_status": "complete",
+    "ignored_files_stored": 68,
+    "ignored_files_total": 68,
+    "hash_records_complete": true,
+    "coverage_version": 3,
+    "generation_matches": true
+  },
+  "paths": [
+    {
+      "requested_path": "apps/api/src/env.ts",
+      "path": "apps/api/src/env.ts",
+      "status": "no_recorded_issue",
+      "freshness": "metadata_match",
+      "recommended_action": "use_graph_with_best_effort_caveat",
+      "coverage": []
+    },
+    {
+      "requested_path": "apps/api/vitest.config.ts",
+      "path": "apps/api/vitest.config.ts",
+      "status": "no_recorded_issue",
+      "freshness": "metadata_match",
+      "recommended_action": "use_graph_with_best_effort_caveat",
+      "coverage": []
+    },
+    {
+      "requested_path": "apps/api/src/modules/auth/admin-email-otp.ts",
+      "path": "apps/api/src/modules/auth/admin-email-otp.ts",
+      "status": "no_recorded_issue",
+      "freshness": "metadata_match",
+      "recommended_action": "use_graph_with_best_effort_caveat",
+      "coverage": []
+    },
+    {
+      "requested_path": "apps/api/src/modules/auth/__tests__/tokens.unit.test.ts",
+      "path": "apps/api/src/modules/auth/__tests__/tokens.unit.test.ts",
+      "status": "no_recorded_issue",
+      "freshness": "metadata_match",
+      "recommended_action": "use_graph_with_best_effort_caveat",
+      "coverage": []
+    },
+    {
+      "requested_path": "apps/api/src/realtime/__tests__/security.unit.test.ts",
+      "path": "apps/api/src/realtime/__tests__/security.unit.test.ts",
+      "status": "no_recorded_issue",
+      "freshness": "metadata_match",
+      "recommended_action": "use_graph_with_best_effort_caveat",
+      "coverage": []
+    },
+    {
+      "requested_path": "documentation/04-HireQuick-TRD.md",
+      "path": "documentation/04-HireQuick-TRD.md",
+      "status": "no_recorded_issue",
+      "freshness": "metadata_match",
+      "recommended_action": "use_graph_with_best_effort_caveat",
+      "coverage": []
+    }
+  ],
+  "scopes": [
+    {
+      "requested_scope": "apps/api/src/modules/auth",
+      "scope": "apps/api/src/modules/auth",
+      "total": 1,
+      "has_more": false,
+      "entries": [
+        {
+          "path": "apps/api/src/modules/auth/__tests__/assert-disposable-db.ts",
+          "kind": "parse_partial",
+          "detail": "17-17",
+          "ranges": [
+            {
+              "start": 17,
+              "end": 17
+            }
+          ]
+        }
+      ],
+      "status": "known_gaps"
+    },
+    {
+      "requested_scope": "apps/api/src/modules/admin/routes.ts",
+      "scope": "apps/api/src/modules/admin/routes.ts",
+      "total": 0,
+      "has_more": false,
+      "entries": [],
+      "status": "no_recorded_issue"
+    }
+  ],
+  "caveat": "Best-effort signal only. No recorded issue does not prove graph or source completeness; read flagged source and qualify claims when metadata is changed or unavailable."
+}

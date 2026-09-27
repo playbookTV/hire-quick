@@ -1,74 +1,91 @@
-/**
- * Welcome — matches Figma `Client / 01 Welcome` (18:100): a full-height emerald
- * gradient hero card (gold overline, Fraunces heading, body, feature chips) with
- * a primary "Get started" + ghost "I already have an account" below.
- */
+/** Figma A01: original event photography, official mark and full-bleed welcome. */
 import { Redirect, useRouter } from 'expo-router';
+import { ScrollView, Pressable, useWindowDimensions } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Box, Text } from '../../theme/restyle.js';
 import { Button } from '../../components/Button.js';
 import { DevLogin } from '../../components/DevLogin.js';
 import { Loading } from '../../components/Loading.js';
 import { useAuth } from '../../lib/auth-context.js';
-import { shadowMd } from '../../theme/shadows.js';
-import { primitives } from '../../theme/primitives.js';
-
-const CHIPS = ['Verified IDs', 'Escrow held', 'Check-in payout'];
+import { primitiveTokens, screenTokens } from '../../theme/token-manager.js';
+import photo from '../../assets/welcome/event.jpg';
+import brandBackground from '../../assets/welcome/brand-background.svg';
+import brandMark from '../../assets/welcome/brand-mark.svg';
 
 export default function Welcome(): React.JSX.Element {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
   const { status } = useAuth();
-
   if (status === 'loading') return <Loading />;
   if (status === 'authed') return <Redirect href="/" />;
-
   return (
-    <Box flex={1} backgroundColor="bgCanvas" style={{ paddingTop: insets.top }}>
-      <Box flex={1} style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: insets.bottom + 16, gap: 24 }}>
-        <LinearGradient
-          colors={['#0B6B53', '#0B6B53', '#15D1A2']}
-          locations={[0, 0.62, 1]}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          style={[{ flex: 1, borderRadius: 28, padding: 24, justifyContent: 'flex-end', gap: 16 }, shadowMd]}
-        >
-          <Text
-            style={{
-              fontFamily: 'PlusJakartaSans_700Bold',
-              fontSize: 11,
-              lineHeight: 14,
-              letterSpacing: 1.2,
-              color: primitives.gold[200],
-            }}
-          >
-            TRUSTED EVENT STAFFING
-          </Text>
-          <Text style={{ fontFamily: 'Fraunces_600SemiBold', fontSize: 26, lineHeight: 32, letterSpacing: -0.5, color: '#FBF7F0' }}>
-            Hire vetted ushers. Money held safe.
-          </Text>
-          <Text style={{ fontFamily: 'PlusJakartaSans_400Regular', fontSize: 15, lineHeight: 22, color: primitives.emerald[100] }}>
-            Book staff, pay into escrow, and release funds only when they check in on the day.
-          </Text>
-          <Box flexDirection="row" flexWrap="wrap" style={{ gap: 8 }}>
-            {CHIPS.map((c) => (
-              <Box key={c} style={{ backgroundColor: primitives.emerald[700], paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 }}>
-                <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 13, lineHeight: 16, letterSpacing: 0.2, color: '#FBF7F0' }}>
-                  {c}
-                </Text>
-              </Box>
-            ))}
-          </Box>
-        </LinearGradient>
-
-        <Box style={{ gap: 12 }}>
-          <Button label="Get started" onPress={() => router.push('/(auth)/role')} />
-          <Button label="I already have an account" variant="ghost" onPress={() => router.push('/(auth)/phone')} />
+    <Box flex={1} style={{ backgroundColor: primitiveTokens['overlay/black'] }}>
+      <StatusBar style="light" />
+      <Image
+        source={photo}
+        contentFit="cover"
+        contentPosition={{ left: '20%', top: '0%' }}
+        style={{ position: 'absolute', width: '100%', height: height * 0.62 }}
+        accessible={false}
+      />
+      <LinearGradient
+        colors={['transparent', primitiveTokens['overlay/black']]}
+        locations={[0.26, 0.54]}
+        style={{ position: 'absolute', width: '100%', height }}
+      />
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingTop: insets.top + 16,
+          paddingBottom: insets.bottom + 16,
+          paddingHorizontal: screenTokens.gutter,
+        }}
+      >
+        <Box width={79} height={79} accessibilityLabel="HireQuick" accessible>
+          <Image source={brandBackground} style={{ position: 'absolute', width: 79, height: 79 }} />
+          <Image
+            source={brandMark}
+            style={{ position: 'absolute', left: 15.28, top: 19.92, width: 48.44, height: 40.61 }}
+          />
         </Box>
-
-        <DevLogin />
-      </Box>
+        <Box flex={1} minHeight={180} />
+        <Box gap="300" marginBottom="800">
+          <Text variant="displayXL" color="inkOnElevated" accessibilityRole="header">
+            Event staff,{'\n'}booked properly.
+          </Text>
+          <Text variant="bodyLg" color="inkOnElevatedMuted">
+            Hire verified ushers for events across Lagos. Payment is held securely until work is
+            completed and the dispute window closes.
+          </Text>
+        </Box>
+        <Box gap="200">
+          <Button label="Get started" onPress={() => router.push('/(auth)/role')} />
+          <Pressable
+            onPress={() => router.push('/(auth)/phone')}
+            accessibilityRole="button"
+            style={{ minHeight: 52, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Text variant="labelLg" color="inkOnElevated">
+              I already have an account
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push('/privacy-policy')}
+            accessibilityRole="link"
+            style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Text variant="bodySm" color="inkOnElevatedMuted" textAlign="center">
+              Read our Privacy policy
+            </Text>
+          </Pressable>
+          <DevLogin />
+        </Box>
+      </ScrollView>
     </Box>
   );
 }

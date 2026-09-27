@@ -24,7 +24,12 @@ interface CheckinRowProps {
   onConfirm?: () => void;
 }
 
-export function CheckinRow({ name, state, statusText, onConfirm }: CheckinRowProps): React.JSX.Element {
+export function CheckinRow({
+  name,
+  state,
+  statusText,
+  onConfirm,
+}: CheckinRowProps): React.JSX.Element {
   const theme = useTheme();
   return (
     <Box
@@ -39,7 +44,12 @@ export function CheckinRow({ name, state, statusText, onConfirm }: CheckinRowPro
     >
       <Avatar name={name} size={40} />
       <Box flex={1}>
-        <Text variant="label" style={{ fontSize: 15, lineHeight: 20 }} color="inkStrong" numberOfLines={1}>
+        <Text
+          variant="label"
+          style={{ fontSize: 15, lineHeight: 20 }}
+          color="inkStrong"
+          numberOfLines={1}
+        >
           {name}
         </Text>
         <Text variant="bodySm" color={STATUS_COLOR[state]} numberOfLines={1}>
@@ -55,13 +65,19 @@ export function CheckinRow({ name, state, statusText, onConfirm }: CheckinRowPro
             borderRadius: 13,
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: theme.colors.statusSuccess,
+            backgroundColor: theme.colors.statusSuccessTint,
           }}
         >
-          <Icon name="check" size={15} color="inverseInk" />
+          <Icon name="check" size={15} color="statusSuccess" />
         </Box>
       ) : state === 'SelfCheckedIn' ? (
-        <Button label="Confirm" variant="secondary" size="md" fullWidth={false} onPress={onConfirm} />
+        <Button
+          label="Confirm"
+          variant="secondary"
+          size="md"
+          fullWidth={false}
+          onPress={onConfirm}
+        />
       ) : (
         <Box
           style={{

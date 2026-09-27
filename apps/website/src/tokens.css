@@ -1,0 +1,16 @@
+:root {
+  --font-display: 'Archivo', sans-serif;
+  --font-body: 'Manrope', sans-serif;
+  --night: oklch(21% 0.004 260);
+  --night-soft: oklch(26% 0.004 260);
+  --white: oklch(98.5% 0.002 90);
+  --paper: oklch(95% 0.006 90);
+  --ink: oklch(21% 0.004 260);
+  --muted: oklch(45% 0.006 260);
+  --muted-light: oklch(77% 0.003 260);
+  --yellow: oklch(90.5% 0.177 98);
+  --yellow-hover: oklch(94% 0.13 98);
+  --line: oklch(82% 0.004 260);
+  --line-dark: oklch(39% 0.004 260);
+  --focus: oklch(62% 0.18 255);
+}

@@ -13,7 +13,13 @@ import {
   LedgerError,
 } from '../ledger/ledger.js';
 import { runIdempotent } from '../ledger/idempotency.js';
-import { createScenario, teardown, bookingLedgerSum, type Scenario } from './fixtures.js';
+import {
+  createScenario,
+  teardown,
+  bookingLedgerSum,
+  type Scenario,
+  FIXTURE_DISPUTE_TIME,
+} from './fixtures.js';
 
 let scenario: Scenario | null = null;
 afterEach(async () => {
@@ -26,7 +32,13 @@ async function markCheckedIn(bookingId: string): Promise<void> {
 }
 async function makeBankAccount(usherId: string): Promise<string> {
   const ba = await prisma.bankAccount.create({
-    data: { usherId, bankCode: '058', accountNumber: '0000000000', accountName: 'Test', verified: true },
+    data: {
+      usherId,
+      bankCode: '058',
+      accountNumber: '0000000000',
+      accountName: 'Test',
+      verified: true,
+    },
   });
   return ba.id;
 }
@@ -46,7 +58,9 @@ describe('ledger core (TRD §25)', () => {
     expect(order.status).toBe('PAID');
     const bookings = await prisma.booking.findMany({ where: { orderId: scenario.orderId } });
     expect(bookings.every((b) => b.status === 'CONFIRMED')).toBe(true);
-    const payments = await prisma.payment.findMany({ where: { bookingId: { in: scenario.bookingIds } } });
+    const payments = await prisma.payment.findMany({
+      where: { bookingId: { in: scenario.bookingIds } },
+    });
     expect(payments.every((p) => p.escrowStatus === 'HELD')).toBe(true);
 
     // 15% fee split with no rounding leak
@@ -106,11 +120,11 @@ describe('ledger core (TRD §25)', () => {
     scenario = await createScenario({ headcount: 1, amountKobo: 2_000_000 });
     await prisma.$transaction((tx) => holdOrder(tx, scenario!.orderId, 'chg_test_4'));
     const id = scenario.bookingIds[0]!;
-    await prisma.$transaction((tx) => freezeBooking(tx, id));
+    await prisma.$transaction((tx) => freezeBooking(tx, id, FIXTURE_DISPUTE_TIME));
 
-    await expect(
-      prisma.$transaction((tx) => releaseBooking(tx, id, 'OTP')),
-    ).rejects.toThrow(LedgerError);
+    await expect(prisma.$transaction((tx) => releaseBooking(tx, id, 'OTP'))).rejects.toThrow(
+      LedgerError,
+    );
   });
 
   it('withdrawal: debit then complete; failure reverses; no negative balance', async () => {

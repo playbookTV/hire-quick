@@ -1,0 +1,105 @@
+{
+  "checkedAt": "2026-09-22T19:51:19.491Z",
+  "deployment": "a19f894e-9206-4819-b9fe-c73320be4106",
+  "service": "hirequick-worker",
+  "mode": "staging",
+  "paystackTest": true,
+  "database": true,
+  "redis": "PONG",
+  "migrations": [
+    "20260627121512_drop_audit_actor_fk",
+    "0_init",
+    "20260625145005_add_usher_discovery_client_business_notifications",
+    "20260628120000_compliance_remediation_consent_denylist_bvn",
+    "20260701000000_client_feedback_round1",
+    "20260914190000_checkout_recovery",
+    "20260914193000_checkout_notifications",
+    "20260921183840_payment_recovery_schedule",
+    "20260922160357_upload_intents_and_storage_deletions"
+  ],
+  "tables": {
+    "uploads": true,
+    "deletions": true
+  },
+  "hashes": {
+    "apps/api/src/modules/storage/storage.ts": "f8afe24284edc0f35ff3d2b4730ead7b933f2cd054e88eee18b459f46de576be",
+    "apps/api/src/modules/storage/uploads.ts": "3e2006967271d6e12cf116bee045cfab39926d29c09c8deff1f2afe3c7a062aa",
+    "apps/api/src/modules/storage/chat-media-routes.ts": "e9b39a3391458433a765fc91595e475e9e9e8e3fd06a4f496555b291833607f3",
+    "apps/api/src/modules/jobs/runtime.ts": "7e79a8d03c4068572352fe4821558db22a1fd6a46730354ecd99155cf6241474",
+    "apps/api/src/modules/jobs/queues.ts": "93839023851c21dabb408d2376b873be28f57661d1fb5ae1bf21891814fdfeda",
+    "apps/api/src/realtime/messages.ts": "b4d1fca1055f7be4d4bac2125d6b2fef692226f6f4cb288025addad12b728dfe",
+    "packages/database/prisma/schema.prisma": "f27b742adb9c756d52f2b62dbf7289a1b13912514a9198405095ad1d3e7f4902",
+    "package.json": "adcd87bb0f62f51d51edf596eff9fb92760009e2f8eaa8a4df9b50676ae302c9"
+  },
+  "storageCleanupSchedules": [
+    {
+      "name": "storageCleanup",
+      "pattern": "4-59/5 * * * *",
+      "tz": "UTC",
+      "next": 1790106840000
+    }
+  ],
+  "storageCleanupWorkers": 1,
+  "legacyFailures": [
+    {
+      "name": "transferRetry",
+      "attempts": 1,
+      "failedAt": 1790105400051,
+      "unknownJob": true
+    },
+    {
+      "name": "transferRetry",
+      "attempts": 1,
+      "failedAt": 1790103600074,
+      "unknownJob": true
+    },
+    {
+      "name": "transferRetry",
+      "attempts": 1,
+      "failedAt": 1790101800020,
+      "unknownJob": true
+    },
+    {
+      "name": "transferRetry",
+      "attempts": 1,
+      "failedAt": 1790100000018,
+      "unknownJob": true
+    },
+    {
+      "name": "transferRetry",
+      "attempts": 1,
+      "failedAt": 1790098200077,
+      "unknownJob": true
+    },
+    {
+      "name": "transferRetry",
+      "attempts": 1,
+      "failedAt": 1790096400031,
+      "unknownJob": true
+    },
+    {
+      "name": "transferRetry",
+      "attempts": 1,
+      "failedAt": 1790094600069,
+      "unknownJob": true
+    },
+    {
+      "name": "transferRetry",
+      "attempts": 1,
+      "failedAt": 1790092800085,
+      "unknownJob": true
+    },
+    {
+      "name": "transferRetry",
+      "attempts": 1,
+      "failedAt": 1790091000038,
+      "unknownJob": true
+    },
+    {
+      "name": "transferRetry",
+      "attempts": 1,
+      "failedAt": 1790089200098,
+      "unknownJob": true
+    }
+  ]
+}

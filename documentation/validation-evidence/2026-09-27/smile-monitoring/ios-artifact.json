@@ -1,0 +1,23 @@
+{
+  "platform": "ios",
+  "buildId": "7eb98766-c1dc-4034-b689-2c03aa1643b7",
+  "version": "0.0.1",
+  "buildNumber": "7",
+  "artifactUrl": "https://expo.dev/artifacts/eas/1hFwBD92WiUUWyIvbQxI431re9GvfbUOkI0WuLA9580.ipa",
+  "localArtifact": "/private/tmp/hq-smile-release-artifacts/ios.ipa",
+  "sizeBytes": 22855239,
+  "sha256": "7d425ecefd06a8ca98638d3c505500ab648dc7ad76219e3cf20a30010d8ce99b",
+  "zipIntegrity": "passed",
+  "bundleIdentifier": "com.ovalay.hirequick",
+  "embeddedBuildNumber": "7",
+  "embeddedVersion": "0.0.1",
+  "provisioningProfileSignature": "passed",
+  "registeredIphoneIncluded": true,
+  "distribution": "ad-hoc",
+  "nativeSentryPresent": true,
+  "stagingApiOriginPresent": true,
+  "mobileSentryProjectPresent": true,
+  "bundleSizeBytes": 9222308,
+  "smileCaptureReportingPresent": true,
+  "smileTokenRefreshReportingPresent": true
+}

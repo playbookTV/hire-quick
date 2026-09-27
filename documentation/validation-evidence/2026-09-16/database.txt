@@ -1,0 +1,295 @@
+Completed integrated run: 136 passed, 1 failed. Schema cleanup verified. See final report and corrective rerun.
+{"check":"direct_connection","schema":"public","version":"PostgreSQL 18.6 (2078fcb)","pooled":false,"logPath":"/private/tmp/hq_validation_20260916093518_197e7fc6.log"}
+Created disposable schema hq_validation_20260916093518_197e7fc6
+PASS raw SQL isolation on eight distinct concurrent direct connections
+START Prisma generation
+warn The configuration property `package.json#prisma` is deprecated and will be removed in Prisma 7. Please migrate to a Prisma config file (e.g., `prisma.config.ts`).
+For more information, see: https://pris.ly/prisma-config
+
+Prisma schema loaded from prisma/schema.prisma
+
+✔ Generated Prisma Client (v6.19.3) to ./../../node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client in 181ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Want to turn off tips and other hints? https://pris.ly/tip-4-nohints
+
+PASS Prisma generation
+START Tracked migrations
+warn The configuration property `package.json#prisma` is deprecated and will be removed in Prisma 7. Please migrate to a Prisma config file (e.g., `prisma.config.ts`).
+For more information, see: https://pris.ly/prisma-config
+
+Prisma schema loaded from prisma/schema.prisma
+Datasource "db": PostgreSQL database "neondb", schema "hq_validation_20260916093518_197e7fc6" at "[REDACTED]"
+
+7 migrations found in prisma/migrations
+
+Applying migration `0_init`
+Applying migration `20260625145005_add_usher_discovery_client_business_notifications`
+Applying migration `20260627121512_drop_audit_actor_fk`
+Applying migration `20260628120000_compliance_remediation_consent_denylist_bvn`
+Applying migration `20260701000000_client_feedback_round1`
+Applying migration `20260914190000_checkout_recovery`
+Applying migration `20260914193000_checkout_notifications`
+
+The following migration(s) have been applied:
+
+migrations/
+  └─ 0_init/
+    └─ migration.sql
+  └─ 20260625145005_add_usher_discovery_client_business_notifications/
+    └─ migration.sql
+  └─ 20260627121512_drop_audit_actor_fk/
+    └─ migration.sql
+  └─ 20260628120000_compliance_remediation_consent_denylist_bvn/
+    └─ migration.sql
+  └─ 20260701000000_client_feedback_round1/
+    └─ migration.sql
+  └─ 20260914190000_checkout_recovery/
+    └─ migration.sql
+  └─ 20260914193000_checkout_notifications/
+    └─ migration.sql
+      
+All migrations have been successfully applied.
+PASS Tracked migrations
+START Migration drift
+warn The configuration property `package.json#prisma` is deprecated and will be removed in Prisma 7. Please migrate to a Prisma config file (e.g., `prisma.config.ts`).
+For more information, see: https://pris.ly/prisma-config
+
+No difference detected.
+
+┌─────────────────────────────────────────────────────────┐
+│  Update available 6.19.3 -> 8.0.0-rc.15                 │
+│                                                         │
+│  This is a major update - please follow the guide at    │
+│  https://pris.ly/d/major-version-upgrade                │
+│                                                         │
+│  Run the following to update                            │
+│    npm i --save-dev prisma@latest                       │
+│    npm i @prisma/client@latest                          │
+└─────────────────────────────────────────────────────────┘
+PASS Migration drift
+START Final affected API tests
+
+ RUN  v2.1.9 /Users/leslieisah/app-dev/hire-quick/apps/api
+
+ ✓ src/modules/payments/__tests__/operation-recovery.test.ts (17 tests) 338485ms
+   ✓ durable operation checkpoints > keeps PROVIDER_OK after recording rolls back and records once across concurrent recovery 6516ms
+   ✓ refund reservation and recovery > allows only one financial outcome when refund races attendance and release 26079ms
+   ✓ refund reservation and recovery > rejects released escrow before any provider call 17998ms
+   ✓ refund reservation and recovery > rejects wrong amounts and illegal predecessors before any provider call 12654ms
+   ✓ refund reservation and recovery > blocks attendance/release during a pending refund and reconciles without another POST 21650ms
+   ✓ refund reservation and recovery > reconciles a lost refund response from read-only evidence 18372ms
+   ✓ refund reservation and recovery > settles a pending dispute refund and its resolution in the same transaction on recovery 22773ms
+   ✓ withdrawal and commission recovery > keeps funds debited on uncertainty and accepts a later success without a reversal 30164ms
+   ✓ withdrawal and commission recovery > rolls back the debit when its recovery intent cannot commit 16659ms
+   ✓ withdrawal and commission recovery > reconstructs a legacy orphan withdrawal using its stored amount and bank 19283ms
+   ✓ withdrawal and commission recovery > settles an old RECORDED intent whose withdrawal is still PROCESSING without sending again 15852ms
+   ✓ withdrawal and commission recovery > does not sweep a pending transfer again in a later period 24395ms
+   ✓ approval recovery > rolls dispute release back with resolution and repairs an old split commit without paying twice 37173ms
+   ✓ approval recovery > rolls back the checker decision when recovery intent creation fails 4041ms
+   ✓ approval recovery > recovers a legacy dispute refund whose ledger committed before dispute resolution 23631ms
+   ✓ approval recovery > persists the checker and intent before an uncertain refund, then marks EXECUTED only after settlement 36736ms
+   ✓ approval recovery > rejects direct execution of an approval without a checker 1775ms
+ ✓ src/modules/events/__tests__/recruitment-lifecycle.test.ts (15 tests) 286258ms
+   ✓ locked recruitment and staffing lifecycle > rejects apply to closed or started events without changing the prior application 12193ms
+   ✓ locked recruitment and staffing lifecycle > duplicate apply preserves acceptance and a normal rejected applicant can apply again 14814ms
+   ✓ locked recruitment and staffing lifecycle > rechecks client suspension, staff suspension, and verification before selection and checkout 13503ms
+   ✓ locked recruitment and staffing lifecycle > serializes different clients booking the same usher across overlapping events 18445ms
+   ✓ locked recruitment and staffing lifecycle > allows adjacent intervals but rejects unavailable dates before payment dispatch 27267ms
+   ✓ locked recruitment and staffing lifecycle > serializes availability insertion with checkout so only one incompatible intent succeeds 6850ms
+   ✓ locked recruitment and staffing lifecycle > accept/decline race leaves a successful decline withdrawn and impossible to reselect or reinvite 19493ms
+   ✓ locked recruitment and staffing lifecycle > decline versus confirm permits either booking or withdrawal, never both 12836ms
+   ✓ locked recruitment and staffing lifecycle > replays acceptance without resurrecting client rejection and repairs legacy decline application state 16835ms
+   ✓ locked recruitment and staffing lifecycle > rejects invitation acceptance after the event closes and checks invitation ownership 11258ms
+   ✓ locked recruitment and staffing lifecycle > reopens a future fully staffed event atomically with its terminal refund 24460ms
+   ✓ locked recruitment and staffing lifecycle > time sweep completes empty and early-paid events only after their end 29908ms
+   ✓ locked recruitment and staffing lifecycle > re-reads a check-in that wins the lifecycle lock before auto-completion 33622ms
+   ✓ locked recruitment and staffing lifecycle > a reserved refund skips payout without starving completion of an unrelated empty event 30627ms
+   ✓ locked recruitment and staffing lifecycle > repairs legacy future fully staffed events whose bookings already vacated their slots 13906ms
+ ✓ src/modules/payments/__tests__/checkout-recovery.test.ts (9 tests) 233082ms
+   ✓ durable checkout recovery and unpaid reservation expiry > persists reference before initialization and resumes saved URL without a second dispatch 25659ms
+   ✓ durable checkout recovery and unpaid reservation expiry > lost initialization response retains original order and uncertain reservation across retries and worker checks 18884ms
+   ✓ durable checkout recovery and unpaid reservation expiry > expires a proven abandoned reservation and a never-dispatched checkpoint without moving money 34808ms
+   ✓ durable checkout recovery and unpaid reservation expiry > does not expire ongoing, pending, unknown, reversed, or unavailable provider outcomes 23946ms
+   ✓ durable checkout recovery and unpaid reservation expiry > late success creates refundable liability and preserves replacement staffing, including callback replay 44080ms
+   ✓ durable checkout recovery and unpaid reservation expiry > success wins expiry and worker recovers an interrupted INITIALIZING checkout 18690ms
+   ✓ durable checkout recovery and unpaid reservation expiry > a committed charge wins against an expiry worker holding stale abandoned evidence 28579ms
+   ✓ durable checkout recovery and unpaid reservation expiry > backfills old pending orders without dispatch, retaining original reference and uncertainty 16826ms
+   ✓ durable checkout recovery and unpaid reservation expiry > an in-flight initialization cannot restore URL/email after erasure; financial recovery still works 21314ms
+{"level":50,"time":1789552244858,"service":"hirequick-api","env":"test","err":{"type":"ApiError","message":"chat storage not configured","stack":"Error: chat storage not configured\n    at /Users/leslieisah/app-dev/hire-quick/apps/api/src/modules/storage/chat-media-routes.ts:25:27","statusCode":503,"code":"STORAGE_UNAVAILABLE"},"reqId":"5a216775-f4e6-4cd7-b197-15fd1c94f9b6","code":"STORAGE_UNAVAILABLE","msg":"api error"}
+stdout | src/modules/storage/__tests__/chat-media.test.ts > authorized chat-media routes, messages and retention > retention deletes only correctly bound objects, skipping malicious legacy references
+[job] retention skipped 5 unauthorized chat media reference(s)
+
+stdout | src/modules/storage/__tests__/chat-media.test.ts > authorized chat-media routes, messages and retention > retention deletes only correctly bound objects, skipping malicious legacy references
+[job] retention purge: 0 otp, 0 device token(s), 0 kyc doc set(s), 6 message(s)
+
+stdout | src/modules/storage/__tests__/chat-media.test.ts > authorized chat-media routes, messages and retention > skips deletion when a legacy conversation client no longer matches its booking
+[job] retention skipped 1 unauthorized chat media reference(s)
+
+stdout | src/modules/storage/__tests__/chat-media.test.ts > authorized chat-media routes, messages and retention > skips deletion when a legacy conversation client no longer matches its booking
+[job] retention purge: 0 otp, 0 device token(s), 0 kyc doc set(s), 1 message(s)
+
+stdout | src/modules/storage/__tests__/chat-media.test.ts > authorized chat-media routes, messages and retention > skips deletion when a legacy conversation usher no longer matches its booking
+[job] retention skipped 1 unauthorized chat media reference(s)
+
+stdout | src/modules/storage/__tests__/chat-media.test.ts > authorized chat-media routes, messages and retention > skips deletion when a legacy conversation usher no longer matches its booking
+[job] retention purge: 0 otp, 0 device token(s), 0 kyc doc set(s), 1 message(s)
+
+ ✓ src/modules/storage/__tests__/chat-media.test.ts (10 tests) 77885ms
+   ✓ authorized chat-media routes, messages and retention > allows own IMAGE send and party-only signed download 7471ms
+   ✓ authorized chat-media routes, messages and retention > allows own VOICE send and party-only signed download 5792ms
+   ✓ authorized chat-media routes, messages and retention > rejects a known KYC key and keys from another sender/booking or media purpose via REST 8032ms
+   ✓ authorized chat-media routes, messages and retention > enforces media binding on socket submissions too 4732ms
+   ✓ authorized chat-media routes, messages and retention > requires authentication, current party membership and messageable status before signing 7249ms
+   ✓ authorized chat-media routes, messages and retention > rejects mismatched MIME/purpose and unavailable storage 4200ms
+   ✓ authorized chat-media routes, messages and retention > does not presign malicious legacy content or another conversation’s message 11422ms
+   ✓ authorized chat-media routes, messages and retention > retention deletes only correctly bound objects, skipping malicious legacy references 10741ms
+   ✓ authorized chat-media routes, messages and retention > skips deletion when a legacy conversation client no longer matches its booking 8652ms
+   ✓ authorized chat-media routes, messages and retention > skips deletion when a legacy conversation usher no longer matches its booking 9331ms
+ ✓ src/modules/auth/__tests__/otp-consumption.test.ts (15 tests) 127125ms
+   ✓ atomic login OTP consumption > allows one concurrent successful login and creates one user 7592ms
+   ✓ atomic login OTP consumption > caps concurrent incorrect guesses at five and rejects the correct code afterward 10405ms
+   ✓ atomic login OTP consumption > serializes concurrent issuance at the hourly limit and keeps only one active code 7223ms
+   ✓ atomic login OTP consumption > rolls back consumption and user activation when the login audit fails, then permits retry 7482ms
+   ✓ atomic login OTP consumption > rejects expired verifiers 3025ms
+   ✓ atomic login OTP consumption > rejects over-age verifiers 2842ms
+   ✓ atomic login OTP consumption > rejects legacy verifiers 3037ms
+   ✓ atomic login OTP consumption > rejects removed-key verifiers 3013ms
+   ✓ atomic login OTP consumption > rejects other-session verifiers 3022ms
+   ✓ atomic attendance code consumption > allows one concurrent check-in and consumes exactly once 13408ms
+   ✓ atomic attendance code consumption > persists at most five guesses under concurrency, then allows a newly generated code 27926ms
+   ✓ atomic attendance code consumption > rolls back consumption on a check-in DB failure and accepts retry 12724ms
+   ✓ atomic attendance code consumption > serializes generation so concurrent replacements leave only one active record 7806ms
+   ✓ atomic attendance code consumption > rejects expired and over-age records even if a legacy expiry is still in the future 9335ms
+   ✓ atomic attendance code consumption > rejects non-owner generation/verification without spending an attempt 8168ms
+ ✓ src/modules/events/__tests__/checkout-validation.test.ts (11 tests) 137308ms
+   ✓ event edits and complete checkout selection > validates one-field time edits, late accommodation and aggregate budget against the merged event 8143ms
+   ✓ event edits and complete checkout selection > preserves unmentioned preferences and clears only an explicitly empty field 7572ms
+   ✓ event edits and complete checkout selection > rejects the entire batch when any requested application is missing or no longer accepted 7099ms
+   ✓ event edits and complete checkout selection > deduplicates requested IDs before pricing and booking 15533ms
+   ✓ event edits and complete checkout selection > checks verification and account status before any checkout effect 8871ms
+   ✓ event edits and complete checkout selection > re-reads application eligibility after waiting for the confirmation lock 6000ms
+   ✓ event edits and complete checkout selection > serializes event edits with confirmation and always uses committed pricing 14151ms
+   ✓ event edits and complete checkout selection > rejects changed payloads while concurrent first use safely returns the same order 14478ms
+   ✓ event edits and complete checkout selection > isolates caller keys and never discloses a foreign legacy response 24602ms
+   ✓ event edits and complete checkout selection > refuses to guess an owner legacy fingerprint and creates no replacement checkout 14307ms
+   ✓ event edits and complete checkout selection > retains order and provider reference after an uncertain checkout response 16087ms
+ ✓ src/realtime/__tests__/live-authorization.test.ts (12 tests) 70547ms
+   ✓ live socket account, session and audience authorization (OVA-144) > rejects unbound legacy socket access without changing REST compatibility 3296ms
+   ✓ live socket account, session and audience authorization (OVA-144) > drops outgoing private messages after SUSPENDED and disconnects the existing socket 4423ms
+   ✓ live socket account, session and audience authorization (OVA-144) > drops outgoing private messages after ANONYMIZED and disconnects the existing socket 3960ms
+   ✓ live socket account, session and audience authorization (OVA-144) > rejects an incoming write from a socket connected before suspension 3424ms
+   ✓ live socket account, session and audience authorization (OVA-144) > logout blocks the matching existing connection but preserves an independent login 6019ms
+   ✓ live socket account, session and audience authorization (OVA-144) > rotation invalidates the prior socket binding and accepts the new pair 5458ms
+   ✓ live socket account, session and audience authorization (OVA-144) > disconnects an idle socket at token expiry 12725ms
+   ✓ live socket account, session and audience authorization (OVA-144) > removes a demoted admin from outgoing operational access 1965ms
+   ✓ live socket account, session and audience authorization (OVA-144) > rechecks booking audience/state after PENDING_PAYMENT changes 9315ms
+   ✓ live socket account, session and audience authorization (OVA-144) > rechecks booking audience/state after CANCELLED changes 8270ms
+   ✓ live socket account, session and audience authorization (OVA-144) > rechecks booking audience/state after foreign-usher changes 7323ms
+   ✓ live socket account, session and audience authorization (OVA-144) > applies the same malformed and oversized message bounds before REST/socket writes 4197ms
+ ❯ src/modules/payments/__tests__/terminal-operations.test.ts (9 tests | 1 failed) 137034ms
+   ✓ terminal payment callbacks > records success atomically with a pending withdrawal and recovery never reissues it 29426ms
+   × terminal payment callbacks > reverses a recorded withdrawal once and ignores later success 23748ms
+     → 
+Invalid `prisma.paymentOperation.findUniqueOrThrow()` invocation in
+/Users/leslieisah/app-dev/hire-quick/apps/api/src/modules/payments/withdrawal-reversal.ts:38:34
+
+  35   }],
+  36   skipDuplicates: true,
+  37 });
+→ 38 return prisma.paymentOperation.findUniqueOrThrow(
+An operation failed because it depends on one or more records that were required but not found. No record was found for a query.
+   ✓ terminal payment callbacks > rejects mismatched callback evidence without changing the operation or wallet 16576ms
+   ✓ terminal payment callbacks > records a commission callback racing recovery once and appends one reversal 6745ms
+   ✓ terminal payment callbacks > fails an unrecorded sweep without inventing ledger money 2092ms
+   ✓ terminal payment callbacks > reconciles refund.processed with GET evidence and no second POST 20823ms
+   ✓ terminal payment callbacks > reconciles refund.failed with GET evidence and no second POST 14955ms
+   ✓ terminal payment callbacks > does not consume the first dispatch of an unattempted refund from a callback 10214ms
+   ✓ charge initialization reference > preserves a legacy reference without blindly initializing its uncertain checkout 12452ms
+ ✓ src/modules/bookings/__tests__/lifecycle.test.ts (3 tests) 144585ms
+   ✓ full booking lifecycle (TRD §7/§8/§12) > event → apply → accept → confirm → charge → attendance → complete → wallet credited 54592ms
+   ✓ full booking lifecycle (TRD §7/§8/§12) > client-passive auto-complete pays the usher who self-asserted arrival (D1) 49706ms
+   ✓ full booking lifecycle (TRD §7/§8/§12) > opening a dispute freezes the escrow 40287ms
+ ✓ src/modules/payments/__tests__/withdrawal-outcomes.test.ts (11 tests) 270266ms
+   ✓ withdrawal request binding and persisted outcomes > HTTP success returns PAID and the actual wallet balance 32479ms
+   ✓ withdrawal request binding and persisted outcomes > HTTP pending returns PROCESSING and the actual wallet balance 21495ms
+   ✓ withdrawal request binding and persisted outcomes > HTTP unknown returns PROCESSING and the actual wallet balance 19795ms
+   ✓ withdrawal request binding and persisted outcomes > HTTP failed returns FAILED and the actual wallet balance 22141ms
+   ✓ withdrawal request binding and persisted outcomes > replays concurrent requests with one debit and one provider transfer 22824ms
+   ✓ withdrawal request binding and persisted outcomes > rejects changed amount and changed destination on the same key 21097ms
+   ✓ withdrawal request binding and persisted outcomes > isolates identical keys across two callers 37394ms
+   ✓ withdrawal request binding and persisted outcomes > replays matching legacy requests, rejects owner changes, and ignores foreign legacy results 46623ms
+   ✓ withdrawal request binding and persisted outcomes > returns the persisted failure when a callback beats a successful dispatch response 20607ms
+   ✓ withdrawal request binding and persisted outcomes > refreshes replayed terminal status after a completed transfer is reversed 23816ms
+   ✓ withdrawal request binding and persisted outcomes > preserves unbound callers and serializes their concurrent first use 1993ms
+{"level":50,"time":1789553187559,"service":"hirequick-api","env":"test","err":{"type":"PrismaClientUnknownRequestError","message":"\nInvalid `prisma.revokedToken.create()` invocation:\n\n\nError occurred during query execution:\nConnectorError(ConnectorError { user_facing_error: None, kind: QueryError(PostgresError { code: \"P0001\", message: \"revocation storage failed\", severity: \"ERROR\", detail: None, column: None, hint: None }), transient: false })","stack":"PrismaClientUnknownRequestError: \nInvalid `prisma.revokedToken.create()` invocation:\n\n\nError occurred during query execution:\nConnectorError(ConnectorError { user_facing_error: None, kind: QueryError(PostgresError { code: \"P0001\", message: \"revocation storage failed\", severity: \"ERROR\", detail: None, column: None, hint: None }), transient: false })\n    at ei.handleRequestError (/Users/leslieisah/app-dev/hire-quick/node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client/src/runtime/RequestHandler.ts:237:13)\n    at ei.handleAndLogRequestError (/Users/leslieisah/app-dev/hire-quick/node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client/src/runtime/RequestHandler.ts:174:12)\n    at ei.request (/Users/leslieisah/app-dev/hire-quick/node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client/src/runtime/RequestHandler.ts:143:12)\n    at a (/Users/leslieisah/app-dev/hire-quick/node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)\n    at __vite_ssr_import_0__.prisma.$transaction.timeout (/Users/leslieisah/app-dev/hire-quick/apps/api/src/modules/auth/rotation.ts:42:9)\n    at Proxy._transactionWithCallback (/Users/leslieisah/app-dev/hire-quick/node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client/src/runtime/getPrismaClient.ts:722:18)\n    at /Users/leslieisah/app-dev/hire-quick/apps/api/src/modules/auth/routes.ts:50:28","clientVersion":"6.19.3","name":"PrismaClientUnknownRequestError"},"reqId":"cd24e053-a261-4255-b6ac-c8ca4604c1ce","msg":"unhandled error"}
+{"level":50,"time":1789553192061,"service":"hirequick-api","env":"test","err":{"type":"PrismaClientUnknownRequestError","message":"\nInvalid `tx.auditLog.create()` invocation in\n/Users/leslieisah/app-dev/hire-quick/apps/api/src/modules/audit.ts:72:23\n\n  69   prevHash,\n  70   createdAt,\n  71 });\n→ 72 await tx.auditLog.create(\nError occurred during query execution:\nConnectorError(ConnectorError { user_facing_error: None, kind: QueryError(PostgresError { code: \"P0001\", message: \"audit storage failed\", severity: \"ERROR\", detail: None, column: None, hint: None }), transient: false })","stack":"PrismaClientUnknownRequestError: \nInvalid `tx.auditLog.create()` invocation in\n/Users/leslieisah/app-dev/hire-quick/apps/api/src/modules/audit.ts:72:23\n\n  69   prevHash,\n  70   createdAt,\n  71 });\n→ 72 await tx.auditLog.create(\nError occurred during query execution:\nConnectorError(ConnectorError { user_facing_error: None, kind: QueryError(PostgresError { code: \"P0001\", message: \"audit storage failed\", severity: \"ERROR\", detail: None, column: None, hint: None }), transient: false })\n    at ei.handleRequestError (/Users/leslieisah/app-dev/hire-quick/node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client/src/runtime/RequestHandler.ts:237:13)\n    at ei.handleAndLogRequestError (/Users/leslieisah/app-dev/hire-quick/node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client/src/runtime/RequestHandler.ts:174:12)\n    at ei.request (/Users/leslieisah/app-dev/hire-quick/node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client/src/runtime/RequestHandler.ts:143:12)\n    at a (/Users/leslieisah/app-dev/hire-quick/node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)\n    at append (/Users/leslieisah/app-dev/hire-quick/apps/api/src/modules/audit.ts:72:5)\n    at Module.writeAudit (/Users/leslieisah/app-dev/hire-quick/apps/api/src/modules/audit.ts:85:20)\n    at __vite_ssr_import_0__.prisma.$transaction.timeout (/Users/leslieisah/app-dev/hire-quick/apps/api/src/modules/auth/rotation.ts:51:7)\n    at Proxy._transactionWithCallback (/Users/leslieisah/app-dev/hire-quick/node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client/src/runtime/getPrismaClient.ts:722:18)\n    at /Users/leslieisah/app-dev/hire-quick/apps/api/src/modules/auth/routes.ts:50:28","clientVersion":"6.19.3","name":"PrismaClientUnknownRequestError"},"reqId":"9a697819-a7ee-4233-a18c-77ffbefe6b62","msg":"unhandled error"}
+ ✓ src/modules/auth/__tests__/refresh-rotation.test.ts (8 tests) 34135ms
+   ✓ atomic refresh rotation (OVA-138 / TRD §§7,14) > allows one concurrent successor and rejects reuse without revoking the winning successor 6536ms
+   ✓ atomic refresh rotation (OVA-138 / TRD §§7,14) > rolls back consumption when access token signing fails 3270ms
+   ✓ atomic refresh rotation (OVA-138 / TRD §§7,14) > rolls back consumption when refresh token signing fails 3042ms
+   ✓ atomic refresh rotation (OVA-138 / TRD §§7,14) > returns no pair and preserves retry when the denylist insert fails 4074ms
+   ✓ atomic refresh rotation (OVA-138 / TRD §§7,14) > rolls back both the claim and audit when the transactional audit append fails 4442ms
+   ✓ atomic refresh rotation (OVA-138 / TRD §§7,14) > keeps logout idempotent and rejects its revoked token 5623ms
+   ✓ atomic refresh rotation (OVA-138 / TRD §§7,14) > serializes a logout/rotation race under the documented token-scoped logout policy 3281ms
+   ✓ atomic refresh rotation (OVA-138 / TRD §§7,14) > does not consume a token for an inactive account 3562ms
+ ✓ src/modules/privacy/__tests__/checkout-privacy.test.ts (5 tests) 84801ms
+   ✓ checkout data export and erasure > exports the client’s own checkout email/state/reference without hosted bearer URLs 14867ms
+   ✓ checkout data export and erasure > scrubs checkout contact details in READY while preserving recovery state and references 16145ms
+   ✓ checkout data export and erasure > scrubs checkout contact details in EXPIRED while preserving recovery state and references 13999ms
+   ✓ checkout data export and erasure > scrubs checkout contact details in REFUND_PENDING while preserving recovery state and references 14171ms
+   ✓ checkout data export and erasure > still reconciles and refunds a captured expired checkout after its client has been anonymized 25365ms
+ ✓ src/realtime/__tests__/gateway.test.ts (3 tests) 27036ms
+   ✓ realtime gateway pushes (TRD §4) > emitToUser reaches only the targeted user room 2158ms
+   ✓ realtime gateway pushes (TRD §4) > emitToAdmins reaches ADMINs only (the check-in feed) 1615ms
+   ✓ realtime chat upgrade — typing + read receipts (UXRD §6) > relays typing and read receipts to the other party 22988ms
+ ✓ src/modules/auth/__tests__/auth.test.ts (6 tests) 39122ms
+   ✓ auth + RBAC (TRD §7/§14/§15) > OTP login issues tokens, creates the usher+wallet, and protects /me 7689ms
+   ✓ auth + RBAC (TRD §7/§14/§15) > rejects a wrong OTP and a bad token 2206ms
+   ✓ auth + RBAC (TRD §7/§14/§15) > refresh rotates tokens 4761ms
+   ✓ auth + RBAC (TRD §7/§14/§15) > logout denylists the refresh token so it can no longer refresh (B3) 5115ms
+   ✓ auth + RBAC (TRD §7/§14/§15) > refresh rotation is single-use: the consumed token is burned (B3) 4916ms
+   ✓ auth + RBAC (TRD §7/§14/§15) > admin can approve a verification; a non-admin is forbidden (§15) 14435ms
+ ✓ src/realtime/__tests__/chat.test.ts (1 test) 22096ms
+   ✓ realtime booking chat (UXRD §6) > parties exchange messages; contact info is flagged; non-party is rejected 22096ms
+ ✓ src/modules/payments/__tests__/webhook.test.ts (2 tests) 16995ms
+   ✓ paystack webhook pipeline (TRD §10) > charge.success holds the order; bad signature is 401; replay is deduped 16995ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/modules/payments/__tests__/terminal-operations.test.ts > terminal payment callbacks > reverses a recorded withdrawal once and ignores later success
+PrismaClientKnownRequestError: 
+Invalid `prisma.paymentOperation.findUniqueOrThrow()` invocation in
+/Users/leslieisah/app-dev/hire-quick/apps/api/src/modules/payments/withdrawal-reversal.ts:38:34
+
+  35   }],
+  36   skipDuplicates: true,
+  37 });
+→ 38 return prisma.paymentOperation.findUniqueOrThrow(
+An operation failed because it depends on one or more records that were required but not found. No record was found for a query.
+ ❯ ei.handleRequestError ../../node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client/src/runtime/RequestHandler.ts:228:13
+ ❯ ei.handleAndLogRequestError ../../node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client/src/runtime/RequestHandler.ts:174:12
+ ❯ ei.request ../../node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client/src/runtime/RequestHandler.ts:143:12
+ ❯ a ../../node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24
+ ❯ handleTransferTerminal src/modules/payments/webhooks/paystack-webhook.ts:131:20
+    129|         (op && (op.kind !== 'WITHDRAWAL_TRANSFER' || payload?.withdraw…
+    130|       throw new Error('Transfer event does not match the stored withdr…
+    131|     const intent = await recordWithdrawalReversal(prisma, w.id, ref);
+       |                    ^
+    132|     const result = await driveWithdrawalReversal(prisma, intent);
+    133|     if (result.result) {
+ ❯ src/modules/payments/__tests__/terminal-operations.test.ts:81:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed | 15 passed (16)
+      Tests  1 failed | 136 passed (137)
+   Start at  10:35:48
+   Duration  2049.46s (transform 617ms, setup 0ms, collect 2.46s, tests 2046.76s, environment 0ms, prepare 47ms)
+
+undefined
+/Users/leslieisah/app-dev/hire-quick/apps/api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/modules/payments/__tests__/checkout-recovery.test.ts src/modules/events/__tests__/checkout-validation.test.ts src/modules/events/__tests__/recruitment-lifecycle.test.ts src/modules/payments/__tests__/terminal-operations.test.ts src/modules/payments/__tests__/operation-recovery.test.ts src/modules/payments/__tests__/withdrawal-outcomes.test.ts src/modules/payments/__tests__/webhook.test.ts src/modules/bookings/__tests__/lifecycle.test.ts src/modules/privacy/__tests__/checkout-privacy.test.ts src/realtime/__tests__/live-authorization.test.ts src/realtime/__tests__/gateway.test.ts src/realtime/__tests__/chat.test.ts src/modules/storage/__tests__/chat-media.test.ts src/modules/auth/__tests__/auth.test.ts src/modules/auth/__tests__/refresh-rotation.test.ts src/modules/auth/__tests__/otp-consumption.test.ts
+FAIL Final affected API tests exited 1
+PASS removed disposable schema hq_validation_20260916093518_197e7fc6

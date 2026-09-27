@@ -1,0 +1,185 @@
+{
+  "scope": "20 sampled semantic text/background pairs. WCAG AA normal text threshold 4.5; APCA readings are supplemental, not a conformance verdict. No palette changes.",
+  "rows": [
+    {
+      "mode": "Light",
+      "foreground": "ink/body",
+      "background": "bg/surface",
+      "foregroundHex": "#444547",
+      "backgroundHex": "#ffffff",
+      "wcagRatio": 9.6,
+      "apcaLc": 92.3
+    },
+    {
+      "mode": "Light",
+      "foreground": "ink/muted",
+      "background": "bg/canvas",
+      "foregroundHex": "#535559",
+      "backgroundHex": "#f4f2ed",
+      "wcagRatio": 6.68,
+      "apcaLc": 78.3
+    },
+    {
+      "mode": "Light",
+      "foreground": "ink/muted",
+      "background": "bg/surface-alt",
+      "foregroundHex": "#535559",
+      "backgroundHex": "#eae7e0",
+      "wcagRatio": 6.05,
+      "apcaLc": 71.9
+    },
+    {
+      "mode": "Light",
+      "foreground": "ink/on-accent",
+      "background": "brand/accent",
+      "foregroundHex": "#17181a",
+      "backgroundHex": "#36a511",
+      "wcagRatio": 5.54,
+      "apcaLc": 43.8
+    },
+    {
+      "mode": "Light",
+      "foreground": "ink/on-accent",
+      "background": "action/primary-pressed",
+      "foregroundHex": "#17181a",
+      "backgroundHex": "#5fc93a",
+      "wcagRatio": 8.38,
+      "apcaLc": 61.3
+    },
+    {
+      "mode": "Light",
+      "foreground": "status/success",
+      "background": "status/success-bg",
+      "foregroundHex": "#0a5a28",
+      "backgroundHex": "#dcfce7",
+      "wcagRatio": 7.63,
+      "apcaLc": 82
+    },
+    {
+      "mode": "Light",
+      "foreground": "status/warning",
+      "background": "status/warning-bg",
+      "foregroundHex": "#8a4008",
+      "backgroundHex": "#fef3c7",
+      "wcagRatio": 6.69,
+      "apcaLc": 78
+    },
+    {
+      "mode": "Light",
+      "foreground": "status/danger",
+      "background": "status/danger-bg",
+      "foregroundHex": "#a51b1b",
+      "backgroundHex": "#fee2e2",
+      "wcagRatio": 6.2,
+      "apcaLc": 71.2
+    },
+    {
+      "mode": "Light",
+      "foreground": "status/info",
+      "background": "status/info-bg",
+      "foregroundHex": "#1558b0",
+      "backgroundHex": "#dbeafe",
+      "wcagRatio": 5.63,
+      "apcaLc": 69.9
+    },
+    {
+      "mode": "Light",
+      "foreground": "brand/accent-text",
+      "background": "bg/canvas",
+      "foregroundHex": "#1b6e06",
+      "backgroundHex": "#f4f2ed",
+      "wcagRatio": 5.72,
+      "apcaLc": 73.6
+    },
+    {
+      "mode": "Dark",
+      "foreground": "ink/body",
+      "background": "bg/surface",
+      "foregroundHex": "#c2c4c7",
+      "backgroundHex": "#232426",
+      "wcagRatio": 8.89,
+      "apcaLc": -68.1
+    },
+    {
+      "mode": "Dark",
+      "foreground": "ink/muted",
+      "background": "bg/canvas",
+      "foregroundHex": "#b3b4b6",
+      "backgroundHex": "#0f1011",
+      "wcagRatio": 9.18,
+      "apcaLc": -61.3
+    },
+    {
+      "mode": "Dark",
+      "foreground": "ink/muted",
+      "background": "bg/surface-alt",
+      "foregroundHex": "#b3b4b6",
+      "backgroundHex": "#292a2c",
+      "wcagRatio": 6.92,
+      "apcaLc": -57.9
+    },
+    {
+      "mode": "Dark",
+      "foreground": "ink/on-accent",
+      "background": "brand/accent",
+      "foregroundHex": "#17181a",
+      "backgroundHex": "#36a511",
+      "wcagRatio": 5.54,
+      "apcaLc": 43.8
+    },
+    {
+      "mode": "Dark",
+      "foreground": "ink/on-accent",
+      "background": "action/primary-pressed",
+      "foregroundHex": "#17181a",
+      "backgroundHex": "#5fc93a",
+      "wcagRatio": 8.38,
+      "apcaLc": 61.3
+    },
+    {
+      "mode": "Dark",
+      "foreground": "status/success",
+      "background": "status/success-bg",
+      "foregroundHex": "#4ade80",
+      "backgroundHex": "#292a2c",
+      "wcagRatio": 8.24,
+      "apcaLc": -67.6
+    },
+    {
+      "mode": "Dark",
+      "foreground": "status/warning",
+      "background": "status/warning-bg",
+      "foregroundHex": "#fbbf24",
+      "backgroundHex": "#292a2c",
+      "wcagRatio": 8.61,
+      "apcaLc": -69.9
+    },
+    {
+      "mode": "Dark",
+      "foreground": "status/danger",
+      "background": "status/danger-bg",
+      "foregroundHex": "#f87171",
+      "backgroundHex": "#292a2c",
+      "wcagRatio": 5.19,
+      "apcaLc": -45.3
+    },
+    {
+      "mode": "Dark",
+      "foreground": "status/info",
+      "background": "status/info-bg",
+      "foregroundHex": "#60a5fa",
+      "backgroundHex": "#292a2c",
+      "wcagRatio": 5.65,
+      "apcaLc": -48.5
+    },
+    {
+      "mode": "Dark",
+      "foreground": "brand/accent-text",
+      "background": "bg/canvas",
+      "foregroundHex": "#5fc93a",
+      "backgroundHex": "#0f1011",
+      "wcagRatio": 8.98,
+      "apcaLc": -60.6
+    }
+  ]
+}

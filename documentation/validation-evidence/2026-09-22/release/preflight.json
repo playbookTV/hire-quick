@@ -1,0 +1,122 @@
+{
+  "checkedAt": "2026-09-22T00:07:23.378Z",
+  "project": "396c28f8-30ac-4fd8-ba96-684e9a27d0e6",
+  "environment": "637575af-e645-4287-a21f-520e7219fb4c",
+  "services": [
+    {
+      "name": "Redis",
+      "id": "2dbb70c4-a61f-4c1e-bf3e-c2116d531c9f",
+      "latest": "c819707d-de20-42cb-9855-9970da27208d",
+      "status": "SUCCESS",
+      "active": [
+        {
+          "id": "c819707d-de20-42cb-9855-9970da27208d",
+          "status": "SUCCESS"
+        }
+      ],
+      "start": "/bin/sh -c \"rm -rf $RAILWAY_VOLUME_MOUNT_PATH/lost+found/ && exec docker-entrypoint.sh redis-server --requirepass $REDIS_PASSWORD --save 60 1 --dir $RAILWAY_VOLUME_MOUNT_PATH\""
+    },
+    {
+      "name": "hirequick-worker",
+      "id": "2640683c-6796-4015-92f1-26075852b05c",
+      "latest": "3119613f-c073-4ad9-964c-4351a358ab67",
+      "status": "SUCCESS",
+      "active": [
+        {
+          "id": "3119613f-c073-4ad9-964c-4351a358ab67",
+          "status": "SUCCESS"
+        }
+      ],
+      "start": null
+    },
+    {
+      "name": "prolific-love",
+      "id": "85b4bcff-3dbc-48a9-882c-17da83ed20ef",
+      "latest": "590a76c1-98dd-490b-bdf9-69d49e0f9ece",
+      "status": "SUCCESS",
+      "active": [
+        {
+          "id": "590a76c1-98dd-490b-bdf9-69d49e0f9ece",
+          "status": "SUCCESS"
+        }
+      ],
+      "start": null
+    },
+    {
+      "name": "hirequick-admin",
+      "id": "42070d14-5076-4a76-855f-1edd118f5485",
+      "latest": "0feb88e0-ca17-45c1-8998-eb568571a6c5",
+      "status": "SUCCESS",
+      "active": [
+        {
+          "id": "0feb88e0-ca17-45c1-8998-eb568571a6c5",
+          "status": "SUCCESS"
+        }
+      ],
+      "start": null
+    }
+  ],
+  "configuration": {
+    "nodeEnv": "staging",
+    "kyc": "manual",
+    "paystackTest": true,
+    "apiWorkerSettingsMatch": true
+  },
+  "migrations": [
+    {
+      "migration_name": "20260627121512_drop_audit_actor_fk",
+      "checksum": "9478e34d4511bda93fc9517e1e056ff69e48ea6831cc99c17d14bc8e22581645",
+      "finished": true,
+      "rolled_back": false
+    },
+    {
+      "migration_name": "0_init",
+      "checksum": "68505c9367f97908fafd8904cdfb3476f3b9e6486dd49e5ccb84b76f899a94d6",
+      "finished": false,
+      "rolled_back": true
+    },
+    {
+      "migration_name": "0_init",
+      "checksum": "68505c9367f97908fafd8904cdfb3476f3b9e6486dd49e5ccb84b76f899a94d6",
+      "finished": true,
+      "rolled_back": false
+    },
+    {
+      "migration_name": "20260625145005_add_usher_discovery_client_business_notifications",
+      "checksum": "a3c49ddd8e19e3c269ecce7ac97e33c6c46b5dd30671ef269cb3498865e0f0a4",
+      "finished": true,
+      "rolled_back": false
+    },
+    {
+      "migration_name": "20260628120000_compliance_remediation_consent_denylist_bvn",
+      "checksum": "3b12e2354ce6ca8b54d7953a62148d949b917ee1584836b913ba97820b80a2fb",
+      "finished": true,
+      "rolled_back": false
+    },
+    {
+      "migration_name": "20260701000000_client_feedback_round1",
+      "checksum": "cfe107bb0be2b02b21c4043eccdbfac6e7a8caeea9a59a887b8058226d4b826b",
+      "finished": true,
+      "rolled_back": false
+    },
+    {
+      "migration_name": "20260914190000_checkout_recovery",
+      "checksum": "dd9c112a78e3a9d4754168a8a770f60bd624799ab6c1c92eec59024ad7458945",
+      "finished": true,
+      "rolled_back": false
+    },
+    {
+      "migration_name": "20260914193000_checkout_notifications",
+      "checksum": "322ef220c103d0272e5de59a4a2240ff36f154b2cfa556acc00fdbae3e93e83e",
+      "finished": true,
+      "rolled_back": false
+    },
+    {
+      "migration_name": "20260921183840_payment_recovery_schedule",
+      "checksum": "8ca5879b2610b87a03604960de79d5dea72d9d118eaa08b3adf3fdb0fdd21136",
+      "finished": true,
+      "rolled_back": false
+    }
+  ],
+  "legacyCounts": []
+}

@@ -34,9 +34,14 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Runtime tests start disposable loopback Redis servers (including TLS).
+      - run: sudo apt-get update && sudo apt-get install -y redis-server
       - run: pnpm --filter @hq/database exec prisma generate
+      - run: pnpm docs:check
       - run: pnpm typecheck
       - run: pnpm lint
+      - run: pnpm typecheck:tests
+      - run: pnpm lint:tests
       # Apply tracked migrations (production-equivalent), not `db push`, so CI
       # exercises the same path prod deploys use and a missing migration fails here.
       - run: pnpm --filter @hq/database exec prisma migrate deploy
@@ -44,3 +49,5 @@ jobs:
       # drifted from them this diff is non-empty and exits non-zero (--exit-code).
       - run: pnpm --filter @hq/database exec prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
       - run: pnpm test
+      # Real local HTTP transport plus database lifecycle; never contacts Paystack.
+      - run: node scripts/validation/isolated-payments.mjs --run --static-already-passed --local-lifecycle-only

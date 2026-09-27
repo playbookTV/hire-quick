@@ -2,8 +2,7 @@
  * Dev-only quick login for the seeded QA accounts. Runs the real OTP flow
  * (request → echoed devCode → verify → session) then lets the root index route
  * by role. Renders nothing in production builds (env.IS_DEV === __DEV__), and
- * requires EXPO_PUBLIC_API_URL to point at the staging API (which echoes the
- * code). Useful for jumping straight into a client/usher session without typing.
+ * requires the staging API's seeded QA login mode to be enabled.
  */
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
@@ -29,7 +28,7 @@ export function DevLogin(): React.JSX.Element | null {
     setError(null);
     try {
       const { devCode } = await requestOtp.mutateAsync(phone);
-      if (!devCode) throw new Error('No echoed code — point EXPO_PUBLIC_API_URL at the staging API.');
+      if (!devCode) throw new Error('Quick login is unavailable for this account. Enable seeded QA login on the staging API, or enter the code sent to your phone.');
       const result = await verifyOtp.mutateAsync({ phone, code: devCode });
       await login(result);
       router.replace('/');

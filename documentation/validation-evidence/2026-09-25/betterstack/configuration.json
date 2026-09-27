@@ -1,0 +1,80 @@
+{
+  "monitor": {
+    "id": "4981049",
+    "type": "monitor",
+    "pronounceable_name": "HireQuick API readiness",
+    "status": "paused",
+    "paused_at": "2026-09-25T21:29:20.275Z",
+    "team_name": "Your team",
+    "email": false,
+    "call": false,
+    "sms": false,
+    "push": false,
+    "policy_id": null,
+    "check_frequency": 60,
+    "last_checked_at": null,
+    "url": "https://prolific-love-production-2775.up.railway.app/ready"
+  },
+  "heartbeats": [
+    {
+      "variable": "BETTER_STACK_CHECKOUTS_HEARTBEAT_URL",
+      "heartbeat": {
+        "id": "497964",
+        "type": "heartbeat",
+        "name": "HireQuick checkout recovery",
+        "status": "paused",
+        "period": 300,
+        "grace": 600,
+        "paused_at": "2026-09-25T21:29:20.645Z",
+        "team_name": "Your team",
+        "email": false,
+        "call": false,
+        "sms": false,
+        "push": false,
+        "policy_id": null
+      },
+      "railway_value_matches": true
+    },
+    {
+      "variable": "BETTER_STACK_RECONCILIATION_HEARTBEAT_URL",
+      "heartbeat": {
+        "id": "497965",
+        "type": "heartbeat",
+        "name": "HireQuick financial reconciliation",
+        "status": "paused",
+        "period": 86400,
+        "grace": 3600,
+        "paused_at": "2026-09-25T21:29:22.754Z",
+        "team_name": "Your team",
+        "email": false,
+        "call": false,
+        "sms": false,
+        "push": false,
+        "policy_id": null
+      },
+      "railway_value_matches": true
+    },
+    {
+      "variable": "BETTER_STACK_AUDIT_HEARTBEAT_URL",
+      "heartbeat": {
+        "id": "497966",
+        "type": "heartbeat",
+        "name": "HireQuick audit verification",
+        "status": "paused",
+        "period": 86400,
+        "grace": 3600,
+        "paused_at": "2026-09-25T21:29:24.781Z",
+        "team_name": "Your team",
+        "email": false,
+        "call": false,
+        "sms": false,
+        "push": false,
+        "policy_id": null
+      },
+      "railway_value_matches": true
+    }
+  ],
+  "alert_recipient": "hguilliman@gmail.com",
+  "alert_routing": "pending external email integration",
+  "deployment": "pending; variable changes saved with skip-deploys"
+}

@@ -1,0 +1,40 @@
+{
+  "api": "https://prolific-love-production-2775.up.railway.app",
+  "deployment": "d715ba54-1296-480b-bf81-c1f25b5b7981",
+  "checkedAt": "2026-09-21T12:35:22Z",
+  "accounts": [
+    {
+      "phone": "+2348100000001",
+      "role": "CLIENT",
+      "request": 200,
+      "verify": 200,
+      "profile": 200,
+      "replayRejected": true,
+      "logout": 204
+    },
+    {
+      "phone": "+2348100000011",
+      "role": "USHER",
+      "request": 200,
+      "verify": 200,
+      "profile": 200,
+      "logout": 204
+    },
+    {
+      "phone": "+2348100000012",
+      "role": "USHER",
+      "request": 200,
+      "verify": 200,
+      "profile": 200,
+      "logout": 204
+    },
+    {
+      "phone": "+2348100000013",
+      "role": "USHER",
+      "request": 200,
+      "verify": 200,
+      "profile": 200,
+      "logout": 204
+    }
+  ]
+}

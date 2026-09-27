@@ -1,0 +1,23 @@
+{
+  "date": "2026-09-21",
+  "mode": "test",
+  "authorization": "User approved one 10000-kobo TEST transfer and supplied the OTP for that existing transfer.",
+  "transferInitiationPosts": 1,
+  "finalizationPosts": 1,
+  "verification": {
+    "ok": true,
+    "reference": "wd_44406204-0b51-4157-b4ee-37db96e9a74b",
+    "amount": 10000,
+    "currency": "NGN",
+    "domain": "test",
+    "status": "success",
+    "transferCode": "TRF_2jeo1mtox2z1dp9g"
+  },
+  "balanceBeforeKobo": 210000,
+  "balanceAfterKobo": 200000,
+  "balanceDeltaKobo": -10000,
+  "localFixture": "The bounded initial probe verified pending state and same-key replay, then removed its disposable schema before external finalization.",
+  "terminalLocalLedgerVerified": false,
+  "fundedChargeLifecycle": false,
+  "otpStored": false
+}

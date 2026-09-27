@@ -1,0 +1,67 @@
+[
+  {
+    "check": "deployed_container",
+    "deployment": "590a76c1-98dd-490b-bdf9-69d49e0f9ece",
+    "mode": "staging",
+    "kyc": "manual",
+    "paystackTest": true,
+    "database": "SELECT 1 passed",
+    "recoveryColumnsReadable": true,
+    "appliedMigrations": 8,
+    "redis": "PONG",
+    "hashes": {
+      "apps/api/src/modules/jobs/jobs.ts": "e454ebe73fe977bf8b028ad7b3ca636bba9f02de781476a32eb573c7240474b2",
+      "apps/api/src/modules/payments/recovery-schedule.ts": "d015c1b1cfd7242f66b957fc6dbd02a22b62810b4fab06a49a1101146d184eed",
+      "packages/database/prisma/schema.prisma": "e5fea40a326577f2b15efac3dd48a233a5e1face38769e63a3eab7da7e1a9564"
+    },
+    "service": "prolific-love"
+  },
+  {
+    "check": "deployed_container",
+    "deployment": "3119613f-c073-4ad9-964c-4351a358ab67",
+    "mode": "staging",
+    "kyc": "manual",
+    "paystackTest": true,
+    "database": "SELECT 1 passed",
+    "recoveryColumnsReadable": true,
+    "appliedMigrations": 8,
+    "redis": "PONG",
+    "hashes": {
+      "apps/api/src/modules/jobs/jobs.ts": "e454ebe73fe977bf8b028ad7b3ca636bba9f02de781476a32eb573c7240474b2",
+      "apps/api/src/modules/payments/recovery-schedule.ts": "d015c1b1cfd7242f66b957fc6dbd02a22b62810b4fab06a49a1101146d184eed",
+      "packages/database/prisma/schema.prisma": "e5fea40a326577f2b15efac3dd48a233a5e1face38769e63a3eab7da7e1a9564"
+    },
+    "service": "hirequick-worker"
+  },
+  {
+    "url": "https://prolific-love-production-2775.up.railway.app/health",
+    "status": 200,
+    "body": {
+      "status": "ok"
+    }
+  },
+  {
+    "url": "https://prolific-love-production-2775.up.railway.app/api/admin/stats",
+    "status": 401
+  },
+  {
+    "check": "admin CORS",
+    "status": 204,
+    "origin": "https://hirequick-admin-production.up.railway.app"
+  },
+  {
+    "url": "https://hirequick-admin-production.up.railway.app/assets/index-JPL-pETF.js",
+    "status": 200,
+    "sha256": "2177f226b03083ace99c815a423af29320ddf4ce218bc2c925c5fc829f7f6d83"
+  },
+  {
+    "url": "https://hirequick-admin-production.up.railway.app/assets/index-CbxBgJXs.css",
+    "status": 200,
+    "sha256": "1f8ed24c71943c82b67cf52727030c58f62a15323fb73ef6d1f595cb63f899dd"
+  },
+  {
+    "url": "https://hirequick-admin-production.up.railway.app",
+    "status": 200,
+    "assetsVerified": 2
+  }
+]

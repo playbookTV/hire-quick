@@ -1,0 +1,567 @@
+{
+  "scope": "All mobile route TSX files excluding layouts. Literal links only; dynamic/tab/router entry points require manual assessment.",
+  "count": 44,
+  "routes": [
+    {
+      "route": "/(auth)/complete-profile",
+      "source": "apps/mobile/app/(auth)/complete-profile.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/(auth)/otp.tsx",
+          "line": 65
+        },
+        {
+          "path": "apps/mobile/app/(auth)/_layout.tsx",
+          "line": 10
+        }
+      ]
+    },
+    {
+      "route": "/(auth)/otp",
+      "source": "apps/mobile/app/(auth)/otp.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/(auth)/phone.tsx",
+          "line": 40
+        }
+      ]
+    },
+    {
+      "route": "/(auth)/phone",
+      "source": "apps/mobile/app/(auth)/phone.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/(auth)/role.tsx",
+          "line": 49
+        },
+        {
+          "path": "apps/mobile/app/(auth)/welcome.tsx",
+          "line": 118
+        }
+      ]
+    },
+    {
+      "route": "/(auth)/role",
+      "source": "apps/mobile/app/(auth)/role.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/(auth)/welcome.tsx",
+          "line": 114
+        }
+      ]
+    },
+    {
+      "route": "/(auth)/welcome",
+      "source": "apps/mobile/app/(auth)/welcome.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/index.tsx",
+          "line": 13
+        },
+        {
+          "path": "apps/mobile/app/(usher)/_layout.tsx",
+          "line": 22
+        },
+        {
+          "path": "apps/mobile/app/(verification)/_layout.tsx",
+          "line": 17
+        },
+        {
+          "path": "apps/mobile/app/(auth)/complete-profile.tsx",
+          "line": 38
+        },
+        {
+          "path": "apps/mobile/app/(modals)/_layout.tsx",
+          "line": 13
+        },
+        {
+          "path": "apps/mobile/app/(client)/_layout.tsx",
+          "line": 20
+        }
+      ]
+    },
+    {
+      "route": "/(client)/discover",
+      "source": "apps/mobile/app/(client)/discover.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/(client)/home.tsx",
+          "line": 127
+        },
+        {
+          "path": "apps/mobile/app/(client)/home.tsx",
+          "line": 179
+        }
+      ]
+    },
+    {
+      "route": "/(client)/events/[id]",
+      "source": "apps/mobile/app/(client)/events/[id].tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/(modals)/notifications.tsx",
+          "line": 90
+        }
+      ]
+    },
+    {
+      "route": "/(client)/events",
+      "source": "apps/mobile/app/(client)/events/index.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/(client)/home.tsx",
+          "line": 136
+        }
+      ]
+    },
+    {
+      "route": "/(client)/home",
+      "source": "apps/mobile/app/(client)/home.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/index.tsx",
+          "line": 15
+        },
+        {
+          "path": "apps/mobile/app/(usher)/_layout.tsx",
+          "line": 23
+        },
+        {
+          "path": "apps/mobile/app/(verification)/_layout.tsx",
+          "line": 18
+        }
+      ]
+    },
+    {
+      "route": "/(client)/messages",
+      "source": "apps/mobile/app/(client)/messages.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/(client)/events/[id].tsx",
+          "line": 220
+        }
+      ]
+    },
+    {
+      "route": "/(client)/profile",
+      "source": "apps/mobile/app/(client)/profile.tsx",
+      "literalInboundReferences": []
+    },
+    {
+      "route": "/(modals)/applications",
+      "source": "apps/mobile/app/(modals)/applications.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/(client)/events/[id].tsx",
+          "line": 202
+        }
+      ]
+    },
+    {
+      "route": "/(modals)/cancellation",
+      "source": "apps/mobile/app/(modals)/cancellation.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/(modals)/event-day.tsx",
+          "line": 313
+        },
+        {
+          "path": "apps/mobile/app/(client)/events/[id].tsx",
+          "line": 227
+        }
+      ]
+    },
+    {
+      "route": "/(modals)/check-in",
+      "source": "apps/mobile/app/(modals)/check-in.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/(usher)/home.tsx",
+          "line": 379
+        }
+      ]
+    },
+    {
+      "route": "/(modals)/create-event",
+      "source": "apps/mobile/app/(modals)/create-event.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/(client)/home.tsx",
+          "line": 121
+        },
+        {
+          "path": "apps/mobile/app/(client)/home.tsx",
+          "line": 158
+        },
+        {
+          "path": "apps/mobile/app/(client)/events/index.tsx",
+          "line": 21
+        },
+        {
+          "path": "apps/mobile/app/(client)/events/index.tsx",
+          "line": 73
+        }
+      ]
+    },
+    {
+      "route": "/(modals)/dispute",
+      "source": "apps/mobile/app/(modals)/dispute.tsx",
+      "literalInboundReferences": []
+    },
+    {
+      "route": "/(modals)/edit-event",
+      "source": "apps/mobile/app/(modals)/edit-event.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/(client)/events/[id].tsx",
+          "line": 211
+        }
+      ]
+    },
+    {
+      "route": "/(modals)/edit-profile",
+      "source": "apps/mobile/app/(modals)/edit-profile.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/(usher)/profile.tsx",
+          "line": 88
+        },
+        {
+          "path": "apps/mobile/app/(usher)/profile.tsx",
+          "line": 113
+        }
+      ]
+    },
+    {
+      "route": "/(modals)/event-day",
+      "source": "apps/mobile/app/(modals)/event-day.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/(client)/events/[id].tsx",
+          "line": 217
+        },
+        {
+          "path": "apps/mobile/app/(client)/events/[id].tsx",
+          "line": 238
+        }
+      ]
+    },
+    {
+      "route": "/(modals)/event-details",
+      "source": "apps/mobile/app/(modals)/event-details.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/(usher)/jobs.tsx",
+          "line": 45
+        }
+      ]
+    },
+    {
+      "route": "/(modals)/event-success",
+      "source": "apps/mobile/app/(modals)/event-success.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/(modals)/create-event.tsx",
+          "line": 124
+        }
+      ]
+    },
+    {
+      "route": "/(modals)/filters",
+      "source": "apps/mobile/app/(modals)/filters.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/(client)/discover.tsx",
+          "line": 124
+        }
+      ]
+    },
+    {
+      "route": "/(modals)/funds-held",
+      "source": "apps/mobile/app/(modals)/funds-held.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/(modals)/payment-summary.tsx",
+          "line": 80
+        },
+        {
+          "path": "apps/mobile/app/(modals)/notifications.tsx",
+          "line": 85
+        }
+      ]
+    },
+    {
+      "route": "/(modals)/invitation",
+      "source": "apps/mobile/app/(modals)/invitation.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/(modals)/notifications.tsx",
+          "line": 87
+        }
+      ]
+    },
+    {
+      "route": "/(modals)/message-thread",
+      "source": "apps/mobile/app/(modals)/message-thread.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/(modals)/staff-profile.tsx",
+          "line": 176
+        },
+        {
+          "path": "apps/mobile/components/ConversationList.tsx",
+          "line": 84
+        }
+      ]
+    },
+    {
+      "route": "/(modals)/notifications",
+      "source": "apps/mobile/app/(modals)/notifications.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/(usher)/home.tsx",
+          "line": 187
+        },
+        {
+          "path": "apps/mobile/app/(client)/home.tsx",
+          "line": 61
+        }
+      ]
+    },
+    {
+      "route": "/(modals)/payment-failed",
+      "source": "apps/mobile/app/(modals)/payment-failed.tsx",
+      "literalInboundReferences": []
+    },
+    {
+      "route": "/(modals)/payment-summary",
+      "source": "apps/mobile/app/(modals)/payment-summary.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/(modals)/applications.tsx",
+          "line": 68
+        },
+        {
+          "path": "apps/mobile/app/(modals)/applications.tsx",
+          "line": 77
+        }
+      ]
+    },
+    {
+      "route": "/(modals)/rate-staff",
+      "source": "apps/mobile/app/(modals)/rate-staff.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/(modals)/event-day.tsx",
+          "line": 308
+        }
+      ]
+    },
+    {
+      "route": "/(modals)/staff-profile",
+      "source": "apps/mobile/app/(modals)/staff-profile.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/(modals)/applications.tsx",
+          "line": 59
+        },
+        {
+          "path": "apps/mobile/app/(client)/discover.tsx",
+          "line": 78
+        },
+        {
+          "path": "apps/mobile/app/(client)/home.tsx",
+          "line": 191
+        }
+      ]
+    },
+    {
+      "route": "/(modals)/withdraw",
+      "source": "apps/mobile/app/(modals)/withdraw.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/(usher)/wallet.tsx",
+          "line": 136
+        }
+      ]
+    },
+    {
+      "route": "/(usher)/calendar",
+      "source": "apps/mobile/app/(usher)/calendar.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/(usher)/home.tsx",
+          "line": 328
+        },
+        {
+          "path": "apps/mobile/app/(usher)/profile.tsx",
+          "line": 165
+        }
+      ]
+    },
+    {
+      "route": "/(usher)/home",
+      "source": "apps/mobile/app/(usher)/home.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/index.tsx",
+          "line": 14
+        },
+        {
+          "path": "apps/mobile/app/(client)/_layout.tsx",
+          "line": 21
+        }
+      ]
+    },
+    {
+      "route": "/(usher)/jobs",
+      "source": "apps/mobile/app/(usher)/jobs.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/(usher)/home.tsx",
+          "line": 365
+        },
+        {
+          "path": "apps/mobile/app/(usher)/profile.tsx",
+          "line": 132
+        },
+        {
+          "path": "apps/mobile/app/(usher)/profile.tsx",
+          "line": 142
+        },
+        {
+          "path": "apps/mobile/app/(verification)/awaiting-approval.tsx",
+          "line": 187
+        },
+        {
+          "path": "apps/mobile/app/(modals)/invitation.tsx",
+          "line": 75
+        }
+      ]
+    },
+    {
+      "route": "/(usher)/messages",
+      "source": "apps/mobile/app/(usher)/messages.tsx",
+      "literalInboundReferences": []
+    },
+    {
+      "route": "/(usher)/profile",
+      "source": "apps/mobile/app/(usher)/profile.tsx",
+      "literalInboundReferences": []
+    },
+    {
+      "route": "/(usher)/wallet",
+      "source": "apps/mobile/app/(usher)/wallet.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/(usher)/home.tsx",
+          "line": 282
+        },
+        {
+          "path": "apps/mobile/app/(usher)/home.tsx",
+          "line": 302
+        },
+        {
+          "path": "apps/mobile/app/(usher)/profile.tsx",
+          "line": 166
+        },
+        {
+          "path": "apps/mobile/app/(modals)/check-in.tsx",
+          "line": 176
+        }
+      ]
+    },
+    {
+      "route": "/(verification)/awaiting-approval",
+      "source": "apps/mobile/app/(verification)/awaiting-approval.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/(verification)/id-verification.tsx",
+          "line": 88
+        }
+      ]
+    },
+    {
+      "route": "/(verification)/id-verification",
+      "source": "apps/mobile/app/(verification)/id-verification.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/(usher)/profile.tsx",
+          "line": 168
+        },
+        {
+          "path": "apps/mobile/app/(verification)/kyc-consent.tsx",
+          "line": 5
+        },
+        {
+          "path": "apps/mobile/app/(verification)/awaiting-approval.tsx",
+          "line": 124
+        },
+        {
+          "path": "apps/mobile/app/(verification)/profile-setup.tsx",
+          "line": 43
+        },
+        {
+          "path": "apps/mobile/app/(verification)/verification-rejected.tsx",
+          "line": 29
+        }
+      ]
+    },
+    {
+      "route": "/(verification)/kyc-consent",
+      "source": "apps/mobile/app/(verification)/kyc-consent.tsx",
+      "literalInboundReferences": []
+    },
+    {
+      "route": "/(verification)/profile-setup",
+      "source": "apps/mobile/app/(verification)/profile-setup.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/(usher)/home.tsx",
+          "line": 267
+        }
+      ]
+    },
+    {
+      "route": "/(verification)/verification-rejected",
+      "source": "apps/mobile/app/(verification)/verification-rejected.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/(verification)/awaiting-approval.tsx",
+          "line": 104
+        }
+      ]
+    },
+    {
+      "route": "/+not-found",
+      "source": "apps/mobile/app/+not-found.tsx",
+      "literalInboundReferences": []
+    },
+    {
+      "route": "/",
+      "source": "apps/mobile/app/index.tsx",
+      "literalInboundReferences": [
+        {
+          "path": "apps/mobile/app/+not-found.tsx",
+          "line": 12
+        },
+        {
+          "path": "apps/mobile/app/(auth)/complete-profile.tsx",
+          "line": 44
+        },
+        {
+          "path": "apps/mobile/app/(auth)/complete-profile.tsx",
+          "line": 61
+        },
+        {
+          "path": "apps/mobile/app/(auth)/welcome.tsx",
+          "line": 30
+        },
+        {
+          "path": "apps/mobile/components/DevLogin.tsx",
+          "line": 35
+        }
+      ]
+    }
+  ]
+}

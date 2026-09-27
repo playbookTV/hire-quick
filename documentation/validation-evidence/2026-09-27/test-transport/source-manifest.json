@@ -1,0 +1,6 @@
+{
+  "package.json": "fbafbf605b93c6f04cc31aacf4b53bc0172d099b6d0b74221e414bc0a90f2fa2",
+  "pnpm-lock.yaml": "e6b61183d989649d5ecb7669ed12ffebf60d0c03d6190becea396a41b07813cd",
+  "patches/supertest@7.2.2.patch": "bb1e5ba745141e9805bedc14463f258d6936de7bd20081dde92c36b285e08c28",
+  "apps/api/src/__tests__/http-test-transport.test.ts": "e0400ce4ce010534bf0264d5742dbd0ef4437dcf29c7c167e073b77458ec1b94"
+}

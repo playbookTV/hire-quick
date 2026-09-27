@@ -1,0 +1,50 @@
+{
+  "sizeBytes": 36360528,
+  "sha256": "8b89c79e4ada523a5b063c7c0f9f6327e597c144299b4e1ae10c02a9e6e146d0",
+  "zipIntegrity": "passed",
+  "bundleIdentifier": "com.ovalay.hirequick",
+  "version": "0.0.1",
+  "buildNumber": "3",
+  "minimumOSVersion": "16.4",
+  "stagingApiOriginPresent": true,
+  "designAssets": {
+    "archivoRegular": "Payload/HireQuick.app/assets/__node_modules/.pnpm/@expo-google-fonts+archivo@0.4.2/node_modules/@expo-google-fonts/archivo/400Regular/Archivo_400Regular.ttf",
+    "manropeRegular": "Payload/HireQuick.app/assets/__node_modules/.pnpm/@expo-google-fonts+manrope@0.4.2/node_modules/@expo-google-fonts/manrope/400Regular/Manrope_400Regular.ttf",
+    "figmaWelcomePhoto": "Payload/HireQuick.app/assets/assets/welcome/event.jpg"
+  },
+  "designFontNamesPresent": true,
+  "embeddedFrameworks": [
+    "ExpoFileSystem.framework",
+    "ExpoFont.framework",
+    "ExpoImage.framework",
+    "ExpoImageManipulator.framework",
+    "ExpoModulesCore.framework",
+    "ExpoModulesJSI.framework",
+    "ExpoModulesWorklets.framework",
+    "Kamera.framework",
+    "KameraVision.framework",
+    "React.framework",
+    "ReactNativeDependencies.framework",
+    "SDWebImage.framework",
+    "SDWebImageAVIFCoder.framework",
+    "SDWebImageSVGCoder.framework",
+    "SDWebImageWebPCoder.framework",
+    "Sentry.framework",
+    "UseSmileIDBridge.framework",
+    "UseSmileIDVisionFace.framework",
+    "hermesvm.framework",
+    "libavif.framework"
+  ],
+  "embeddedProvisioningProfilePresent": true,
+  "signatureChecks": {
+    "cmsCryptographicSignature": "passed",
+    "executablePageHashes": "passed",
+    "pageCount": 1234,
+    "sealedMetadata": {
+      "Info.plist": true,
+      "_CodeSignature/CodeResources": true
+    },
+    "certificateChainTrust": "not established on this Mac",
+    "provisioningProfileCmsSignature": "passed"
+  }
+}

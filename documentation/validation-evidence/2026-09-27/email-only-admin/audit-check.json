@@ -1,0 +1,15 @@
+{
+  "newEntry": {
+    "id": "fc385f2b-30c6-4add-adbc-e2a568bfbec4",
+    "seq": "493",
+    "createdAt": "2026-09-27T13:01:45.957Z",
+    "hashValid": true
+  },
+  "existingMismatch": {
+    "id": "866f2718-fe49-4bea-a7a0-a11849730b94",
+    "seq": "30",
+    "createdAt": "2026-06-21T15:47:57.951Z",
+    "action": "auth.login"
+  },
+  "mismatchPredatesProvisioning": true
+}

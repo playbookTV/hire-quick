@@ -35,7 +35,7 @@ afterEach(async () => {
   await prisma.milestoneTier.deleteMany({ where: { id: { in: tierIds } } });
   await prisma.usher.deleteMany({ where: { id: { in: usherIds } } });
   await prisma.client.deleteMany({ where: { id: { in: clientIds } } });
-  await prisma.auditLog.deleteMany({ where: { actorId: { in: userIds } } });
+  // Keep append-only audit rows linked; disposable-schema cleanup removes them.
   await prisma.user.deleteMany({ where: { id: { in: userIds } } });
   userIds.length = tierIds.length = eventIds.length = clientIds.length = usherIds.length = 0;
 });

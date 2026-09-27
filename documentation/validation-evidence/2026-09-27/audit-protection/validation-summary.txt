@@ -1,0 +1,13 @@
+PASS raw SQL isolation on eight distinct concurrent direct connections
+PASS Prisma generation
+PASS Tracked migrations
+PASS Migration drift
+ Test Files  3 passed (3)
+      Tests  50 passed (50)
+   Duration  5.00s (transform 927ms, setup 0ms, collect 3.93s, tests 795ms, environment 0ms, prepare 62ms)
+PASS Local provider lifecycle integration
+ Test Files  102 passed | 1 skipped (103)
+      Tests  940 passed | 1 skipped (941)
+   Duration  56.07s (transform 2.67s, setup 0ms, collect 12.68s, tests 41.50s, environment 0ms, prepare 155ms)
+PASS Full serial API suite
+PASS removed disposable schema hq_validation_20260927210415_b6322686

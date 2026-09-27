@@ -1,0 +1,41 @@
+{
+  "service": "prolific-love",
+  "configured": [
+    {
+      "key": "SENTRY_READ_TOKEN",
+      "verified": true
+    },
+    {
+      "key": "SENTRY_ORGANIZATION",
+      "verified": true
+    },
+    {
+      "key": "SENTRY_READ_PROJECTS",
+      "verified": true
+    },
+    {
+      "key": "SENTRY_API_ORIGIN",
+      "verified": true
+    },
+    {
+      "key": "BETTER_STACK_API_TOKEN",
+      "verified": true
+    },
+    {
+      "key": "BETTER_STACK_API_MONITOR_ID",
+      "verified": true
+    },
+    {
+      "key": "BETTER_STACK_CHECKOUTS_MONITOR_ID",
+      "verified": true
+    },
+    {
+      "key": "BETTER_STACK_RECONCILIATION_MONITOR_ID",
+      "verified": true
+    },
+    {
+      "key": "BETTER_STACK_AUDIT_MONITOR_ID",
+      "verified": true
+    }
+  ]
+}

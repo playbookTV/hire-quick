@@ -1,8 +1,8 @@
 /**
  * Seeded QA test accounts (see packages/database/prisma/seed-test-accounts.ts).
  * Consumed only by the dev quick-login (gated by env.IS_DEV). Login uses the
- * staging OTP echo, so these numbers never need to receive an SMS — but
- * EXPO_PUBLIC_API_URL must point at the staging API for the code to be echoed.
+ * explicitly enabled staging QA mode, so these numbers do not need SMS.
+ * EXPO_PUBLIC_API_URL must point at that staging API.
  */
 export interface DevAccount {
   label: string;

@@ -1,4 +1,5 @@
 import { StrictMode } from 'react';
+import { MonitoringBoundary } from './lib/monitoring';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from './lib/auth';
@@ -9,7 +10,9 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <App />
+        <MonitoringBoundary fallback={<p role="alert">The admin console encountered an error. Reload to try again.</p>}>
+          <App />
+        </MonitoringBoundary>
       </AuthProvider>
     </BrowserRouter>
   </StrictMode>,

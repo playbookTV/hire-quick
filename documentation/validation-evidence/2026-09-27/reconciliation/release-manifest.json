@@ -1,0 +1,13 @@
+{
+  "snapshot": "/private/tmp/hq-transfer-terminal-20260927",
+  "baseline": "/private/tmp/hq-smile-monitoring-callback-20260927",
+  "baselineVerifiedFiles": 240,
+  "apiBaselineDeployment": "a7a398df-19d8-4c0b-b707-10ba82599313",
+  "workerBaselineDeployment": "834ac495-5c97-419a-a2ce-3eecdfb93957",
+  "changes": {
+    "apps/api/src/modules/payments/__tests__/terminal-operations.test.ts": "93741984c8926b3555936eea1fe2238b70707d3b5f2cdc8a491ac5c9b540899e",
+    "apps/api/src/modules/payments/port/http-paystack.ts": "a81a44ede3ad5450bdf5f6db3740b5eae4028a409c7bab5f045430d31ad9c9ca",
+    "apps/api/src/modules/payments/port/__tests__/http-paystack-contract.test.ts": "09f5bdda6e79aae9f6e34b51cfc9dcd85671356078a969ddb8677f48995d7446",
+    "packages/database/prisma/migrations/20260927210000_preserve_audit_history/migration.sql": "d7da1ffd1cdee8d2a827ffdc8f3d73d90d3cf4a998e082bd9b2343a4056832ea"
+  }
+}

@@ -4,9 +4,19 @@
  */
 import { describe, it, expect, afterEach } from 'vitest';
 import { prisma } from '@hq/database';
-import { holdOrder, releaseBooking, freezeBooking, resolveDisputeRelease } from '../../payments/ledger/ledger.js';
+import {
+  holdOrder,
+  releaseBooking,
+  freezeBooking,
+  resolveDisputeRelease,
+} from '../../payments/ledger/ledger.js';
 import { evaluateMilestones } from '../service.js';
-import { createScenario, teardown, type Scenario } from '../../payments/__tests__/fixtures.js';
+import {
+  createScenario,
+  teardown,
+  type Scenario,
+  FIXTURE_DISPUTE_TIME,
+} from '../../payments/__tests__/fixtures.js';
 
 let scenario: Scenario | null = null;
 let tierIds: string[] = [];
@@ -19,9 +29,15 @@ async function makeTiers(): Promise<{ badge: string; dress: string; phone: strin
   // Robust to leftovers from a crashed run.
   await prisma.usherMilestone.deleteMany({ where: { tier: { threshold: { in: THRESHOLDS } } } });
   await prisma.milestoneTier.deleteMany({ where: { threshold: { in: THRESHOLDS } } });
-  const badge = await prisma.milestoneTier.create({ data: { threshold: 1, name: 'T1 Badge', rewardType: 'BADGE' } });
-  const dress = await prisma.milestoneTier.create({ data: { threshold: 2, name: 'T2 Dress', rewardType: 'PHYSICAL' } });
-  const phone = await prisma.milestoneTier.create({ data: { threshold: 3, name: 'T3 iPhone', rewardType: 'PHYSICAL' } });
+  const badge = await prisma.milestoneTier.create({
+    data: { threshold: 1, name: 'T1 Badge', rewardType: 'BADGE' },
+  });
+  const dress = await prisma.milestoneTier.create({
+    data: { threshold: 2, name: 'T2 Dress', rewardType: 'PHYSICAL' },
+  });
+  const phone = await prisma.milestoneTier.create({
+    data: { threshold: 3, name: 'T3 iPhone', rewardType: 'PHYSICAL' },
+  });
   tierIds = [badge.id, dress.id, phone.id];
   return { badge: badge.id, dress: dress.id, phone: phone.id };
 }
@@ -61,7 +77,9 @@ describe('usher milestones', () => {
     await complete(scenario.bookingIds[1]!);
     usher = await prisma.usher.findUniqueOrThrow({ where: { id: scenario.usherId } });
     expect(usher.completedJobsCount).toBe(2);
-    const dressMs = await prisma.usherMilestone.findFirstOrThrow({ where: { usherId: scenario.usherId, tierId: dress } });
+    const dressMs = await prisma.usherMilestone.findFirstOrThrow({
+      where: { usherId: scenario.usherId, tierId: dress },
+    });
     expect(dressMs.status).toBe('UNLOCKED');
     expect(dressMs.fulfilledAt).toBeNull();
 
@@ -92,8 +110,11 @@ describe('usher milestones', () => {
     scenario = await createScenario({ headcount: 1, amountKobo: 2_000_000 });
     await prisma.$transaction((tx) => holdOrder(tx, scenario!.orderId, 'chg_ms_2'));
     const bookingId = scenario.bookingIds[0]!;
-    await prisma.$transaction((tx) => freezeBooking(tx, bookingId)); // → DISPUTED
-    await prisma.$transaction((tx) => resolveDisputeRelease(tx, bookingId)); // admin favours usher
+    await prisma.$transaction((tx) => freezeBooking(tx, bookingId, FIXTURE_DISPUTE_TIME)); // → DISPUTED
+    await prisma.$transaction(async (tx) => {
+      await resolveDisputeRelease(tx, bookingId); // admin restores completion
+      await releaseBooking(tx, bookingId, 'AUTO'); // historical event is beyond its deadline
+    });
 
     const usher = await prisma.usher.findUniqueOrThrow({ where: { id: scenario.usherId } });
     expect(usher.completedJobsCount).toBe(1);
@@ -104,7 +125,10 @@ describe('usher milestones', () => {
 
   it('inactive tiers do not unlock', async () => {
     await makeTiers();
-    await prisma.milestoneTier.updateMany({ where: { id: { in: tierIds } }, data: { active: false } });
+    await prisma.milestoneTier.updateMany({
+      where: { id: { in: tierIds } },
+      data: { active: false },
+    });
     scenario = await createScenario({ headcount: 1, amountKobo: 2_000_000 });
     await prisma.$transaction((tx) => holdOrder(tx, scenario!.orderId, 'chg_ms_3'));
     await complete(scenario.bookingIds[0]!);

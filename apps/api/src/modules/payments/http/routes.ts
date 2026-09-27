@@ -1,3 +1,4 @@
+import { pendingEarningsByBooking } from '../pending-earnings.js';
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { z } from 'zod';
 import { withdrawSchema, resolveAccountSchema } from '@hq/shared';
@@ -6,6 +7,7 @@ import { ApiError } from '../../../app.js';
 import { requireIdempotencyKey } from './middleware.js';
 import { requireAuth, type AuthedRequest } from '../../auth/middleware.js';
 import { writeAudit } from '../../audit.js';
+import { getCheckout, resumeCheckout } from '../checkout.js';
 import { RT, withdrawalEvent } from '../../../realtime/events.js';
 import {
   initChargeForOrder,
@@ -27,7 +29,8 @@ const bankAccountSchema = z.object({
   accountNumber: z.string().regex(/^\d{10}$/),
 });
 
-let banksCache: { at: number; banks: Awaited<ReturnType<Deps['paystack']['listBanks']>> } | null = null;
+let banksCache: { at: number; banks: Awaited<ReturnType<Deps['paystack']['listBanks']>> } | null =
+  null;
 const BANKS_TTL_MS = 24 * 60 * 60 * 1000;
 
 async function usherWalletFor(
@@ -38,7 +41,11 @@ async function usherWalletFor(
     include: { wallet: true },
   });
   if (!usher?.wallet) throw new ApiError(403, 'NOT_AN_USHER', 'no usher wallet for this user');
-  return { usherId: usher.id, walletId: usher.wallet.id, availableBalance: usher.wallet.availableBalance };
+  return {
+    usherId: usher.id,
+    walletId: usher.wallet.id,
+    availableBalance: usher.wallet.availableBalance,
+  };
 }
 
 type Activity = {
@@ -62,9 +69,37 @@ export function paymentsRouter(deps: Deps): Router {
     wrap(async (req, res) => {
       const { email } = z.object({ email: z.string().email() }).parse(req.body);
       const orderId = String(req.params.orderId);
-      const out = await initChargeForOrder(deps, { orderId, email, clientUserId: (req as AuthedRequest).auth.userId });
-      await writeAudit({ actorId: (req as AuthedRequest).auth.userId, action: 'payment.charge.init', target: orderId });
+      const out = await initChargeForOrder(deps, {
+        orderId,
+        email,
+        clientUserId: (req as AuthedRequest).auth.userId,
+      });
+      await writeAudit({
+        actorId: (req as AuthedRequest).auth.userId,
+        action: 'payment.charge.init',
+        target: orderId,
+      });
       res.status(201).json(out);
+    }),
+  );
+
+  r.get(
+    '/orders/:orderId/checkout',
+    wrap(async (req, res) => {
+      res.json(
+        await getCheckout(deps, String(req.params.orderId), (req as AuthedRequest).auth.userId),
+      );
+    }),
+  );
+  r.post(
+    '/orders/:orderId/checkout/resume',
+    wrap(async (req, res) => {
+      res.json(
+        await resumeCheckout(deps, {
+          orderId: String(req.params.orderId),
+          clientUserId: (req as AuthedRequest).auth.userId,
+        }),
+      );
     }),
   );
 
@@ -72,18 +107,21 @@ export function paymentsRouter(deps: Deps): Router {
   r.get(
     '/wallet',
     wrap(async (req, res) => {
-      const { usherId, walletId, availableBalance } = await usherWalletFor((req as AuthedRequest).auth.userId);
-      const pending = await prisma.payment.aggregate({
-        where: { escrowStatus: 'HELD', booking: { usherId } },
-        _sum: { usherPayout: true },
+      const { usherId, walletId, availableBalance } = await usherWalletFor(
+        (req as AuthedRequest).auth.userId,
+      );
+      const held = await prisma.payment.findMany({
+        where: { escrowStatus: { in: ['HELD', 'FROZEN'] }, booking: { usherId } },
+        select: { bookingId: true, usherPayout: true },
       });
+      const pending = await pendingEarningsByBooking(prisma, held);
       const lifetime = await prisma.walletLedger.aggregate({
         where: { walletId, entryType: 'CREDIT' },
         _sum: { amount: true },
       });
       res.json({
         availableBalance,
-        pendingEscrow: pending._sum.usherPayout ?? 0,
+        pendingEscrow: [...pending.values()].reduce((sum, amount) => sum + amount, 0),
         lifetimeEarned: lifetime._sum.amount ?? 0,
       });
     }),
@@ -94,16 +132,19 @@ export function paymentsRouter(deps: Deps): Router {
     '/wallet/activity',
     wrap(async (req, res) => {
       const { usherId, walletId } = await usherWalletFor((req as AuthedRequest).auth.userId);
+      // REL-M1: Each source is capped at 25 so the combined list never exceeds
+      // 50 items before slicing. Previously both were take: 50, which meant an
+      // usher with many held payments could crowd out completed ledger entries.
       const ledger = await prisma.walletLedger.findMany({
         where: { walletId },
         orderBy: { createdAt: 'desc' },
-        take: 50,
+        take: 25,
         include: { booking: { include: { event: { select: { title: true } } } } },
       });
       const held = await prisma.payment.findMany({
-        where: { escrowStatus: 'HELD', booking: { usherId } },
+        where: { escrowStatus: { in: ['HELD', 'FROZEN'] }, booking: { usherId } },
         orderBy: { createdAt: 'desc' },
-        take: 50,
+        take: 25,
         include: { booking: { include: { event: { select: { title: true } } } } },
       });
       // Resolve bank last-4 for debit rows (WalletLedger has no withdrawal relation).
@@ -136,12 +177,18 @@ export function paymentsRouter(deps: Deps): Router {
           createdAt: l.createdAt,
         };
       });
+      const pending = await pendingEarningsByBooking(prisma, held);
       const fromHeld: Activity[] = held.map((p) => ({
         id: p.id,
         type: 'pending',
-        title: 'Escrow hold',
+        title:
+          p.escrowStatus === 'FROZEN'
+            ? 'Dispute hold'
+            : p.booking.status === 'COMPLETED'
+              ? 'Completed · earnings held'
+              : 'Escrow hold',
         subtitle: p.booking.event.title,
-        amount: p.usherPayout,
+        amount: pending.get(p.bookingId) ?? p.usherPayout,
         createdAt: p.createdAt,
       }));
       const all = [...fromLedger, ...fromHeld]
@@ -171,7 +218,11 @@ export function paymentsRouter(deps: Deps): Router {
         const out = await deps.paystack.resolveAccount({ bankCode, accountNumber });
         res.json(out);
       } catch {
-        throw new ApiError(422, 'ACCOUNT_RESOLVE_FAILED', 'Could not verify this account. Check the number and bank.');
+        throw new ApiError(
+          422,
+          'ACCOUNT_RESOLVE_FAILED',
+          'Could not verify this account. Check the number and bank.',
+        );
       }
     }),
   );
@@ -196,9 +247,85 @@ export function paymentsRouter(deps: Deps): Router {
         await prisma.bankAccount.findMany({
           where: { usherId },
           orderBy: { createdAt: 'desc' },
-          select: { id: true, bankCode: true, accountNumber: true, accountName: true, verified: true },
+          select: {
+            id: true,
+            bankCode: true,
+            accountNumber: true,
+            accountName: true,
+            verified: true,
+          },
         }),
       );
+    }),
+  );
+
+  const withdrawalSelect = {
+    id: true,
+    amount: true,
+    status: true,
+    paystackTransferRef: true,
+    createdAt: true,
+    updatedAt: true,
+    bankAccount: { select: { bankCode: true, accountNumber: true, accountName: true } },
+  } as const;
+  const withdrawalDto = (row: {
+    id: string;
+    amount: number;
+    status: string;
+    paystackTransferRef: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    bankAccount: { bankCode: string; accountNumber: string; accountName: string };
+  }) => ({
+    id: row.id,
+    amount: row.amount,
+    status: row.status,
+    reference: row.paystackTransferRef,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    bank: {
+      code: row.bankAccount.bankCode,
+      accountName: row.bankAccount.accountName,
+      last4: row.bankAccount.accountNumber.slice(-4),
+    },
+  });
+  r.get(
+    '/withdrawals',
+    wrap(async (req, res) => {
+      const { walletId } = await usherWalletFor((req as AuthedRequest).auth.userId);
+      const cursor = z.string().uuid().optional().parse(req.query.cursor);
+      if (
+        cursor &&
+        !(await prisma.withdrawal.findFirst({
+          where: { id: cursor, walletId },
+          select: { id: true },
+        }))
+      )
+        throw new ApiError(400, 'INVALID_CURSOR', 'Refresh your withdrawal history.');
+      const rows = await prisma.withdrawal.findMany({
+        where: { walletId },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: 26,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+        select: withdrawalSelect,
+      });
+      res.json({
+        items: rows.slice(0, 25).map(withdrawalDto),
+        nextCursor: rows.length > 25 ? rows[24]!.id : null,
+      });
+    }),
+  );
+  r.get(
+    '/withdrawals/:id',
+    wrap(async (req, res) => {
+      const { walletId } = await usherWalletFor((req as AuthedRequest).auth.userId);
+      const id = z.string().uuid().parse(req.params.id);
+      const row = await prisma.withdrawal.findFirst({
+        where: { id, walletId },
+        select: withdrawalSelect,
+      });
+      if (!row) throw new ApiError(404, 'NOT_FOUND', 'Withdrawal not found.');
+      res.json(withdrawalDto(row));
     }),
   );
 
@@ -226,7 +353,7 @@ export function paymentsRouter(deps: Deps): Router {
         deps.realtime?.emitToUser(
           (req as AuthedRequest).auth.userId,
           RT.WITHDRAWAL_REQUESTED,
-          withdrawalEvent(out.withdrawalId, 'PROCESSING', body.amountKobo),
+          withdrawalEvent(out.withdrawalId, out.status, out.amountKobo),
         );
       }
       res.status(out.duplicate ? 200 : 201).json(out);

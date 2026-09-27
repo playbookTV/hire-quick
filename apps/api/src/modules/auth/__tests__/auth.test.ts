@@ -17,7 +17,8 @@ function newPhone(): string {
 
 afterEach(async () => {
   await prisma.verificationCode.deleteMany({ where: { subjectRef: { in: phones } } });
-  await prisma.auditLog.deleteMany({ where: { actorId: { in: userIds } } });
+  // Audit rows are append-only and actorId is not a live FK. Deleting selected
+  // rows would corrupt the shared hash chain; disposable-schema cleanup owns it.
   await prisma.user.deleteMany({ where: { id: { in: userIds } } });
   phones.length = 0;
   userIds.length = 0;

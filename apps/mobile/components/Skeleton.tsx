@@ -6,8 +6,18 @@
  */
 import { useEffect } from 'react';
 import { type DimensionValue } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming, Easing } from 'react-native-reanimated';
+import Animated, {
+  cancelAnimation,
+  ReduceMotion,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
 import { useTheme, Box } from '../theme/restyle.js';
+import { useMotionPreference } from '../lib/use-motion-preference.js';
+import { motionTokens } from '../theme/token-manager.js';
 
 interface SkeletonProps {
   width?: DimensionValue;
@@ -15,19 +25,48 @@ interface SkeletonProps {
   radius?: number;
 }
 
-export function Skeleton({ width = '100%', height = 16, radius = 8 }: SkeletonProps): React.JSX.Element {
+export function Skeleton({
+  width = '100%',
+  height = 16,
+  radius = 8,
+}: SkeletonProps): React.JSX.Element {
   const theme = useTheme();
-  const opacity = useSharedValue(0.5);
+  const reduced = useMotionPreference();
+  const opacity = useSharedValue<number>(motionTokens.skeleton.restingOpacity);
 
   useEffect(() => {
-    opacity.value = withRepeat(withTiming(1, { duration: 800, easing: Easing.inOut(Easing.ease) }), -1, true);
-  }, [opacity]);
+    cancelAnimation(opacity);
+    opacity.value = reduced
+      ? motionTokens.skeleton.restingOpacity
+      : motionTokens.skeleton.minOpacity;
+    // The live preference gates the loop and cancels it immediately when enabled.
+    if (!reduced) {
+      opacity.value = withRepeat(
+        withTiming(1, {
+          duration: motionTokens.skeleton.halfCycleMs,
+          easing: Easing.inOut(Easing.ease),
+          reduceMotion: ReduceMotion.Never,
+        }),
+        -1,
+        true,
+        undefined,
+        ReduceMotion.Never,
+      );
+    }
+    return () => cancelAnimation(opacity);
+  }, [opacity, reduced]);
 
   const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
   return (
     <Animated.View
-      style={[{ width, height, borderRadius: radius, backgroundColor: theme.colors.bgInset }, style]}
+      accessible={false}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={[
+        { width, height, borderRadius: radius, backgroundColor: theme.colors.bgInset },
+        style,
+      ]}
     />
   );
 }

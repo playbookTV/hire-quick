@@ -13,7 +13,9 @@ COPY . .
 
 RUN pnpm install --frozen-lockfile \
   && pnpm --filter @hq/database exec prisma generate \
-  && pnpm --filter @hq/api build
+  && pnpm --filter @hq/api build \
+  && test -f apps/api/dist/server.js \
+  && test -f apps/api/dist/worker.js
 
 # PROCESS_TYPE=worker runs the BullMQ worker; anything else runs the API.
 CMD ["sh", "-c", "if [ \"$PROCESS_TYPE\" = \"worker\" ]; then pnpm --filter @hq/api worker:start; else pnpm --filter @hq/api start; fi"]
