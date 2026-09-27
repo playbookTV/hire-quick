@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { kobo, priceBooking, formatNaira } from '@hq/shared';
+import { kobo, priceBooking, formatNaira, PLATFORM_FEE_LABEL } from '@hq/shared';
 import { Screen } from '../../../components/Screen.js';
 import { AppBar } from '../../../components/AppBar.js';
 import { Card } from '../../../components/Card.js';
@@ -151,7 +151,7 @@ export default function EventDetail(): React.JSX.Element {
             </Text>
             <KeyValueRow label="Per usher" value={formatNaira(kobo(event.budgetPerHead))} />
             <KeyValueRow label={`${event.headcount} ushers`} value={formatNaira(staffSubtotal)} />
-            <KeyValueRow label="Platform fee (15%)" value={formatNaira(fee)} />
+            <KeyValueRow label={`Platform fee (${PLATFORM_FEE_LABEL})`} value={formatNaira(fee)} />
             <KeyValueRow label="Estimated total" value={formatNaira(total)} emphasize />
             <Text variant="bodySm" color="inkMuted">Estimate for new bookings. Saved orders keep their confirmed prices.</Text>
             <Text variant="bodySm" color="inkMuted" marginTop="200">

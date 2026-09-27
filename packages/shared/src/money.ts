@@ -104,6 +104,8 @@ export function formatNaira(amount: Kobo): string {
 
 export const ZERO = kobo(0);
 export const PLATFORM_FEE_BPS = 1500; // 15% (TRD §6 / EXEC §6)
+/** Display label for the platform fee, derived so copy cannot drift from the rate. */
+export const PLATFORM_FEE_LABEL = `${PLATFORM_FEE_BPS / 100}%`;
 
 /**
  * Upper bound for any single kobo amount accepted at the API boundary. Money is

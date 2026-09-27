@@ -11,6 +11,7 @@ import {
   formatNaira,
   MoneyError,
   PLATFORM_FEE_BPS,
+  PLATFORM_FEE_LABEL,
   refundWithFeeDeduction,
 } from './money.js';
 
@@ -84,6 +85,10 @@ describe('client-paid platform fee', () => {
     expect(priceBooking(naira(10_000))).toEqual({ gross: 1_150_000, fee: 150_000, payout: 1_000_000 });
     expect(bookingAllocation(1_150_000, 1_000_000)).toEqual({ fee: 150_000, payout: 1_000_000 });
     expect(bookingAllocation(1_000_000, null)).toEqual({ fee: 150_000, payout: 850_000 });
+  });
+  it('labels the fee from the same rate used to price it', () => {
+    expect(PLATFORM_FEE_LABEL).toBe('15%');
+    expect(priceBooking(naira(100)).fee).toBe(naira(Number.parseFloat(PLATFORM_FEE_LABEL)));
   });
   it('rejects an inconsistent saved price and invalid staff pay', () => {
     expect(() => bookingAllocation(1_000_000, 1_000_000)).toThrow(MoneyError);

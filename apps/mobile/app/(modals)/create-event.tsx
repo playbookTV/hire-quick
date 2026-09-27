@@ -15,6 +15,7 @@ import {
   kobo,
   priceBooking,
   formatNaira,
+  PLATFORM_FEE_LABEL,
   ACCOMMODATION_STATUSES,
   isLateNight,
 } from '@hq/shared';
@@ -304,7 +305,7 @@ export default function CreateEvent(): React.JSX.Element {
                 {values.headcount} staff × {formatNaira(kobo(values.budgetPerHeadKobo || 0))}
               </Text>
               <Text variant="bodySm" color="inkMuted">
-                Plus {formatNaira(kobo((values.headcount || 0) * perHead.fee))} platform fee (15%). Staff receive their full agreed pay.
+                Plus {formatNaira(kobo((values.headcount || 0) * perHead.fee))} platform fee ({PLATFORM_FEE_LABEL}). Staff receive their full agreed pay.
               </Text>
             </Box>
 
