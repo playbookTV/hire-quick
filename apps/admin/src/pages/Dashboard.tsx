@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { api, naira } from '../lib/api';
+import { formatNaira, kobo } from '@hq/shared';
+import { api } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
 import { Page, State } from '../components/ui';
 
@@ -20,8 +21,8 @@ export function Dashboard() {
         ['Open disputes', String(data.openDisputes), '/disputes'],
         ['Pending approvals', String(data.pendingApprovals), '/approvals'],
         ['Users', String(data.users), '/users'],
-        ['Escrow held', naira(data.escrowHeldKobo), '/ledger'],
-        ['Approval threshold', naira(data.approvalThresholdKobo), null],
+        ['Escrow held', formatNaira(kobo(data.escrowHeldKobo)), '/ledger'],
+        ['Approval threshold', formatNaira(kobo(data.approvalThresholdKobo)), null],
       ]
     : [];
 

@@ -1,6 +1,7 @@
 import { ReviewPanel } from '../components/ui';
 import { useRef, useState } from 'react';
-import { api, naira } from '../lib/api';
+import { formatNaira, kobo } from '@hq/shared';
+import { api } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
 import { Page, State, Table, Btn, Badge, EmptyRow } from '../components/ui';
 import { BookingReview } from '../components/BookingReview';
@@ -100,8 +101,8 @@ export function Disputes() {
                 </select>
                 <p>
                   {outcome === 'RELEASE'
-                    ? `The usher receives ${naira(booking.payment?.usherPayout ?? 0)}.`
-                    : `The client receives a refund of ${naira(booking.payment?.grossAmount ?? 0)}.`}{' '}
+                    ? `The usher receives ${formatNaira(kobo(booking.payment?.usherPayout ?? 0))}.`
+                    : `The client receives a refund of ${formatNaira(kobo(booking.payment?.grossAmount ?? 0))}.`}{' '}
                   A second admin must approve amounts above the configured threshold.
                 </p>
                 <label htmlFor="resolution">Resolution and supporting reasoning</label>
@@ -148,7 +149,7 @@ export function Disputes() {
           <tr key={d.id}>
             <td>{d.booking.event.title}</td>
             <td>{d.reason}</td>
-            <td>{d.booking.payment ? naira(d.booking.payment.grossAmount) : '—'}</td>
+            <td>{d.booking.payment ? formatNaira(kobo(d.booking.payment.grossAmount)) : '—'}</td>
             <td>
               <Badge>{d.status}</Badge>
             </td>

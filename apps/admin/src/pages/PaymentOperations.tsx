@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { api, naira, shortDate } from '../lib/api';
+import { formatNaira, kobo } from '@hq/shared';
+import { api, shortDate } from '../lib/api';
 import { useRecords } from '../lib/useRecords';
 import { Page, State, Table, Badge, Btn, EmptyRow, Pagination } from '../components/ui';
 interface Operation {
@@ -186,7 +187,7 @@ export function PaymentOperations() {
               <p>
                 {run.metadata.driftKobo === undefined
                   ? run.metadata.message
-                  : `Difference: ${naira(run.metadata.driftKobo)}`}
+                  : `Difference: ${formatNaira(kobo(run.metadata.driftKobo))}`}
               </p>
               <details>
                 <summary>Recorded evidence</summary>

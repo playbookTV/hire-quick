@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
-import { naira, shortDate } from '../lib/api';
+import { formatNaira, kobo } from '@hq/shared';
+import { shortDate } from '../lib/api';
 import { useRecords } from '../lib/useRecords';
 import { Page, State, Table, Badge, Btn, EmptyRow, Pagination } from '../components/ui';
 interface Entry {
@@ -56,9 +57,9 @@ function LedgerRecords({ filters }: { filters: string }) {
             </td>
             <td className="whitespace-nowrap">
               {e.amount > 0 ? '+' : ''}
-              {naira(e.amount)}
+              {formatNaira(kobo(e.amount))}
             </td>
-            <td className="whitespace-nowrap">{naira(e.balanceAfter)}</td>
+            <td className="whitespace-nowrap">{formatNaira(kobo(e.balanceAfter))}</td>
             <td>
               {e.booking?.event.title ?? 'Platform'}
               {e.booking && (

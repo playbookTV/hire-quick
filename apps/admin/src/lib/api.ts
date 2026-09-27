@@ -15,9 +15,6 @@ export function api<T>(path: string, opts: AdminRequestOptions = {}): Promise<T>
   return adminSession.request<T>(path, opts);
 }
 
-export function naira(kobo: number): string {
-  return `₦${(kobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
-}
 export function shortDate(iso: string): string {
   return new Date(iso).toLocaleString('en-NG', { dateStyle: 'medium', timeStyle: 'short' });
 }

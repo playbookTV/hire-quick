@@ -7,6 +7,7 @@
 | Layer                       | Scope                                                                   | Requirements                                                                 |
 | --------------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
 | Shared tests                | Money arithmetic, policy, state tables, DTO boundaries                  | Node/pnpm; generally no database                                             |
+| Admin client tests          | Session sign-in/refresh, stale-login fencing, API client headers        | Node/pnpm; no browser, API server or database                                |
 | API unit/contract tests     | Validators, provider parsing, client recovery controllers, pure helpers | Built dependencies; inspect each suite for local server/Redis requirements   |
 | API integration/concurrency | Routes, identity, ledger, payments, privacy, database locks             | Disposable real PostgreSQL                                                   |
 | Realtime runtime            | Socket.IO authorization/delivery/outage handling                        | Suite-dependent disposable Redis and mocked ports or guarded real PostgreSQL |

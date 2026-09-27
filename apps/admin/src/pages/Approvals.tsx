@@ -1,5 +1,6 @@
 import { ReviewPanel } from '../components/ui';
-import { api, naira, shortDate } from '../lib/api';
+import { formatNaira, kobo } from '@hq/shared';
+import { api, shortDate } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
 import { Page, State, Table, Btn } from '../components/ui';
 import { BookingReview } from '../components/BookingReview';
@@ -126,7 +127,7 @@ export function Approvals() {
             {shortDate(selected.createdAt)}
           </p>
           <p>
-            <strong>{naira(selected.amountKobo)}</strong> · Proposed outcome:{' '}
+            <strong>{formatNaira(kobo(selected.amountKobo))}</strong> · Proposed outcome:{' '}
             {selected.payload.outcome === 'CLIENT_CANCELLATION'
               ? 'Client cancellation split (total allocation shown)'
               : (selected.payload.outcome ?? 'REFUND')}
@@ -195,7 +196,7 @@ export function Approvals() {
         {(data ?? []).map((a) => (
           <tr key={a.id}>
             <td className="px-4 py-2">{a.kind}</td>
-            <td className="px-4 py-2">{naira(a.amountKobo)}</td>
+            <td className="px-4 py-2">{formatNaira(kobo(a.amountKobo))}</td>
             <td className="px-4 py-2">
               {a.status === 'APPROVED' ? 'Approved · processing' : a.status}
             </td>
