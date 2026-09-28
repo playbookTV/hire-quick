@@ -14,6 +14,7 @@ const EnvSchema = z.object({
   PROCESS_TYPE: z.enum(['api', 'worker']).default('api'),
   SENTRY_DSN: z.union([z.literal(''), z.string().url()]).default(''),
   SENTRY_RELEASE: z.string().max(200).default(''),
+  SENTRY_TRACES_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(0.1),
   // Server-only read access for the admin observability page; never a VITE_/EXPO_PUBLIC_ value.
   BETTER_STACK_API_TOKEN: z.string().default(''),
   BETTER_STACK_API_MONITOR_ID: z.string().regex(/^\d*$/).default(''),

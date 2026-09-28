@@ -1,0 +1,16 @@
+[
+  {
+    "eventId": "bb4c555d48e844b3ad0cab0422d59fb1",
+    "traceId": "d8cf45d35b6b44ffbfb72cb653cc2866",
+    "flushed": true,
+    "release": "hq-sentry-20260928",
+    "service": "api"
+  },
+  {
+    "eventId": "5270a0aa09db49abbca009ffc4589071",
+    "traceId": "f4b9a53a354d4037b435152827bfdc14",
+    "flushed": true,
+    "release": "hq-sentry-20260928",
+    "service": "worker"
+  }
+]

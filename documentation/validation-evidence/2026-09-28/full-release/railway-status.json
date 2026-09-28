@@ -1,0 +1,22 @@
+[
+  {
+    "name": "Redis",
+    "deployment": "c819707d-de20-42cb-9855-9970da27208d",
+    "status": "SUCCESS"
+  },
+  {
+    "name": "hirequick-worker",
+    "deployment": "9ed6df92-23c8-49dd-81a9-b3502aa3342b",
+    "status": "SUCCESS"
+  },
+  {
+    "name": "prolific-love",
+    "deployment": "4230eb33-be44-4962-a887-1b9b2639dcf1",
+    "status": "SUCCESS"
+  },
+  {
+    "name": "hirequick-admin",
+    "deployment": "d3584961-6fdc-4d15-8329-dd3022e302e5",
+    "status": "SUCCESS"
+  }
+]

@@ -1,10 +1,9 @@
 import * as Sentry from '@sentry/node';
 import { env } from '../env.js';
-import { sanitizeErrorEvent } from './privacy.js';
+import { sanitizeErrorEvent, sanitizeSpan } from './privacy.js';
 import { logger } from '../logger.js';
 
-// Error reporting only. No automatic HTTP/SQL bodies, breadcrumbs, or session
-// recording. Request/job timing comes from the structured logs below.
+// Explicit HTTP/job spans only: no automatic HTTP/SQL payload capture.
 if (env.SENTRY_DSN && env.NODE_ENV !== 'test') {
   Sentry.init({
     dsn: env.SENTRY_DSN,
@@ -12,7 +11,11 @@ if (env.SENTRY_DSN && env.NODE_ENV !== 'test') {
     ...(env.SENTRY_RELEASE ? { release: env.SENTRY_RELEASE } : {}),
     enableRuntimeChannelInjection: false,
     defaultIntegrations: false,
+    traceLifecycle: 'stream',
+    tracesSampleRate: env.SENTRY_TRACES_SAMPLE_RATE,
+    tracePropagationTargets: [],
     beforeSend: sanitizeErrorEvent,
+    beforeSendSpan: sanitizeSpan,
     maxBreadcrumbs: 0,
     initialScope: {
       tags: { service: env.PROCESS_TYPE === 'worker' ? 'hirequick-worker' : 'hirequick-api' },

@@ -37,16 +37,15 @@ export function sanitizeMobileEvent(event: ErrorEvent): ErrorEvent {
       'environment',
       'sdk',
       'debug_meta',
+      'message',
     ]),
     tags: { service: 'hirequick-mobile', ...smile },
     ...(smile.code ? { fingerprint: ['hirequick', smile.code] } : {}),
-    ...(event.message ? { message: smile.code ?? 'HireQuick mobile diagnostic' } : {}),
     ...(event.exception?.values
       ? {
           exception: {
             values: event.exception.values.map((exception) => ({
-              ...pickDefined(exception, ['type']),
-              value: '[message withheld for privacy]',
+              ...pickDefined(exception, ['type', 'value']),
               ...(exception.mechanism
                 ? { mechanism: pickDefined(exception.mechanism, ['type', 'handled']) }
                 : {}),

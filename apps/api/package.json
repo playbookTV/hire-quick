@@ -6,11 +6,11 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "worker": "PROCESS_TYPE=worker tsx watch src/worker.ts",
-    "worker:start": "PROCESS_TYPE=worker node dist/worker.js",
+    "worker:start": "PROCESS_TYPE=worker node --import ./dist/observability/init.js dist/worker.js",
     "build": "tsc -b",
     "typecheck": "tsc -b",
     "typecheck:tests": "tsc -p tsconfig.tests.json",
-    "start": "node dist/server.js",
+    "start": "node --import ./dist/observability/init.js dist/server.js",
     "test": "vitest run",
     "lint": "eslint ."
   },

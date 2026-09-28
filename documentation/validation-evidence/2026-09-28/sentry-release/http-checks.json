@@ -1,0 +1,19 @@
+{
+  "health": {
+    "status": 200
+  },
+  "ready": {
+    "status": 200
+  },
+  "unauthenticatedAdmin": {
+    "status": 401
+  },
+  "admin": {
+    "status": 200,
+    "asset": "/assets/index-B9S1uhRp.js",
+    "matchesLocalBuild": true,
+    "releasePresent": true,
+    "placeholderAbsent": true,
+    "sha256": "2aebf1e803afe675fe9d171beb5fa1be56f66e045cfe4046aa40d22fcd3a55f3"
+  }
+}

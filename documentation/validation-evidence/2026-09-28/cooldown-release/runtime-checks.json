@@ -1,0 +1,11 @@
+{
+  "services": [
+    "prolific-love",
+    "hirequick-worker"
+  ],
+  "sourceSha256": "d433ace76e981c1e30e5a4c4fec000cd65a76d27fb60fc42a22cb250cab374d3",
+  "compiledSha256": "87faaed5647070b1c3d2a654a36ee826537b62e59106c341e743aa354c414d07",
+  "hashesMatchTestedCode": true,
+  "sentryInitSha256": "e0f6cbee545143003b1fbd5ed9eaaca9f6aa99fb14527a53b381103d331cc2dc",
+  "sentryPrivacySha256": "5cad32a2e3bc7c14484bff5d25d5b492060477be242d67a940f622b34d1588de"
+}

@@ -78,6 +78,7 @@ function payload() {
 }
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   // Only records created by this suite; audit history is never removed.
   await prisma.usherVerification.deleteMany({ where: { usherId: { in: usherIds } } });
   await prisma.user.deleteMany({ where: { id: { in: userIds } } });
@@ -491,6 +492,95 @@ describe('Authenticated active KYC sessions', () => {
       .send(payload());
     expect(response.status).toBe(200);
     expect((await current(user.usherId)).status).toBe('REJECTED');
+  });
+
+  it('expires old Smile attempts at the 6-hour boundary without erasing history', async () => {
+    const user = await person();
+    const now = Date.now();
+    await prisma.usher.update({ where: { id: user.usherId }, data: { kycAttempts: 5 } });
+    await prisma.usherVerification.createMany({
+      data: Array.from({ length: 5 }, () => ({
+        usherId: user.usherId,
+        method: 'BIOMETRIC' as const,
+        provider: 'SMILE_ID',
+        status: 'REJECTED' as const,
+        createdAt: new Date(now - 6 * 60 * 60 * 1000),
+      })),
+    });
+    vi.spyOn(Date, 'now').mockReturnValue(now);
+    await expect(
+      startBiometricVerification(prisma, user.userId, kyc, identity),
+    ).resolves.toHaveProperty('token');
+    // A second start must use the renewed budget, not reapply the lifetime cap.
+    await expect(
+      startBiometricVerification(prisma, user.userId, kyc, identity),
+    ).resolves.toHaveProperty('token');
+    expect(await prisma.usherVerification.count({ where: { usherId: user.usherId } })).toBe(7);
+    expect(
+      (await prisma.usher.findUniqueOrThrow({ where: { id: user.usherId } })).kycAttempts,
+    ).toBe(7);
+  });
+
+  it('returns the remaining cooldown and allows a start exactly when the oldest recent attempt expires', async () => {
+    const user = await person();
+    const now = Date.now();
+    const minute = 60 * 1000;
+    await prisma.usherVerification.createMany({
+      data: Array.from({ length: 5 }, (_, index) => ({
+        usherId: user.usherId,
+        method: 'BIOMETRIC' as const,
+        provider: 'SMILE_ID',
+        status: 'REJECTED' as const,
+        createdAt: new Date(now - 6 * 60 * minute + (index + 1) * minute),
+      })),
+    });
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(now);
+    const blocked = await request(app)
+      .post('/api/me/verification/kyc/start')
+      .set('Authorization', `Bearer ${user.token}`)
+      .send(identity);
+    expect(blocked.status).toBe(429);
+    expect(blocked.body.error).toEqual({
+      code: 'KYC_ATTEMPTS_EXCEEDED',
+      message:
+        "You've reached the limit of 5 verification attempts in 6 hours. Try again in 1 minute.",
+    });
+    expect(await prisma.usherVerification.count({ where: { usherId: user.usherId } })).toBe(5);
+    clock.mockReturnValue(now + minute - 1);
+    await expect(
+      startBiometricVerification(prisma, user.userId, kyc, identity),
+    ).rejects.toMatchObject({
+      code: 'KYC_ATTEMPTS_EXCEEDED',
+    });
+    clock.mockReturnValue(now + minute);
+    const results = await Promise.allSettled(
+      Array.from({ length: 3 }, () =>
+        startBiometricVerification(prisma, user.userId, kyc, identity),
+      ),
+    );
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    expect(results.filter((result) => result.status === 'rejected')).toHaveLength(2);
+    expect(await prisma.usherVerification.count({ where: { usherId: user.usherId } })).toBe(6);
+  });
+
+  it('refreshes the latest pending session even while new starts are cooling down', async () => {
+    const user = await person();
+    let reference = '';
+    for (let attempt = 0; attempt < 5; attempt++) {
+      reference = (await startBiometricVerification(prisma, user.userId, kyc, identity))
+        .referenceId;
+    }
+    await expect(
+      startBiometricVerification(prisma, user.userId, kyc, identity),
+    ).rejects.toMatchObject({
+      code: 'KYC_ATTEMPTS_EXCEEDED',
+    });
+    await expect(
+      startBiometricVerification(prisma, user.userId, kyc, identity, reference),
+    ).resolves.toMatchObject({
+      referenceId: reference,
+    });
+    expect(await prisma.usherVerification.count({ where: { usherId: user.usherId } })).toBe(5);
   });
 
   it('the final allowed start is reserved exactly once under concurrent requests', async () => {

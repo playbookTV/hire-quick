@@ -1,0 +1,22 @@
+[
+  {
+    "path": "/health",
+    "status": 200,
+    "body": "{\"status\":\"ok\"}"
+  },
+  {
+    "path": "/ready",
+    "status": 200,
+    "body": "{\"status\":\"ready\"}"
+  },
+  {
+    "path": "/api/admin/stats",
+    "status": 401,
+    "body": "{\"error\":{\"code\":\"UNAUTHENTICATED\",\"message\":\"missing bearer token\"}}"
+  },
+  {
+    "path": "CORS preflight",
+    "status": 204,
+    "allowOrigin": "https://hirequick-admin-production.up.railway.app"
+  }
+]

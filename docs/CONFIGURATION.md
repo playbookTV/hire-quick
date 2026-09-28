@@ -20,6 +20,16 @@ Source: [API environment schema](../apps/api/src/env.ts), [server wiring](../app
 
 Do not infer service readiness from successful environment parsing or `/health`. `/ready` checks database and Redis connectivity; see [Observability](OBSERVABILITY.md) for Sentry, release labels, heartbeat variables, and hosted activation steps.
 
+## Backend Sentry
+
+| Variable | Default | Usage |
+| --- | --- | --- |
+| `SENTRY_DSN` | Empty | Enables reporting to the service's Sentry project; use separate API and worker DSNs. |
+| `SENTRY_RELEASE` | Empty | Deployed Git revision or release label. |
+| `SENTRY_TRACES_SAMPLE_RATE` | `0.1` | Fraction of API requests and scheduled job executions sampled, between 0 and 1. Set `0` to disable tracing, or `1` for temporary full sampling in staging. Error reporting is independent. |
+
+Tracing records route templates, fixed job names, timings and outcomes, with a separate privacy filter for SDK v11 streamed spans. See [performance tracing](OBSERVABILITY.md#performance-tracing) for scope and verification.
+
 ## Authentication
 
 | Variable                       | Default              | Usage                                                                    |

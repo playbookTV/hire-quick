@@ -7,16 +7,35 @@ import { ApiError } from '../../app.js';
 import type { KycIdentity, KycPort, KycResult } from './port/kyc-port.js';
 
 const MAX_KYC_ATTEMPTS = 5;
+const KYC_ATTEMPT_WINDOW_MS = 6 * 60 * 60 * 1000;
 const TX = { timeout: 30_000, maxWait: 30_000 };
-function assertCanStart(usher: { verificationStatus: string; kycAttempts: number }) {
-  if (usher.verificationStatus === 'VERIFIED')
+function assertCanStart(
+  verificationStatus: string,
+  recentAttempts: { createdAt: Date }[],
+  now: number,
+) {
+  if (verificationStatus === 'VERIFIED')
     throw new ApiError(409, 'ALREADY_VERIFIED', 'identity is already verified');
-  if (usher.kycAttempts >= MAX_KYC_ATTEMPTS)
+  const limitingAttempt = recentAttempts[MAX_KYC_ATTEMPTS - 1];
+  if (limitingAttempt) {
+    const minutes = Math.max(
+      1,
+      Math.ceil((limitingAttempt.createdAt.getTime() + KYC_ATTEMPT_WINDOW_MS - now) / 60_000),
+    );
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    const wait = [
+      hours ? `${hours} ${hours === 1 ? 'hour' : 'hours'}` : '',
+      remainingMinutes ? `${remainingMinutes} ${remainingMinutes === 1 ? 'minute' : 'minutes'}` : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
     throw new ApiError(
       429,
       'KYC_ATTEMPTS_EXCEEDED',
-      'Too many verification attempts. Please contact support.',
+      `You've reached the limit of 5 verification attempts in 6 hours. Try again in ${wait}.`,
     );
+  }
 }
 const REJECT_REASONS: ReadonlySet<string> = new Set<VerificationRejectReason>([
   'UNCLEAR_ID',
@@ -79,12 +98,21 @@ export async function startBiometricVerification(
         throw new ApiError(409, 'STALE_VERIFICATION', 'Start a new identity check.');
       return kyc.startSession(reference, identity, phone);
     }
-    // Provider migration must not carry failed Dojah sessions into Smile's cap.
-    // Count committed Smile attempts under the same usher lock used to create them.
-    const smileAttempts = await tx.usherVerification.count({
-      where: { usherId: usher.id, provider: 'SMILE_ID', method: 'BIOMETRIC' },
+    // Read time after acquiring the lock so queued requests see expired attempts.
+    // Keep history; only Smile sessions younger than 6 hours consume the budget.
+    const now = Date.now();
+    const smileAttempts = await tx.usherVerification.findMany({
+      where: {
+        usherId: usher.id,
+        provider: 'SMILE_ID',
+        method: 'BIOMETRIC',
+        createdAt: { gt: new Date(now - KYC_ATTEMPT_WINDOW_MS) },
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: MAX_KYC_ATTEMPTS,
+      select: { createdAt: true },
     });
-    assertCanStart({ ...current, kycAttempts: smileAttempts });
+    assertCanStart(current.verificationStatus, smileAttempts, now);
     const referenceId = randomUUID();
     const session = await kyc.startSession(referenceId, identity, phone);
     if (session.referenceId !== referenceId || !session.token)
