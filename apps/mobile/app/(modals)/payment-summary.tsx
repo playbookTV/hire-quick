@@ -6,7 +6,7 @@
  * "payment opened" state. Line items come from the accepted applications.
  */
 import { useEffect, useRef, useState } from 'react';
-import { priceBooking, kobo, type CheckoutResponse } from '@hq/shared';
+import { priceBooking, kobo, PLATFORM_FEE_LABEL, type CheckoutResponse } from '@hq/shared';
 import { createCheckoutScopeFence } from '../../lib/checkout.js';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
@@ -272,7 +272,7 @@ export default function PaymentSummary(): React.JSX.Element {
             </Box>
             <Box flexDirection="row" alignItems="center" justifyContent="space-between">
               <Text variant="body" color="inkMuted">
-                Platform fee (15%)
+                Platform fee ({PLATFORM_FEE_LABEL})
               </Text>
               <Text variant="labelLg" color="inkStrong">
                 {legacyOrder ? 'Included in saved price' : money(platformFee)}
@@ -296,7 +296,7 @@ export default function PaymentSummary(): React.JSX.Element {
             <Text variant="bodySm" color="inkMuted">
               {legacyOrder
                 ? 'This saved order keeps its original pricing.'
-                : 'The 15% platform fee is added to staff pay. Each usher receives their full agreed pay.'}
+                : `The ${PLATFORM_FEE_LABEL} platform fee is added to staff pay. Each usher receives their full agreed pay.`}
             </Text>
           </Box>
 

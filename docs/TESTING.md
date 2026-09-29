@@ -7,12 +7,13 @@
 | Layer                       | Scope                                                                   | Requirements                                                                 |
 | --------------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
 | Shared tests                | Money arithmetic, policy, state tables, DTO boundaries                  | Node/pnpm; generally no database                                             |
+| Admin client tests          | Session sign-in/refresh, stale-login fencing, API client headers        | Node/pnpm; no browser, API server or database                                |
 | API unit/contract tests     | Validators, provider parsing, client recovery controllers, pure helpers | Built dependencies; inspect each suite for local server/Redis requirements   |
 | API integration/concurrency | Routes, identity, ledger, payments, privacy, database locks             | Disposable real PostgreSQL                                                   |
 | Realtime runtime            | Socket.IO authorization/delivery/outage handling                        | Suite-dependent disposable Redis and mocked ports or guarded real PostgreSQL |
 | Native/admin acceptance     | Device/browser workflows, restart, uploads, hosted checkout             | Running clients, intended API and provider test environment                  |
 
-A filename containing `unit` is not a universal no-infrastructure guarantee. Check the selected suite. Root `pnpm test` runs workspace test scripts; admin/mobile currently have no independent package `test` scripts. Some mobile controller tests run from API test suites. Passing backend tests does not prove native UX behavior.
+A filename containing `unit` is not a universal no-infrastructure guarantee. Check the selected suite. Root `pnpm test` runs the `test` script of each workspace package that has one: API, shared, mobile and admin (the website has none). Some mobile controller tests run from API test suites. Passing backend tests does not prove native UX behavior.
 
 Supertest 7.2.2 has a tracked [address-family patch](../patches/supertest@7.2.2.patch). Its original implementation always connected to IPv4 even when its test server bound IPv6. On macOS, a different IPv4 service can own the same port, causing intermittent foreign responses or resets. Install through pnpm so the patch is applied. The [transport regression](../apps/api/src/__tests__/http-test-transport.test.ts) deliberately places separate IPv4 and IPv6 servers on the same port and verifies that requests reach the intended server. Keep that regression when upgrading Supertest; remove the patch only when the replacement passes it. These transport checks require IPv6 loopback support.
 
@@ -85,7 +86,7 @@ With disposable storage migrated and dependencies built:
 pnpm --filter @hq/shared test
 pnpm --filter @hq/api exec vitest run src/modules/payments/__tests__/ledger.test.ts
 pnpm --filter @hq/api exec vitest run src/modules/payments/__tests__/concurrency.test.ts
-pnpm --filter @hq/api exec vitest run -t 'holds the full order amount'
+pnpm --filter @hq/api exec vitest run -t 'rejects RELEASE on a frozen'
 ```
 
 Use exact test names from the selected source; a name filter matching zero tests provides no evidence. Run relevant auth/privacy/realtime tests when changing shared authorization boundaries, not only the feature's happy path.

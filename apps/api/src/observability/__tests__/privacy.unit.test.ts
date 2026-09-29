@@ -8,7 +8,7 @@ describe('monitoring privacy', () => {
       event_id: 'id',
       environment: 'test',
       release: 'abc',
-      message: 'secret',
+      message: 'Reconciliation balance mismatch',
       request: { url: 'secret', data: 'secret', headers: { authorization: 'secret' } },
       user: { email: 'secret' },
       breadcrumbs: [{ message: 'secret' }],
@@ -19,7 +19,7 @@ describe('monitoring privacy', () => {
         values: [
           {
             type: 'Error',
-            value: 'secret',
+            value: 'Provider balance does not match the ledger',
             stacktrace: {
               frames: [
                 {
@@ -36,6 +36,8 @@ describe('monitoring privacy', () => {
       },
     });
     expect(JSON.stringify(sanitized)).not.toContain('secret');
+    expect(sanitized.message).toBe('Reconciliation balance mismatch');
+    expect(sanitized.exception?.values?.[0]?.value).toBe('Provider balance does not match the ledger');
     expect(sanitized.exception?.values?.[0]?.stacktrace?.frames?.[0]?.lineno).toBe(10);
     expect(sanitized.fingerprint).toEqual(['hirequick', 'RECONCILIATION_REVIEW']);
   });

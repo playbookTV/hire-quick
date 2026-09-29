@@ -3,10 +3,10 @@ import { sanitizeMobileEvent } from '../monitoring-privacy.js';
 
 describe('mobile crash event privacy', () => {
   it('keeps a Smile failure searchable without exposing the capture payload', () => {
-    const safe = sanitizeMobileEvent({ type: undefined, message: 'secret',
+    const safe = sanitizeMobileEvent({ type: undefined, message: 'Capture submission rejected with HTTP 403',
       tags: { code: 'SMILE_CAPTURE_FAILED', attempt: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', token: 'secret', sdk_error: 'NETWORK_FORBIDDEN', http_status: '403' },
       extra: { result: 'secret' }, request: { data: 'secret' } });
-    expect(safe.message).toBe('SMILE_CAPTURE_FAILED');
+    expect(safe.message).toBe('Capture submission rejected with HTTP 403');
     expect(safe.tags?.stage).toBe('capture_submission');
     expect(safe.tags?.sdk_error).toBe('NETWORK_FORBIDDEN');
     expect(safe.tags?.http_status).toBe('403');
@@ -24,7 +24,7 @@ describe('mobile crash event privacy', () => {
           { type: 'sourcemap', code_file: 'app:///index.android.bundle', debug_id: 'map-id' },
         ],
       },
-      message: 'secret',
+      message: 'Profile screen failed to render',
       user: { email: 'secret' },
       request: { data: 'secret', url: 'secret' },
       breadcrumbs: [{ message: 'secret' }],
@@ -35,7 +35,7 @@ describe('mobile crash event privacy', () => {
         values: [
           {
             type: 'TypeError',
-            value: 'secret',
+            value: 'Cannot read properties of undefined',
             mechanism: { type: 'generic', handled: false, data: { body: 'secret' } },
             stacktrace: {
               frames: [
@@ -63,6 +63,8 @@ describe('mobile crash event privacy', () => {
       },
     });
     expect(JSON.stringify(result)).not.toContain('secret');
+    expect(result.message).toBe('Profile screen failed to render');
+    expect(result.exception?.values?.[0]?.value).toBe('Cannot read properties of undefined');
     expect(result.release).toBe('com.hirequick.mobile@0.0.1+42');
     expect(result.debug_meta?.images?.[0]?.debug_id).toBe('map-id');
     expect(result.exception?.values?.[0]?.mechanism?.handled).toBe(false);

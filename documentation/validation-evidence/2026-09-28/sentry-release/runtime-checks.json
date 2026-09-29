@@ -1,0 +1,60 @@
+[
+  {
+    "hashes": {
+      "observability/init.js": "e0f6cbee545143003b1fbd5ed9eaaca9f6aa99fb14527a53b381103d331cc2dc",
+      "observability/privacy.js": "5cad32a2e3bc7c14484bff5d25d5b492060477be242d67a940f622b34d1588de",
+      "observability/http.js": "027056d1aa1dbb949ad317c41661f43e56829b50cbbfd7320911e55530710aa5",
+      "observability/jobs.js": "06836be90062769e514a5d6d0e0c3a000388c6fcb28524b73b78544fb2811653",
+      "env.js": "77060fa76c21fc7a0f284b2f08308145cd904cbc4ba240c0c19eccb3f212247a"
+    },
+    "release": "hq-sentry-20260928",
+    "sampleRate": "0.1",
+    "environment": "staging",
+    "processType": "api",
+    "messagePreserved": true,
+    "requestRemoved": true,
+    "userRemoved": true,
+    "startScripts": {
+      "dev": "tsx watch src/server.ts",
+      "worker": "PROCESS_TYPE=worker tsx watch src/worker.ts",
+      "worker:start": "PROCESS_TYPE=worker node --import ./dist/observability/init.js dist/worker.js",
+      "build": "tsc -b",
+      "typecheck": "tsc -b",
+      "typecheck:tests": "tsc -p tsconfig.tests.json",
+      "start": "node --import ./dist/observability/init.js dist/server.js",
+      "test": "vitest run",
+      "lint": "eslint ."
+    },
+    "service": "prolific-love",
+    "hashesMatch": true
+  },
+  {
+    "hashes": {
+      "observability/init.js": "e0f6cbee545143003b1fbd5ed9eaaca9f6aa99fb14527a53b381103d331cc2dc",
+      "observability/privacy.js": "5cad32a2e3bc7c14484bff5d25d5b492060477be242d67a940f622b34d1588de",
+      "observability/http.js": "027056d1aa1dbb949ad317c41661f43e56829b50cbbfd7320911e55530710aa5",
+      "observability/jobs.js": "06836be90062769e514a5d6d0e0c3a000388c6fcb28524b73b78544fb2811653",
+      "env.js": "77060fa76c21fc7a0f284b2f08308145cd904cbc4ba240c0c19eccb3f212247a"
+    },
+    "release": "hq-sentry-20260928",
+    "sampleRate": "0.1",
+    "environment": "staging",
+    "processType": "worker",
+    "messagePreserved": true,
+    "requestRemoved": true,
+    "userRemoved": true,
+    "startScripts": {
+      "dev": "tsx watch src/server.ts",
+      "worker": "PROCESS_TYPE=worker tsx watch src/worker.ts",
+      "worker:start": "PROCESS_TYPE=worker node --import ./dist/observability/init.js dist/worker.js",
+      "build": "tsc -b",
+      "typecheck": "tsc -b",
+      "typecheck:tests": "tsc -p tsconfig.tests.json",
+      "start": "node --import ./dist/observability/init.js dist/server.js",
+      "test": "vitest run",
+      "lint": "eslint ."
+    },
+    "service": "hirequick-worker",
+    "hashesMatch": true
+  }
+]

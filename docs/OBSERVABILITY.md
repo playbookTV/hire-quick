@@ -13,6 +13,7 @@ HireQuick uses Sentry for API/worker errors, Better Stack for uptime and schedul
 | API failures | Unexpected errors and explicit 5xx `ApiError`s reach Sentry. Validation errors do not. The public error envelope is unchanged. |
 | Fatal process errors | API and worker report uncaught exceptions/unhandled rejections, flush for up to two seconds, and exit unsuccessfully so the process manager can restart them. |
 | Jobs | Every scheduled handler reports duration and outcome. Exceptions retain their original identity and retry behavior. Queue/runtime connection errors are reported too. |
+| Performance tracing | With a DSN configured, 10% of HTTP requests and scheduled job executions are sampled by default. SDK v11 streamed spans retain route templates/job names, timings, status, service, environment and release. |
 | Financial alarms | Failed balance collection, reconciliation requiring review, and broken audit chains create distinct Sentry issues. Reconciliation/audit alarms send failed heartbeats even if the job itself completed. |
 | `/health` | HTTP liveness only: `200 {"status":"ok"}`. No dependency probes. |
 | `/ready` | A database `SELECT 1` and Redis `PING` must both succeed. Returns `200 {"status":"ready"}` or `503 {"status":"unavailable"}`, without connection details. Two-second response deadline; five-second caching and shared in-flight checks limit probe load. |
@@ -33,6 +34,18 @@ The checks do not certify payment provider availability, ledger correctness, or 
 5. Confirm the event appears with the correct service, environment, release, and `OBSERVABILITY_SMOKE` tag. Confirm alert routing and resolve the synthetic issue. An SDK flush alone is not proof the project received the event.
 
 Source locations initially reference the deployed JavaScript. For TypeScript stack traces, upload that exact build's source maps to the matching Sentry project/release before deployment, using [Sentry's source-map workflow](https://docs.sentry.io/platforms/javascript/guides/node/sourcemaps/). Keep upload auth tokens in build secrets. Do not expose them to clients or commit them.
+
+### Performance tracing
+
+The API and worker preload `dist/observability/init.js` with Node's `--import` option in their production start commands. The entrypoints also retain their first import for development. Existing `SENTRY_DSN` values continue to select each service's project; the worker DSN must not replace the API DSN.
+
+`SENTRY_TRACES_SAMPLE_RATE` defaults to `0.1` (10% of executions). Set it independently in each service to a value from `0` to `1`: `0` disables spans without disabling errors; `1` samples every execution for a temporary staging check. Invalid values fail environment validation. Empty values coerce to `0`.
+
+Explicit instrumentation measures HTTP requests through response finish/close and scheduled handlers through success, alarm or thrown failure. Aborted requests and failed jobs receive error status. Job timing excludes heartbeat delivery. Concurrent requests/jobs have isolated Sentry scopes and separate root traces; sanitized error events retain trace/span IDs for correlation. HTTP names use the matched router's local `req.route.path` template, never `baseUrl`, so paths in mounted routers may omit their mount prefix. Unmatched paths are grouped as `unmatched`.
+
+Automatic HTTP/SQL/provider instrumentation stays disabled. This provides request/job performance without SQL values, raw URLs, request bodies, headers, job payloads or identity data. No trace headers are propagated to external providers. The SDK v11 `beforeSendSpan` allowlist scrubs streamed spans separately from `beforeSend`; transaction-only filters would not protect this SDK's default span format. Span names are rebuilt from the controlled instrumentation attributes and unknown operations use a generic name. Session recording remains disabled.
+
+To verify after deployment, temporarily set `SENTRY_TRACES_SAMPLE_RATE=1` in staging, make an ordinary API request, and allow a scheduled job to execute. In each project's Sentry **Traces** view, verify the service, environment and new release, the route/job name, timing and status. Inspect the span attributes to confirm that customer data is absent, then restore the normal sampling rate. Local tests capture real SDK envelopes in memory, covering privacy, correlation, concurrent requests, job outcomes and sampling; they do not prove hosted ingestion or deployment.
 
 ## Connect Better Stack
 
@@ -117,9 +130,9 @@ These are starting policies to configure and tune, not dashboards or alert rules
 
 ## Privacy and limits
 
-The new HTTP logs exclude bodies, raw paths/query strings, headers, IP addresses, and user identity. Pino's `err` serializer keeps error type and stack frames but removes error messages, which can contain database values or provider responses. Sentry uses an allowlist of event metadata, internal tags, exception types, and stack locations; it removes request/user data, breadcrumbs, arbitrary context, source lines, local variables, and raw exception messages. Error grouping therefore relies primarily on stack locations; financial alerts have separate fingerprints.
+The new HTTP logs exclude bodies, raw paths/query strings, headers, IP addresses, and user identity. Pino's `err` serializer keeps error type and stack frames but removes error messages, which can contain database values or provider responses. Sentry preserves original event messages and exception text for debugging, alongside allowlisted event metadata, internal tags, exception types and stack locations. It removes request/user data, breadcrumbs, arbitrary context, source lines and local variables. Message contents are sent as captured; the blanket privacy placeholder is no longer applied. Financial and Smile alerts retain their diagnostic fingerprints. This applies to new events after deployment; previously discarded messages cannot be recovered.
 
-Backend Sentry automatic integrations, request/SQL capture, session recording, and tracing are disabled. This does not audit every historical log statement. Admin crash reporting, product analytics (PostHog in the spec), infrastructure metrics, distributed traces, backend source-map uploads, and hosted log forwarding remain separate setup work. Mobile reporting is configured as described below.
+Backend Sentry automatic integrations, request/SQL payload capture and session recording are disabled. Sampled explicit request/job spans use the separate privacy filter described above. This does not audit every historical log statement. Product analytics (PostHog in the spec), infrastructure metrics, cross-service distributed tracing, backend source-map uploads, and hosted log forwarding remain separate setup work. Mobile reporting is configured as described below.
 
 Blank Sentry/heartbeat values leave hosted reporting off while retaining local JSON logs. Tests never initialize the production Sentry bootstrap. Do not treat a successful local test as proof that hosted ingestion, alert delivery, or production monitoring is live.
 
@@ -131,7 +144,7 @@ The Expo app is configured for organization **`studio-templar`**, project **`rea
 - Release builds send errors; `__DEV__` builds do not. Native reporting is disabled in Expo Go and on web. Preview and production EAS builds carry distinct environment labels.
 - `EXPO_PUBLIC_SENTRY_DSN` can override the default project. Explicitly setting it to an empty string disables reporting. The public DSN can be in the application bundle; the private upload token cannot.
 - Metro uses Sentry's Expo configuration while preserving the existing `.js` → TypeScript resolver. Generated source maps carry debug IDs. The Expo plugin configures JavaScript source-map uploads, iOS debug-symbol uploads, and Android native-symbol/ProGuard uploads. Native source-context uploads are disabled.
-- JavaScript error events are filtered to remove user/request data, raw error messages, breadcrumbs, source context, local variables, and arbitrary tags. Release/dist, source-map IDs, stack locations, and native instruction addresses are retained for symbolication. Screenshots, view hierarchies, session replay, and performance tracing are disabled; default PII collection is off. Native crashes are handled by the native SDK and are **not** guaranteed to pass through the JavaScript event filter; maintain Sentry server-side data scrubbing too.
+- JavaScript error events preserve original messages and exception text while filtering user/request data, breadcrumbs, source context, local variables, and arbitrary tags. Release/dist, source-map IDs, stack locations, and native instruction addresses are retained for symbolication. Screenshots, view hierarchies, session replay, and performance tracing are disabled; default PII collection is off. Native crashes are handled by the native SDK and are **not** guaranteed to pass through the JavaScript event filter; maintain Sentry server-side data scrubbing too.
 
 ### Build-upload authentication
 

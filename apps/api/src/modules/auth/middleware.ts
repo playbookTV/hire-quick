@@ -15,6 +15,12 @@ export interface AuthedRequest extends Request {
 
 /** Verify the Bearer access token and attach req.auth (TRD §14/§15). */
 export function requireAuth(req: Request, _res: Response, next: NextFunction): void {
+  // Several routers mounted at /api each install this middleware. Once one has
+  // verified the token and live account, later layers reuse that result.
+  if ((req as AuthedRequest).auth) {
+    next();
+    return;
+  }
   const header = req.header('authorization');
   if (!header?.startsWith('Bearer ')) {
     next(new ApiError(401, 'UNAUTHENTICATED', 'missing bearer token'));

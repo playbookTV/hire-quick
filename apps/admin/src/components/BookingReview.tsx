@@ -1,6 +1,6 @@
-import type { CancellationSummary } from '@hq/shared';
+import { formatNaira, kobo, type CancellationSummary } from '@hq/shared';
 import type { ReactNode } from 'react';
-import { api, naira, shortDate } from '../lib/api';
+import { api, shortDate } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
 import { State } from './ui';
 export interface ReviewBooking {
@@ -96,15 +96,15 @@ export function BookingReview({
             <dt>Payment</dt>
             <dd>
               {q.data.payment
-                ? `${naira(q.data.payment.grossAmount)} · ${q.data.payment.escrowStatus}`
+                ? `${formatNaira(kobo(q.data.payment.grossAmount))} · ${q.data.payment.escrowStatus}`
                 : 'No payment recorded'}
             </dd>
             {q.data.payment && (
               <>
                 <dt>Usher payout</dt>
                 <dd>
-                  {naira(q.data.cancellation?.usherPayoutKobo ?? q.data.payment.usherPayout)}; platform fee:{' '}
-                  {naira(q.data.cancellation?.platformFeeKobo ?? q.data.payment.platformFee)}
+                  {formatNaira(kobo(q.data.cancellation?.usherPayoutKobo ?? q.data.payment.usherPayout))}; platform fee:{' '}
+                  {formatNaira(kobo(q.data.cancellation?.platformFeeKobo ?? q.data.payment.platformFee))}
                 </dd>
               </>
             )}
@@ -129,10 +129,10 @@ export function BookingReview({
                 remain reserved during review.
               </p>
               <p>
-                Client refund: {naira(q.data.cancellation.refundKobo)}. Amount retained:{' '}
-                {naira(q.data.cancellation.usherCompensationKobo)}. Platform commission:{' '}
-                {naira(q.data.cancellation.platformFeeKobo)}. Usher payout:{' '}
-                {naira(q.data.cancellation.usherPayoutKobo)}.
+                Client refund: {formatNaira(kobo(q.data.cancellation.refundKobo))}. Amount retained:{' '}
+                {formatNaira(kobo(q.data.cancellation.usherCompensationKobo))}. Platform commission:{' '}
+                {formatNaira(kobo(q.data.cancellation.platformFeeKobo))}. Usher payout:{' '}
+                {formatNaira(kobo(q.data.cancellation.usherPayoutKobo))}.
               </p>
               <p>No processing fee is deducted from the client refund.</p>
             </div>
@@ -157,7 +157,7 @@ export function BookingReview({
           ) : null}
           {(q.data.refundApprovals ?? []).map((a) => (
             <p className="notice" key={a.id}>
-              Refund approval {a.status} · {naira(a.amountKobo)} · {a.id}
+              Refund approval {a.status} · {formatNaira(kobo(a.amountKobo))} · {a.id}
             </p>
           ))}
           <h3>Booking conversation</h3>

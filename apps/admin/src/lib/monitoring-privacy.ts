@@ -11,8 +11,9 @@ export function sanitizeAdminEvent(event: ErrorEvent): ErrorEvent {
     type: undefined, ...pick(event, ['event_id', 'timestamp', 'platform', 'release', 'environment', 'level']),
     tags: { service: 'hirequick-admin', ...tags },
     ...(tags.code ? { message: tags.code, fingerprint: ['hirequick', tags.code] } : {}),
+    ...pick(event, ['message']),
     ...(event.exception?.values ? { exception: { values: event.exception.values.map((e) => ({
-      ...pick(e, ['type']), value: '[message withheld for privacy]',
+      ...pick(e, ['type', 'value']),
       ...(e.stacktrace?.frames ? { stacktrace: { frames: e.stacktrace.frames.map((f) => ({
         ...pick(f, ['function', 'lineno', 'colno', 'in_app']),
         ...(f.filename ? { filename: f.filename.replace(/[?#].*$/, '') } : {}),

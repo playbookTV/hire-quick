@@ -14,6 +14,8 @@ import { completeWithdrawal, failWithdrawal, commissionSweep, reverseCommissionS
 import { driveRefund, type TransferPayload } from '../service.js';
 import { z } from 'zod';
 import { writeAudit } from '../../audit.js';
+import { logger } from '../../../logger.js';
+import { reportError } from '../../../observability/reporting.js';
 import { noopGateway, type RealtimeGateway } from '../../../realtime/gateway.js';
 import type { PaystackPort } from '../port/paystack-port.js';
 import { RT, withdrawalEvent } from '../../../realtime/events.js';
@@ -28,7 +30,8 @@ async function safeAudit(entry: Parameters<typeof writeAudit>[0]): Promise<void>
   try {
     await writeAudit(entry);
   } catch (err) {
-    console.error('[audit] webhook audit failed', entry.action, err);
+    logger.error({ err, code: 'WEBHOOK_AUDIT_FAILED', action: entry.action }, 'webhook audit failed');
+    reportError(err, { code: 'WEBHOOK_AUDIT_FAILED' });
   }
 }
 
@@ -306,7 +309,8 @@ export function paystackWebhookRouter(deps: {
       (err: unknown) => {
         // 500 → Paystack retries with backoff (nothing dropped silently). The
         // detail is logged, not leaked in the response body.
-        console.error('[webhook] handler error', err);
+        logger.error({ err, code: 'PAYSTACK_WEBHOOK_FAILED' }, 'Paystack webhook handler failed');
+        reportError(err, { code: 'PAYSTACK_WEBHOOK_FAILED' });
         res.status(500).json({ error: { code: 'HANDLER_ERROR', message: 'handler error' } });
       },
     );

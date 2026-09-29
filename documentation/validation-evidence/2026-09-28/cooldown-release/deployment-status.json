@@ -1,0 +1,22 @@
+[
+  {
+    "service": "Redis",
+    "id": "c819707d-de20-42cb-9855-9970da27208d",
+    "status": "SUCCESS"
+  },
+  {
+    "service": "hirequick-worker",
+    "id": "92759f75-6e80-4696-907e-48e82e3b3d45",
+    "status": "SUCCESS"
+  },
+  {
+    "service": "prolific-love",
+    "id": "3c42ac19-0c87-46d9-86b2-96ad6ed44570",
+    "status": "SUCCESS"
+  },
+  {
+    "service": "hirequick-admin",
+    "id": "24f0d4ff-04d8-4cec-bdd0-16c69ef1c120",
+    "status": "SUCCESS"
+  }
+]

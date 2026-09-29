@@ -6,7 +6,7 @@ Sentry.init({
   dsn: 'https://3f64ffc441e4cd2348e074a1a73f6d91@o4508932213637120.ingest.de.sentry.io/4512159731744848',
   enabled: import.meta.env.PROD,
   environment: 'railway',
-  release: 'hirequick-admin-smile-monitoring-20260927',
+  release: 'hq-sentry-20260928',
   defaultIntegrations: false,
   integrations: [Sentry.globalHandlersIntegration(), Sentry.browserApiErrorsIntegration()],
   dataCollection: { userInfo: false },

@@ -5,6 +5,12 @@ import { describe, expect, it, vi } from 'vitest';
 import type { PrismaClient } from '@hq/database';
 import { paystackWebhookRouter } from './paystack-webhook.js';
 
+const monitoring = vi.hoisted(() => ({ reportError: vi.fn(), logError: vi.fn() }));
+vi.mock('../../../observability/reporting.js', () => ({ reportError: monitoring.reportError }));
+vi.mock('../../../logger.js', () => ({
+  logger: { error: monitoring.logError, warn: vi.fn(), info: vi.fn() },
+}));
+
 const secret = 'local-webhook-unit-secret';
 function fixture() {
   const findMany = vi.fn().mockResolvedValue([]);
@@ -40,5 +46,23 @@ describe('signed webhook payload validation', () => {
     const { app, findMany } = fixture();
     expect((await post(app, { event: 'refund.processed', data: { merchant_note: 'BOOKING_REFUND:test' } }, false)).status).toBe(401);
     expect(findMany).not.toHaveBeenCalled();
+  });
+});
+
+describe('handler failures', () => {
+  it('keeps the retryable 500 response and reports the failure with a fixed code', async () => {
+    const { app, findMany } = fixture();
+    const failure = new Error('database unavailable');
+    findMany.mockRejectedValue(failure);
+    const res = await post(app, {
+      event: 'refund.processed', data: { amount: '10000', currency: 'NGN', transaction_reference: 'hq-test-charge' },
+    });
+    expect(res.status).toBe(500);
+    expect(res.body).toEqual({ error: { code: 'HANDLER_ERROR', message: 'handler error' } });
+    expect(monitoring.reportError).toHaveBeenCalledWith(failure, { code: 'PAYSTACK_WEBHOOK_FAILED' });
+    expect(monitoring.logError).toHaveBeenCalledWith(
+      { err: failure, code: 'PAYSTACK_WEBHOOK_FAILED' },
+      'Paystack webhook handler failed',
+    );
   });
 });

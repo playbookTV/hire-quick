@@ -1,5 +1,6 @@
 /** Nigerian SMS OTP delivery through KudiSMS's approved corporate route. */
 import { env } from '../../env.js';
+import { logger } from '../../logger.js';
 import { record } from './test-recorder.js';
 
 export function kudiSmsConfigured(): boolean {
@@ -29,7 +30,7 @@ export async function sendKudiSmsOtp(to: string, code: string): Promise<boolean>
       }),
     });
     if (!response.ok) {
-      console.log(`[kudisms] SMS request failed: ${String(response.status)}`);
+      logger.warn(`[kudisms] SMS request failed: ${String(response.status)}`);
       return false;
     }
     const result = (await response.json()) as {
@@ -48,7 +49,7 @@ export async function sendKudiSmsOtp(to: string, code: string): Promise<boolean>
     );
   } catch {
     // Responses and exceptions can echo the key, phone, or OTP. Never log them.
-    console.log('[kudisms] SMS transport request failed');
+    logger.warn('[kudisms] SMS transport request failed');
     return false;
   }
 }

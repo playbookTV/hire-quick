@@ -22,8 +22,13 @@ const state = vi.hoisted(() => ({
   },
   count: vi.fn().mockResolvedValue(0),
   create: vi.fn().mockResolvedValue({}),
+  // Every logger level funnels here so privacy checks see all output.
+  log: vi.fn(),
 }));
 vi.mock('../../../env.js', () => ({ env: state.env }));
+vi.mock('../../../logger.js', () => ({
+  logger: { info: state.log, warn: state.log, error: state.log },
+}));
 vi.mock('@hq/database', () => ({
   prisma: {
     $transaction: async (fn: (tx: unknown) => Promise<unknown>) =>
@@ -57,7 +62,7 @@ vi.mock('jose', () => ({
 }));
 
 let fetcher: ReturnType<typeof vi.fn<typeof fetch>>;
-let logs: ReturnType<typeof vi.spyOn>;
+let logs: typeof state.log;
 beforeEach(() => {
   vi.resetModules();
   Object.assign(state.env, {
@@ -82,7 +87,8 @@ beforeEach(() => {
     }),
   );
   vi.stubGlobal('fetch', fetcher);
-  logs = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+  state.log.mockClear();
+  logs = state.log;
 });
 afterEach(() => {
   vi.restoreAllMocks();

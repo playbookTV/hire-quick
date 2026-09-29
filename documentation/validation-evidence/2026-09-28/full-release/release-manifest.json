@@ -1,0 +1,77 @@
+{
+  "revision": "56a9d041ccd2f0d88a8a22aafaaf2fea90f4e00f",
+  "railwayProject": "396c28f8-30ac-4fd8-ba96-684e9a27d0e6",
+  "railwayEnvironment": "production",
+  "applicationEnvironment": "staging",
+  "paystackMode": "test",
+  "migrationApplied": "20260926130000_client_paid_platform_fee",
+  "website": {
+    "deploymentId": "dpl_EYfvmpXAbVKp9yGfXYyY3seansFu",
+    "url": "https://hirequick.agency",
+    "status": "READY",
+    "bundleVerified": "index-BUs4u2-R.js"
+  },
+  "admin": {
+    "deploymentId": "d3584961-6fdc-4d15-8329-dd3022e302e5",
+    "url": "https://hirequick-admin-production.up.railway.app",
+    "status": "SUCCESS"
+  },
+  "mobile": [
+    {
+      "id": "28afd897-63af-4314-abf3-3e9b4acda06d",
+      "platform": "ANDROID",
+      "appBuildVersion": "15",
+      "gitCommitHash": "56a9d041ccd2f0d88a8a22aafaaf2fea90f4e00f",
+      "buildProfile": "preview",
+      "status": "FINISHED",
+      "completedAt": "2026-09-28T00:26:24.290Z",
+      "artifact": "https://expo.dev/artifacts/eas/r-9tdByW64ubjRc5z3LDIUPoozumhSuCBjvYjbjrbcA.apk"
+    },
+    {
+      "id": "c7ad29f7-6175-41a2-bf2a-40f0588a4462",
+      "platform": "IOS",
+      "appBuildVersion": "9",
+      "gitCommitHash": "56a9d041ccd2f0d88a8a22aafaaf2fea90f4e00f",
+      "buildProfile": "preview",
+      "status": "FINISHED",
+      "completedAt": "2026-09-28T00:03:39.190Z",
+      "artifact": "https://expo.dev/artifacts/eas/49n1CSZN1T4nJsL1JlUuWOf4Bd-0iZMdfARk77pCUE0.ipa"
+    }
+  ],
+  "checks": {
+    "reviewTests": 175,
+    "mobileTests": 53,
+    "paymentLifecycleAndRecoveryTests": 50,
+    "typechecks": "passed",
+    "lint": "passed with existing warnings",
+    "adminBuild": "passed",
+    "websiteBuild": "passed",
+    "adminBrowser": "Live sign-in form renders with email field and Send sign-in code button",
+    "http": "health 200; ready 200; unauthenticated admin 401; admin CORS 204",
+    "worker": "Scheduled jobs ready; resumeOps, autocomplete and smileMonitoring completed",
+    "fullApiSuite": "Incomplete: host clamshell/maintenance sleep interrupted test timing. Broad run stopped cleanly; isolated schema removed.",
+    "checkoutTimeoutRerun": {
+      "result": "passed unchanged",
+      "testDurationMs": 38080,
+      "testsPassed": 1,
+      "testsSkipped": 8,
+      "schemaRemoved": true
+    },
+    "fullSuiteSchemaRemoved": true
+  },
+  "api": {
+    "deploymentId": "4230eb33-be44-4962-a887-1b9b2639dcf1",
+    "url": "https://prolific-love-production-2775.up.railway.app",
+    "status": "SUCCESS"
+  },
+  "worker": {
+    "deploymentId": "9ed6df92-23c8-49dd-81a9-b3502aa3342b",
+    "status": "SUCCESS"
+  },
+  "existingIssues": [
+    "Legacy hirequick-jobs transferRetry schedule produces Unknown scheduled job failures; latest failure and four preceding failures span pre- and post-deploy. Current resumeOps succeeds. No legacy jobs were deleted.",
+    "API and worker retain the existing SENTRY_RELEASE label hq-smile-monitoring-20260927; deployment IDs and revision in this manifest identify this release."
+  ],
+  "status": "All deployment targets successful",
+  "mobileDistribution": "Existing internal preview: Android APK and iOS ad hoc IPA; no public store submission"
+}

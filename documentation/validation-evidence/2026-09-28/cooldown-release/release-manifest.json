@@ -1,0 +1,39 @@
+{
+  "sourceDirectory": "/private/tmp/hq-cooldown-release-7wpralnx",
+  "baseRevision": "de14bb9078dfa13ed8e5cdbd1fa5f4100c4bb6dd",
+  "changedFiles": {
+    "apps/api/src/modules/verification/__tests__/verification.test.ts": "0d026e7900ad5b9970af2143e59907ac51a6016df4500faf734b105f6607f535",
+    "apps/api/src/modules/verification/service.ts": "d433ace76e981c1e30e5a4c4fec000cd65a76d27fb60fc42a22cb250cab374d3",
+    "docs/SMILE-ID.md": "1ef0e50b1a5eec25262800e9b85b6d361de6e78a02b1f1e00939f4dca3ca2282",
+    "documentation/verification-cooldown-2026-09-28.md": "2855dc9f643f920894962ee68a790b8d686b737513fa2d59981aac10b0ebae34",
+    "documentation/verification-cooldown-six-hours-2026-09-28.md": "8786327da3ee3bf921d2d5d4867e387f0ac07366094cd8d896ac752726df64fa"
+  },
+  "cooldownHours": 6,
+  "targets": [
+    "prolific-love",
+    "hirequick-worker"
+  ],
+  "mobileDeployment": false,
+  "databaseMigrations": "none required",
+  "previousDeployments": {
+    "prolific-love": "557d76aa-0dcc-4ea2-8c7f-e4ba7ccae63b",
+    "hirequick-worker": "b4c83d93-960c-49a8-8dcc-e8115c7309d6"
+  },
+  "deployments": {
+    "prolific-love": "3c42ac19-0c87-46d9-86b2-96ad6ed44570",
+    "hirequick-worker": "92759f75-6e80-4696-907e-48e82e3b3d45"
+  },
+  "expectedCompiledServiceSha256": "87faaed5647070b1c3d2a654a36ee826537b62e59106c341e743aa354c414d07",
+  "status": "complete",
+  "verifiedAt": "2026-09-28T09:19:56.219509+00:00",
+  "checks": {
+    "apiHealth": 200,
+    "apiReadiness": 200,
+    "apiAndWorkerSourceHashesMatch": true,
+    "apiAndWorkerCompiledHashesMatch": true,
+    "existingSentryModulesPreserved": true,
+    "workerSchedulesReady": true,
+    "workerCompletedJob": "storageCleanup",
+    "customerVerificationAttemptCreated": false
+  }
+}

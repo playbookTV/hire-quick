@@ -1,0 +1,107 @@
+{
+  "sourceDirectory": "/private/tmp/hq-sentry-release-7csajcc_",
+  "sourceRevision": "de14bb9078dfa13ed8e5cdbd1fa5f4100c4bb6dd",
+  "baseRevision": "09bc93bd7d29d61c6586e7cde9db1052d47b2046",
+  "release": "hq-sentry-20260928",
+  "changedFiles": {
+    ".env.example": "75abb6321b1aac52326bea9e9411034b434d901a10146f31b862968f35f471ac",
+    "apps/admin/src/lib/monitoring-privacy.ts": "318888e8ac6c43db2049ad49b332d60c0af8ae7861a603437815f80d6004e968",
+    "apps/admin/src/lib/monitoring.ts": "b1e184e601caab3128cc07e23c84719ccd5cb5322884207310026ed97c449168",
+    "apps/api/package.json": "a7562aa15c364647a44d60b8e7d3d16ce01f19a6a1a597b0434946bf9d1c5f26",
+    "apps/api/src/env.ts": "815e47e1af900dd77c383370a629d312f2171c16d1b1368a7d20775c72049731",
+    "apps/api/src/observability/__tests__/privacy.unit.test.ts": "273eafe2c53c59e3408ed49ce5c623046406d9a51693dc4766b320e037949fbd",
+    "apps/api/src/observability/__tests__/smile.unit.test.ts": "eb737e874b55979b57923b2b26332aa1a3b56a59c0e95d1fb9ff140000e567ba",
+    "apps/api/src/observability/http.ts": "2d5a791a4dec2ec30b249b87b0183cb6e3993e8875f973707a55c305dd454b08",
+    "apps/api/src/observability/init.ts": "4fe31d05e188418ec1796082a8f47518f88e555512cac24310700a2eca6f5030",
+    "apps/api/src/observability/jobs.ts": "94f4d69e44122fa290aa0a67430a5c03acc4adb4227ad7596c4d212e226f3ace",
+    "apps/api/src/observability/privacy.ts": "e9c24912eb3dad95bcd89d7095162328c599601609f51d1f08b98c499b746d78",
+    "apps/mobile/lib/__tests__/monitoring-privacy.test.ts": "dcd4fc6be390b6879c3672ae58e39bec497d7bb98084668e2b2499c978a34aa2",
+    "apps/mobile/lib/monitoring-privacy.ts": "de79c6c4d924df4d77754ac2188c64e8f4b397b230436db59e74b64003e33cbc",
+    "docs/CONFIGURATION.md": "dc3f5e719d147e1be1d07983f9b2e46513c2d1ac190388040f7c660b2afd5042",
+    "docs/OBSERVABILITY.md": "6fda0233bd2f00f088aaa17a621f758cd6fc15b04df30f70edae51914435c904",
+    "docs/SMILE-ID.md": "5385248829b6a6f84cb3c250bf1c94b8c4eae17acd3ac3571b5f35ac34e314d6",
+    "apps/api/src/observability/__tests__/tracing.unit.test.ts": "02f5270e523f2c96fce9218d4f989642bb0a3200fe04e2d6059de4730ad2c09f"
+  },
+  "railway": {
+    "prolific-love": {
+      "id": "557d76aa-0dcc-4ea2-8c7f-e4ba7ccae63b",
+      "status": "SUCCESS",
+      "createdAt": "2026-09-28T08:28:21.315Z"
+    },
+    "hirequick-worker": {
+      "id": "b4c83d93-960c-49a8-8dcc-e8115c7309d6",
+      "status": "SUCCESS",
+      "createdAt": "2026-09-28T08:28:34.918Z"
+    },
+    "hirequick-admin": {
+      "id": "24f0d4ff-04d8-4cec-bdd0-16c69ef1c120",
+      "status": "SUCCESS",
+      "createdAt": "2026-09-28T08:28:45.031Z"
+    }
+  },
+  "checks": {
+    "focusedTests": 21,
+    "adminTests": 11,
+    "types": "passed",
+    "lint": "passed with existing warnings",
+    "adminBuild": "passed",
+    "runtimeHashes": "matched API and worker",
+    "http": "health 200; ready 200; unauthenticated admin 401",
+    "adminBundle": "matches local build; new release label; placeholder absent",
+    "sentryErrors": [
+      "HIREQUICK-API-3",
+      "HIREQUICK-WORKER-5"
+    ],
+    "sentrySmokeIssuesResolved": true,
+    "sentryTraceIds": [
+      "d8cf45d35b6b44ffbfb72cb653cc2866",
+      "f4b9a53a354d4037b435152827bfdc14"
+    ],
+    "liveHttpTrace": "185eb1b23cf7442db74dbfae07cf6da0",
+    "httpSamplingProbe": {
+      "requests": 30,
+      "sampledSpans": 3,
+      "rate": 0.1,
+      "endpoint": "isolated temporary /sentry-deployment-check"
+    }
+  },
+  "applicationEnvironment": "staging",
+  "railwayEnvironment": "production",
+  "paystackMode": "test",
+  "databaseMigrations": "none required",
+  "mobileDistribution": "internal preview; Android APK and iOS ad hoc",
+  "mobile": [
+    {
+      "id": "7bbc7be7-74f9-473f-8a7c-77ac46d2f8c4",
+      "platform": "ANDROID",
+      "status": "FINISHED",
+      "appBuildVersion": "16",
+      "gitCommitHash": "de14bb9078dfa13ed8e5cdbd1fa5f4100c4bb6dd",
+      "buildProfile": "preview",
+      "distribution": "INTERNAL",
+      "createdAt": "2026-09-28T08:29:55.357Z",
+      "completedAt": "2026-09-28T09:02:01.935Z",
+      "artifacts": {
+        "buildUrl": "https://expo.dev/artifacts/eas/BS5C6MBKYrNU2dKs-3DmzIgPTrG193EyVsDRSnKDCpA.apk",
+        "applicationArchiveUrl": "https://expo.dev/artifacts/eas/BS5C6MBKYrNU2dKs-3DmzIgPTrG193EyVsDRSnKDCpA.apk"
+      }
+    },
+    {
+      "id": "4a583e40-e1b9-4894-bd68-3047a315d030",
+      "platform": "IOS",
+      "status": "FINISHED",
+      "appBuildVersion": "10",
+      "gitCommitHash": "de14bb9078dfa13ed8e5cdbd1fa5f4100c4bb6dd",
+      "buildProfile": "preview",
+      "distribution": "INTERNAL",
+      "createdAt": "2026-09-28T08:30:16.985Z",
+      "completedAt": "2026-09-28T08:39:14.196Z",
+      "artifacts": {
+        "buildUrl": "https://expo.dev/artifacts/eas/OAI6HLCtwuFGbKFUOee68wYYtHLvtHyRfzg9dsMMxL4.ipa",
+        "applicationArchiveUrl": "https://expo.dev/artifacts/eas/OAI6HLCtwuFGbKFUOee68wYYtHLvtHyRfzg9dsMMxL4.ipa"
+      }
+    }
+  ],
+  "status": "complete: API, worker and admin deployed; Android and iOS internal builds finished",
+  "completedAt": "2026-09-28T09:02:01.935Z"
+}

@@ -1,7 +1,7 @@
-import type { CancellationSummary } from '@hq/shared';
+import { formatNaira, kobo, type CancellationSummary } from '@hq/shared';
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { api, naira } from '../lib/api';
+import { api } from '../lib/api';
 import { useRecords } from '../lib/useRecords';
 import { BookingReview, type ReviewBooking } from '../components/BookingReview';
 import { Page, State, Table, Btn, Pagination, ReviewPanel } from '../components/ui';
@@ -65,8 +65,8 @@ function PendingCancellations({ onSelect }: { onSelect: (id: string) => void }) 
         {q.data?.items.map((row) => (
           <tr key={row.id}>
             <td>{row.cancellation.status.replaceAll('_', ' ')}</td>
-            <td>{naira(row.cancellation.refundKobo)}</td>
-            <td>{naira(row.cancellation.usherPayoutKobo)}</td>
+            <td>{formatNaira(kobo(row.cancellation.refundKobo))}</td>
+            <td>{formatNaira(kobo(row.cancellation.usherPayoutKobo))}</td>
             <td>
               <Btn onClick={() => onSelect(row.bookingId)}>Review cancellation</Btn>
             </td>
@@ -100,7 +100,7 @@ function BookingRecords({ filter, onSelect }: { filter: string; onSelect: (id: s
             <td>{b.event.title}</td>
             <td>{b.usher.displayName ?? 'Usher'}</td>
             <td>{b.status}</td>
-            <td>{naira(b.amount)}</td>
+            <td>{formatNaira(kobo(b.amount))}</td>
             <td>
               <Btn variant="ghost" onClick={() => onSelect(b.id)}>
                 Review booking
@@ -186,7 +186,7 @@ function RefundAction({ booking }: { booking: ReviewBooking }) {
         <>
           <p>
             {cancellationEligible ? 'Total allocation under review' : 'Refund amount'}:{' '}
-            <strong>{naira(booking.payment!.grossAmount)}</strong>
+            <strong>{formatNaira(kobo(booking.payment!.grossAmount))}</strong>
           </p>
           <label>
             Reason
