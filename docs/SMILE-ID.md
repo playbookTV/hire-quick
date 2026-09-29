@@ -2,11 +2,17 @@
 
 New biometric onboarding uses Smile ID v3 with `@smileid/usesmileid` 12.1.0. The old v11 wrapper only supports the old React Native architecture; v12 supports this app's Expo 57 / React Native 0.86 build.
 
+## Current incident status
+
+**Closed on 29 September 2026:** the owner confirmed that Smile ID approved the account and verification now works. Provider-side account approval resolved the submission failure. See the [closure record](../documentation/smile-submission-closure-2026-09-29.md) for evidence and scope; earlier dated reports describe the pre-resolution state.
+
 ## Configure and release
 
 Set API-only `KYC_MODE=smile`, `SMILE_PARTNER_ID`, `SMILE_API_KEY`, `SMILE_ENVIRONMENT`, `SMILE_CALLBACK_URL`, and `SMILE_PRIVACY_POLICY_URL`. The callback base must be `https://<api-host>/webhooks/smile-id`; the privacy URL must be your public HTTPS notice. Configure the callback domain in Smile ID **Developer → Security Settings → Callback URLs** for the selected environment. The API appends two path segments for each attempt; preserve them at your proxy and allow dynamic callback paths. Do not log callback URLs or request bodies in proxy/access logs.
 
 Enable Biometric KYC and Nigeria BVN / **NIN_V2** on the account. NIN_V2 requires a NIMC enterprise ID registered in the Smile dashboard. Production rejects sandbox mode. Never put the API key into Expo public variables or a bundled `smile_config.json`.
+
+Confirm with Smile ID that the account has the provider-side approval required to submit verifications. Successful token issuance and a configured callback URL alone did not establish submission readiness in the September 2026 incident.
 
 Build and install new Android and iOS binaries; an OTA update cannot add native modules. Expo Go is unsupported. The app includes the face analyzer for each platform, camera permissions, screen-orientation plugin and MLKit Kotlin/KSP build configuration. No document analyzer is needed for NIN/BVN plus selfie. Do not downgrade to the v11 SDK or install VisionCamera/worklets-core for v12.1.
 

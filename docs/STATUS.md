@@ -10,6 +10,8 @@ The repository includes OTP authentication and refresh revocation, recruitment/e
 
 ## Material limitations and differences from older documentation
 
+The Smile ID submission incident is **closed as of 29 September 2026**. The owner confirmed successful verification after Smile ID approved the account. See the [closure record](../documentation/smile-submission-closure-2026-09-29.md). This provider resolution does not close payment readiness gates.
+
 | Area                      | Current boundary                                                                                                       | Implication / evidence                                                                                                                     |
 | ------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | Late client cancellation | Approved 100%/50%/0% refund and commission-inclusive usher allocation implemented locally | Immutable quotes, guarded approvals, append-only settlement; [Payments](PAYMENTS.md#policy-matrix) |
