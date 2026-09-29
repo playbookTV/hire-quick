@@ -24,6 +24,10 @@ Specifications define intended behavior. [Current status](../docs/STATUS.md) dis
 - [Booking and privacy validation](booking-privacy-validation-2026-09-14.md)
 - [Checkout, ledger, and realtime validation](checkout-ledger-realtime-validation-2026-09-14.md)
 
+## Incident closure
+
+- [29 September Smile ID submission closure](smile-submission-closure-2026-09-29.md) — provider account approval completed; owner confirms verification works. Investigation closed.
+
 ## Recent deployment
 
 - [22 September approved settlement deployment](deployment-2026-09-22.md) — API, worker and admin on TEST/staging; final blocked regressions passed. Updated native binaries remain separate.
