@@ -42,8 +42,15 @@ Tracing records route templates, fixed job names, timings and outcomes, with a s
 | `OTP_VERIFIER_KEY_ID`          | `v1`                 | 1–32 alphanumeric, underscore, or hyphen characters.                     |
 | `OTP_VERIFIER_PREVIOUS_SECRET` | Empty                | Optional previous key during rotation.                                   |
 | `OTP_VERIFIER_PREVIOUS_KEY_ID` | Empty                | Must accompany previous secret and differ from current ID.               |
+| `APP_REVIEW_PHONE`             | Empty                | App-store review account's phone, exactly as stored (`+234…`).           |
+| `APP_REVIEW_OTP_CODE`          | Empty                | Secret fixed 6-digit code for that account. Repeated or sequential digits are refused. |
+| `APP_REVIEW_LOGIN_UNTIL`       | Empty                | ISO end time, at most 31 days ahead, e.g. `2026-11-07T23:59:00Z`.         |
 
 Staging/production require all three current secrets to be at least 32 characters and not start with `dev-`. Any supplied OTP secret, including the previous one, must meet that strength rule. All processes verifying the same codes need compatible keys. Follow the [OTP rotation procedure](../documentation/otp-verifiers.md); restarting with an ephemeral key invalidates prior codes.
+
+### App-store review login
+
+Apple's reviewer cannot receive the Nigerian SMS every other login uses. When all three `APP_REVIEW_*` variables are set, the configured phone signs in with the fixed code until the end time. No SMS is sent and the code is never returned. It works only for an existing, active client or usher account; it never creates an account or opens an admin session. The normal limits still apply: 5 code requests per hour, 5 wrong guesses per code, 10-minute expiry and single use. Each review sign-in is audited as `auth.login` with `appReview: true`. Incomplete, weak, expired or more-than-31-days-ahead settings switch the login off instead of stopping the API. Remove the variables after the review. See [the review login code](../apps/api/src/modules/auth/app-review.ts).
 
 ## Payments
 
