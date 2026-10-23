@@ -47,3 +47,9 @@ If the account is not active, the request falls through to a normal SMS to that 
 ## Rollback
 
 Redeploying the 2 October upload from the Railway dashboard restores the previous code, because the database is unchanged. The worker needs no action.
+
+## Switched on — 23 October 2026, 21:12 UTC
+
+At the owner's request, the three variables were set on `prolific-love` (production). The phone is `+2348100000011` and the end time `2026-11-20T23:59:00Z`. The code was generated locally and piped into Railway; it is not recorded here. Railway redeployed with them (deployment `faa04707-2586-4794-87a7-1b9ec403429d`).
+
+Against production, a code request for the review phone returned 200 `{"sent":true}`. Signing in with the fixed code returned 200 and a session for the existing `USHER` account. A real SMS would have carried a random code, so the review path is confirmed active. That sign-in is in the audit log with `appReview: true`. Delete the three variables after Apple's review.
