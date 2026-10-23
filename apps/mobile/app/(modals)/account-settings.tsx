@@ -1,3 +1,5 @@
+import { AvatarPicker } from '../../components/AvatarPicker.js';
+import { TextArea } from '../../components/TextArea.js';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Box, Text } from '../../theme/restyle.js';
@@ -17,6 +19,10 @@ export default function AccountSettings(): React.JSX.Element {
   const toast = useToast();
   const [name, setName] = useState(user?.client?.displayName ?? '');
   const [business, setBusiness] = useState(user?.client?.businessName ?? '');
+  const [description, setDescription] = useState(user?.client?.description ?? '');
+  const [position, setPosition] = useState(user?.client?.position ?? '');
+  const [city, setCity] = useState(user?.client?.city ?? '');
+  const [contactEmail, setContactEmail] = useState(user?.client?.contactEmail ?? '');
   return (
     <Box flex={1} backgroundColor="bgCanvas">
       <AppBar title="Account settings" showBack inset />
@@ -27,18 +33,55 @@ export default function AccountSettings(): React.JSX.Element {
           </Text>
           {user?.role === 'CLIENT' ? (
             <>
+              <AvatarPicker />
               <Field label="Full name">
                 <Input value={name} onChangeText={setName} maxLength={120} />
               </Field>
-              <Field label="Business name (optional)">
-                <Input value={business} onChangeText={setBusiness} maxLength={120} />
+              {user.client?.accountType !== 'BUSINESS' ? (
+                <Field label="Business name (optional)">
+                  <Input value={business} onChangeText={setBusiness} maxLength={120} />
+                </Field>
+              ) : (
+                <Text variant="body">
+                  {user.client.businessName ?? 'Business verification pending'}
+                </Text>
+              )}
+              <Field label="About you / your company">
+                <TextArea value={description} onChangeText={setDescription} maxLength={2000} />
+              </Field>
+              <Field label="Position / job title">
+                <Input value={position} onChangeText={setPosition} maxLength={120} />
+              </Field>
+              <Field label="City / base area">
+                <Input value={city} onChangeText={setCity} maxLength={80} />
+              </Field>
+              <Field
+                label="Contact email"
+                helper="Private account detail; not shown on your public profile."
+              >
+                <Input
+                  value={contactEmail}
+                  onChangeText={setContactEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  maxLength={254}
+                />
               </Field>
               <Button
                 label={update.isPending ? 'Saving…' : 'Save profile'}
                 disabled={update.isPending || name.trim().length < 2}
                 onPress={() =>
                   update.mutate(
-                    { displayName: name.trim(), businessName: business.trim() },
+                    {
+                      displayName: name.trim(),
+                      description: description.trim(),
+                      position: position.trim(),
+                      city: city.trim(),
+                      contactEmail: contactEmail.trim(),
+                      ...(user.client?.accountType !== 'BUSINESS'
+                        ? { businessName: business.trim() }
+                        : {}),
+                    },
                     {
                       onError: (e) => toast.error(userMessage(e)),
                       onSuccess: () => {

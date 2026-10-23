@@ -11,7 +11,6 @@ import {
   PutObjectCommand,
   GetObjectCommand,
   DeleteObjectCommand,
-  HeadObjectCommand,
   CopyObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
@@ -81,30 +80,40 @@ export function createS3Storage(cfg: StorageConfig): StoragePort {
     },
     inspectObject: async (key) => {
       const options = { abortSignal: AbortSignal.timeout(cfg.requestTimeoutMs ?? 15_000) };
-      const head = await client.send(
-        new HeadObjectCommand({ Bucket: cfg.bucket, Key: key }),
-        options,
-      );
-      if (!head.ETag || head.ContentLength === undefined)
-        throw new Error('Missing object metadata');
       const object = await client.send(
         new GetObjectCommand({
           Bucket: cfg.bucket,
           Key: key,
           Range: 'bytes=0-511',
-          IfMatch: head.ETag,
         }),
         options,
       );
-      if (!object.Body || object.ContentLength === undefined || object.ContentLength > 512) {
+      // A single ranged GET supplies metadata and bytes from the same version.
+      // ContentLength is the prefix length; ContentRange contains the full size.
+      const range = /^bytes 0-(\d+)\/(\d+)$/.exec(object.ContentRange ?? '');
+      const end = Number(range?.[1]);
+      const size = Number(range?.[2]);
+      if (
+        !object.Body ||
+        !object.ETag ||
+        object.$metadata.httpStatusCode !== 206 ||
+        !range ||
+        !Number.isSafeInteger(size) ||
+        size < 1 ||
+        end !== Math.min(size, 512) - 1 ||
+        object.ContentLength !== end + 1
+      ) {
         if (object.Body && 'destroy' in object.Body) object.Body.destroy();
         throw new Error('Object store did not return a bounded range');
       }
+      const prefix = await object.Body.transformToByteArray();
+      if (prefix.byteLength !== object.ContentLength)
+        throw new Error('Object store returned an incomplete range');
       return {
-        size: head.ContentLength,
-        contentType: head.ContentType ?? '',
-        etag: head.ETag,
-        prefix: await object.Body.transformToByteArray(),
+        size,
+        contentType: object.ContentType ?? '',
+        etag: object.ETag,
+        prefix,
       };
     },
     copyObject: async (source, destination, etag, contentType) => {

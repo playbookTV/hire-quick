@@ -20,6 +20,7 @@ Socket connections require session-bound tokens and reauthorize incoming actions
 - Storage uses server-issued private keys and short-lived signed URLs. Upload and read routes enforce ownership and content-type restrictions. A signed URL is a temporary capability; never put it into public logs, issues, or sample docs.
 - Chat access checks party membership and current booking state. Realtime room membership alone is not continuing authorization.
 - Admin verification reads are audited. Maker-checker separates large monetary decisions from their initiator.
+- Clients require personal verification and a selected account type before marketplace access; businesses additionally require a matched registry result and explicit representative-authority review. Only existing owned paid-booking obligations bypass the new-hiring gate. Client-supplied statuses and selected account type never grant trust. See [Smile ID](SMILE-ID.md#mandatory-clients-and-business-verification).
 
 Development/test fallbacks are not equivalent security configurations. The normal server constructs real Redis/provider adapters; staging/production environment guards require stronger settings, and production `createApp` additionally requires CORS and a Redis limiter client.
 
@@ -34,6 +35,8 @@ Do not attempt incident repair by rewriting ledger rows, manually adjusting wall
 The API provides own-account data export, consent management, current-policy acceptance, and account erasure. Erasure pseudonymizes identity/profile data while retaining financial and audit history; it is not a cascading delete of all user-related rows. Consent withdrawal must stop the relevant processing; withdrawing push permission removes device tokens.
 
 Retention jobs purge selected expired/old OTP, device, KYC, chat, and refresh-denylist records. Their configurable windows are listed in [Configuration](CONFIGURATION.md#retention). The job's chat cutoff uses event date plus an additional safety margin, rather than an exact persisted dispute-close timestamp.
+
+Client identity and business registration/authority data are included in own-account export and pseudonymizing erasure. Business authority files follow the existing approved/rejected KYC document schedule. Pending documents remain for review. Smile-held biometric data requires provider-side retention configuration; HireQuick does not copy biometric captures into its object storage.
 
 Object deletion is best effort. In particular, removing or tombstoning a database reference does not prove an object was removed from storage or backups. Operators must investigate failed deletes and verify storage/backup retention separately. Do not report data erasure as globally complete solely from the API response.
 

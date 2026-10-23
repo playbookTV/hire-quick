@@ -1,3 +1,4 @@
+import { adminReportsRouter } from '../reports/routes.js';
 import { hasReviewPhotos, providerMetadata, readReviewEvidence } from '../verification/evidence.js';
 import type { KycPort } from '../verification/port/kyc-port.js';
 import { cancellationView, releaseInformation } from '../payments/cancellation.js';
@@ -26,6 +27,7 @@ import { authorizedChatMediaKey } from '../storage/chat-media.js';
 import { pageQuery, pageResult } from './pagination.js';
 import { paymentOperationsRouter } from './payment-operations.js';
 import { reviewVerification } from '../verification/service.js';
+import { adminBusinessVerificationRouter } from '../verification/business-routes.js';
 import type { Redis } from 'ioredis';
 import { monitoringDashboardRouter } from '../../observability/dashboard-route.js';
 
@@ -61,8 +63,10 @@ export function adminRouter(deps: {
 }): Router {
   const r = Router();
   r.use(requireAuth, requireRole('ADMIN'));
+  r.use(adminBusinessVerificationRouter(deps.kyc, deps.storage));
   r.use(monitoringDashboardRouter(deps.redis));
   r.use(paymentOperationsRouter());
+  r.use(adminReportsRouter());
 
   // Refund/dispute execution issues a real Paystack refund, so those routes
   // can't run without a configured port.
@@ -76,8 +80,8 @@ export function adminRouter(deps: {
   r.get(
     '/stats',
     wrap(async (_req, res) => {
-      const [pendingVerifications, openDisputes, pendingApprovals, users, held] = await Promise.all(
-        [
+      const [pendingVerifications, openDisputes, pendingApprovals, users, held, pendingBusinesses] =
+        await Promise.all([
           prisma.usherVerification.count({ where: { status: 'PENDING' } }),
           prisma.dispute.count({ where: { status: { in: ['OPEN', 'UNDER_REVIEW'] } } }),
           prisma.approval.count({ where: { status: 'PENDING' } }),
@@ -86,10 +90,10 @@ export function adminRouter(deps: {
             where: { escrowStatus: 'HELD' },
             _sum: { grossAmount: true },
           }),
-        ],
-      );
+          prisma.businessVerification.count({ where: { status: 'PENDING' } }),
+        ]);
       res.json({
-        pendingVerifications,
+        pendingVerifications: pendingVerifications + pendingBusinesses,
         openDisputes,
         pendingApprovals,
         users,
@@ -110,7 +114,10 @@ export function adminRouter(deps: {
       const list = await prisma.usherVerification.findMany({
         where: { status },
         orderBy: { createdAt: 'asc' },
-        include: { usher: { include: { user: { select: { phone: true, email: true } } } } },
+        include: {
+          usher: { include: { user: { select: { phone: true, email: true } } } },
+          client: { include: { user: { select: { phone: true, email: true } } } },
+        },
       });
       // Sensitive class (TRD §14): log who saw which ID documents. One aggregate
       // row per list view, not one per record, to stay proportionate.
@@ -132,31 +139,66 @@ export function adminRouter(deps: {
     }),
   );
 
-  r.get('/verifications/:id/evidence', wrap(async (req, res) => {
-    res.setHeader('Cache-Control', 'no-store');
-    const record = await prisma.usherVerification.findUnique({ where: { id: String(req.params.id) } });
-    if (!record) throw new ApiError(404, 'NOT_FOUND', 'Verification not found.');
-    const metadata = providerMetadata(record.govLookup);
-    const evidence = await readReviewEvidence(deps.redis, record.providerReferenceId, metadata.providerJobId ?? null);
-    await writeAudit({ actorId: req.auth.userId, action: 'verification.evidence_read', target: record.id });
-    res.json({ evidence });
-  }));
+  r.get(
+    '/verifications/:id/evidence',
+    wrap(async (req, res) => {
+      res.setHeader('Cache-Control', 'no-store');
+      const record = await prisma.usherVerification.findUnique({
+        where: { id: String(req.params.id) },
+      });
+      if (!record) throw new ApiError(404, 'NOT_FOUND', 'Verification not found.');
+      const metadata = providerMetadata(record.govLookup);
+      const evidence = await readReviewEvidence(
+        deps.redis,
+        record.providerReferenceId,
+        metadata.providerJobId ?? null,
+      );
+      await writeAudit({
+        actorId: req.auth.userId,
+        action: 'verification.evidence_read',
+        target: record.id,
+      });
+      res.json({ evidence });
+    }),
+  );
 
-  r.post('/verifications/:id/evidence/refresh', wrap(async (req, res) => {
-    res.setHeader('Cache-Control', 'no-store');
-    const record = await prisma.usherVerification.findUnique({ where: { id: String(req.params.id) } });
-    if (!record) throw new ApiError(404, 'NOT_FOUND', 'Verification not found.');
-    const metadata = providerMetadata(record.govLookup);
-    if (record.provider !== 'SMILE_ID' || !metadata.providerJobId || !record.providerReferenceId)
-      throw new ApiError(409, 'NO_PROVIDER_JOB', 'No capture result has been received for this attempt.');
-    if (!deps.redis || !deps.kyc?.refreshEvidence)
-      throw new ApiError(503, 'KYC_UNAVAILABLE', 'Identity evidence is temporarily unavailable.');
-    const reserved = await deps.redis.set(`kyc:refresh:${record.id}`, '1', 'EX', 30, 'NX');
-    if (!reserved) throw new ApiError(429, 'REFRESH_PENDING', 'An evidence refresh was requested. Please wait a few seconds.');
-    await deps.kyc.refreshEvidence(metadata.providerJobId, record.providerReferenceId, metadata.environment);
-    await writeAudit({ actorId: req.auth.userId, action: 'verification.evidence_refresh', target: record.id });
-    res.status(202).json({ requested: true });
-  }));
+  r.post(
+    '/verifications/:id/evidence/refresh',
+    wrap(async (req, res) => {
+      res.setHeader('Cache-Control', 'no-store');
+      const record = await prisma.usherVerification.findUnique({
+        where: { id: String(req.params.id) },
+      });
+      if (!record) throw new ApiError(404, 'NOT_FOUND', 'Verification not found.');
+      const metadata = providerMetadata(record.govLookup);
+      if (record.provider !== 'SMILE_ID' || !metadata.providerJobId || !record.providerReferenceId)
+        throw new ApiError(
+          409,
+          'NO_PROVIDER_JOB',
+          'No capture result has been received for this attempt.',
+        );
+      if (!deps.redis || !deps.kyc?.refreshEvidence)
+        throw new ApiError(503, 'KYC_UNAVAILABLE', 'Identity evidence is temporarily unavailable.');
+      const reserved = await deps.redis.set(`kyc:refresh:${record.id}`, '1', 'EX', 30, 'NX');
+      if (!reserved)
+        throw new ApiError(
+          429,
+          'REFRESH_PENDING',
+          'An evidence refresh was requested. Please wait a few seconds.',
+        );
+      await deps.kyc.refreshEvidence(
+        metadata.providerJobId,
+        record.providerReferenceId,
+        metadata.environment,
+      );
+      await writeAudit({
+        actorId: req.auth.userId,
+        action: 'verification.evidence_refresh',
+        target: record.id,
+      });
+      res.status(202).json({ requested: true });
+    }),
+  );
 
   r.post(
     '/verifications/:id/approve',
@@ -164,7 +206,11 @@ export function adminRouter(deps: {
       const id = String(req.params.id);
       const record = await prisma.usherVerification.findUnique({ where: { id } });
       const jobId = providerMetadata(record?.govLookup).providerJobId;
-      const evidence = await readReviewEvidence(deps.redis, record?.providerReferenceId ?? null, jobId ?? null);
+      const evidence = await readReviewEvidence(
+        deps.redis,
+        record?.providerReferenceId ?? null,
+        jobId ?? null,
+      );
       const result = await reviewVerification(prisma, {
         verificationId: id,
         adminId: req.auth.userId,

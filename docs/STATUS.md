@@ -10,6 +10,10 @@ The repository includes OTP authentication and refresh revocation, recruitment/e
 
 ## Material limitations and differences from older documentation
 
+The Smile ID submission incident is **closed as of 29 September 2026**. The owner confirmed successful verification after Smile ID approved the account. See the [closure record](../documentation/smile-submission-closure-2026-09-29.md). This provider resolution does not close payment readiness gates.
+
+**Client verification extension (1 October 2026, deployed):** mandatory personal identity for all clients; business clients additionally require registry and representative-authority review. The migration, API, worker and admin rollout succeeded, and signed Android/iOS preview builds are available. Authenticated checks verified the client hiring gate and verification/booking-list access. The owner confirmed KYB activation and explicitly waived the backup step. Physical-device client capture and a real production business review remain unverified. Existing mobile installs must update. See the [release record](../documentation/deployment-client-verification-2026-10-01.md) and [Smile ID](SMILE-ID.md#mandatory-clients-and-business-verification).
+
 | Area                      | Current boundary                                                                                                       | Implication / evidence                                                                                                                     |
 | ------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | Late client cancellation | Approved 100%/50%/0% refund and commission-inclusive usher allocation implemented locally | Immutable quotes, guarded approvals, append-only settlement; [Payments](PAYMENTS.md#policy-matrix) |
@@ -35,3 +39,13 @@ The [TRD](../documentation/04-HireQuick-TRD.md) §23 records merchant-of-record,
 For each deferred capability, track a concrete implementation/decision, acceptance criteria, and current evidence in the team's issue system. Close a gap here only after its behavior and verification actually change. Do not replace a limitation with an old test report or a future-tense claim in an architecture page.
 
 The OVA-136/137 API, worker and admin changes were [deployed to TEST/staging on 22 September](../documentation/deployment-2026-09-22.md), after the outstanding regressions passed. Updated native binaries remain separate. The earlier 21 September deployment record is historical. See [settlement implementation and validation](../documentation/payments/settlement-implementation-2026-09-21.md). OVA-166 account authorization remains a live-rollout gate.
+
+## Marketplace gap closure (2 October 2026, deployed)
+
+Application withdrawal, preserved multi-worker invitation selection, optional physical attributes and explained event preferences, decline reasons, pre-booking reports with admin review, job search/native app sharing, and rich client/company profiles are implemented. The category control blocks new/edited preferences; it does not retroactively modify listings. Reports are deduplicated for the reporter/target's lifetime. Public profiles omit private contact email and phone. Shared jobs use the existing installed-app scheme, without a hosted web fallback. See [API](API.md#marketplace-profiles-and-hiring-2-october-2026) and [workflows](WORKFLOWS.md#extended-hiring-and-marketplace-profiles). The database migration, API, worker and admin were deployed on 2 October; Android preview 24 and iOS preview 14 were built from the frozen release source. Installed-device acceptance remains outstanding. See the [release record](../documentation/deployment-marketplace-2026-10-02.md).
+
+[Marketplace implementation and validation evidence](../documentation/marketplace-gap-closure-2026-10-02.md) records the tested scope, sample screenshots, native-device limitations and migration rollout order.
+
+## Launch acceptance follow-up (19 October 2026)
+
+Public API health and readiness both returned HTTP 200. Expo lists the 2 October Android/iOS preview builds as FINISHED. This does not establish device acceptance or current deployed-source parity. OVA-166 and OVA-114 remain In Progress in Linear. The [acceptance checklist](../documentation/launch-acceptance-2026-10-19.md) separates observed checks from pending device, provider and recovery evidence.

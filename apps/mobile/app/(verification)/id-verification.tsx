@@ -13,6 +13,7 @@ import { Banner } from '../../components/Banner.js';
 import { Input } from '../../components/Input.js';
 import { StepIndicator } from '../../components/StepIndicator.js';
 import { ApiError, userMessage } from '../../lib/api-error.js';
+import { useAuth } from '../../lib/auth-context.js';
 import {
   startKyc,
   type KycIdentity,
@@ -22,6 +23,7 @@ import {
 
 // Load native modules only after entry; Expo Go and web can still open the explainer.
 export default function IdVerification(): React.JSX.Element {
+  const { user } = useAuth();
   const [SmileCapture, setSmileCapture] = useState<ComponentType<SmileCaptureProps> | null>(null);
   const router = useRouter();
   const qc = useQueryClient();
@@ -60,7 +62,10 @@ export default function IdVerification(): React.JSX.Element {
     } catch (e) {
       // Validation, expired sessions and attempt limits are expected user outcomes.
       if (!(e instanceof ApiError) || e.status >= 500)
-        reportSmile(phase === 'load' ? 'SMILE_CAPTURE_LOAD_FAILED' : 'SMILE_SESSION_FAILED', reference);
+        reportSmile(
+          phase === 'load' ? 'SMILE_CAPTURE_LOAD_FAILED' : 'SMILE_SESSION_FAILED',
+          reference,
+        );
       setError(
         e instanceof ApiError
           ? userMessage(e)
@@ -101,7 +106,9 @@ export default function IdVerification(): React.JSX.Element {
       <AppBar title="Verify your identity" showBack inset />
       <Screen scroll>
         <Box style={{ gap: 16 }}>
-          <StepIndicator total={5} current={3} label="STEP 4 OF 5 · VERIFICATION" />
+          {user?.role === 'USHER' ? (
+            <StepIndicator total={5} current={3} label="STEP 4 OF 5 · VERIFICATION" />
+          ) : null}
           <Text variant="h2">Let’s confirm it’s you</Text>
           <Text variant="body" color="inkMuted">
             Smile ID checks your Nigerian ID and a live selfie. Use the names on your ID, then

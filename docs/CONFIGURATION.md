@@ -50,7 +50,7 @@ Staging/production require all three current secrets to be at least 32 character
 | Variable                       | Default | Usage                                                                                                                       |
 | ------------------------------ | ------- | --------------------------------------------------------------------------------------------------------------------------- |
 | `PAYSTACK_SECRET_KEY`          | Empty   | Real HTTP provider key. Use TEST credentials outside authorized live operation.                                             |
-| `PAYSTACK_WEBHOOK_SECRET`      | Empty   | Webhook verification secret. Server falls back to payment key in development; staging/production require an explicit value. |
+| `PAYSTACK_WEBHOOK_SECRET`      | Empty   | Webhook verification secret. Paystack signs webhooks with the secret key, so set this to the same value as `PAYSTACK_SECRET_KEY` (on Railway, `${{PAYSTACK_SECRET_KEY}}`). Server falls back to payment key in development; staging/production require an explicit value. |
 | `PAYSTACK_OPERATING_RECIPIENT` | Empty   | Transfer recipient for commission sweeps; job skips when absent.                                                            |
 | `WITHDRAWAL_REQUIRE_BVN`       | `false` | Only exact string `true` enables the additional BVN gate. Does not implement a missing BVN provider check.                  |
 

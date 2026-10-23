@@ -35,7 +35,7 @@ This diagram intentionally omits secondary relations. Order membership is nullab
 | Area                 | Models                                                                  | Purpose                                                                           |
 | -------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
 | Identity             | `User`, `Client`, `Usher`                                               | Auth identity plus role-specific profile; status gates active access              |
-| Verification/profile | `UsherVerification`, `Photo`, `Availability`                            | Document/biometric evidence, portfolio, per-day availability                      |
+| Verification/profile | `UsherVerification`, `BusinessVerification`, `Photo`, `Availability`    | Personal identity, business registry/authority review, portfolio, availability   |
 | Recruitment          | `Event`, `Application`, `Invitation`, `SavedJob`                        | Client staffing demand and usher selection                                        |
 | Checkout             | `Order`, `Checkout`, `Booking`, `Payment`                               | Batch gross amount, durable checkout attempt, per-usher obligation and allocation |
 | Financial history    | `EscrowLedger`, `Wallet`, `WalletLedger`, `BankAccount`, `Withdrawal`   | Held funds, released balance, bank destinations and transfers                     |
@@ -45,6 +45,14 @@ This diagram intentionally omits secondary relations. Order membership is nullab
 | Security/privacy     | `VerificationCode`, `RevokedToken`, `ConsentRecord`, `PolicyAcceptance` | OTP verifiers, consumed/revoked refresh IDs, consent, version acceptance          |
 | Audit                | `AuditLog`, `AuditChainHead`                                            | Append-only hash-chained history and serialized chain head                        |
 | Rewards              | `MilestoneTier`, `UsherMilestone`                                       | Configured thresholds and individual unlock/fulfillment state                     |
+
+## Client verification
+
+`Client.accountType` is nullable until onboarding selects `INDIVIDUAL` or `BUSINESS`. `verificationStatus`, `verifiedAt`, and `kycAttempts` track personal identity independently of `businessVerificationStatus` and `businessVerifiedAt`. Existing clients start unverified; migration does not grandfather a badge or modify booking/payment history.
+
+The historical `UsherVerification` table is retained for both roles. Exactly one of nullable `usherId`/`clientId` must be set, enforced by a migration SQL CHECK. Attempts and callback references remain isolated to that subject. `BusinessVerification` stores a durable registry job reference, curated registry name/status, representative role, an owned authority-document key, environment, and admin decision. It does not retain registry directors' personal information or raw provider responses. Public trust labels derive from current verified states, never from account type or a submitted name alone.
+
+Apply `20261001190000_client_identity_and_business_verification` before releasing the API and updated mobile app. See [Smile ID](SMILE-ID.md) and [Workflows](WORKFLOWS.md).
 
 ## Identifiers, money, and time
 
@@ -88,3 +96,11 @@ Use `pnpm db:deploy` for release. Never rewrite an applied migration to make a s
 Account erasure pseudonymizes current profile data and retains financial/audit evidence. The retention worker handles selected transient records and storage objects, not ledgers. See [Security](SECURITY.md) for implementation limitations and linked policy records.
 
 A database restore must include reconciliation with external provider transactions; restoring rows does not undo completed transfers. Follow [Operations](OPERATIONS.md) before resuming payment processing.
+
+## Marketplace profile and moderation extension
+
+Migration `20261002103905_marketplace_profile_and_hiring` adds nullable client description, position, city, contact email and avatar key; nullable `Usher.physicalAttributes` JSON; and invitation decline reason/note. Event presentation preferences remain inside `Event.preferences` and use the shared validation schema.
+
+`MarketplaceReport` has exactly one event or usher target (a PostgreSQL CHECK), reporter and optional reviewer references, status, report text, review note and timestamps. Target deletion is restricted while a report references it. Unique reporter/event and reporter/usher constraints prevent duplicate reports. Status/creation/ID indexing supports the private admin queue. `PresentationPolicy` uses a normalized category key and boolean enablement; absent policy means preferences are allowed. These tables do not write financial ledgers.
+
+Subject export includes voluntary profile fields, authored reports and invitation replies. Erasure clears those fields and queues client avatar deletion. Storage cleanup checks both client and usher avatar references before deleting an object.

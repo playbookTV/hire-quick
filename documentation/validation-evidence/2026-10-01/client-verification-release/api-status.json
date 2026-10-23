@@ -1,0 +1,16 @@
+[
+  {
+    "id": "b9c3ec5a-839a-4f0a-a09b-2f47fb899a79",
+    "status": "SUCCESS",
+    "createdAt": "2026-10-01T20:19:42.888Z",
+    "message": "Mandatory client verification f3c979eac7c4",
+    "imageDigest": "sha256:80bf64ece401f469acec2b27d07d73d732ff12399fd45da469a7e8bfb139a59f"
+  },
+  {
+    "id": "4b9a1f43-7cf4-4dd1-a336-dcb5458e3632",
+    "status": "REMOVED",
+    "createdAt": "2026-09-29T15:08:40.764Z",
+    "message": "Upload performance b73b15677a47 compact source archive",
+    "imageDigest": "sha256:80198e773d8ab343810ad8cedc1185e5445682990e7bb6837b7c827c86789852"
+  }
+]

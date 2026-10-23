@@ -1,3 +1,4 @@
+import { PhysicalAttributesSummary } from '../../components/PhysicalAttributes.js';
 /** Figma E01 staff profile; live identity, portfolio, reviews and booking-scoped messaging. */
 import { useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -278,6 +279,17 @@ export default function StaffProfile(): React.JSX.Element {
           </Box>
         </Card>
 
+        <PhysicalAttributesSummary value={u.physicalAttributes} />
+        <Button
+          label="Report worker"
+          variant="ghost"
+          onPress={() =>
+            router.push({
+              pathname: '/(modals)/report',
+              params: { targetType: 'WORKER', targetId: u.id },
+            })
+          }
+        />
         {/* about */}
         {u.bio ? (
           <Box style={{ gap: 8 }}>

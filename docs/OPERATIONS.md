@@ -85,6 +85,8 @@ Redis failure affects limiting, scheduled work, and convenience signals. Current
 
 Use verification, dispute, approval, ledger, user, and reward screens with an existing admin account. Actions above ₦50,000 require a separate checker. An APPROVED record may await provider execution; EXECUTED is the completed action state. Do not bypass maker-checker by directly editing the database.
 
+The pending verification counter includes personal and business checks. In Verifications, switch to Business verifications for registry and representative-authority review. A verified registry match is not approval to act for the business: inspect the representative's verified identity and authority document before confirming. Unavailable results remain gated; refresh the original job, or reject with an actionable reason after resolving provider setup. Never grant trust by changing an account label. See [Smile ID](SMILE-ID.md#mandatory-clients-and-business-verification) for release/activation and evidence-retention limits.
+
 Late client cancellation can be unsupported even though the policy computes an intended split. Post-payout disputes are blocked pending clawback support. Capture the case for product/payment operations and follow an approved resolution process; the existing API does not implement arbitrary split settlement.
 
 ## Retention, backup, and restore
@@ -96,3 +98,11 @@ Maintain provider/database backups and conduct restore drills in an isolated env
 ## Close an incident
 
 Record root cause, impacted interval/entities, reconciled provider and ledger outcomes, recovery commands, reviewer/owner, and regression tests or follow-up work. Remove sensitive values from shareable evidence. Update the relevant guide if the response exposed a missing procedure.
+
+## Marketplace reports and presentation preferences
+
+Use **Marketplace reports** to filter the private queue, read a concern, and record an investigation or resolution. A stale review is rejected; reload the record before submitting another decision. Report review does not freeze escrow, cancel bookings or suspend users. Use the existing dispute/account workflows when those actions are warranted. Avoid putting unnecessary identity or payment details into review notes.
+
+The same page allows physical preferences to be disabled per event category. Enter the category's exact spelling (case is normalized). This blocks new/edited preferences; it does not retroactively rewrite existing jobs. Review existing listings individually. One report is retained per reporter/target, so repeated submissions return the original receipt.
+
+Roll out the marketplace migration before the API/admin/mobile changes. Updated mobile code is required for the new screens and `hirequick://jobs/` route. Local export/test evidence does not constitute a deployed native release.

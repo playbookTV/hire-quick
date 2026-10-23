@@ -43,7 +43,7 @@ afterAll(async () => {
 async function seedOpenEvent(): Promise<{ eventId: string; venue: string }> {
   const u = await prisma.user.create({ data: { role: 'CLIENT', phone: newPhone() } });
   userIds.push(u.id);
-  const client = await prisma.client.create({ data: { userId: u.id, displayName: 'Test Client' } });
+  const client = await prisma.client.create({ data: { userId: u.id, displayName: 'Test Client', accountType: 'INDIVIDUAL', verificationStatus: 'VERIFIED' } });
   const venue = `12 Secret Rd, Lekki ${randomUUID().slice(0, 6)}`;
   const event = await prisma.event.create({
     data: {

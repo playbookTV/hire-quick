@@ -287,6 +287,7 @@ model User {
   disputesRaised    Dispute[]           @relation("DisputeRaisedBy")
   disputesResolved  Dispute[]           @relation("DisputeResolvedBy")
   verificationsDone UsherVerification[] @relation("VerificationReviewer")
+  businessReviews BusinessVerification[] @relation("BusinessReviewer")
   messagesSent      Message[]
   approvalsMade     Approval[]          @relation("ApprovalMaker")
   approvalsChecked  Approval[]          @relation("ApprovalChecker")
@@ -294,6 +295,8 @@ model User {
   consents          ConsentRecord[]
   revokedTokens     RevokedToken[]
   policyAcceptances PolicyAcceptance[]
+  reportsFiled MarketplaceReport[] @relation("ReportAuthor")
+  reportsReviewed MarketplaceReport[] @relation("ReportReviewer")
 
   @@map("users")
 }
@@ -304,13 +307,62 @@ model Client {
   user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   displayName  String
   businessName String? // optional company/brand name shown on the client profile
+  description String?
+  position String?
+  city String?
+  contactEmail String? // private account contact, never part of public client responses
+  avatarKey String?
   ratingAvg    Float   @default(0)
   ratingCount  Int     @default(0)
+  accountType ClientAccountType?
+  verificationStatus UsherVerifyState @default(PENDING)
+  verifiedAt DateTime? @db.Timestamptz(6)
+  kycAttempts Int @default(0)
+  businessVerificationStatus BusinessVerifyState @default(NOT_STARTED)
+  businessVerifiedAt DateTime? @db.Timestamptz(6)
+  verifications UsherVerification[]
+  businessVerifications BusinessVerification[]
 
   events Event[]
   orders Order[]
 
   @@map("clients")
+}
+
+enum ClientAccountType {
+  INDIVIDUAL
+  BUSINESS
+}
+
+enum BusinessVerifyState {
+  NOT_STARTED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+model BusinessVerification {
+  id String @id @default(uuid()) @db.Uuid
+  clientId String @db.Uuid
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  registeredName String
+  registrationNumber String
+  businessType String
+  representativeRole String
+  authorizationKey String?
+  status VerificationStatus @default(PENDING)
+  registryStatus String @default("NOT_STARTED")
+  registryName String?
+  providerJobId String?
+  environment String
+  reviewedById String? @db.Uuid
+  reviewedBy User? @relation("BusinessReviewer", fields: [reviewedById], references: [id])
+  reviewNote String?
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  reviewedAt DateTime? @db.Timestamptz(6)
+
+  @@index([clientId, createdAt])
+  @@map("business_verifications")
 }
 
 model Usher {
@@ -319,6 +371,7 @@ model Usher {
   user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   displayName        String?
   bio                String?
+  physicalAttributes Json?
   yearsExperience    Int              @default(0)
   verificationStatus UsherVerifyState @default(PENDING)
   verifiedAt         DateTime?        @db.Timestamptz(6) // when KYC last passed
@@ -343,14 +396,18 @@ model Usher {
   bankAccounts  BankAccount[]
   milestones    UsherMilestone[]
   savedJobs     SavedJob[]
+  reports MarketplaceReport[]
 
   @@map("ushers")
 }
 
 model UsherVerification {
   id            String              @id @default(uuid()) @db.Uuid
-  usherId       String              @db.Uuid
-  usher         Usher               @relation(fields: [usherId], references: [id], onDelete: Cascade)
+  // Historical table name retained. Exactly one subject is enforced in migration SQL.
+  usherId       String?             @db.Uuid
+  usher         Usher?              @relation(fields: [usherId], references: [id], onDelete: Cascade)
+  clientId      String?             @db.Uuid
+  client        Client?             @relation(fields: [clientId], references: [id], onDelete: Cascade)
   method        VerificationMethod  @default(DOCUMENT)
   // Manual-upload flow only (null for biometric, which captures via the provider).
   idDocumentUrl String?
@@ -378,6 +435,7 @@ model UsherVerification {
   reviewedAt       DateTime?          @db.Timestamptz(6)
 
   @@index([usherId])
+  @@index([clientId])
   @@index([providerReferenceId], map: "usher_verifications_dojahReferenceId_idx")
   @@map("usher_verifications")
 }
@@ -432,6 +490,7 @@ model Event {
   bookings     Booking[]
   orders       Order[]
   savedBy      SavedJob[]
+  reports MarketplaceReport[]
 
   @@index([clientId])
   @@index([status])
@@ -460,6 +519,8 @@ model Invitation {
   usherId   String           @db.Uuid
   usher     Usher            @relation(fields: [usherId], references: [id], onDelete: Cascade)
   status    InvitationStatus @default(SENT)
+  declineReason String?
+  declineNote String?
   createdAt DateTime         @default(now()) @db.Timestamptz(6)
 
   @@unique([eventId, usherId])
@@ -478,6 +539,41 @@ model SavedJob {
   @@unique([usherId, eventId])
   @@index([usherId])
   @@map("saved_jobs")
+}
+
+enum MarketplaceReportStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
+model MarketplaceReport {
+  id String @id @default(uuid()) @db.Uuid
+  reporterId String @db.Uuid
+  reporter User @relation("ReportAuthor", fields: [reporterId], references: [id])
+  eventId String? @db.Uuid
+  event Event? @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  usherId String? @db.Uuid
+  usher Usher? @relation(fields: [usherId], references: [id], onDelete: Restrict)
+  reason String
+  details String
+  status MarketplaceReportStatus @default(OPEN)
+  reviewNote String?
+  reviewedById String? @db.Uuid
+  reviewedBy User? @relation("ReportReviewer", fields: [reviewedById], references: [id])
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  reviewedAt DateTime? @db.Timestamptz(6)
+  @@unique([reporterId, eventId])
+  @@unique([reporterId, usherId])
+  @@index([status, createdAt, id])
+  @@map("marketplace_reports")
+}
+
+model PresentationPolicy {
+  category String @id
+  enabled Boolean @default(true)
+  @@map("presentation_policies")
 }
 
 // ---------- orders / bookings / payments ----------

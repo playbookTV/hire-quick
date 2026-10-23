@@ -19,7 +19,7 @@ export function AvatarPicker({ size = 96 }: { size?: number }): React.JSX.Elemen
   const setAvatar = useSetAvatar();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
-  const usher = user?.usher ?? null;
+  const usher = user?.usher ?? user?.client ?? null;
   const badge = Math.max(22, Math.round(size * 0.3));
 
   const onPick = async (): Promise<void> => {

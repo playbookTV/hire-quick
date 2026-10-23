@@ -1,0 +1,14 @@
+{
+  "platform": "ios",
+  "buildId": "268f4467-5c89-4169-b20c-ece5c84ac80d",
+  "curlExitCode": 0,
+  "headers": [
+    "HTTP/2 307 ",
+    "HTTP/2 307 ",
+    "content-type: text/html; charset=utf-8",
+    "content-length: 570",
+    "HTTP/2 200 ",
+    "content-type: application/octet-stream",
+    "content-length: 28806592"
+  ]
+}

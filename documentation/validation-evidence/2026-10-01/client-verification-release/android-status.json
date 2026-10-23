@@ -1,0 +1,15 @@
+{
+  "id": "25ae9239-fb9c-4835-a813-abf460fd4b8b",
+  "platform": "ANDROID",
+  "status": "FINISHED",
+  "appBuildVersion": "23",
+  "gitCommitHash": "f3c979eac7c4f110e4dc35f3037452d8e17d5934",
+  "buildProfile": "preview",
+  "distribution": "INTERNAL",
+  "createdAt": "2026-10-01T19:52:24.476Z",
+  "completedAt": "2026-10-01T20:23:29.411Z",
+  "artifactCheck": {
+    "status": 200,
+    "bytes": 173314657
+  }
+}

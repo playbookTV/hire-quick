@@ -30,7 +30,12 @@ beforeAll(async () => {
   validated = true;
   const clientUser = await user('CLIENT');
   const client = await prisma.client.create({
-    data: { userId: clientUser.id, displayName: 'Venue owner' },
+    data: {
+      userId: clientUser.id,
+      displayName: 'Venue owner',
+      accountType: 'INDIVIDUAL',
+      verificationStatus: 'VERIFIED',
+    },
   });
   owner = { ...clientUser, clientId: client.id };
   const firstUser = await user('USHER');

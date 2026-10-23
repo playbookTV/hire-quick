@@ -14,6 +14,8 @@ Per the Nigeria Data Protection Regulation (NDPR) accountability principle and T
 | OTP code hash | `VerificationCode.codeHash` | Login/attendance verification | Contract | `RETENTION_OTP_DAYS` (30) after consume/expire | `jobRetentionPurge` |
 | Device push token | `DeviceToken.fcmToken` | Push notifications | Consent | `RETENTION_DEVICE_TOKEN_DAYS` (180) since last seen | `jobRetentionPurge`; DSAR erase deletes |
 | Display name | `Client.displayName` | Marketplace display | Contract | Life of account | DSAR erase → "Deleted user" |
+| Client identity decision | `Client.verificationStatus`, `UsherVerification.clientId` | Mandatory personal verification | Basis subject to counsel review | Decision for account lifetime; Smile review evidence temporary, no raw NIN/BVN stored | DSAR clears metadata and trust; historical audit retained |
+| Business registration and authority | `BusinessVerification`, `Client.businessVerificationStatus` | Registry and representative authority checks | Basis subject to counsel review | Authority document 90 days after approval / 30 after rejection; pending until review completes; metadata for account lifetime | Retention purge deletes document; DSAR scrubs name, number, role, notes and evidence and clears trust |
 | Usher bio | `Usher.bio` | Marketplace profile | Contract | Life of account | DSAR erase → null |
 | **ID document** | `UsherVerification.idDocumentUrl` | KYC / identity verification | Legal obligation | Raw doc deleted `RETENTION_KYC_VERIFIED_DAYS` (90) after VERIFIED / `RETENTION_KYC_REJECTED_DAYS` (30) after REJECTED — only the pass/fail flag + reviewer/audit record persist (TRD §14) | `jobRetentionPurge` deletes object + tombstones ref; DSAR erase also clears |
 | **Selfie (biometric)** | `UsherVerification.selfieUrl` | KYC liveness | Legal obligation | Raw selfie deleted 90 days after VERIFIED / 30 after REJECTED (TRD §14); not part of the 7-year financial trail | `jobRetentionPurge` deletes object + tombstones ref; DSAR erase also clears |
@@ -51,3 +53,16 @@ Erasure is **pseudonymization, not deletion**: `Review`/`Dispute`/`Message`/`Aud
 ## Smile ID biometric processing
 
 New biometric checks send NIN/BVN, names, account phone, consent and selfie/liveness captures to Smile ID. HireQuick retains only the attempt reference, provider job/status, decision and review trail; no new raw ID number or biometric image is persisted locally. Existing manual document retention remains unchanged. Smile-held biometric data requires provider-side retention/deletion configuration and must be included in data-subject request handling; the local storage purge does not delete it. See [Smile ID setup](../../docs/SMILE-ID.md).
+
+## Marketplace fields added 2 October 2026
+
+| Data | Purpose / visibility | Retention and deletion |
+| --- | --- | --- |
+| Voluntary worker physical attributes | Self-described public profile details; never automatic eligibility | Account lifetime or until cleared; included in export and cleared by erasure |
+| Client introduction, position, city and avatar | Public client/company profile | Account lifetime or until replaced/cleared; avatar cleanup is durable and checks active references |
+| Client contact email | Private account contact detail, excluded from public profile | Account lifetime or until cleared; exported and erased |
+| Invitation decline reason/note | Explain the response to the hiring client | Retained with invitation; exported to author and cleared by author erasure |
+| Report reason/details and review note | Private moderation queue; authenticated ops access | Retained with moderation record; author's report text is redacted by erasure. No automatic age-based report purge is implemented |
+| Pending shared-job ID on device | Resume a user-requested job after sign-in | One ID, no job details, expires after 24 hours; cleared on consumption |
+
+Optional fields are explicitly labelled in the app. Category restrictions and rationale capture support review of physical preferences. This records implemented behavior, not a new legal-basis determination; the register's existing counsel-review caveat applies.

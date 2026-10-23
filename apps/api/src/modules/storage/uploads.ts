@@ -2,7 +2,14 @@ import { prisma, type Prisma } from '@hq/database';
 import { ApiError } from '../../app.js';
 import type { StoragePort } from './storage.js';
 
-export type UploadPurpose = 'id' | 'selfie' | 'avatar' | 'portfolio' | 'IMAGE' | 'VOICE';
+export type UploadPurpose =
+  | 'id'
+  | 'selfie'
+  | 'avatar'
+  | 'portfolio'
+  | 'IMAGE'
+  | 'VOICE'
+  | 'business-authorization';
 export const uploadLimit = (purpose: UploadPurpose): number =>
   (purpose === 'VOICE' ? 20 : 10) * 1024 * 1024;
 export const STORAGE_TX = { timeout: 60_000, maxWait: 30_000 };
@@ -12,8 +19,9 @@ export async function lockUploadOwner(
   tx: Prisma.TransactionClient,
   ownerId: string,
 ): Promise<void> {
-  await tx.$queryRaw`SELECT id FROM users WHERE id = ${ownerId}::uuid FOR UPDATE`;
-  const owner = await tx.user.findUnique({ where: { id: ownerId }, select: { status: true } });
+  const [owner] = await tx.$queryRaw<{ status: string }[]>`
+    SELECT status FROM users WHERE id = ${ownerId}::uuid FOR UPDATE
+  `;
   if (!owner || owner.status === 'ANONYMIZED' || owner.status === 'SUSPENDED')
     throw new ApiError(403, 'UPLOAD_UNAVAILABLE', 'This account cannot upload files.');
 }
@@ -192,16 +200,18 @@ export async function scheduleDeletion(
 }
 
 async function hasReferences(tx: Prisma.TransactionClient, key: string): Promise<boolean> {
-  const [avatar, photo, verification, message] = await Promise.all([
+  const [avatar, clientAvatar, photo, verification, message, business] = await Promise.all([
     tx.usher.findFirst({ where: { avatarKey: key }, select: { id: true } }),
+    tx.client.findFirst({ where: { avatarKey: key }, select: { id: true } }),
     tx.photo.findFirst({ where: { imageUrl: key }, select: { id: true } }),
     tx.usherVerification.findFirst({
       where: { OR: [{ idDocumentUrl: key }, { selfieUrl: key }, { govPhotoKey: key }] },
       select: { id: true },
     }),
     tx.message.findFirst({ where: { content: key }, select: { id: true } }),
+    tx.businessVerification.findFirst({ where: { authorizationKey: key }, select: { id: true } }),
   ]);
-  return Boolean(avatar || photo || verification || message);
+  return Boolean(avatar || clientAvatar || photo || verification || message || business);
 }
 
 export async function cleanupStorage(storage?: StoragePort, keys?: string[]) {

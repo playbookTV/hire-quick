@@ -61,7 +61,13 @@ async function fixture() {
       phone: `recruit-client-${randomUUID()}`,
       role: 'CLIENT',
       status: 'ACTIVE',
-      client: { create: { displayName: 'Recruitment client' } },
+      client: {
+        create: {
+          displayName: 'Recruitment client',
+          accountType: 'INDIVIDUAL',
+          verificationStatus: 'VERIFIED',
+        },
+      },
     },
     include: { client: true },
   });

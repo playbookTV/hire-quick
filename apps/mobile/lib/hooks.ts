@@ -5,6 +5,8 @@ import { useRef } from 'react';
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
+  PhysicalAttributes,
+  InvitationReply,
   CreateEventInput,
   UpdateEventInput,
   UserRole,
@@ -19,6 +21,7 @@ import { useAuth } from './auth-context.js';
 import { api, request, newIdempotencyKey } from './client.js';
 import { queryKeys } from './query.js';
 import type {
+  ClientProfile,
   EventResource,
   AuthResult,
   Booking,
@@ -55,8 +58,13 @@ export function useVerifyOtp() {
 
 export function useUpdateProfile() {
   const qc = useQueryClient();
+  const { user } = useAuth();
   return useMutation({
     mutationFn: (body: {
+      physicalAttributes?: PhysicalAttributes | null;
+      description?: string;
+      position?: string;
+      contactEmail?: string;
       displayName?: string;
       bio?: string;
       yearsExperience?: number;
@@ -66,7 +74,14 @@ export function useUpdateProfile() {
       languages?: string[];
       dayRateKobo?: number;
     }) => api.patch<{ updated: boolean }>('/api/me', body),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.me }),
+    onSuccess: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: queryKeys.me }),
+        ...(user?.client ? [qc.invalidateQueries({ queryKey: ['clients', user.client.id] })] : []),
+        ...(user?.usher
+          ? [qc.invalidateQueries({ queryKey: queryKeys.usher(user.usher.id) })]
+          : []),
+      ]),
   });
 }
 
@@ -83,9 +98,17 @@ function invalidatePhotos(qc: ReturnType<typeof useQueryClient>): Promise<void> 
 
 export function useSetAvatar() {
   const qc = useQueryClient();
+  const { user } = useAuth();
   return useMutation({
     mutationFn: (key: string) => api.put<{ avatarUrl: string }>('/api/me/photos/avatar', { key }),
-    onSuccess: () => invalidatePhotos(qc),
+    onSuccess: () =>
+      Promise.all([
+        invalidatePhotos(qc),
+        ...(user?.client ? [qc.invalidateQueries({ queryKey: ['clients', user.client.id] })] : []),
+        ...(user?.usher
+          ? [qc.invalidateQueries({ queryKey: queryKeys.usher(user.usher.id) })]
+          : []),
+      ]),
   });
 }
 
@@ -106,10 +129,13 @@ export function useDeletePortfolioPhoto() {
   });
 }
 
-export function useEvents() {
+export function useEvents(search = '') {
   return useQuery({
-    queryKey: queryKeys.events,
-    queryFn: () => api.get<EventResource[]>('/api/events'),
+    queryKey: search.trim() ? [...queryKeys.events, 'search', search.trim()] : queryKeys.events,
+    queryFn: () =>
+      api.get<EventResource[]>(
+        `/api/events${search.trim() ? `?query=${encodeURIComponent(search.trim())}` : ''}`,
+      ),
   });
 }
 
@@ -590,8 +616,8 @@ export function useInvitation(id: string) {
 export function useRespondInvitation(id: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (status: 'ACCEPTED' | 'DECLINED') =>
-      request<{ status: string }>(`/api/invitations/${id}`, { method: 'PATCH', body: { status } }),
+    mutationFn: (body: InvitationReply) =>
+      request<{ status: string }>(`/api/invitations/${id}`, { method: 'PATCH', body }),
     onSuccess: () => {
       // The invite changes state and (on accept) creates an application + job row.
       void qc.invalidateQueries({ queryKey: queryKeys.invitations });
@@ -611,6 +637,8 @@ export function useAssertArrival(bookingId: string) {
 }
 
 export interface SentInvitation {
+  declineReason?: string | null;
+  declineNote?: string | null;
   id: string;
   status: string;
   createdAt: string;
@@ -684,5 +712,33 @@ export function useCancellationQuote(id: string) {
     enabled: !!id,
     staleTime: 0,
     refetchInterval: 30_000,
+  });
+}
+
+export function useClientProfile(id: string) {
+  return useQuery({
+    queryKey: ['clients', id],
+    queryFn: () => api.get<Omit<ClientProfile, 'userId' | 'contactEmail'>>(`/api/clients/${id}`),
+    enabled: !!id,
+  });
+}
+export function useWithdrawApplication() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.post(`/api/applications/${id}/withdraw`),
+    onSuccess: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: queryKeys.myApplications }),
+        qc.invalidateQueries({ queryKey: queryKeys.invitations }),
+        qc.invalidateQueries({ queryKey: queryKeys.events }),
+      ]),
+  });
+}
+export function useInviteStaffBatch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ eventId, usherIds }: { eventId: string; usherIds: string[] }) =>
+      api.post(`/api/events/${eventId}/invite-batch`, { usherIds }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sentInvitations'] }),
   });
 }

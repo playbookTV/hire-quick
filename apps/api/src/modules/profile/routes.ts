@@ -1,3 +1,6 @@
+import { Prisma } from '@hq/database';
+import { physicalAttributesSchema, clientDetailsSchema } from '@hq/shared';
+import { clientProfile } from './client-profile.js';
 /**
  * Profile + usher verification (TRD §24, UXRD §7). When object storage is
  * configured, KYC documents are uploaded via server-issued presigned URLs and
@@ -35,6 +38,8 @@ const wrap =
   };
 
 const patchMeSchema = z.object({
+  ...clientDetailsSchema.shape,
+  physicalAttributes: physicalAttributesSchema.nullable().optional(),
   displayName: z.string().min(2).max(120).optional(),
   bio: z.string().max(2000).optional(),
   yearsExperience: z.number().int().min(0).max(60).optional(),
@@ -155,7 +160,13 @@ export function profileRouter(storage?: StoragePort): Router {
         phone: user.phone,
         email: user.email,
         status: user.status,
-        client: user.client,
+        client: user.client
+          ? {
+              ...(await clientProfile(user.client, storage)),
+              userId: user.client.userId,
+              contactEmail: user.client.contactEmail,
+            }
+          : null,
         usher,
       });
     }),
@@ -188,12 +199,30 @@ export function profileRouter(storage?: StoragePort): Router {
       if (
         user.role === 'CLIENT' &&
         user.client &&
-        (body.displayName !== undefined || body.businessName !== undefined)
+        (body.displayName !== undefined ||
+          body.businessName !== undefined ||
+          body.description !== undefined ||
+          body.position !== undefined ||
+          body.city !== undefined ||
+          body.contactEmail !== undefined)
       ) {
-        const data: { displayName?: string; businessName?: string } = {};
+        if (body.businessName !== undefined && user.client.accountType === 'BUSINESS')
+          throw new ApiError(
+            409,
+            'BUSINESS_NAME_LOCKED',
+            'The business name is set by business verification.',
+          );
+        const data: Prisma.ClientUpdateInput = {};
+        if (body.description !== undefined) data.description = body.description || null;
+        if (body.position !== undefined) data.position = body.position || null;
+        if (body.city !== undefined) data.city = body.city || null;
+        if (body.contactEmail !== undefined) data.contactEmail = body.contactEmail || null;
         if (body.displayName !== undefined) data.displayName = body.displayName;
         if (body.businessName !== undefined) data.businessName = body.businessName;
-        await prisma.client.update({ where: { id: user.client.id }, data });
+        await prisma.$transaction(async (tx) => {
+          await lockUploadOwner(tx, req.auth.userId);
+          await tx.client.update({ where: { id: user.client!.id }, data });
+        }, STORAGE_TX);
         updated = true;
       }
       if (
@@ -205,17 +234,13 @@ export function profileRouter(storage?: StoragePort): Router {
           body.state !== undefined ||
           body.city !== undefined ||
           body.languages !== undefined ||
-          body.dayRateKobo !== undefined)
+          body.dayRateKobo !== undefined ||
+          body.physicalAttributes !== undefined)
       ) {
-        const data: {
-          bio?: string;
-          yearsExperience?: number;
-          displayName?: string;
-          state?: string;
-          city?: string;
-          languages?: string[];
-          dayRateKobo?: number;
-        } = {};
+        const data: Prisma.UsherUpdateInput = {};
+        if (body.physicalAttributes !== undefined)
+          data.physicalAttributes =
+            body.physicalAttributes === null ? Prisma.DbNull : body.physicalAttributes;
         if (body.bio !== undefined) data.bio = body.bio;
         if (body.yearsExperience !== undefined) data.yearsExperience = body.yearsExperience;
         if (body.displayName !== undefined) data.displayName = body.displayName;
@@ -223,7 +248,20 @@ export function profileRouter(storage?: StoragePort): Router {
         if (body.city !== undefined) data.city = body.city;
         if (body.languages !== undefined) data.languages = body.languages;
         if (body.dayRateKobo !== undefined) data.dayRateKobo = body.dayRateKobo;
-        await prisma.usher.update({ where: { id: user.usher.id }, data });
+        await prisma.$transaction(async (tx) => {
+          await lockUploadOwner(tx, req.auth.userId);
+          await tx.usher.update({ where: { id: user.usher!.id }, data });
+          if (body.physicalAttributes !== undefined)
+            await writeAudit(
+              {
+                actorId: req.auth.userId,
+                action: 'profile.presentation.set',
+                target: user.usher!.id,
+                metadata: { fields: Object.keys(body.physicalAttributes ?? {}) },
+              },
+              tx,
+            );
+        }, STORAGE_TX);
         updated = true;
       }
       if (!updated)
@@ -278,15 +316,19 @@ export function profileRouter(storage?: StoragePort): Router {
     '/verification',
     wrap(async (req, res) => {
       const usher = await prisma.usher.findFirst({ where: { userId: req.auth.userId } });
-      if (!usher) throw new ApiError(403, 'NOT_AN_USHER', 'only ushers have verifications');
+      const client = usher
+        ? null
+        : await prisma.client.findUnique({ where: { userId: req.auth.userId } });
+      if (!usher && !client)
+        throw new ApiError(403, 'VERIFICATION_UNSUPPORTED', 'This account has no verifications.');
       const list = await prisma.usherVerification.findMany({
-        where: { usherId: usher.id },
-        orderBy: { createdAt: 'desc' },
+        where: usher ? { usherId: usher.id } : { clientId: client!.id },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       });
       await writeAudit({
         actorId: req.auth.userId,
         action: 'verification.read.self',
-        target: usher.id,
+        target: usher?.id ?? client!.id,
         metadata: { count: list.length },
       });
       const resolved = await Promise.all(
@@ -306,10 +348,16 @@ export function profileRouter(storage?: StoragePort): Router {
     '/photos/upload-url',
     wrap(async (req, res) => {
       if (!storage) throw new ApiError(503, 'STORAGE_UNAVAILABLE', 'photo storage not configured');
-      const usher = await prisma.usher.findFirst({ where: { userId: req.auth.userId } });
-      if (!usher) throw new ApiError(403, 'NOT_AN_USHER', 'only ushers upload photos');
       const { kind, contentType, byteSize } = photoUploadUrlSchema.parse(req.body);
-      const key = photoKey(usher.id, kind, PHOTO_CONTENT_TYPES[contentType]);
+      const usher = await prisma.usher.findUnique({ where: { userId: req.auth.userId } });
+      const client =
+        !usher && kind === 'avatar'
+          ? await prisma.client.findUnique({ where: { userId: req.auth.userId } })
+          : null;
+      const profile = usher ?? client;
+      if (!profile)
+        throw new ApiError(403, 'PHOTO_UNSUPPORTED', 'This account cannot upload this photo.');
+      const key = photoKey(profile.id, kind, PHOTO_CONTENT_TYPES[contentType]);
       res.status(201).json(
         await issueUpload(storage, {
           key,
@@ -317,7 +365,7 @@ export function profileRouter(storage?: StoragePort): Router {
           byteSize,
           purpose: kind,
           ownerId: req.auth.userId,
-          scopeId: usher.id,
+          scopeId: profile.id,
         }),
       );
     }),
@@ -328,28 +376,40 @@ export function profileRouter(storage?: StoragePort): Router {
     '/photos/avatar',
     wrap(async (req, res) => {
       const usher = await prisma.usher.findFirst({ where: { userId: req.auth.userId } });
-      if (!usher) throw new ApiError(403, 'NOT_AN_USHER', 'only ushers have a profile photo');
+      const client = !usher
+        ? await prisma.client.findUnique({ where: { userId: req.auth.userId } })
+        : null;
+      const profile = usher ?? client;
+      if (!profile)
+        throw new ApiError(403, 'PHOTO_UNSUPPORTED', 'This account cannot have a profile photo.');
       const { key } = photoKeySchema.parse(req.body);
       await prisma.$transaction(async (tx) => {
         await lockUploadOwner(tx, req.auth.userId);
-        const current = await tx.usher.findUniqueOrThrow({ where: { id: usher.id } });
+        const current = usher
+          ? await tx.usher.findUniqueOrThrow({ where: { id: profile.id } })
+          : await tx.client.findUniqueOrThrow({ where: { id: profile.id } });
         if (storage)
           await consumeUpload(tx, {
             key,
             ownerId: req.auth.userId,
-            scopeId: usher.id,
+            scopeId: profile.id,
             purpose: 'avatar',
-            reference: `avatar:${usher.id}`,
+            reference: `avatar:${profile.id}`,
           });
         if (
           current.avatarKey &&
           current.avatarKey !== key &&
-          current.avatarKey.startsWith(`photos/${usher.id}/`)
+          current.avatarKey.startsWith(`photos/${profile.id}/`)
         )
           await scheduleDeletion(tx, current.avatarKey);
-        await tx.usher.update({ where: { id: usher.id }, data: { avatarKey: key } });
+        if (usher) await tx.usher.update({ where: { id: profile.id }, data: { avatarKey: key } });
+        else await tx.client.update({ where: { id: profile.id }, data: { avatarKey: key } });
       }, STORAGE_TX);
-      await writeAudit({ actorId: req.auth.userId, action: 'usher.avatar.set', target: usher.id });
+      await writeAudit({
+        actorId: req.auth.userId,
+        action: usher ? 'usher.avatar.set' : 'client.avatar.set',
+        target: profile.id,
+      });
       res.json({ avatarUrl: await presignDoc(storage, key) });
     }),
   );

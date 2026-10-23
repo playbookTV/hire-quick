@@ -7,4 +7,6 @@ export * from './withdrawal.js';
 export * from './checkout.js';
 export * from './booking-flow.js';
 export * from './smile-monitoring.js';
+export * from './client-verification.js';
+export * from './marketplace.js';
 export type { MonitoringSnapshot, MonitorCheck, MonitorStatus } from './observability.js';

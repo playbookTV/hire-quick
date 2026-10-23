@@ -1,3 +1,4 @@
+import { Button } from '../../components/Button.js';
 import { EmptyState } from '../../components/EmptyState.js';
 import { memo, useCallback, useState } from 'react';
 import { Pressable, TextInput, RefreshControl } from 'react-native';
@@ -59,6 +60,7 @@ export default function Discover(): React.JSX.Element {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState<string[]>([]);
   const filters = useDiscoverFilters();
   // Defer the network query so we fire one request per pause, not per keystroke.
   const debouncedQuery = useDebouncedValue(query.trim(), 300);
@@ -71,8 +73,35 @@ export default function Discover(): React.JSX.Element {
     [router],
   );
   const renderItem = useCallback(
-    ({ item }: { item: UsherListItem }) => <StaffRow usher={item} onOpen={onOpen} />,
-    [onOpen],
+    ({ item }: { item: UsherListItem }) => (
+      <Box gap="200">
+        <StaffRow usher={item} onOpen={onOpen} />
+        <Pressable
+          accessibilityRole="checkbox"
+          accessibilityState={{
+            checked: selected.includes(item.id),
+            disabled: !selected.includes(item.id) && selected.length >= 50,
+          }}
+          accessibilityLabel={`Select ${item.displayName ?? 'usher'}`}
+          disabled={!selected.includes(item.id) && selected.length >= 50}
+          onPress={() =>
+            setSelected((prev) =>
+              prev.includes(item.id)
+                ? prev.filter((id) => id !== item.id)
+                : prev.length < 50
+                  ? [...prev, item.id]
+                  : prev,
+            )
+          }
+          style={{ minHeight: 44, justifyContent: 'center' }}
+        >
+          <Text variant="label">
+            {selected.includes(item.id) ? '✓ Selected' : 'Select for invitation'}
+          </Text>
+        </Pressable>
+      </Box>
+    ),
+    [onOpen, selected],
   );
 
   const header = (
@@ -211,6 +240,7 @@ export default function Discover(): React.JSX.Element {
     <Box flex={1} backgroundColor="bgCanvas" style={{ paddingTop: insets.top }}>
       <FlashList
         data={data}
+        extraData={selected}
         keyExtractor={(u) => u.id}
         renderItem={renderItem}
         ListHeaderComponent={
@@ -279,6 +309,20 @@ export default function Discover(): React.JSX.Element {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       />
+      {selected.length ? (
+        <Box padding="400" gap="200">
+          <Button
+            label={`Invite ${selected.length} selected`}
+            onPress={() =>
+              router.push({
+                pathname: '/(modals)/invite-staff',
+                params: { ushers: selected.join(',') },
+              })
+            }
+          />
+          <Button label="Clear selection" variant="ghost" onPress={() => setSelected([])} />
+        </Box>
+      ) : null}
     </Box>
   );
 }

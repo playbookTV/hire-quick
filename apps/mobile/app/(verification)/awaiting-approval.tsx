@@ -4,7 +4,7 @@
  * review → Approved progress list, and a ghost CTA to browse jobs meanwhile.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, Box, Text } from '../../theme/restyle.js';
 import { Banner } from '../../components/Banner.js';
@@ -97,6 +97,15 @@ function StatusStep({
 }
 
 export default function AwaitingApproval(): React.JSX.Element {
+  const { user } = useAuth();
+  return user?.role === 'CLIENT' ? (
+    <Redirect href="/(verification)/client-verification" />
+  ) : (
+    <UsherAwaitingApproval />
+  );
+}
+
+function UsherAwaitingApproval(): React.JSX.Element {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const verifications = useMyVerifications();

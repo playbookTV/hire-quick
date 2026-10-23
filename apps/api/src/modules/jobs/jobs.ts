@@ -216,10 +216,32 @@ export async function jobRetentionPurge(storage?: StoragePort): Promise<void> {
       const v = await tx.usherVerification.findUnique({ where: { id: candidate.id } });
       if (!v) return;
       for (const key of [v.idDocumentUrl, v.selfieUrl])
-        if (key?.startsWith(`verifications/${v.usherId}/`)) await scheduleDeletion(tx, key);
+        if (key?.startsWith(`verifications/${v.usherId ?? v.clientId}/`))
+          await scheduleDeletion(tx, key);
       await tx.usherVerification.update({
         where: { id: v.id },
         data: { idDocumentUrl: '', selfieUrl: '' },
+      });
+    }, STORAGE_TX);
+
+  const businessRows = await prisma.businessVerification.findMany({
+    where: {
+      authorizationKey: { not: null },
+      OR: [
+        { status: 'APPROVED', reviewedAt: { lt: kycVerifiedCutoff } },
+        { status: 'REJECTED', reviewedAt: { lt: kycRejectedCutoff } },
+      ],
+    },
+    select: { id: true },
+  });
+  for (const candidate of businessRows)
+    await prisma.$transaction(async (tx) => {
+      const record = await tx.businessVerification.findUnique({ where: { id: candidate.id } });
+      if (!record?.authorizationKey) return;
+      await scheduleDeletion(tx, record.authorizationKey);
+      await tx.businessVerification.update({
+        where: { id: record.id },
+        data: { authorizationKey: null },
       });
     }, STORAGE_TX);
 

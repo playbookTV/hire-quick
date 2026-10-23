@@ -31,6 +31,8 @@ export interface KycWebhook {
   evidence?: ReviewEvidence | undefined;
 }
 export interface KycPort {
+  verifyBusiness?(input: BusinessLookup): Promise<BusinessLookupResult>;
+  businessResult?(input: BusinessLookup): Promise<BusinessLookupResult>;
   startSession(referenceId: string, identity: KycIdentity, phone: string): Promise<KycStartResult>;
   getResult(jobId: string, userId: string): Promise<KycResult>;
   refreshEvidence?(jobId: string, referenceId: string, environment?: string): Promise<void>;
@@ -40,4 +42,17 @@ export interface KycPort {
     referenceId: string,
     callbackKey: string,
   ): KycWebhook | null;
+}
+
+export interface BusinessLookup {
+  referenceId: string;
+  clientId: string;
+  registrationNumber: string;
+  businessType: 'co' | 'bn' | 'it';
+}
+export interface BusinessLookupResult {
+  status: 'VERIFIED' | 'NOT_FOUND' | 'UNAVAILABLE';
+  registeredName: string | null;
+  providerJobId: string | null;
+  environment: 'sandbox' | 'production';
 }

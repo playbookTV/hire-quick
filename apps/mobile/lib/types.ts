@@ -1,4 +1,4 @@
-import type { CancellationSummary } from '@hq/shared';
+import type { PhysicalAttributes, PresentationPreferences, CancellationSummary } from '@hq/shared';
 /**
  * Shapes of the API resources the mobile app consumes. Enums come from
  * `@hq/shared` so client and server agree; the rest mirror the Prisma rows the
@@ -11,6 +11,16 @@ import type { ApplicationStatus } from '@hq/shared';
 export type UsherVerifyState = 'PENDING' | 'VERIFIED' | 'REJECTED';
 
 export interface ClientProfile {
+  description?: string | null;
+  position?: string | null;
+  city?: string | null;
+  contactEmail?: string | null;
+  avatarUrl?: string | null;
+  jobsPosted?: number;
+  activeJobs?: number;
+  accountType?: 'INDIVIDUAL' | 'BUSINESS' | null;
+  verificationStatus?: UsherVerifyState;
+  businessVerificationStatus?: 'NOT_STARTED' | 'PENDING' | 'VERIFIED' | 'REJECTED';
   id: string;
   userId: string;
   displayName: string;
@@ -32,6 +42,7 @@ export interface PortfolioPhoto {
 }
 
 export interface UsherProfile {
+  physicalAttributes?: PhysicalAttributes | null;
   id: string;
   userId: string;
   displayName: string | null;
@@ -69,6 +80,14 @@ export interface Me {
 
 /** Event row (GET /api/events, /api/events/:id). `budgetPerHead` is kobo. */
 export interface EventResource {
+  client?: Pick<
+    ClientProfile,
+    | 'displayName'
+    | 'businessName'
+    | 'accountType'
+    | 'verificationStatus'
+    | 'businessVerificationStatus'
+  >;
   id: string;
   clientId: string;
   title: string;
@@ -82,7 +101,11 @@ export interface EventResource {
   budgetPerHead: number;
   dressCode: string | null;
   accommodation: 'PROVIDED' | 'NOT_PROVIDED' | null;
-  preferences: { requirements?: string; hairstyle?: string } | null;
+  preferences: {
+    requirements?: string;
+    hairstyle?: string;
+    presentation?: PresentationPreferences;
+  } | null;
   status: EventStatus;
   createdAt: string;
   _count?: { applications: number; bookings: number };
@@ -111,12 +134,23 @@ export interface NotificationFeed {
 
 /** GET /api/me/invitations[/:id] — an invitation with its event + inviting client. */
 export interface Invitation {
+  declineReason?: string | null;
+  declineNote?: string | null;
   id: string;
   eventId: string;
   usherId: string;
   status: 'SENT' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED';
   createdAt: string;
-  event: EventResource & { client: { displayName: string; businessName: string | null } };
+  event: EventResource & {
+    client: Pick<
+      ClientProfile,
+      | 'displayName'
+      | 'businessName'
+      | 'accountType'
+      | 'verificationStatus'
+      | 'businessVerificationStatus'
+    >;
+  };
 }
 
 /** POST /auth/otp/verify */
@@ -128,6 +162,7 @@ export interface AuthResult {
 
 /** GET /api/ushers[/:id] — discovery card / usher profile. */
 export interface UsherListItem {
+  physicalAttributes?: PhysicalAttributes | null;
   id: string;
   displayName: string | null;
   bio: string | null;

@@ -1,0 +1,16 @@
+[
+  {
+    "id": "138e7179-72dd-424a-932e-d5fb9e6c654a",
+    "status": "SUCCESS",
+    "createdAt": "2026-10-02T12:21:26.254Z",
+    "message": "Marketplace profiles reporting and hiring 80c2bb0bf1c5",
+    "imageDigest": "sha256:3ae7498ffc3a037dee93b73043f0ff6ff0403ba74a907d4cc97000738aa6e434"
+  },
+  {
+    "id": "29192e71-feb7-4eff-bd26-79fa9398d63b",
+    "status": "REMOVED",
+    "createdAt": "2026-10-01T20:19:52.645Z",
+    "message": "Mandatory client verification f3c979eac7c4",
+    "imageDigest": "sha256:9989aaf9e3c81d23a7a8f76b62e28cfdf72361b89eb3577a260b1460e85aed1b"
+  }
+]

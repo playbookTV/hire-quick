@@ -1,3 +1,4 @@
+import { Reports } from './pages/Reports';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './lib/auth';
 import { Login } from './pages/Login';
@@ -20,6 +21,7 @@ export function App() {
       <Route element={<Layout />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/verifications" element={<Verifications />} />
+        <Route path="/reports" element={<Reports />} />
         <Route path="/disputes" element={<Disputes />} />
         <Route path="/approvals" element={<Approvals />} />
         <Route path="/bookings" element={<Bookings />} />
