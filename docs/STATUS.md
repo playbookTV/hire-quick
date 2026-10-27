@@ -54,6 +54,10 @@ Phase 1 of the [weekly payout decisions](../documentation/payments/weekly-payout
 
 A tester verified with invented names, a real NIN and their own selfie: Smile's `clear` verdict does not compare names. The API now compares the typed names with the authority record before approving. A full match verifies, a partial or missing comparison waits for operator review, and no common name rejects with `NAME_MISMATCH`. See [Smile ID](SMILE-ID.md#name-check). Already-approved verifications are not re-checked. The profile `displayName` is still not tied to the verified name. Smile's live callback must still be observed carrying `user_provided_info` and `id_fields` for NIN_V2; if it does not, every `clear` result waits for review. The mobile review label ships by OTA or the next build.
 
+## Profile save and modal toasts (27 October 2026, not deployed)
+
+A tester's Edit profile save did nothing. The shoe-size field accepted only UK sizes, so an EU size such as 41 failed validation. On iOS, the error toast was also drawn behind the native modal sheet, so no message appeared. Profiles and event preferences now take EU shoe sizes (`shoeSizeEu`, 30–50), and validation messages name their field. Shoe size, body type, clothing size, skin tone and hairstyle are dropdowns of common values. A value typed before the dropdowns stays selectable, and the API still accepts free text for older app versions. On iOS the toast host renders in a `react-native-screens` `FullWindowOverlay`, so toasts from every `(modals)` screen show above the sheet. Both are JavaScript-only, but the API must deploy before the app update: an older API rejects the new `shoeSizeEu` key. Not yet checked on a physical iPhone.
+
 ## Launch acceptance follow-up (19 October 2026)
 
 Public API health and readiness both returned HTTP 200. Expo lists the 2 October Android/iOS preview builds as FINISHED. This does not establish device acceptance or current deployed-source parity. OVA-166 and OVA-114 remain In Progress in Linear. The [acceptance checklist](../documentation/launch-acceptance-2026-10-19.md) separates observed checks from pending device, provider and recovery evidence.

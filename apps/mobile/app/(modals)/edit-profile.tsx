@@ -63,7 +63,10 @@ export default function EditProfile(): React.JSX.Element {
     }
     const attributes = physicalAttributesSchema.safeParse(physicalAttributes);
     if (!attributes.success) {
-      toast.error(attributes.error.issues[0]?.message ?? 'Check your physical attributes.');
+      toast.error(
+        attributes.error.issues[0]?.message ?? 'Check your physical attributes.',
+        'Check your details',
+      );
       return;
     }
     const yearsExperience = Math.max(0, Math.min(60, Math.round(Number(years) || 0)));
@@ -165,7 +168,7 @@ export default function EditProfile(): React.JSX.Element {
           <Text variant="headingS">Physical attributes</Text>
           <Text variant="bodySm" color="inkMuted">
             All fields are optional and visible to clients. Share only what you are comfortable
-            displaying. Clear any field to remove it.
+            displaying. Choose “Prefer not to say” or clear a number to remove it.
           </Text>
           <PhysicalAttributesForm value={physicalAttributes} onChange={setPhysicalAttributes} />
           <Button

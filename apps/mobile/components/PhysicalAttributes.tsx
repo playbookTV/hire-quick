@@ -7,23 +7,37 @@ import { Select } from './Select.js';
 import { TextArea } from './TextArea.js';
 import { Button } from './Button.js';
 import { KeyValueRow } from './KeyValueRow.js';
+import {
+  ATTRIBUTE_CHOICES,
+  attributeLabel,
+  attributeOptions,
+  type AttributeKey,
+} from '../lib/attribute-options.js';
 
-const FIELDS = [
-  ['age', 'Age (years)', true],
-  ['heightCm', 'Height (cm)', true],
-  ['shoeSizeUk', 'Shoe size (UK)', true],
-  ['bodyType', 'Body type', false],
-  ['dressSize', 'Dress / clothing size', false],
-  ['skinTone', 'Skin tone', false],
-  ['hairstyle', 'Hairstyle', false],
-] as const;
+const FIELDS: readonly (readonly [AttributeKey, string])[] = [
+  ['age', 'Age (years)'],
+  ['heightCm', 'Height (cm)'],
+  ['shoeSizeEu', 'Shoe size (EU)'],
+  // Earlier profiles stored UK sizes; the form shows this only while one is saved.
+  ['shoeSizeUk', 'Shoe size (UK)'],
+  ['bodyType', 'Body type'],
+  ['dressSize', 'Dress / clothing size'],
+  ['skinTone', 'Skin tone'],
+  ['hairstyle', 'Hairstyle'],
+];
+const NUMERIC: ReadonlySet<keyof PhysicalAttributes> = new Set([
+  'age',
+  'heightCm',
+  'shoeSizeEu',
+  'shoeSizeUk',
+]);
 
 function NumericAttributeInput({
   value,
   onChange,
   accessibilityLabel,
 }: {
-  value: number | undefined;
+  value: string | number | undefined;
   onChange: (text: string) => void;
   accessibilityLabel?: string;
 }): React.JSX.Element {
@@ -44,44 +58,55 @@ function NumericAttributeInput({
   );
 }
 
+/** `emptyLabel` names the "not set" choice: "Prefer not to say" on a profile, "No preference" on an event. */
 export function PhysicalAttributesForm({
   value,
   onChange,
+  emptyLabel = 'Prefer not to say',
 }: {
   value: PhysicalAttributes;
   onChange: (value: PhysicalAttributes) => void;
+  emptyLabel?: string;
 }): React.JSX.Element {
-  const set = (key: keyof PhysicalAttributes, text: string, numeric = false): void => {
+  const set = (key: keyof PhysicalAttributes, text: string): void => {
     const next = { ...value };
     if (!text.trim()) delete next[key];
-    else Object.assign(next, { [key]: numeric ? Number(text) : text });
+    else Object.assign(next, { [key]: NUMERIC.has(key) ? Number(text) : text });
     onChange(next);
   };
   return (
     <Box gap="300">
       <Field label="Gender (optional)">
         <Select
+          title="Gender"
           value={value.gender ?? ''}
           options={['', 'Male', 'Female', 'Non-binary', 'Self-described'].map((v) => ({
             value: v,
-            label: v || 'Prefer not to say',
+            label: v || emptyLabel,
           }))}
           onSelect={(v) => set('gender', v)}
         />
       </Field>
-      {FIELDS.map(([key, label, numeric]) => (
-        <Field key={key} label={`${label} (optional)`}>
-          {numeric ? (
-            <NumericAttributeInput value={value[key]} onChange={(v) => set(key, v, true)} />
-          ) : (
-            <Input
-              value={value[key] ?? ''}
-              onChangeText={(v) => set(key, v)}
-              maxLength={key === 'dressSize' ? 30 : 60}
-            />
-          )}
-        </Field>
-      ))}
+      {FIELDS.filter(([key]) => key !== 'shoeSizeUk' || value.shoeSizeUk !== undefined).map(
+        ([key, label]) => (
+          <Field key={key} label={`${label} (optional)`}>
+            {ATTRIBUTE_CHOICES[key] ? (
+              <Select
+                title={label}
+                value={value[key] === undefined ? '' : String(value[key])}
+                options={attributeOptions(key, value[key], emptyLabel)}
+                onSelect={(v) => set(key, v)}
+              />
+            ) : (
+              <NumericAttributeInput
+                accessibilityLabel={label}
+                value={value[key]}
+                onChange={(v) => set(key, v)}
+              />
+            )}
+          </Field>
+        ),
+      )}
     </Box>
   );
 }
@@ -100,7 +125,7 @@ export function PhysicalAttributesSummary({
       {value.gender ? <KeyValueRow label="Gender" value={value.gender} /> : null}
       {FIELDS.map(([key, label]) =>
         value[key] === undefined ? null : (
-          <KeyValueRow key={key} label={label} value={String(value[key])} />
+          <KeyValueRow key={key} label={label} value={attributeLabel(key, value[key])} />
         ),
       )}
     </Box>
@@ -128,6 +153,7 @@ export function PresentationPreferencesForm({
           <PhysicalAttributesForm
             value={value.attributes}
             onChange={(attributes) => onChange({ ...value, attributes })}
+            emptyLabel="No preference"
           />
           <Field label="Why is this needed for the job?" required error={error}>
             <TextArea

@@ -229,6 +229,7 @@ describe('profiles, preferences and job discovery', () => {
     const f = await fixture();
     const attributes = {
       heightCm: 178,
+      shoeSizeEu: 41,
       shoeSizeUk: 7.5,
       gender: 'Female',
       dressSize: 'M',
@@ -252,6 +253,14 @@ describe('profiles, preferences and job discovery', () => {
           .patch('/api/me')
           .set('Authorization', f.worker.auth)
           .send({ physicalAttributes: { heightCm: 999 } })
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await request(app)
+          .patch('/api/me')
+          .set('Authorization', f.worker.auth)
+          .send({ physicalAttributes: { shoeSizeUk: 41 } })
       ).status,
     ).toBe(400);
     expect(

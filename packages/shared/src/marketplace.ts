@@ -1,12 +1,35 @@
 import { z } from 'zod';
 
+// Messages name the field: the app shows the first issue on its own.
+const AGE = 'Age must be a whole number from 18 to 100.';
+const HEIGHT = 'Height must be in centimetres, a whole number from 100 to 250.';
+const SHOE_EU = 'Shoe size (EU) must be from 30 to 50, in whole or half sizes.';
+const SHOE_UK = 'Shoe size (UK) must be from 1 to 20, in whole or half sizes.';
+
 /** Voluntary, self-described presentation details. Never used for automatic eligibility. */
 export const physicalAttributesSchema = z
   .object({
     gender: z.enum(['Male', 'Female', 'Non-binary', 'Self-described']).optional(),
-    age: z.number().int().min(18).max(100).optional(),
-    heightCm: z.number().int().min(100).max(250).optional(),
-    shoeSizeUk: z.number().min(1).max(20).multipleOf(0.5).optional(),
+    age: z.number({ invalid_type_error: AGE }).int(AGE).min(18, AGE).max(100, AGE).optional(),
+    heightCm: z
+      .number({ invalid_type_error: HEIGHT })
+      .int(HEIGHT)
+      .min(100, HEIGHT)
+      .max(250, HEIGHT)
+      .optional(),
+    // Nigerian shops size shoes in EU numbers (e.g. 41). UK sizes remain for earlier profiles.
+    shoeSizeEu: z
+      .number({ invalid_type_error: SHOE_EU })
+      .min(30, SHOE_EU)
+      .max(50, SHOE_EU)
+      .multipleOf(0.5, SHOE_EU)
+      .optional(),
+    shoeSizeUk: z
+      .number({ invalid_type_error: SHOE_UK })
+      .min(1, SHOE_UK)
+      .max(20, SHOE_UK)
+      .multipleOf(0.5, SHOE_UK)
+      .optional(),
     bodyType: z.string().trim().max(60).optional(),
     dressSize: z.string().trim().max(30).optional(),
     skinTone: z.string().trim().max(60).optional(),
@@ -14,6 +37,45 @@ export const physicalAttributesSchema = z
   })
   .strict();
 export type PhysicalAttributes = z.infer<typeof physicalAttributesSchema>;
+
+/**
+ * Dropdown choices in the app. The schema still accepts other short text, so older app
+ * versions and values saved before the dropdowns keep working.
+ */
+export const SHOE_SIZES_EU: readonly number[] = Array.from({ length: 13 }, (_, i) => 35 + i);
+export const BODY_TYPES = [
+  'Slim',
+  'Athletic',
+  'Average',
+  'Muscular',
+  'Curvy',
+  'Plus-size',
+] as const;
+/** Letter sizes, with the UK dress sizes they usually cover. */
+export const CLOTHING_SIZES = [
+  { value: 'XS', label: 'XS (UK 4–6)' },
+  { value: 'S', label: 'S (UK 8–10)' },
+  { value: 'M', label: 'M (UK 12–14)' },
+  { value: 'L', label: 'L (UK 16–18)' },
+  { value: 'XL', label: 'XL (UK 20–22)' },
+  { value: 'XXL', label: 'XXL (UK 24–26)' },
+  { value: '3XL', label: '3XL (UK 28+)' },
+] as const;
+export const SKIN_TONES = ['Fair', 'Light brown', 'Medium brown', 'Dark brown', 'Dark'] as const;
+/** Starts with the styles clients can request for an event (Ponytail, Packable hair, Bob wig). */
+export const HAIRSTYLES = [
+  'Ponytail',
+  'Packable hair',
+  'Bob wig',
+  'Other wig or weave',
+  'Braids',
+  'Cornrows',
+  'Twists',
+  'Locs',
+  'Natural / afro',
+  'Low cut',
+  'Bald / shaved',
+] as const;
 
 export const presentationPreferencesSchema = z
   .object({
