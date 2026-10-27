@@ -26,6 +26,8 @@ import { type StoragePort, presignDoc } from '../storage/storage.js';
 import { authorizedChatMediaKey } from '../storage/chat-media.js';
 import { pageQuery, pageResult } from './pagination.js';
 import { paymentOperationsRouter } from './payment-operations.js';
+import { payoutRunsRouter } from './payout-runs.js';
+import { commissionSweepAmount } from '../payments/service.js';
 import { reviewVerification } from '../verification/service.js';
 import { adminBusinessVerificationRouter } from '../verification/business-routes.js';
 import type { Redis } from 'ioredis';
@@ -66,6 +68,7 @@ export function adminRouter(deps: {
   r.use(adminBusinessVerificationRouter(deps.kyc, deps.storage));
   r.use(monitoringDashboardRouter(deps.redis));
   r.use(paymentOperationsRouter());
+  r.use(payoutRunsRouter({ paystack: deps.paystack, realtime: deps.realtime }));
   r.use(adminReportsRouter());
 
   // Refund/dispute execution issues a real Paystack refund, so those routes
@@ -80,18 +83,30 @@ export function adminRouter(deps: {
   r.get(
     '/stats',
     wrap(async (_req, res) => {
-      const [pendingVerifications, openDisputes, pendingApprovals, users, held, pendingBusinesses] =
-        await Promise.all([
-          prisma.usherVerification.count({ where: { status: 'PENDING' } }),
-          prisma.dispute.count({ where: { status: { in: ['OPEN', 'UNDER_REVIEW'] } } }),
-          prisma.approval.count({ where: { status: 'PENDING' } }),
-          prisma.user.count(),
-          prisma.payment.aggregate({
-            where: { escrowStatus: 'HELD' },
-            _sum: { grossAmount: true },
-          }),
-          prisma.businessVerification.count({ where: { status: 'PENDING' } }),
-        ]);
+      const [
+        pendingVerifications,
+        openDisputes,
+        pendingApprovals,
+        users,
+        held,
+        pendingBusinesses,
+        owed,
+        revenue,
+        payoutRunsAwaitingApproval,
+      ] = await Promise.all([
+        prisma.usherVerification.count({ where: { status: 'PENDING' } }),
+        prisma.dispute.count({ where: { status: { in: ['OPEN', 'UNDER_REVIEW'] } } }),
+        prisma.approval.count({ where: { status: 'PENDING' } }),
+        prisma.user.count(),
+        prisma.payment.aggregate({
+          where: { escrowStatus: 'HELD' },
+          _sum: { grossAmount: true },
+        }),
+        prisma.businessVerification.count({ where: { status: 'PENDING' } }),
+        prisma.wallet.aggregate({ _sum: { availableBalance: true } }),
+        commissionSweepAmount(prisma),
+        prisma.payoutRun.count({ where: { status: 'AWAITING_APPROVAL' } }),
+      ]);
       res.json({
         pendingVerifications: pendingVerifications + pendingBusinesses,
         openDisputes,
@@ -99,6 +114,10 @@ export function adminRouter(deps: {
         users,
         escrowHeldKobo: held._sum.grossAmount ?? 0,
         approvalThresholdKobo: APPROVAL_THRESHOLD_KOBO,
+        // HireQuick's position: held for events + owed to ushers + unswept revenue.
+        owedToUshersKobo: owed._sum.availableBalance ?? 0,
+        platformRevenueKobo: revenue,
+        payoutRunsAwaitingApproval,
       });
     }),
   );

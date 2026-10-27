@@ -4,6 +4,7 @@ export * from './policy.js';
 export * from './state-machines.js';
 export * from './dto.js';
 export * from './withdrawal.js';
+export * from './payouts.js';
 export * from './checkout.js';
 export * from './booking-flow.js';
 export * from './smile-monitoring.js';

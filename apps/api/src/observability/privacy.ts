@@ -81,6 +81,7 @@ const jobs = new Set([
   'noshow',
   'reconcile',
   'commission',
+  'payoutRun',
   'checkouts',
   'resumeOps',
   'storageCleanup',

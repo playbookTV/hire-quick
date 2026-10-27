@@ -19,6 +19,7 @@ import {
   jobRetentionPurge,
   jobAuditVerify,
   jobCheckouts,
+  jobBuildPayoutRun,
 } from './jobs.js';
 
 export function createJobRuntime(): ScheduledRuntime {
@@ -34,6 +35,7 @@ export function createJobRuntime(): ScheduledRuntime {
       noshow: monitorJob('noshow', () => jobNoShow(deps, realtime)),
       reconcile: monitorJob('reconcile', () => jobReconcile(deps, realtime), env.BETTER_STACK_RECONCILIATION_HEARTBEAT_URL),
       commission: monitorJob('commission', (job) => jobCommissionSweep(deps, commissionPeriod(job))),
+      payoutRun: monitorJob('payoutRun', () => jobBuildPayoutRun(deps, realtime)),
       checkouts: monitorJob('checkouts', () => jobCheckouts(deps), env.BETTER_STACK_CHECKOUTS_HEARTBEAT_URL),
       resumeOps: monitorJob('resumeOps', () => jobResumePaymentOps(deps, realtime)),
       storageCleanup: monitorJob('storageCleanup', async () => {

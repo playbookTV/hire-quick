@@ -4,6 +4,7 @@
  * exhaustively check every (from, to) pair.
  */
 import type { BookingStatus, MilestoneStatus, OrderStatus, WithdrawalStatus } from './enums.js';
+import type { PayoutRunStatus } from './payouts.js';
 
 export class IllegalTransition extends Error {
   constructor(
@@ -52,6 +53,19 @@ export const MILESTONE_TRANSITIONS: Record<MilestoneStatus, readonly MilestoneSt
   FULFILLED: [], // terminal — reward delivered
 };
 
+/**
+ * Weekly payout run. Lines can be rebuilt only in DRAFT. A rejected submission
+ * returns to DRAFT. EXECUTED means every line has a withdrawal; each line's
+ * outcome is that withdrawal's own status.
+ */
+export const PAYOUT_RUN_TRANSITIONS: Record<PayoutRunStatus, readonly PayoutRunStatus[]> = {
+  DRAFT: ['AWAITING_APPROVAL', 'CANCELLED'],
+  AWAITING_APPROVAL: ['DRAFT', 'APPROVED'],
+  APPROVED: ['EXECUTED'],
+  EXECUTED: [],
+  CANCELLED: [],
+};
+
 function canTransitionIn<T extends string>(
   table: Record<T, readonly T[]>,
   from: T,
@@ -84,6 +98,12 @@ export function assertWithdrawalTransition(from: WithdrawalStatus, to: Withdrawa
 }
 export function assertMilestoneTransition(from: MilestoneStatus, to: MilestoneStatus): void {
   if (!canTransitionMilestone(from, to)) throw new IllegalTransition('milestone', from, to);
+}
+export function canTransitionPayoutRun(from: PayoutRunStatus, to: PayoutRunStatus): boolean {
+  return canTransitionIn(PAYOUT_RUN_TRANSITIONS, from, to);
+}
+export function assertPayoutRunTransition(from: PayoutRunStatus, to: PayoutRunStatus): void {
+  if (!canTransitionPayoutRun(from, to)) throw new IllegalTransition('payout run', from, to);
 }
 
 /**

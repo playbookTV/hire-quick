@@ -46,6 +46,10 @@ Application withdrawal, preserved multi-worker invitation selection, optional ph
 
 [Marketplace implementation and validation evidence](../documentation/marketplace-gap-closure-2026-10-02.md) records the tested scope, sample screenshots, native-device limitations and migration rollout order.
 
+## Weekly payout runs (23 October 2026, not deployed)
+
+Phase 1 of the [weekly payout decisions](../documentation/payments/weekly-payouts-decisions-2026-10-23.md) is implemented: payout runs with two-admin approval, per-line transfer OTP entry, a payout account per usher, payout notifications and the `PAYOUT_MODE` withdrawal gate in the API and worker; the admin console Weekly payouts page (`/payouts`); and the mobile wallet's next-payout card, payout-account screen and payout labels. See [Payments](PAYMENTS.md#weekly-payout-runs). The mobile changes need a new EAS build. Not in this change: the configurable platform fee (the rate stays 15%) and phase 2 automatic execution with the Paystack transfer approval URL. Live use also waits on clearing pre-launch TEST balances and recipient codes, and on confirming the live account settles to balance.
+
 ## Launch acceptance follow-up (19 October 2026)
 
 Public API health and readiness both returned HTTP 200. Expo lists the 2 October Android/iOS preview builds as FINISHED. This does not establish device acceptance or current deployed-source parity. OVA-166 and OVA-114 remain In Progress in Linear. The [acceptance checklist](../documentation/launch-acceptance-2026-10-19.md) separates observed checks from pending device, provider and recovery evidence.

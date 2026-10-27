@@ -12,6 +12,8 @@ export const SCHEDULES = [
   { name: 'noshow', pattern: '3-59/10 * * * *', attempts: 3 },
   { name: 'reconcile', pattern: '17 3 * * *', attempts: 3 },
   { name: 'commission', pattern: '23 4 * * *', attempts: 3 },
+  // Thursday 09:00 Lagos: build the week's payout run for admins to approve.
+  { name: 'payoutRun', pattern: '0 8 * * 4', attempts: 3 },
   { name: 'checkouts', pattern: '2-59/5 * * * *', attempts: 3 },
   { name: 'resumeOps', pattern: '*/15 * * * *', attempts: 3 },
   { name: 'storageCleanup', pattern: '4-59/5 * * * *', attempts: 3 },

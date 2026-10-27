@@ -70,6 +70,8 @@ Event calendar dates and `HH:MM` start/end strings are distinct from recorded in
 - `PaymentOperation` stores orchestration metadata, not money. PENDING, PROVIDER_OK, RECORDED, and FAILED distinguish external intent, known success, local recording, and terminal failure.
 - `IdempotencyKey` can store the original result for replay. Its response format and ownership/payload binding must stay compatible with existing retries.
 - `Approval` separates PENDING, APPROVED, REJECTED, and EXECUTED. Approval is not evidence that a provider side effect has completed.
+- `PayoutRun` is one weekly payout snapshot per Lagos date (`periodKey`): DRAFT, AWAITING_APPROVAL, APPROVED, EXECUTED or CANCELLED. `lines`, `excluded` and `skipped` are JSON snapshots; `linesHash` binds approval to the reviewed lines. Each executed line is a `Withdrawal` with `payoutRunId` (unique per wallet per run). EXECUTED means withdrawals exist, not that transfers settled.
+- `Usher.payoutBankAccountId` (unique) names the account runs pay into; `payoutAccountSetAt` dates the choice so recent changes are flagged.
 
 Read [Payments](PAYMENTS.md) for signed entry semantics and allowed booking/order/withdrawal transitions. Never derive balance by summing operation payloads or assuming every PAID booking represents a bank transfer.
 

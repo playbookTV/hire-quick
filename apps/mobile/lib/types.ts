@@ -295,6 +295,30 @@ export interface WalletSummary {
   availableBalance: number;
   pendingEscrow: number;
   lifetimeEarned: number;
+  /**
+   * How ushers get paid. Optional because an API older than the weekly-payout
+   * release omits it; absent means `on_demand` (see `lib/payouts.ts`).
+   */
+  payoutMode?: PayoutMode;
+  /** Next weekly run, ISO (Thursday 08:00 UTC = 09:00 Lagos). */
+  nextPayoutAt?: string;
+  /** Balances below this roll over to the next run (kobo). */
+  payoutMinimumKobo?: number;
+  payoutAccount?: PayoutAccount | null;
+}
+
+/** `on_demand`: the usher withdraws; `weekly`: admin-approved Thursday runs pay them. */
+export type PayoutMode = 'on_demand' | 'weekly';
+
+/** Who started a bank transfer: a weekly payout run or the usher (a withdrawal). */
+export type TransferSource = 'PAYOUT_RUN' | 'USHER_REQUEST';
+
+/** The bank account weekly runs pay into (masked). */
+export interface PayoutAccount {
+  id: string;
+  bankCode: string;
+  accountName: string;
+  last4: string;
 }
 
 /** GET /api/payments/wallet/activity */
@@ -314,6 +338,8 @@ export interface BankAccount {
   accountNumber: string;
   accountName: string;
   verified: boolean;
+  /** True for the account weekly payout runs pay into. */
+  isPayoutAccount?: boolean;
 }
 
 /** GET /api/me/availability */

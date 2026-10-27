@@ -52,6 +52,7 @@ Staging/production require all three current secrets to be at least 32 character
 | `PAYSTACK_SECRET_KEY`          | Empty   | Real HTTP provider key. Use TEST credentials outside authorized live operation.                                             |
 | `PAYSTACK_WEBHOOK_SECRET`      | Empty   | Webhook verification secret. Paystack signs webhooks with the secret key, so set this to the same value as `PAYSTACK_SECRET_KEY` (on Railway, `${{PAYSTACK_SECRET_KEY}}`). Server falls back to payment key in development; staging/production require an explicit value. |
 | `PAYSTACK_OPERATING_RECIPIENT` | Empty   | Transfer recipient for commission sweeps; job skips when absent.                                                            |
+| `PAYOUT_MODE`                  | `on_demand` | `weekly` refuses usher withdrawal requests (`409 PAYOUTS_SCHEDULED`); ushers are paid by admin-approved weekly runs. Set on the API when the first run goes out. |
 | `WITHDRAWAL_REQUIRE_BVN`       | `false` | Only exact string `true` enables the additional BVN gate. Does not implement a missing BVN provider check.                  |
 
 Amounts remain integer kobo. Never place server payment keys in mobile or admin public variables. A nonempty key passing validation is not proof of provider authorization or correct merchant configuration.

@@ -20,6 +20,7 @@ Source: [queues.ts](../apps/api/src/modules/jobs/queues.ts), [runtime.ts](../app
 | `resumeOps`      | `*/15 * * * *`    | Resume durable payment operations and reconcile stuck withdrawals                            |
 | `reconcile`      | `17 3 * * *`      | Compare ledger expectation with provider balance; flag stale held funds                      |
 | `commission`     | `23 4 * * *`      | Sweep platform fees if operating recipient configured                                        |
+| `payoutRun`      | `0 8 * * 4`       | Thursday 09:00 Lagos: build the week's payout run as a DRAFT for admins; never sends money    |
 | `retentionPurge` | `41 2 * * *`      | Purge eligible transient PII and expire denylist records                                     |
 | `auditVerify`    | `47 2 * * *`      | Verify the hash chain and log any break                                                      |
 
@@ -44,6 +45,19 @@ The 30-minute expiry is not permission to assume failure. Provider timeout, miss
 5. Only a new, intentional withdrawal after a confirmed failed outcome should use a fresh logical request key.
 
 Never set `availableBalance` manually or insert a ledger row outside the ledger service. A screenshot of a client receipt is not sufficient provider evidence.
+
+## Weekly payout run (Thursday)
+
+Policy: [23 October decisions](../documentation/payments/weekly-payouts-decisions-2026-10-23.md). Mechanics: [Payments](PAYMENTS.md#weekly-payout-runs).
+
+1. At 09:00 Lagos the worker builds the run as a DRAFT. If it reports `RUN_IN_PROGRESS`, an earlier run is still awaiting approval or execution: finish or reject it, then build again with `POST /api/admin/payout-runs/build`.
+2. **Reviewer (admin A).** Open the run. Check the total against the expected week, look at every `NEW_PAYOUT_ACCOUNT` and `FIRST_PAYOUT` flag, and confirm each exclusion reason. If balances changed since 09:00, rebuild (refresh) before submitting. Submit.
+3. **Approver (admin B, not A).** Re-read the same list and approve. Approval creates one withdrawal per line (wallets are debited now) and starts the transfers.
+4. **Transfer codes (while Paystack transfer OTP is on).** Paystack sends the account owner one code per transfer. Enter each code on its line. A refused code returns `OTP_REJECTED`; request a new one with "resend". `OTP_NOT_REQUIRED` with "has not reached Paystack yet" means dispatch has not run for that line: use "send again" (`/dispatch`), then enter the code.
+5. Lines settle by webhook: PAID, or FAILED with the money back in the wallet for next week. Skipped lines (suspended, account changed, balance lower than approved) keep their balance.
+6. A run approved but stuck before EXECUTED is resumed by `resumeOps`. Never create a manual withdrawal or ledger row to "help" a run along.
+
+Do not switch `PAYOUT_MODE` to `weekly` until the first run has been approved, and only after pre-launch TEST balances and recipient codes have been cleared ([production switch record](../documentation/deployment-production-mode-2026-10-23.md)).
 
 ## Refund remains pending
 

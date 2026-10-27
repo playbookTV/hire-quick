@@ -7,8 +7,9 @@ import { Button } from '../../components/Button.js';
 import { Card } from '../../components/Card.js';
 import { QueryState } from '../../components/QueryState.js';
 import { StatusPill } from '../../components/StatusPill.js';
-import { useWithdrawalHistory } from '../../lib/hooks.js';
+import { useWallet, useWithdrawalHistory } from '../../lib/hooks.js';
 import { money, shortDate } from '../../lib/format.js';
+import { isPayoutTransfer, isWeeklyPayouts } from '../../lib/payouts.js';
 export default function WithdrawalHistory(): React.JSX.Element {
   const [cursors, setCursors] = useState<string[]>([]);
   const query = useWithdrawalHistory(cursors.at(-1));
@@ -19,16 +20,21 @@ export default function WithdrawalHistory(): React.JSX.Element {
     }, [refetch]),
   );
   const router = useRouter();
+  // Weekly payout runs are listed here too: each payout is a withdrawal.
+  const wallet = useWallet().data;
+  const weekly = isWeeklyPayouts(wallet);
   return (
     <Box flex={1} backgroundColor="bgCanvas">
-      <AppBar title="Withdrawal history" showBack inset />
+      <AppBar title={weekly ? 'Payout history' : 'Withdrawal history'} showBack inset />
       <Screen scroll>
         <QueryState query={query}>
           {(page) => (
             <Box style={{ gap: 16 }}>
               {page.items.length === 0 ? (
                 <Text variant="body" color="inkMuted">
-                  No withdrawals yet. Bank transfers will appear here when you request them.
+                  {weekly
+                    ? 'No payouts yet. Your weekly bank transfers will appear here.'
+                    : 'No withdrawals yet. Bank transfers will appear here when you request them.'}
                 </Text>
               ) : null}
               {page.items.map((w) => (
@@ -40,7 +46,7 @@ export default function WithdrawalHistory(): React.JSX.Element {
                       {shortDate(w.createdAt)} · Account ending {w.bank.last4}
                     </Text>
                     <Button
-                      label="View withdrawal"
+                      label={isPayoutTransfer(w, wallet) ? 'View payout' : 'View withdrawal'}
                       variant="secondary"
                       onPress={() =>
                         router.push({

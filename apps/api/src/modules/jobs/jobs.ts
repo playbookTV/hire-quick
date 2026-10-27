@@ -19,6 +19,9 @@ import { reconcileCheckouts } from '../payments/checkout.js';
 import { claimRecoveryBatch } from '../payments/recovery-schedule.js';
 import { reportAlarm } from '../../observability/reporting.js';
 import { logger } from '../../logger.js';
+import { ApiError } from '../../app.js';
+import { payoutRunTotal } from '@hq/shared';
+import { buildPayoutRun, payoutRunLines, resumePayoutRuns } from '../payments/payout-runs.js';
 
 const DAY_MS = 86_400_000;
 
@@ -82,6 +85,37 @@ export async function jobCommissionSweep(deps: Deps, period: string): Promise<vo
 }
 
 /**
+ * Build this week's payout run as a DRAFT for admins to review and approve. A
+ * run already past DRAFT is left alone, so a retried or duplicate job is a no-op.
+ */
+export async function jobBuildPayoutRun(
+  deps: Deps,
+  realtime: RealtimeGateway = noopGateway,
+): Promise<void> {
+  try {
+    const run = await buildPayoutRun(deps.prisma);
+    const lines = payoutRunLines(run);
+    log(`payout run ${run.periodKey} ${run.status}: ${String(lines.length)} line(s)`);
+    realtime.emitToAdmins('payout:run_built', {
+      runId: run.id,
+      periodKey: run.periodKey,
+      status: run.status,
+      lines: lines.length,
+      totalKobo: payoutRunTotal(lines),
+      at: new Date().toISOString(),
+    });
+  } catch (error) {
+    // An earlier run still awaiting approval blocks a new one; tell admins, don't retry.
+    if (error instanceof ApiError && error.code === 'RUN_IN_PROGRESS') {
+      log('payout run not built: an earlier run is still awaiting approval or execution');
+      realtime.emitToAdmins('payout:run_blocked', { at: new Date().toISOString() });
+      return;
+    }
+    throw error;
+  }
+}
+
+/**
  * Resume durable payment operations after a crash and finalise withdrawals whose
  * transfer webhook was lost (TRD §10/§17). Replaces the previous log-only retry:
  * it re-drives PENDING/PROVIDER_OK operations and reconciles stuck withdrawals
@@ -120,6 +154,11 @@ export async function jobResumePaymentOps(
     prerequisiteFailed = true;
     log('payment recovery approval backfill failed; continuing existing operations');
   }
+  // Approved payout runs whose lines were not all turned into withdrawals.
+  await resumePayoutRuns(deps).catch(() => {
+    prerequisiteFailed = true;
+    log('payout run recovery failed; continuing existing operations');
+  });
   const wd = await reconcileStuckWithdrawals(deps, 30 * 60_000, true).catch(() => {
     prerequisiteFailed = true;
     log('payment recovery legacy withdrawal check failed; continuing existing operations');

@@ -11,6 +11,7 @@ const handlers: JobHandlers = {
   storageCleanup: noop,
   retentionPurge: noop,
   auditVerify: noop,
+  payoutRun: noop,
   commission: async () => {
     console.log('TEST_ACTIVE');
     await new Promise((resolve) => setTimeout(resolve, 400));

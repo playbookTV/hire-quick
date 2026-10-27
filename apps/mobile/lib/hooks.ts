@@ -36,6 +36,7 @@ import type {
   Availability,
   NotificationFeed,
   Invitation,
+  TransferSource,
 } from './types.js';
 
 export function useRequestOtp() {
@@ -469,7 +470,31 @@ export function useAddBankAccount() {
     // accountName is resolved server-side, so the client only sends bank + number.
     mutationFn: (vars: { bankCode: string; accountNumber: string }) =>
       api.post<BankAccount>('/api/payments/bank-accounts', vars),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.bankAccounts }),
+    // An usher's first account becomes their payout account, which the wallet reports.
+    onSuccess: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: queryKeys.bankAccounts }),
+        qc.invalidateQueries({ queryKey: queryKeys.wallet }),
+      ]),
+  });
+}
+
+/**
+ * Choose the account weekly payout runs pay into. The API refuses an
+ * unverified account with `409 UNVERIFIED_ACCOUNT`.
+ */
+export function useSetPayoutAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (bankAccountId: string) =>
+      api.put<{ bankAccountId: string; isPayoutAccount: true }>('/api/payments/payout-account', {
+        bankAccountId,
+      }),
+    onSuccess: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: queryKeys.bankAccounts }),
+        qc.invalidateQueries({ queryKey: queryKeys.wallet }),
+      ]),
   });
 }
 
@@ -665,6 +690,8 @@ export interface WithdrawalRecord {
   id: string;
   amount: number;
   status: 'REQUESTED' | 'PROCESSING' | 'PAID' | 'FAILED';
+  /** A weekly payout run's line or an usher's own request; absent from older APIs. */
+  source?: TransferSource;
   reference: string | null;
   createdAt: string;
   updatedAt: string;

@@ -16,6 +16,22 @@ export interface TransferResult {
   failureReason?: string;
 }
 
+/** Paystack refused the transfer OTP. Never carries the submitted code. */
+export class TransferOtpRejected extends Error {
+  constructor() {
+    super('Transfer OTP was not accepted');
+    this.name = 'TransferOtpRejected';
+  }
+}
+
+/** The transfer is not waiting for an OTP (already processing, settled or missing). */
+export class TransferOtpNotRequired extends Error {
+  constructor(readonly status: 'success' | 'failed' | 'pending' | 'unknown') {
+    super('Transfer is not waiting for an OTP');
+    this.name = 'TransferOtpNotRequired';
+  }
+}
+
 export interface RefundParams {
   chargeReference: string;
   amountKobo: number;
@@ -76,6 +92,18 @@ export interface PaystackPort {
   verifyTransfer(
     reference: string,
   ): Promise<{ status: 'success' | 'failed' | 'pending' | 'unknown' }>;
+  /**
+   * Complete an issued transfer that is waiting for the account owner's OTP
+   * (Paystack `POST /transfer/finalize_transfer`). Throws TransferOtpRejected
+   * for a wrong code and TransferOtpNotRequired when the transfer is not
+   * waiting for one. Settlement still arrives by webhook.
+   */
+  finalizeTransfer?(params: {
+    reference: string;
+    otp: string;
+  }): Promise<{ status: 'success' | 'failed' | 'pending' }>;
+  /** Ask Paystack to send a new OTP for a transfer that is waiting for one. */
+  resendTransferOtp?(reference: string): Promise<void>;
   /** Refund creation is NOT provider-idempotent. Only a first dispatch may call it. */
   refund(params: RefundParams): Promise<RefundResult>;
   /** Read-only recovery; absence is ambiguous and never authorizes a second POST. */
@@ -95,10 +123,14 @@ export class InMemoryPaystack implements PaystackPort {
   private readonly charges = new Map<string, number>();
   // Issued transfers by reference, so verifyTransfer can mirror a real
   // GET /transfer/verify/:reference for the recovery job.
-  private readonly transfers = new Map<string, 'success' | 'failed' | 'pending'>();
+  private readonly transfers = new Map<string, 'success' | 'failed' | 'pending' | 'otp'>();
+  // When set, new transfers wait for this OTP, as with Paystack's transfer OTP on.
+  private transferOtp: string | null = null;
+  readonly otpResends: string[] = [];
   // Fake provider evidence keyed by our reference. The real refund API does not
   // guarantee POST idempotency: durable intents dispatch once and reconcile by GET.
   private readonly refunds = new Map<string, number>();
+  private readonly pendingAmounts = new Map<string, number>();
 
   /** Simulate funds landing in the Balance when a client charge settles. */
   creditBalance(amountKobo: number): void {
@@ -113,6 +145,11 @@ export class InMemoryPaystack implements PaystackPort {
   /** Force the next transfer() to report failure (e.g. invalid bank details). */
   failNextTransfer(): void {
     this.nextTransferFails = true;
+  }
+
+  /** Test hook: make new transfers wait for `otp` (null turns the requirement off). */
+  requireTransferOtp(otp: string | null): void {
+    this.transferOtp = otp;
   }
 
   /** Test hook: nudge the balance to seed reconciliation drift. */
@@ -172,8 +209,13 @@ export class InMemoryPaystack implements PaystackPort {
     if (prior)
       return Promise.resolve({
         reference: params.reference,
-        status: prior === 'failed' ? 'failed' : 'success',
+        status: prior === 'failed' ? 'failed' : prior === 'success' ? 'success' : 'pending',
       });
+    if (this.transferOtp !== null) {
+      this.transfers.set(params.reference, 'otp');
+      this.pendingAmounts.set(params.reference, params.amountKobo);
+      return Promise.resolve({ reference: params.reference, status: 'pending' });
+    }
     if (this.nextTransferFails) {
       this.nextTransferFails = false;
       this.transfers.set(params.reference, 'failed');
@@ -191,7 +233,31 @@ export class InMemoryPaystack implements PaystackPort {
   verifyTransfer(
     reference: string,
   ): Promise<{ status: 'success' | 'failed' | 'pending' | 'unknown' }> {
-    return Promise.resolve({ status: this.transfers.get(reference) ?? 'unknown' });
+    const state = this.transfers.get(reference);
+    return Promise.resolve({ status: state === 'otp' ? 'pending' : (state ?? 'unknown') });
+  }
+
+  finalizeTransfer(params: {
+    reference: string;
+    otp: string;
+  }): Promise<{ status: 'success' | 'failed' | 'pending' }> {
+    const state = this.transfers.get(params.reference);
+    if (state !== 'otp')
+      return Promise.reject(
+        new TransferOtpNotRequired(state === undefined ? 'unknown' : state),
+      );
+    if (params.otp !== this.transferOtp) return Promise.reject(new TransferOtpRejected());
+    this.balanceKobo -= this.pendingAmounts.get(params.reference) ?? 0;
+    this.transfers.set(params.reference, 'success');
+    return Promise.resolve({ status: 'success' });
+  }
+
+  resendTransferOtp(reference: string): Promise<void> {
+    const state = this.transfers.get(reference);
+    if (state !== 'otp')
+      return Promise.reject(new TransferOtpNotRequired(state === undefined ? 'unknown' : state));
+    this.otpResends.push(reference);
+    return Promise.resolve();
   }
 
   refund(params: {

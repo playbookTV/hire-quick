@@ -14,7 +14,8 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.ovalay.hirequick",
       "infoPlist": {
-        "NSCameraUsageDescription": "HireQuick uses the camera for Smile ID identity and liveness verification."
+        "NSCameraUsageDescription": "HireQuick uses the camera for Smile ID identity and liveness verification.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {

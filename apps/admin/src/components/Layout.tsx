@@ -7,6 +7,7 @@ const NAV = [
   ['/disputes', 'Disputes'],
   ['/reports', 'Marketplace reports'],
   ['/approvals', 'Approvals'],
+  ['/payouts', 'Weekly payouts'],
   ['/bookings', 'Bookings & refunds'],
   ['/ledger', 'Ledger'],
   ['/payment-operations', 'Payment operations'],

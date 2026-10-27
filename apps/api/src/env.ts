@@ -45,6 +45,9 @@ const EnvSchema = z.object({
   PAYSTACK_WEBHOOK_SECRET: z.string().default(''),
   // Paystack transfer recipient for HireQuick's own operating bank (commission sweep, D3).
   PAYSTACK_OPERATING_RECIPIENT: z.string().default(''),
+  // `weekly`: ushers are paid only by admin-approved weekly payout runs and
+  // their own withdrawal requests are refused. Switch when the first run goes out.
+  PAYOUT_MODE: z.enum(['on_demand', 'weekly']).default('on_demand'),
   REDIS_URL: z.string().default('redis://127.0.0.1:6379'),
   // NDPR retention windows (TRD §14) for the daily purge job. Financial/ledger
   // rows are never purged by this — only transient PII.

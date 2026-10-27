@@ -109,6 +109,27 @@ export function notifyPayoutReleased(usherUserId: string, amount: Kobo): void {
   safe(notify(usherUserId, 'PAYOUT_RELEASED', 'Payout released', `${formatNaira(amount)} has been added to your wallet.`));
 }
 
+export function notifyPayoutSent(usherUserId: string, amount: Kobo, withdrawalId: string): void {
+  safe(
+    notify(usherUserId, 'PAYOUT_SENT', 'Payout sent', `${formatNaira(amount)} has been sent to your bank account.`, {
+      targetType: 'withdrawal',
+      targetId: withdrawalId,
+    }),
+  );
+}
+
+export function notifyPayoutFailed(usherUserId: string, amount: Kobo, withdrawalId: string): void {
+  safe(
+    notify(
+      usherUserId,
+      'PAYOUT_FAILED',
+      'Payout could not be sent',
+      `${formatNaira(amount)} is back in your wallet and will be included in the next weekly payout. Check your payout account details.`,
+      { targetType: 'withdrawal', targetId: withdrawalId },
+    ),
+  );
+}
+
 export function notifyDisputeOpened(userId: string, bookingId?: string): void {
   safe(
     notify(

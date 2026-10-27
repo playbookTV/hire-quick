@@ -1,8 +1,11 @@
 /**
  * Withdraw to bank — drives `POST /api/payments/withdrawals` (idempotent). Lists
  * the usher's registered bank accounts (`useBankAccounts`); if none, lets them
- * add one with a real bank-app flow: pick a bank, type the 10-digit account
- * number, and the account name is resolved (`useResolveAccount`) before saving.
+ * add one (`AddBankAccountForm`).
+ *
+ * While weekly payout runs are on (`payoutMode: 'weekly'`) the API refuses new
+ * withdrawals with `409 PAYOUTS_SCHEDULED`, so this screen explains the weekly
+ * payout instead. A withdrawal saved before the switch still opens its receipt.
  *
  * Three steps — this is the usher's money leaving escrow, so it is NOT
  * fire-and-forget (critique P0):
@@ -13,7 +16,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Pressable, Keyboard } from 'react-native';
+import { Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, Box, Text } from '../../theme/restyle.js';
 import { Screen } from '../../components/Screen.js';
@@ -26,23 +29,21 @@ import { IconCircle } from '../../components/IconCircle.js';
 import { OptionCard } from '../../components/OptionCard.js';
 import { EmptyState } from '../../components/EmptyState.js';
 import { Loading } from '../../components/Loading.js';
-import { BankSelectModal } from '../../components/BankSelectModal.js';
+import { AddBankAccountForm } from '../../components/AddBankAccountForm.js';
 import { shadowMd } from '../../theme/shadows.js';
 import { fonts } from '../../theme/fonts.js';
-import {
-  useWallet,
-  useBanks,
-  useBankAccounts,
-  useAddBankAccount,
-  useWithdraw,
-  useResolveAccount,
-} from '../../lib/hooks.js';
+import { useWallet, useBanks, useBankAccounts, useWithdraw } from '../../lib/hooks.js';
 import { hapticSuccess } from '../../lib/haptics.js';
 import { parseNairaInput, nairaInput } from '../../lib/amount-input.js';
 import { money } from '../../lib/format.js';
-import type { Bank, BankAccount } from '../../lib/types.js';
+import { formatPayoutDate, isWeeklyPayouts, nextPayoutDate } from '../../lib/payouts.js';
+import type { BankAccount } from '../../lib/types.js';
 import type { WithdrawalResponse } from '@hq/shared';
-import { withdrawalReceipt, WithdrawalAttemptError } from '../../lib/withdrawal.js';
+import {
+  withdrawalReceipt,
+  WithdrawalAttemptError,
+  PAYOUTS_SCHEDULED,
+} from '../../lib/withdrawal.js';
 
 type Step = 'form' | 'review' | 'done';
 
@@ -61,9 +62,7 @@ export default function Withdraw(): React.JSX.Element {
   const [addingAccount, setAddingAccount] = useState(false);
   const bankName = (code: string) =>
     banks.data?.find((b) => b.code === code)?.name ?? `Bank ${code}`;
-  const addAccount = useAddBankAccount();
   const withdraw = useWithdraw();
-  const resolve = useResolveAccount();
 
   const available = wallet.data?.availableBalance ?? 0;
   const [step, setStep] = useState<Step>('form');
@@ -85,14 +84,8 @@ export default function Withdraw(): React.JSX.Element {
     amountKobo: number;
     account: BankAccount;
   } | null>(null);
-
-  // add-account form
-  const [bank, setBank] = useState<Bank | null>(null);
-  const [accountNumber, setAccountNumber] = useState('');
-  const [bankModal, setBankModal] = useState(false);
-  const [resolvedName, setResolvedName] = useState<string | null>(null);
-  const [resolveError, setResolveError] = useState<string | null>(null);
-  const [resolveAttempt, setResolveAttempt] = useState(0);
+  // The API answered 409 PAYOUTS_SCHEDULED: weekly runs replaced withdrawals.
+  const [payoutsScheduled, setPayoutsScheduled] = useState(false);
 
   const list = accounts.data ?? [];
   const activeId = selected ?? list[0]?.id ?? null;
@@ -133,52 +126,6 @@ export default function Withdraw(): React.JSX.Element {
       ? 'Enter naira and up to two decimal places, for example 42.51.'
       : getAmountError(amount, amountKobo, amountValid, available);
 
-  // Each input revision owns its result. Incomplete edits invalidate in-flight work.
-  useEffect(() => {
-    let current = true;
-    setResolvedName(null);
-    setResolveError(null);
-    if (!bank || accountNumber.length !== 10) return;
-    resolve.mutate(
-      { bankCode: bank.code, accountNumber },
-      {
-        onSuccess: (result) => {
-          if (current) setResolvedName(result.accountName);
-        },
-        onError: () => {
-          if (current)
-            setResolveError(
-              "Couldn't verify this account. Check the number and bank, then try again.",
-            );
-        },
-      },
-    );
-    return () => {
-      current = false;
-    };
-    // Trigger only when the user changes the lookup or explicitly retries it.
-  }, [bank, accountNumber, resolveAttempt]);
-
-  const onAdd = (): void => {
-    if (!bank || !resolvedName) return;
-    addAccount.mutate(
-      { bankCode: bank.code, accountNumber },
-      {
-        onSuccess: (account) => {
-          setSelected(account.id);
-          setAddingAccount(false);
-          setBank(null);
-          setAccountNumber('');
-          setResolvedName(null);
-        },
-        onError: () => setResolveError('Couldn’t add this account. Please try again.'),
-      },
-    );
-  };
-
-  // Why the "Add account" button is disabled, so the form isn't a silent dead end.
-  const addHint = addAccountHint(bank, accountNumber);
-
   const onConfirm = (): void => {
     if (withdraw.isPending || (!pendingIntent && (!activeAccount || !amountValid))) return;
     const intent = pendingIntent ?? { amountKobo, account: activeAccount! };
@@ -194,7 +141,19 @@ export default function Withdraw(): React.JSX.Element {
           setStep('done');
         },
         onError: (e: unknown) => {
-          if (e instanceof WithdrawalAttemptError && !e.retryRequired) {
+          if (e instanceof WithdrawalAttemptError && e.code === PAYOUTS_SCHEDULED) {
+            // Refresh the wallet so it shows the next weekly payout instead of Withdraw.
+            void wallet.refetch();
+            setPayoutsScheduled(true);
+            if (!e.retryRequired) {
+              setPendingIntent(null);
+              setStep('form');
+            } else {
+              setSubmitError(
+                'Withdrawals are now paid weekly, so this saved request can’t be checked here. If it went through, it is in your withdrawal history. If not, the money is still in your wallet and goes out with the next weekly payout.',
+              );
+            }
+          } else if (e instanceof WithdrawalAttemptError && !e.retryRequired) {
             setPendingIntent(null);
             setSubmitError(e instanceof Error ? e.message : 'Check the withdrawal details.');
           } else {
@@ -279,6 +238,37 @@ export default function Withdraw(): React.JSX.Element {
       </Box>
     );
   }
+
+  if (
+    !pendingIntent &&
+    step !== 'done' &&
+    !withdraw.savedAttempt &&
+    !withdraw.isRestoring &&
+    (payoutsScheduled || isWeeklyPayouts(wallet.data))
+  )
+    return (
+      <Box flex={1} backgroundColor="bgCanvas">
+        <AppBar title="Weekly payouts" showBack inset />
+        <Screen scroll>
+          <Box style={{ paddingTop: 24 }}>
+            <EmptyState
+              icon="calendar"
+              title="Payouts are automatic"
+              subtitle="You don’t need to withdraw. Every Thursday from 9:00 AM Lagos time, your available balance is sent to your payout account."
+              reason={
+                wallet.data
+                  ? `Next payout: ${formatPayoutDate(nextPayoutDate(wallet.data, new Date()), new Date())}`
+                  : undefined
+              }
+              actionLabel="Choose payout account"
+              onAction={() => router.replace('/(modals)/payout-account')}
+              secondaryLabel="Back to wallet"
+              onSecondary={() => router.back()}
+            />
+          </Box>
+        </Screen>
+      </Box>
+    );
 
   if (!pendingIntent && step !== 'done' && (wallet.isError || accounts.isError))
     return (
@@ -378,26 +368,36 @@ export default function Withdraw(): React.JSX.Element {
               </Box>
             ) : null}
 
-            <Box style={{ gap: 8 }}>
-              <Button
-                label={
-                  withdraw.isPending
-                    ? 'Checking…'
-                    : pendingIntent
-                      ? 'Check withdrawal'
-                      : `Withdraw ${money(amountKobo)}`
-                }
-                onPress={onConfirm}
-                loading={withdraw.isPending}
-                disabled={withdraw.isPending}
-              />
-              <Button
-                label="Edit"
-                variant="ghost"
-                onPress={() => setStep('form')}
-                disabled={withdraw.isPending || !!pendingIntent}
-              />
-            </Box>
+            {payoutsScheduled && pendingIntent ? (
+              <Box style={{ gap: 8 }}>
+                <Button
+                  label="Withdrawal history"
+                  onPress={() => router.replace('/(modals)/withdrawal-history')}
+                />
+                <Button label="Back to wallet" variant="ghost" onPress={() => router.back()} />
+              </Box>
+            ) : (
+              <Box style={{ gap: 8 }}>
+                <Button
+                  label={
+                    withdraw.isPending
+                      ? 'Checking…'
+                      : pendingIntent
+                        ? 'Check withdrawal'
+                        : `Withdraw ${money(amountKobo)}`
+                  }
+                  onPress={onConfirm}
+                  loading={withdraw.isPending}
+                  disabled={withdraw.isPending}
+                />
+                <Button
+                  label="Edit"
+                  variant="ghost"
+                  onPress={() => setStep('form')}
+                  disabled={withdraw.isPending || !!pendingIntent}
+                />
+              </Box>
+            )}
           </Box>
         </Screen>
         <Box style={{ paddingBottom: insets.bottom }} />
@@ -498,119 +498,16 @@ export default function Withdraw(): React.JSX.Element {
               />
             </Box>
           ) : (
-            <Box style={{ gap: 12 }}>
-              <Text variant="headingS">Add a bank account</Text>
-              {list.length > 0 ? (
-                <Button
-                  label="Use a saved account"
-                  variant="ghost"
-                  disabled={addAccount.isPending}
-                  onPress={() => setAddingAccount(false)}
-                />
-              ) : null}
-
-              <Field label="Bank">
-                <Pressable
-                  onPress={() => {
-                    Keyboard.dismiss(); // close the number pad before the sheet animates up (no jank)
-                    setBankModal(true);
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel="Select your bank"
-                >
-                  <Box
-                    flexDirection="row"
-                    alignItems="center"
-                    justifyContent="space-between"
-                    backgroundColor="bgSurface"
-                    borderWidth={1}
-                    borderColor="borderDefault"
-                    borderRadius="md"
-                    style={{ paddingHorizontal: 16, paddingVertical: 14, gap: 12 }}
-                  >
-                    <Text
-                      variant="body"
-                      color={bank ? 'inkStrong' : 'inkFaint'}
-                      numberOfLines={1}
-                      style={{ flex: 1 }}
-                    >
-                      {bank?.name ?? 'Select your bank'}
-                    </Text>
-                    <Icon name="chevron-down" size={20} color="inkMuted" />
-                  </Box>
-                </Pressable>
-              </Field>
-
-              <Field label="Account number">
-                <Input
-                  value={accountNumber}
-                  onChangeText={(t) => setAccountNumber(t.replace(/\D/g, '').slice(0, 10))}
-                  keyboardType="number-pad"
-                  placeholder="0123456789"
-                  maxLength={10}
-                />
-              </Field>
-
-              {/* resolved name confirmation (the bank-app reassurance step) */}
-              {resolve.isPending ? (
-                <Box flexDirection="row" alignItems="center" style={{ gap: 8 }}>
-                  <Icon name="loader" size={16} color="inkMuted" />
-                  <Text variant="bodySm" color="inkMuted">
-                    Verifying account…
-                  </Text>
-                </Box>
-              ) : resolvedName ? (
-                <Box
-                  flexDirection="row"
-                  alignItems="center"
-                  backgroundColor="brandEmeraldTintWeak"
-                  borderRadius="md"
-                  padding="300"
-                  style={{ gap: 8 }}
-                >
-                  <Icon name="check-circle" size={18} color="brandEmerald" />
-                  <Text variant="label" color="brandEmerald" style={{ flex: 1 }} numberOfLines={1}>
-                    {resolvedName}
-                  </Text>
-                </Box>
-              ) : resolveError ? (
-                <Box style={{ gap: 8 }}>
-                  <Text variant="bodySm" color="statusDanger" accessibilityRole="alert">
-                    {resolveError}
-                  </Text>
-                  <Button
-                    label="Try account lookup again"
-                    variant="secondary"
-                    size="md"
-                    onPress={() => setResolveAttempt((attempt) => attempt + 1)}
-                  />
-                </Box>
-              ) : addHint ? (
-                <Text variant="bodySm" color="inkMuted">
-                  {addHint}
-                </Text>
-              ) : null}
-
-              <Button
-                label={addAccount.isPending ? 'Adding…' : 'Add account'}
-                onPress={onAdd}
-                loading={addAccount.isPending}
-                disabled={!resolvedName || addAccount.isPending}
-              />
-            </Box>
+            <AddBankAccountForm
+              onAdded={(account) => {
+                setSelected(account.id);
+                setAddingAccount(false);
+              }}
+              onCancel={list.length > 0 ? () => setAddingAccount(false) : undefined}
+            />
           )}
         </Box>
       </Screen>
-
-      <BankSelectModal
-        visible={bankModal}
-        selectedCode={bank?.code ?? null}
-        onSelect={(b) => {
-          setBank(b);
-          setBankModal(false);
-        }}
-        onClose={() => setBankModal(false)}
-      />
       <Box style={{ paddingBottom: insets.bottom }} />
     </Box>
   );
@@ -623,14 +520,6 @@ function accountLabel(account: BankAccount): string {
 }
 
 /** Inline validation for the amount field (no nested ternary, no blocking Alert). */
-/** Guidance shown while the add-account form can't yet submit (no bank / short number). */
-function addAccountHint(bank: Bank | null, accountNumber: string): string | null {
-  if (!bank) return 'Pick your bank, then enter your 10-digit account number.';
-  if (accountNumber.length === 0) return 'Enter your 10-digit account number.';
-  if (accountNumber.length < 10) return 'Enter all 10 digits of your account number.';
-  return null;
-}
-
 function getAmountError(
   amount: string,
   amountKobo: number,

@@ -161,13 +161,16 @@ Source: [payments router](../apps/api/src/modules/payments/http/routes.ts), [che
 | POST   | `/api/payments/orders/:orderId/charge`          | Order owner; `{email}` → checkout snapshot                              | Yes |
 | GET    | `/api/payments/orders/:orderId/checkout`        | Order owner; verifies/reconciles provider evidence and returns snapshot | —   |
 | POST   | `/api/payments/orders/:orderId/checkout/resume` | Order owner; resumes the durable original checkout                      | —   |
-| GET    | `/api/payments/wallet`                          | Usher; `{availableBalance,pendingEscrow,lifetimeEarned}` in kobo        | —   |
+| GET    | `/api/payments/wallet`                          | Usher; `{availableBalance,pendingEscrow,lifetimeEarned,payoutMode,nextPayoutAt,payoutMinimumKobo,payoutAccount}`; kobo amounts | —   |
 | GET    | `/api/payments/wallet/activity`                 | Usher; merged ledger/held activity, bounded list                        | —   |
 | GET    | `/api/payments/banks`                           | Authenticated; provider bank directory                                  | —   |
 | GET    | `/api/payments/resolve-account`                 | Authenticated; `bankCode`, ten-digit `accountNumber` query              | —   |
 | POST   | `/api/payments/bank-accounts`                   | Usher; `{bankCode,accountNumber}`; server resolves account name         | —   |
-| GET    | `/api/payments/bank-accounts`                   | Usher's bank accounts                                                   | —   |
-| POST   | `/api/payments/withdrawals`                     | Usher; `{bankAccountId,amountKobo}` → persisted receipt                 | Yes |
+| GET    | `/api/payments/bank-accounts`                   | Usher's bank accounts, each with `isPayoutAccount`                      | —   |
+| PUT    | `/api/payments/payout-account`                  | Usher; `{bankAccountId}`; a verified own account weekly runs pay into   | —   |
+| POST   | `/api/payments/withdrawals`                     | Usher; `{bankAccountId,amountKobo}` → persisted receipt. `409 PAYOUTS_SCHEDULED` when `PAYOUT_MODE=weekly` | Yes |
+| GET    | `/api/payments/withdrawals`                     | Usher's own transfers, newest first; 25 per page with `cursor` → `{items,nextCursor}` | —   |
+| GET    | `/api/payments/withdrawals/:id`                 | One of the usher's own transfers; `404` for any other                   | —   |
 
 Checkout snapshot fields: `orderId`, `eventId`, `bookingIds`, `reference`, `authorizationUrl`, `state`, `expiresAt`, `amountKobo`, `duplicate`. A new confirmation returns 201; replay returns 200. New references use `hq-<order-id>`. `authorizationUrl` is available only in `READY`; consumers must inspect `state` before opening it.
 
@@ -184,7 +187,11 @@ Checkout snapshot fields: `orderId`, `eventId`, `bookingIds`, `reference`, `auth
 
 The nominal reservation lifetime is 30 minutes, but elapsed time alone does not establish an unpaid outcome. Browser dismissal, return, or network failure must not trigger a fresh order automatically. The checkout GET is not a passive DB read: it can reconcile provider evidence and progress recovery.
 
-Withdrawal receipts include `withdrawalId`, `status`, `amountKobo`, `bankAccountId`, `availableBalance`, and `duplicate`. The same key with a changed bank or amount conflicts. Wallet debit occurs before provider transfer, and uncertainty keeps it reserved. A validated failure/reversal restores funds once. There is no separate withdrawal-list/status HTTP route in this router; replay the original request as implemented by the mobile recovery flow.
+An usher's first registered account becomes their payout account automatically; later accounts must be chosen with `PUT /api/payments/payout-account`. `nextPayoutAt` is the next Thursday 09:00 Lagos run time (ISO). `payoutAccount` is `{id,bankCode,accountName,last4}` or `null`.
+
+Withdrawal receipts include `withdrawalId`, `status`, `amountKobo`, `bankAccountId`, `availableBalance`, and `duplicate`. The same key with a changed bank or amount conflicts. Wallet debit occurs before provider transfer, and uncertainty keeps it reserved. A validated failure/reversal restores funds once. To recover an uncertain request, replay the original request with the same key, as the mobile recovery flow does.
+
+Withdrawal list and detail items are `{id,amount,status,source,reference,createdAt,updatedAt,bank:{code,accountName,last4}}`. `source` is `PAYOUT_RUN` for a weekly payout line and `USHER_REQUEST` for the usher's own withdrawal. Account numbers are never returned in full.
 
 ## Bookings, attendance, disputes, reviews
 
@@ -244,7 +251,17 @@ Source: [admin routes](../apps/api/src/modules/admin/routes.ts). Every route req
 
 | Method | Path                                   | Contract                                                                               |
 | ------ | -------------------------------------- | -------------------------------------------------------------------------------------- |
-| GET    | `/api/admin/stats`                     | Queue counts, users, held escrow, approval threshold                                   |
+| GET    | `/api/admin/stats`                     | Queue counts, users, held escrow, approval threshold, `owedToUshersKobo`, `platformRevenueKobo` (unswept fees), `payoutRunsAwaitingApproval` |
+| GET    | `/api/admin/payout-runs`               | Latest 20 weekly payout runs with line count and computed total                       |
+| GET    | `/api/admin/payout-runs/:id`           | Lines (usher, masked account, amount, flags, withdrawal status, skip reason), exclusions with reasons, `linesHash`, summary |
+| POST   | `/api/admin/payout-runs/build`         | Build today's run (Lagos date) or refresh it while DRAFT; `409 RUN_IN_PROGRESS` if an earlier run awaits approval |
+| POST   | `/api/admin/payout-runs/:id/submit`    | `{linesHash}` of the reviewed lines; DRAFT → AWAITING_APPROVAL; `409 RUN_CHANGED` if the lines changed |
+| POST   | `/api/admin/payout-runs/:id/reject`    | AWAITING_APPROVAL → DRAFT                                                              |
+| POST   | `/api/admin/payout-runs/:id/cancel`    | DRAFT → CANCELLED; balances roll over                                                  |
+| POST   | `/api/admin/payout-runs/:id/approve`   | `{linesHash}`; a different admin than the submitter; creates one withdrawal per line, starts transfers in the background |
+| POST   | `/api/admin/payout-runs/:id/dispatch`  | 202; restarts transfers that have not reached Paystack                                 |
+| POST   | `/api/admin/payout-runs/:id/lines/:withdrawalId/otp` | `{otp}` (4–8 digits); finalizes a transfer waiting for the account owner's OTP. `422 OTP_REJECTED`, `409 OTP_NOT_REQUIRED` |
+| POST   | `/api/admin/payout-runs/:id/lines/:withdrawalId/resend-otp` | Ask Paystack to send a new OTP for that transfer                     |
 | GET | `/api/admin/observability` | Safe service probes, selected Better Stack statuses and recent Sentry issue summaries; server cache 30 seconds, browser `no-store`. See [Observability](OBSERVABILITY.md#admin-observability-view). |
 | GET    | `/api/admin/verifications`             | Client and usher identity submissions; `status`: PENDING (default), APPROVED, REJECTED; sensitive reads audited |
 | GET    | `/api/admin/business-verifications` | Same status filter; registry metadata, representative identity reference and private authority evidence; audited, no-store |
@@ -269,6 +286,8 @@ Source: [admin routes](../apps/api/src/modules/admin/routes.ts). Every route req
 | DELETE | `/api/admin/milestone-tiers/:id`       | Soft deactivate                                                                        |
 | GET    | `/api/admin/milestones`                | Physical reward queue; UNLOCKED default or `status=FULFILLED`                          |
 | POST   | `/api/admin/milestones/:id/fulfill`    | Mark an unlocked reward fulfilled                                                      |
+
+Every weekly payout run needs two admins, whatever its total: one submits the exact lines (`linesHash`) and a different admin approves them. See [weekly payout runs](PAYMENTS.md#weekly-payout-runs).
 
 Amounts **greater than** 5,000,000 kobo (₦50,000) require a different admin to approve. For client cancellations this threshold applies to the original gross allocation, including a zero-refund cancellation, and the first accepted quote survives delayed approval. An early usher-favour dispute resolution retains HELD funds until the shared deadline. An approval decision does not itself establish provider settlement: `APPROVED` remains until execution completes. Re-read state and consult [Operations](OPERATIONS.md).
 
