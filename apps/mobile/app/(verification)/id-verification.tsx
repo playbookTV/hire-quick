@@ -111,8 +111,9 @@ export default function IdVerification(): React.JSX.Element {
           ) : null}
           <Text variant="h2">Let’s confirm it’s you</Text>
           <Text variant="body" color="inkMuted">
-            Smile ID checks your Nigerian ID and a live selfie. Use the names on your ID, then
-            follow the camera instructions.
+            Smile ID checks your Nigerian ID and a live selfie. Enter your names exactly as they
+            appear on your NIN or BVN record. We check them against that record. Then follow the
+            camera instructions.
           </Text>
           {!supported && (
             <Banner

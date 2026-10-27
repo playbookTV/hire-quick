@@ -14,9 +14,14 @@ export interface KycStartResult {
   sandbox: boolean;
   privacyPolicyUrl: string;
 }
+/** Typed names against the ID record; see name-match.ts. */
+export type NameCheck = 'matched' | 'partial' | 'mismatch' | 'unavailable';
 export interface KycResult {
   decision: 'verified' | 'pending' | 'rejected';
   reasonCode?: string | undefined;
+  /** Applicant-facing explanation for an automatic rejection. */
+  reason?: string | undefined;
+  nameCheck?: NameCheck | undefined;
   livenessPassed?: boolean | undefined;
   faceMatchScore?: number | undefined;
   watchListed?: boolean | undefined;

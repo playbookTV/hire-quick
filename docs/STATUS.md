@@ -50,6 +50,10 @@ Application withdrawal, preserved multi-worker invitation selection, optional ph
 
 Phase 1 of the [weekly payout decisions](../documentation/payments/weekly-payouts-decisions-2026-10-23.md) is implemented: payout runs with two-admin approval, per-line transfer OTP entry, a payout account per usher, payout notifications and the `PAYOUT_MODE` withdrawal gate in the API and worker; the admin console Weekly payouts page (`/payouts`); and the mobile wallet's next-payout card, payout-account screen and payout labels. See [Payments](PAYMENTS.md#weekly-payout-runs). The mobile changes need a new EAS build. Not in this change: the configurable platform fee (the rate stays 15%) and phase 2 automatic execution with the Paystack transfer approval URL. Live use also waits on clearing pre-launch TEST balances and recipient codes, and on confirming the live account settles to balance.
 
+## Identity name check (27 October 2026, not deployed)
+
+A tester verified with invented names, a real NIN and their own selfie: Smile's `clear` verdict does not compare names. The API now compares the typed names with the authority record before approving. A full match verifies, a partial or missing comparison waits for operator review, and no common name rejects with `NAME_MISMATCH`. See [Smile ID](SMILE-ID.md#name-check). Already-approved verifications are not re-checked. The profile `displayName` is still not tied to the verified name. Smile's live callback must still be observed carrying `user_provided_info` and `id_fields` for NIN_V2; if it does not, every `clear` result waits for review. The mobile review label ships by OTA or the next build.
+
 ## Launch acceptance follow-up (19 October 2026)
 
 Public API health and readiness both returned HTTP 200. Expo lists the 2 October Android/iOS preview builds as FINISHED. This does not establish device acceptance or current deployed-source parity. OVA-166 and OVA-114 remain In Progress in Linear. The [acceptance checklist](../documentation/launch-acceptance-2026-10-19.md) separates observed checks from pending device, provider and recovery evidence.

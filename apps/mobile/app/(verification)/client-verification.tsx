@@ -10,6 +10,7 @@ import { Banner } from '../../components/Banner.js';
 import { Badge } from '../../components/Badge.js';
 import { useAuth } from '../../lib/auth-context.js';
 import { useMyVerifications } from '../../lib/hooks.js';
+import { kycNeedsReview } from '../../lib/kyc-status.js';
 import { api } from '../../lib/client.js';
 import { openSupport } from '../../lib/support.js';
 import { userMessage } from '../../lib/api-error.js';
@@ -37,7 +38,7 @@ export default function ClientVerification() {
   const verified = user.client.verificationStatus === 'VERIFIED';
   const attempt = identity.data?.[0];
   const received = attempt?.status === 'PENDING' && !!attempt.govLookup?.providerStatus;
-  const needsReview = ['attention', 'error'].includes(attempt?.govLookup?.providerStatus ?? '');
+  const needsReview = kycNeedsReview(attempt?.govLookup);
   const businessAttempt = business.data?.verification;
   return (
     <Box flex={1} backgroundColor="bgCanvas">

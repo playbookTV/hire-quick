@@ -269,6 +269,7 @@ export async function applyKycResult(prisma: PrismaClient, referenceId: string, 
               ...providerMetadata(current.govLookup),
               providerJobId: result.providerJobId,
               providerStatus: result.providerStatus ?? 'processing',
+              ...(result.nameCheck ? { nameCheck: result.nameCheck } : {}),
             },
           },
         });
@@ -295,7 +296,9 @@ export async function applyKycResult(prisma: PrismaClient, referenceId: string, 
           faceMatchScore: result.faceMatchScore ?? null,
           watchListed: result.watchListed ?? null,
           idFound: result.idFound ?? null,
+          ...(result.nameCheck ? { nameCheck: result.nameCheck } : {}),
         },
+        reason: approved ? null : (result.reason ?? null),
         reasonCode: approved
           ? null
           : result.reasonCode && REJECT_REASONS.has(result.reasonCode)

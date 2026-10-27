@@ -10,7 +10,12 @@ interface Verif {
   method: string;
   provider: string | null;
   providerReferenceId?: string | null;
-  govLookup: { providerJobId?: string; providerStatus?: string; environment?: string } | null;
+  govLookup: {
+    providerJobId?: string;
+    providerStatus?: string;
+    environment?: string;
+    nameCheck?: 'matched' | 'partial' | 'mismatch' | 'unavailable';
+  } | null;
   createdAt: string;
   idDocumentUrl: string | null;
   selfieUrl: string | null;
@@ -68,6 +73,12 @@ function Evidence({
     </div>
   );
 }
+const NAME_CHECK: Record<string, string> = {
+  matched: 'Names match the identity record',
+  partial: 'Names only partly match the identity record',
+  mismatch: 'Names do not match the identity record',
+  unavailable: 'Names could not be compared with the identity record',
+};
 function IdentityReview({
   record,
   close,
@@ -214,9 +225,12 @@ function IdentityReview({
                 : 'No identity evidence received'}
             </strong>
           </p>
+          {record.govLookup?.nameCheck && <p>{NAME_CHECK[record.govLookup.nameCheck]}</p>}
           <p>
             {jobId
-              ? 'Review the identity details and photos below.'
+              ? record.govLookup?.nameCheck && record.govLookup.nameCheck !== 'matched'
+                ? 'Compare the name on the identity record with the name the applicant supplied. Approve only if they belong to the same person.'
+                : 'Review the identity details and photos below.'
               : 'A capture session was started, but HireQuick has received no completed capture, identity photos, or verification result. There is nothing to review yet. The usher needs to complete identity verification in the app.'}
           </p>
           <p>
@@ -383,7 +397,11 @@ export function Verifications() {
             <td>
               {v.provider === 'SMILE_ID'
                 ? v.govLookup?.providerJobId
-                  ? `Result received · ${v.govLookup?.providerStatus ?? 'Processing'}`
+                  ? `Result received · ${v.govLookup?.providerStatus ?? 'Processing'}${
+                      v.govLookup?.nameCheck && v.govLookup.nameCheck !== 'matched'
+                        ? ' · check names'
+                        : ''
+                    }`
                   : 'Capture started · no evidence received'
                 : v.idDocumentUrl && v.selfieUrl
                   ? 'ID and selfie available'

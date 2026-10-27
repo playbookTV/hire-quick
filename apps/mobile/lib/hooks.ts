@@ -569,7 +569,7 @@ export function useMyVerifications() {
           idDocumentUrl: string | null;
           selfieUrl: string | null;
           method: string;
-          govLookup: { providerStatus?: string } | null;
+          govLookup: { providerStatus?: string; nameCheck?: string } | null;
         }[]
       >('/api/me/verification'),
   });

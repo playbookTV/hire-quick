@@ -18,6 +18,7 @@ import { StepIndicator } from '../../components/StepIndicator.js';
 import { useAuth } from '../../lib/auth-context.js';
 import { openSupport } from '../../lib/support.js';
 import { useMyVerifications } from '../../lib/hooks.js';
+import { kycNeedsReview } from '../../lib/kyc-status.js';
 
 type StepState = 'done' | 'active' | 'todo';
 
@@ -118,7 +119,7 @@ function UsherAwaitingApproval(): React.JSX.Element {
   }, [latest?.status, router]);
 
   const approved = latest?.status === 'APPROVED';
-  const needsReview = ['attention', 'error'].includes(latest?.govLookup?.providerStatus ?? '');
+  const needsReview = kycNeedsReview(latest?.govLookup);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const syncingRef = useRef(false);
