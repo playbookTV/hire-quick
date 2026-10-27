@@ -23,6 +23,7 @@ Specifications define intended behavior. [Current status](../docs/STATUS.md) dis
 - [Payment validation](payment-validation-2026-09-12.md)
 - [Approved settlement implementation and validation](payments/settlement-implementation-2026-09-21.md)
 - [Weekly usher payouts and configurable platform fee (proposal)](payments/weekly-payouts-proposal-2026-10-23.md) and its [23 October decisions](payments/weekly-payouts-decisions-2026-10-23.md)
+- [Push notification scenarios (plan)](push-notifications-plan-2026-10-27.md)
 - [Booking and privacy validation](booking-privacy-validation-2026-09-14.md)
 - [Checkout, ledger, and realtime validation](checkout-ledger-realtime-validation-2026-09-14.md)
 

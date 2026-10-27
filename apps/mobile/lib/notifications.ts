@@ -3,7 +3,7 @@
  * deep-link table is unit-tested; the screen only calls `router.push`.
  */
 import type { IconName } from '../components/Icon.js';
-import type { NotificationType } from '@hq/shared';
+import type { NotificationType, UserRole } from '@hq/shared';
 import type { Notification } from './types.js';
 
 export interface NotificationRoute {
@@ -11,9 +11,10 @@ export interface NotificationRoute {
   params: Record<string, string>;
 }
 
-/** The screen a notification's target opens, or null when it has none. */
+/** The screen a notification's target opens for this role, or null when it has none. */
 export function notificationRoute(
   n: Pick<Notification, 'targetType' | 'targetId'>,
+  role: UserRole | undefined,
 ): NotificationRoute | null {
   if (!n.targetId) return null;
   switch (n.targetType) {
@@ -26,9 +27,14 @@ export function notificationRoute(
       return { pathname: '/(modals)/funds-held', params: { order: n.targetId } };
     case 'invitation':
       return { pathname: '/(modals)/invitation', params: { id: n.targetId } };
-    // New-application notifications deep-link the client to the event (review applications).
+    // Clients review applications on their event; ushers see the job itself.
     case 'event':
-      return { pathname: '/(client)/events/[id]', params: { id: n.targetId } };
+      return role === 'USHER'
+        ? { pathname: '/(modals)/event-details', params: { id: n.targetId } }
+        : { pathname: '/(client)/events/[id]', params: { id: n.targetId } };
+    // Chat pushes name the booking whose conversation they belong to.
+    case 'conversation':
+      return { pathname: '/(modals)/message-thread', params: { booking: n.targetId } };
     default:
       return null;
   }

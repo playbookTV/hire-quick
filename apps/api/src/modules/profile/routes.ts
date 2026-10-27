@@ -20,8 +20,13 @@ import {
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '@hq/database';
-import { registerDevice } from '../privacy/consent.js';
-import { setAvailabilitySchema, MAX_PORTFOLIO_PHOTOS } from '@hq/shared';
+import { registerDevice, unregisterDevice } from '../privacy/consent.js';
+import {
+  setAvailabilitySchema,
+  MAX_PORTFOLIO_PHOTOS,
+  registerDeviceSchema,
+  unregisterDeviceSchema,
+} from '@hq/shared';
 import { ApiError } from '../../app.js';
 import { requireAuth, type AuthedRequest } from '../auth/middleware.js';
 import { writeAudit } from '../audit.js';
@@ -477,14 +482,21 @@ export function profileRouter(storage?: StoragePort): Router {
     }),
   );
 
-  // register an FCM device token for push notifications
+  // register this device's Expo push token (a destination; consent is separate)
   r.post(
     '/devices',
     wrap(async (req, res) => {
-      const { fcmToken, platform } = z
-        .object({ fcmToken: z.string().min(8), platform: z.enum(['IOS', 'ANDROID']) })
-        .parse(req.body);
-      res.status(201).json(await registerDevice(req.auth.userId, fcmToken, platform));
+      const { token, platform } = registerDeviceSchema.parse(req.body);
+      res.status(201).json(await registerDevice(req.auth.userId, token, platform));
+    }),
+  );
+
+  // remove this device before signing out; the token travels in the body, not the URL
+  r.post(
+    '/devices/unregister',
+    wrap(async (req, res) => {
+      const { token } = unregisterDeviceSchema.parse(req.body);
+      res.json(await unregisterDevice(req.auth.userId, token));
     }),
   );
 

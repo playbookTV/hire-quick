@@ -21,6 +21,7 @@ Source: [queues.ts](../apps/api/src/modules/jobs/queues.ts), [runtime.ts](../app
 | `reconcile`      | `17 3 * * *`      | Compare ledger expectation with provider balance; flag stale held funds                      |
 | `commission`     | `23 4 * * *`      | Sweep platform fees if operating recipient configured                                        |
 | `payoutRun`      | `0 8 * * 4`       | Thursday 09:00 Lagos: build the week's payout run as a DRAFT for admins; never sends money    |
+| `pushReceipts`   | `8-59/15 * * * *` | Read Expo delivery receipts for tickets older than 15 minutes; delete devices Expo reports as unregistered; drop tickets past 24 hours |
 | `retentionPurge` | `41 2 * * *`      | Purge eligible transient PII and expire denylist records                                     |
 | `auditVerify`    | `47 2 * * *`      | Verify the hash chain and log any break                                                      |
 

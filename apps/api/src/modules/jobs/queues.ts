@@ -7,6 +7,7 @@ import { monitorJob } from '../../observability/jobs.js';
 import { flushMonitoring, reportError } from '../../observability/reporting.js';
 import { HttpPaystack } from '../payments/port/http-paystack.js';
 import { cleanupStorage } from '../storage/uploads.js';
+import { checkPushReceipts } from '../notifications/push.js';
 import { createStorageFromEnv } from '../storage/storage.js';
 import { createEmitterGateway } from '../../realtime/gateway.js';
 import { commissionPeriod, createScheduledRuntime, type ScheduledRuntime } from './runtime.js';
@@ -43,6 +44,7 @@ export function createJobRuntime(): ScheduledRuntime {
         logger.info(result, 'storage cleanup');
         return result;
       }),
+      pushReceipts: monitorJob('pushReceipts', () => checkPushReceipts()),
       retentionPurge: monitorJob('retentionPurge', () => jobRetentionPurge(storage)),
       auditVerify: monitorJob('auditVerify', () => jobAuditVerify(), env.BETTER_STACK_AUDIT_HEARTBEAT_URL),
     },

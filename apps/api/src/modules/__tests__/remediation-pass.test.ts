@@ -102,7 +102,7 @@ describe('B4 — consent capture + push suppression', () => {
     const reg = await request(app)
       .post('/api/me/devices')
       .set('Authorization', `Bearer ${token}`)
-      .send({ fcmToken: `tok-${randomUUID()}`, platform: 'ANDROID' });
+      .send({ token: `ExponentPushToken[${randomUUID()}]`, platform: 'ANDROID' });
     expect(reg.status).toBe(201);
 
     const granted = await prisma.consentRecord.findUnique({

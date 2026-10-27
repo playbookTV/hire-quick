@@ -70,11 +70,11 @@ Amounts remain integer kobo. Never place server payment keys in mobile or admin 
 | `TWILIO_API_KEY_SECRET` | Empty | Backend-only API key secret. |
 | `TWILIO_WHATSAPP_FROM` | Empty | Registered sender, e.g. `whatsapp:+15551234567`. |
 | `TWILIO_WHATSAPP_CONTENT_SID` | Empty | Approved Authentication / Copy Code template (`HX` + 32 hex characters), OTP variable `1`. |
-| `FCM_PROJECT_ID`                 | Empty       | Firebase project; all three FCM variables enable provider delivery.        |
-| `FCM_CLIENT_EMAIL`               | Empty       | Service-account email.                                                     |
-| `FCM_PRIVATE_KEY`                | Empty       | Service-account private key; preserve multiline content in secret storage. |
+| `EXPO_ACCESS_TOKEN`              | Empty       | Expo push service access token. Required once "Enhanced security for push notifications" is on for the Expo project (recommended); pushes send without it otherwise. |
 
 OTP uses KudiSMS Corporate SMS when `KUDISMS_API_KEY` is set, with the approved `HIREQUICK` sender by default. KudiSMS failures return a delivery failure without retrying another provider. This route supports Nigerian mobile numbers only. See [KudiSMS setup and validation](KUDISMS-OTP.md). Without a KudiSMS key, OTP uses Twilio WhatsApp when all five settings are configured, otherwise Brevo SMS. Partial Twilio configuration fails startup. A failed Twilio send attempt falls back to SMS with the same code; acceptance by Twilio is not a delivery receipt, and later delivery failures do not trigger automatic fallback. See [Twilio onboarding and validation](TWILIO-OTP.md). `devCode` is returned only with `NODE_ENV=test`. A stubbed notification path does not make interactive development login work offline.
+
+Push goes through Expo's push service, which relays to FCM (Android) and APNs (iOS). The API needs no Firebase or Apple credentials: those live in the Expo project (`eas credentials`). Outside `NODE_ENV=test` every runtime sends to Expo, including local development with a registered device. See [push notifications](PUSH-NOTIFICATIONS.md).
 
 ## Verification and storage
 
@@ -100,6 +100,7 @@ Staging/production in Smile mode require all Smile credentials and URLs and stor
 | ----------------------------- | ------------ | --------------------------------------------------------------------------------------- |
 | `RETENTION_OTP_DAYS`          | `30`         | Old consumed/expired codes                                                              |
 | `RETENTION_DEVICE_TOKEN_DAYS` | `180`        | Stale push registrations                                                                |
+| `RETENTION_PUSH_DISPATCH_DAYS` | `90`        | Push dispatch log (idempotency keys and tap tracking)                                   |
 | `RETENTION_KYC_VERIFIED_DAYS` | `90`         | Reviewed approved document references/objects                                           |
 | `RETENTION_KYC_REJECTED_DAYS` | `30`         | Reviewed rejected document references/objects                                           |
 | `RETENTION_CHAT_DAYS`         | `180`        | Old booking messages/media, with the job's additional four-day event-date safety margin |

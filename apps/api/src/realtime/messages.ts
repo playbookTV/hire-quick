@@ -157,7 +157,7 @@ export async function sendMessage(params: {
   }
 
   const recipientUserId = input.senderId === p.clientUserId ? p.usherUserId : p.clientUserId;
-  if (inserted) notifyNewMessage(recipientUserId);
+  if (inserted) notifyNewMessage(recipientUserId, input.bookingId);
 
   return {
     ...msg,

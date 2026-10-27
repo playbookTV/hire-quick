@@ -12,6 +12,7 @@ import type {
   UserRole,
   CancelBookingInput,
   CancelWindow,
+  NotificationPreferences,
 } from '@hq/shared';
 import { checkoutStore } from './checkout-store.js';
 import { loadOrderSummary, readOrderOutcome } from './order-checkout.js';
@@ -35,6 +36,8 @@ import type {
   Bank,
   Availability,
   NotificationFeed,
+  ConsentRecord,
+  PushConsentState,
   Invitation,
   TransferSource,
 } from './types.js';
@@ -619,6 +622,37 @@ export function useMarkAllNotificationsRead() {
   return useMutation({
     mutationFn: () => api.post<{ read: boolean }>('/api/me/notifications/read-all'),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.notifications }),
+  });
+}
+
+/** The account's consent records (NDPR); push needs an explicit PUSH_NOTIFICATIONS grant. */
+export function useConsents(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.consents,
+    queryFn: () => api.get<ConsentRecord[]>('/api/me/consents'),
+    enabled,
+  });
+}
+
+export function pushConsentState(rows: readonly ConsentRecord[] | undefined): PushConsentState {
+  const row = rows?.find((r) => r.purpose === 'PUSH_NOTIFICATIONS');
+  return row ? (row.granted ? 'granted' : 'withdrawn') : 'none';
+}
+
+export function useNotificationPreferences(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.notificationPreferences,
+    queryFn: () => api.get<NotificationPreferences>('/api/me/notification-preferences'),
+    enabled,
+  });
+}
+
+export function useUpdateNotificationPreferences() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (changes: Partial<NotificationPreferences>) =>
+      api.put<NotificationPreferences>('/api/me/notification-preferences', changes),
+    onSuccess: (prefs) => qc.setQueryData(queryKeys.notificationPreferences, prefs),
   });
 }
 

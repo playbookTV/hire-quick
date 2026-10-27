@@ -9,6 +9,7 @@ const handlers: JobHandlers = {
   checkouts: noop,
   resumeOps: noop,
   storageCleanup: noop,
+  pushReceipts: noop,
   retentionPurge: noop,
   auditVerify: noop,
   payoutRun: noop,

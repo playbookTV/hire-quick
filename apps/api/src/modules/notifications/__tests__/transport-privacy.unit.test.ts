@@ -16,9 +16,7 @@ const state = vi.hoisted(() => ({
     TWILIO_API_KEY_SECRET: '',
     TWILIO_WHATSAPP_FROM: '',
     TWILIO_WHATSAPP_CONTENT_SID: '',
-    FCM_PROJECT_ID: '',
-    FCM_CLIENT_EMAIL: '',
-    FCM_PRIVATE_KEY: '',
+    EXPO_ACCESS_TOKEN: '',
   },
   count: vi.fn().mockResolvedValue(0),
   create: vi.fn().mockResolvedValue({}),
@@ -52,14 +50,7 @@ vi.mock('../../auth/hash.js', () => ({
 }));
 vi.mock('../../auth/tokens.js', () => ({ signAccessToken: vi.fn(), signRefreshToken: vi.fn() }));
 vi.mock('../../audit.js', () => ({ writeAudit: vi.fn() }));
-vi.mock('jose', () => ({
-  SignJWT: vi.fn(),
-  importPKCS8: vi
-    .fn()
-    .mockRejectedValue(
-      new Error('private-key-secret push-token-secret OTP654321 recipient@example.com'),
-    ),
-}));
+vi.mock('../../../observability/reporting.js', () => ({ reportError: vi.fn() }));
 
 let fetcher: ReturnType<typeof vi.fn<typeof fetch>>;
 let logs: typeof state.log;
@@ -77,9 +68,7 @@ beforeEach(() => {
     TWILIO_API_KEY_SECRET: '',
     TWILIO_WHATSAPP_FROM: '',
     TWILIO_WHATSAPP_CONTENT_SID: '',
-    FCM_PROJECT_ID: '',
-    FCM_CLIENT_EMAIL: '',
-    FCM_PRIVATE_KEY: '',
+    EXPO_ACCESS_TOKEN: '',
   });
   fetcher = vi.fn<typeof fetch>().mockResolvedValue(
     new Response(JSON.stringify({ sid: `SM${'d'.repeat(32)}`, status: 'queued' }), {
@@ -106,7 +95,8 @@ const twilioSettings = {
 const modes = ['development', 'staging', 'production'] as const;
 const phone = '+2348012345678';
 const email = 'recipient@example.com';
-const token = 'push-token-secret';
+const token = 'ExponentPushToken[push-token-secret]';
+const dispatchId = '7d0c3f0e-8f5e-4a52-9a43-2f6b6f1d2e10';
 const code = '654321';
 
 describe('KudiSMS corporate OTP', () => {
@@ -218,7 +208,6 @@ describe('Notification and OTP isolation', () => {
     expect(await requestOtp(phone)).toEqual({ sent: false });
     expect(await whatsapp.sendWhatsAppOtp(phone, code)).toBe(false);
     expect(await transport.sendEmail(email, `OTP${code}`, 'sensitive-email-html')).toBe(false);
-    transport.recordPush(token, 'sensitive-push-content');
     expect(transport.sentNotifications()).toEqual([]);
     expect(fetcher).not.toHaveBeenCalled();
     const output = JSON.stringify(logs.mock.calls);
@@ -228,7 +217,6 @@ describe('Notification and OTP isolation', () => {
       token,
       code,
       'sensitive-email-html',
-      'sensitive-push-content',
     ])
       expect(output).not.toContain(value);
   });
@@ -256,15 +244,18 @@ describe('Notification and OTP isolation', () => {
   it('isolated tests echo the OTP and record intent without network even with provider keys present', async () => {
     state.env.BREVO_API_KEY = 'brevo-key-secret';
     Object.assign(state.env, twilioSettings);
-    state.env.FCM_PROJECT_ID = 'fixture-project';
-    state.env.FCM_CLIENT_EMAIL = 'fixture-service@example.com';
-    state.env.FCM_PRIVATE_KEY = 'private-key-secret';
+    state.env.EXPO_ACCESS_TOKEN = 'expo-access-secret';
     const transport = await import('../brevo.js');
+    const push = await import('../push.js');
     const { requestOtp } = await import('../../auth/otp.js');
     expect(await requestOtp(phone)).toEqual({ sent: true, devCode: code });
     await transport.sendSms(phone, `OTP${code}`);
     await transport.sendEmail(email, 'Private subject', 'Private body');
-    transport.recordPush(token, 'Private push');
+    push.sendPush(
+      [{ id: 'device-1', token }],
+      { type: 'TEST', title: 'Private', body: 'Private push', channel: 'bookings' },
+      dispatchId,
+    );
     expect(transport.sentNotifications().map((record) => record.kind)).toEqual([
       'whatsapp',
       'sms',
@@ -291,14 +282,12 @@ describe('Notification and OTP isolation', () => {
   });
 
   it.each(modes)(
-    '%s sanitizes network/provider failures, including FCM key errors',
+    '%s sanitizes network/provider failures, including push',
     async (mode) => {
       state.env.NODE_ENV = mode;
       state.env.BREVO_API_KEY = 'brevo-key-secret';
       Object.assign(state.env, twilioSettings);
-      state.env.FCM_PROJECT_ID = 'fixture-project';
-      state.env.FCM_CLIENT_EMAIL = 'fixture-service@example.com';
-      state.env.FCM_PRIVATE_KEY = 'private-key-secret';
+      state.env.EXPO_ACCESS_TOKEN = 'expo-access-secret';
       fetcher.mockRejectedValue(
         new Error(`twilio-key-secret brevo-key-secret ${phone} ${email} ${token} ${code}`),
       );
@@ -307,12 +296,18 @@ describe('Notification and OTP isolation', () => {
       expect(await transport.sendSms(phone, code)).toBe(false);
       expect(await whatsapp.sendWhatsAppOtp(phone, code)).toBe(false);
       expect(await transport.sendEmail(email, code, code)).toBe(false);
-      transport.recordPush(token, code);
-      await vi.waitFor(() => expect(logs).toHaveBeenCalledWith('[brevo] push delivery failed'));
       fetcher.mockResolvedValue(new Response('provider-body-secret', { status: 400 }));
       expect(await transport.sendSms(phone, code)).toBe(false);
       expect(await whatsapp.sendWhatsAppOtp(phone, code)).toBe(false);
       expect(await transport.sendEmail(email, code, code)).toBe(false);
+      const push = await import('../push.js');
+      await push.deliverForTest(
+        [{ id: 'device-1', token }],
+        { type: 'TEST', title: code, body: code, channel: 'bookings' },
+        dispatchId,
+        push.expoPost,
+      );
+      expect(logs).toHaveBeenCalledWith('[push] request failed: 400');
       const output = JSON.stringify(logs.mock.calls);
       for (const value of [
         phone,
@@ -321,7 +316,7 @@ describe('Notification and OTP isolation', () => {
         code,
         'brevo-key-secret',
         'twilio-key-secret',
-        'private-key-secret',
+        'expo-access-secret',
         'provider-body-secret',
       ])
         expect(output).not.toContain(value);

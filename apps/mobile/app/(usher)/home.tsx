@@ -18,6 +18,7 @@ import { useWallet, useBookings, useNotifications } from '../../lib/hooks.js';
 import { money, dateTime } from '../../lib/format.js';
 import { isWeeklyPayouts } from '../../lib/payouts.js';
 import { bookingStartMs } from '../../lib/bookings.js';
+import { PushPrompt } from '../../components/PushPrompt.js';
 
 export default function UsherHome(): React.JSX.Element {
   const router = useRouter();
@@ -55,6 +56,7 @@ export default function UsherHome(): React.JSX.Element {
           unread={notifications.data?.unreadCount ?? 0}
           onNotifications={() => router.push('/(modals)/notifications')}
         />
+        <PushPrompt role="USHER" />
         {user?.usher?.verificationStatus !== 'VERIFIED' ? (
           <Box gap="300">
             <Banner

@@ -1,4 +1,5 @@
 import { ResumeSharedJob } from '../components/ResumeSharedJob.js';
+import { PushBridge } from '../components/PushBridge.js';
 /**
  * Root layout: provider stack + font/splash gate. Order matters — gesture root →
  * safe-area → Restyle theme (light/dark by system) → React Query → Auth → router.
@@ -65,6 +66,7 @@ function RootLayout(): React.JSX.Element | null {
                   <Stack.Screen name="(modals)" options={{ presentation: 'modal' }} />
                 </Stack>
                 <ResumeSharedJob />
+                <PushBridge />
               </ToastProvider>
             </AuthProvider>
           </QueryClientProvider>

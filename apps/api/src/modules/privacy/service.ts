@@ -26,6 +26,8 @@ export async function buildExport(userId: string): Promise<Record<string, unknow
     uploads,
     reports,
     invitationReplies,
+    notificationPreference,
+    notificationDispatches,
   ] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
@@ -56,6 +58,8 @@ export async function buildExport(userId: string): Promise<Record<string, unknow
       where: { usher: { userId } },
       select: { id: true, eventId: true, status: true, declineReason: true, declineNote: true },
     }),
+    prisma.notificationPreference.findUnique({ where: { userId } }),
+    prisma.notificationDispatch.findMany({ where: { userId }, orderBy: { sentAt: 'desc' } }),
   ]);
 
   const usherData = usher
@@ -135,6 +139,8 @@ export async function buildExport(userId: string): Promise<Record<string, unknow
     uploads,
     reports,
     invitationReplies,
+    notificationPreference,
+    notificationDispatches,
   };
 }
 
@@ -206,6 +212,8 @@ export async function eraseUser(
   });
   await tx.deviceToken.deleteMany({ where: { userId } });
   await tx.notification.deleteMany({ where: { userId } });
+  await tx.notificationDispatch.deleteMany({ where: { userId } });
+  await tx.notificationPreference.deleteMany({ where: { userId } });
 
   if (client) {
     if (client.avatarKey?.startsWith(`photos/${client.id}/`)) {

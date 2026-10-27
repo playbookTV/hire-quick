@@ -96,6 +96,11 @@ export default function AccountSettings(): React.JSX.Element {
             <Button label="Edit profile" onPress={() => router.push('/(modals)/edit-profile')} />
           )}
           <Button
+            label="Notifications"
+            variant="secondary"
+            onPress={() => router.push('/(modals)/notification-settings')}
+          />
+          <Button
             label="Privacy & data"
             variant="secondary"
             onPress={() => router.push('/(modals)/privacy-data')}

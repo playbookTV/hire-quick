@@ -85,6 +85,7 @@ const jobs = new Set([
   'checkouts',
   'resumeOps',
   'storageCleanup',
+  'pushReceipts',
   'retentionPurge',
   'auditVerify',
 ]);

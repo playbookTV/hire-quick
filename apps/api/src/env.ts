@@ -53,6 +53,8 @@ const EnvSchema = z.object({
   // rows are never purged by this — only transient PII.
   RETENTION_OTP_DAYS: z.coerce.number().int().positive().default(30),
   RETENTION_DEVICE_TOKEN_DAYS: z.coerce.number().int().positive().default(180),
+  // Push dispatch log (idempotency keys, tap tracking) kept this many days.
+  RETENTION_PUSH_DISPATCH_DAYS: z.coerce.number().int().positive().default(90),
   // KYC: raw ID document + selfie deleted this many days after verification
   // VERIFIED / REJECTED (only the pass/fail flag + reviewer/audit record persist).
   RETENTION_KYC_VERIFIED_DAYS: z.coerce.number().int().positive().default(90),
@@ -100,11 +102,10 @@ const EnvSchema = z.object({
   SMILE_ENVIRONMENT: z.enum(['sandbox', 'production']).default('sandbox'),
   SMILE_CALLBACK_URL: z.string().default(''),
   SMILE_PRIVACY_POLICY_URL: z.string().default(''),
-  // Firebase Cloud Messaging (push). All three from the service-account JSON.
-  // When all are set, recordPush sends real pushes; otherwise it stubs to a log.
-  FCM_PROJECT_ID: z.string().default(''),
-  FCM_CLIENT_EMAIL: z.string().default(''),
-  FCM_PRIVATE_KEY: z.string().default(''),
+  // Expo push service access token. Needed once "Enhanced security for push
+  // notifications" is on for the Expo project (recommended), which stops anyone
+  // holding a device's push token from sending to it. Pushes send without it otherwise.
+  EXPO_ACCESS_TOKEN: z.string().default(''),
   // §23 Q3: when 'true', a payout additionally requires a BVN-verified bank
   // account. Off until the live Paystack BVN match is wired; the account-name
   // verification gate applies regardless.

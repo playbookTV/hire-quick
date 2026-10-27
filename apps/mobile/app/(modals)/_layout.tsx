@@ -24,6 +24,7 @@ export default function ModalsLayout(): React.JSX.Element {
     'rate-staff',
     'privacy-data',
     'account-settings',
+    'notification-settings',
   ]);
   if (onboarding && !permitted.has(segments[segments.length - 1] ?? ''))
     return <Redirect href={onboarding} />;

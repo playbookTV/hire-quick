@@ -50,7 +50,7 @@ Source: [auth routes](../apps/api/src/modules/auth/routes.ts), [OTP service](../
 | POST   | `/auth/otp/request` | Public                       | `{phone}` → `{sent}`; `devCode` only in isolated `NODE_ENV=test`                         |
 | POST   | `/auth/otp/verify`  | Public                       | `{phone,code,role?}` → `{accessToken,refreshToken,user}`                                 |
 | POST   | `/auth/refresh`     | Refresh credential           | `{refreshToken}` → successor token pair                                                  |
-| POST   | `/auth/logout`      | Presented refresh credential | `{refreshToken}` → 204; best-effort revocation, malformed/expired tokens also return 204 |
+| POST   | `/auth/logout`      | Presented refresh credential | `{refreshToken, pushToken?}` → 204; best-effort revocation, malformed/expired tokens also return 204. A valid Expo `pushToken` is removed from the refresh token's own account only; the app sends it when the authenticated unregister call failed |
 
 `phone` accepts an optional `+` and 7–15 digits. Use one consistent international representation. Codes are six digits. Optional signup role is `CLIENT` or `USHER`, defaulting to CLIENT; it does not change an existing user's role. Admin accounts must already exist. OTP request replaces earlier unconsumed codes for that phone. Development requires delivery; codes are not a console-login mechanism.
 
@@ -77,7 +77,11 @@ All routes below require authentication. Source: [profile router](../apps/api/sr
 | PUT    | `/api/me/photos/avatar`           | Usher; `{key}` → `{avatarUrl}`                                                                                                              |
 | POST   | `/api/me/photos/portfolio`        | Usher; `{key}` → `{id,imageUrl}`; maximum five photos                                                                                       |
 | DELETE | `/api/me/photos/portfolio/:id`    | Usher owns photo; → `{deleted:true}`                                                                                                        |
-| POST   | `/api/me/devices`                 | `{fcmToken,platform: "IOS" or "ANDROID"}`; token minimum eight characters                                                                   |
+| POST   | `/api/me/devices`                 | `{token,platform: "IOS" or "ANDROID"}`; `token` must be an Expo push token (`ExponentPushToken[…]`). Registers a destination only: sends also need the `PUSH_NOTIFICATIONS` consent. Refused (`{registered:false}`) after an explicit withdrawal |
+| POST   | `/api/me/devices/unregister`      | `{token}`; removes that token if it belongs to the caller → `{removed}`. The app calls it before signing out                                |
+| GET    | `/api/me/notification-preferences` | `{jobAlerts,reminders,messages}`; all `true` until changed                                                                                 |
+| PUT    | `/api/me/notification-preferences` | Partial `{jobAlerts?,reminders?,messages?}` (at least one) → the full preferences. Bookings and payments cannot be switched off separately |
+| POST   | `/api/me/notification-dispatches/:id/opened` | `{action: "open" or "view" or "apply"}`; the caller's own push only; the first report wins → `{opened:true}`                 |
 | GET    | `/api/me/availability`            | Usher; optional `from`/`to` query dates (`YYYY-MM-DD`)                                                                                      |
 | PUT    | `/api/me/availability`            | Usher; `{date,status}` per shared schema; conflicts with existing bookings can return `409 SCHEDULE_CONFLICT`                               |
 

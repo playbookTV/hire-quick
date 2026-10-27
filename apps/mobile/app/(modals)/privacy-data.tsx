@@ -13,6 +13,8 @@ import { useAuth } from '../../lib/auth-context.js';
 import { useToast } from '../../lib/toast.js';
 import { userMessage } from '../../lib/api-error.js';
 import { openSupport } from '../../lib/support.js';
+import { disablePush, enablePush } from '../../lib/push.js';
+import { queryKeys } from '../../lib/query.js';
 type Consent = { purpose: 'PUSH_NOTIFICATIONS' | 'MARKETING_EMAIL' | 'SMS'; granted: boolean };
 const LABELS: Record<Consent['purpose'], string> = {
   PUSH_NOTIFICATIONS: 'Push notification consent',
@@ -26,12 +28,20 @@ export default function PrivacyData(): React.JSX.Element {
   const [confirmation, setConfirmation] = useState('');
   const key = useRef(newIdempotencyKey());
   const query = useQuery({
-    queryKey: ['consents'],
+    queryKey: queryKeys.consents,
     queryFn: () => api.get<Consent[]>('/api/me/consents'),
   });
   const consent = useMutation({
-    mutationFn: (body: Consent) => api.post('/api/me/consents', body),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['consents'] }),
+    mutationFn: async (body: Consent): Promise<unknown> => {
+      // Push also needs the phone's permission and this device's token.
+      if (body.purpose !== 'PUSH_NOTIFICATIONS') return api.post('/api/me/consents', body);
+      if (!body.granted) return disablePush();
+      const result = await enablePush();
+      if (result === 'denied') throw new Error('Allow notifications for HireQuick in your phone settings.');
+      if (result === 'unavailable') throw new Error('This device can’t receive notifications yet.');
+      return result;
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: queryKeys.consents }),
     onError: (e) => toast.error(userMessage(e)),
   });
   const exportData = useMutation({

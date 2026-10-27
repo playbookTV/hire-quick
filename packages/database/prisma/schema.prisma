@@ -288,23 +288,25 @@ model User {
   client              Client?
   usher               Usher?
   deviceTokens        DeviceToken[]
-  reviewsAuthored     Review[]               @relation("ReviewAuthor")
-  reviewsReceived     Review[]               @relation("ReviewSubject")
-  disputesRaised      Dispute[]              @relation("DisputeRaisedBy")
-  disputesResolved    Dispute[]              @relation("DisputeResolvedBy")
-  verificationsDone   UsherVerification[]    @relation("VerificationReviewer")
-  businessReviews     BusinessVerification[] @relation("BusinessReviewer")
+  reviewsAuthored     Review[]                @relation("ReviewAuthor")
+  reviewsReceived     Review[]                @relation("ReviewSubject")
+  disputesRaised      Dispute[]               @relation("DisputeRaisedBy")
+  disputesResolved    Dispute[]               @relation("DisputeResolvedBy")
+  verificationsDone   UsherVerification[]     @relation("VerificationReviewer")
+  businessReviews     BusinessVerification[]  @relation("BusinessReviewer")
   messagesSent        Message[]
-  approvalsMade       Approval[]             @relation("ApprovalMaker")
-  approvalsChecked    Approval[]             @relation("ApprovalChecker")
-  payoutRunsSubmitted PayoutRun[]            @relation("PayoutRunSubmitter")
-  payoutRunsApproved  PayoutRun[]            @relation("PayoutRunApprover")
+  approvalsMade       Approval[]              @relation("ApprovalMaker")
+  approvalsChecked    Approval[]              @relation("ApprovalChecker")
+  payoutRunsSubmitted PayoutRun[]             @relation("PayoutRunSubmitter")
+  payoutRunsApproved  PayoutRun[]             @relation("PayoutRunApprover")
   notifications       Notification[]
+  notificationPrefs   NotificationPreference?
+  pushDispatches      NotificationDispatch[]
   consents            ConsentRecord[]
   revokedTokens       RevokedToken[]
   policyAcceptances   PolicyAcceptance[]
-  reportsFiled        MarketplaceReport[]    @relation("ReportAuthor")
-  reportsReviewed     MarketplaceReport[]    @relation("ReportReviewer")
+  reportsFiled        MarketplaceReport[]     @relation("ReportAuthor")
+  reportsReviewed     MarketplaceReport[]     @relation("ReportReviewer")
 
   @@map("users")
 }
@@ -884,12 +886,57 @@ model DeviceToken {
   id         String         @id @default(uuid()) @db.Uuid
   userId     String         @db.Uuid
   user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  fcmToken   String         @unique
+  token      String         @unique // Expo push token; a destination, never permission to send
   platform   DevicePlatform
   lastSeenAt DateTime       @default(now()) @db.Timestamptz(6)
 
+  pushTickets PushTicket[]
+
   @@index([userId])
   @@map("device_tokens")
+}
+
+// Expo push tickets awaiting a delivery receipt (available ~15 min after send,
+// kept by Expo for 24 h). The receipts job prunes tokens Expo reports as gone.
+model PushTicket {
+  id            String      @id // Expo ticket/receipt id
+  deviceTokenId String      @db.Uuid
+  deviceToken   DeviceToken @relation(fields: [deviceTokenId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now()) @db.Timestamptz(6)
+
+  @@index([createdAt])
+  @@map("push_tickets")
+}
+
+// Category switches inside the single PUSH_NOTIFICATIONS consent. No row = all on.
+model NotificationPreference {
+  userId    String   @id @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobAlerts Boolean  @default(true)
+  reminders Boolean  @default(true)
+  messages  Boolean  @default(true)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  @@map("notification_preferences")
+}
+
+// One row per push sent to a user (not per device): idempotency for retried or
+// scheduled sends, daily caps, and tap tracking. Purged after RETENTION_PUSH_DISPATCH_DAYS.
+model NotificationDispatch {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @db.Uuid
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind       String // push type, e.g. "BOOKING_CONFIRMED" or "NEW_MESSAGE"
+  dedupeKey  String?   @unique // set for sends that must happen at most once
+  targetType String?
+  targetId   String?
+  sentAt     DateTime  @default(now()) @db.Timestamptz(6)
+  openedAt   DateTime? @db.Timestamptz(6)
+  action     String? // "open" | "view" | "apply" — what the user tapped
+
+  @@index([userId, sentAt])
+  @@index([sentAt])
+  @@map("notification_dispatches")
 }
 
 model Notification {

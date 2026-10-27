@@ -2,8 +2,7 @@
  * Notifications inbox — the persisted in-app feed (`GET /api/me/notifications`).
  * Tapping a row marks it read and, when it carries a deep-link target
  * (`lib/notifications.ts`), opens that screen. "Mark all read" clears the badge. Polls via
- * `useNotifications`; an OS push layer (expo-notifications + FCM) can later open
- * the same routes on tap.
+ * `useNotifications`; tapped OS pushes open the same routes (`components/PushBridge.tsx`).
  */
 import { useRouter } from 'expo-router';
 import { ScrollView, RefreshControl, Pressable } from 'react-native';
@@ -26,6 +25,7 @@ import {
   notificationRoute,
 } from '../../lib/notifications.js';
 import type { Notification } from '../../lib/types.js';
+import { useAuth } from '../../lib/auth-context.js';
 
 function Row({ item, onPress }: Readonly<{ item: Notification; onPress: () => void }>) {
   const theme = useTheme();
@@ -106,6 +106,7 @@ function Row({ item, onPress }: Readonly<{ item: Notification; onPress: () => vo
 
 export default function Notifications(): React.JSX.Element {
   const router = useRouter();
+  const { user } = useAuth();
   const feed = useNotifications();
   const markRead = useMarkNotificationRead();
   const markAll = useMarkAllNotificationsRead();
@@ -115,7 +116,7 @@ export default function Notifications(): React.JSX.Element {
 
   const open = (n: Notification): void => {
     if (!n.readAt) markRead.mutate(n.id);
-    const route = notificationRoute(n);
+    const route = notificationRoute(n, user?.role);
     if (route) router.push(route);
   };
 

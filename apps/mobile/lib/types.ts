@@ -132,6 +132,15 @@ export interface NotificationFeed {
   unreadCount: number;
 }
 
+/** GET /api/me/consents — one row per purpose the account has decided on. */
+export interface ConsentRecord {
+  purpose: 'PUSH_NOTIFICATIONS' | 'MARKETING_EMAIL' | 'SMS';
+  granted: boolean;
+}
+
+/** Push consent as the prompt sees it: never decided, granted, or explicitly withdrawn. */
+export type PushConsentState = 'none' | 'granted' | 'withdrawn';
+
 /** GET /api/me/invitations[/:id] — an invitation with its event + inviting client. */
 export interface Invitation {
   declineReason?: string | null;

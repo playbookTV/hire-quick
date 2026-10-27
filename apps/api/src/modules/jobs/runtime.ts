@@ -17,6 +17,8 @@ export const SCHEDULES = [
   { name: 'checkouts', pattern: '2-59/5 * * * *', attempts: 3 },
   { name: 'resumeOps', pattern: '*/15 * * * *', attempts: 3 },
   { name: 'storageCleanup', pattern: '4-59/5 * * * *', attempts: 3 },
+  // Expo delivery receipts are published ~15 minutes after a send.
+  { name: 'pushReceipts', pattern: '8-59/15 * * * *', attempts: 1 },
   { name: 'retentionPurge', pattern: '41 2 * * *', attempts: 1 },
   { name: 'auditVerify', pattern: '47 2 * * *', attempts: 3 },
 ] as const;

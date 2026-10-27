@@ -40,7 +40,7 @@ This diagram intentionally omits secondary relations. Order membership is nullab
 | Checkout             | `Order`, `Checkout`, `Booking`, `Payment`                               | Batch gross amount, durable checkout attempt, per-usher obligation and allocation |
 | Financial history    | `EscrowLedger`, `Wallet`, `WalletLedger`, `BankAccount`, `Withdrawal`   | Held funds, released balance, bank destinations and transfers                     |
 | Recovery             | `PaymentOperation`, `IdempotencyKey`, `Approval`                        | Durable intent/reference, saved replay result, maker-checker decisions            |
-| Communication        | `Conversation`, `Message`, `Notification`, `DeviceToken`                | Booking chat, inbox records and push registrations                                |
+| Communication        | `Conversation`, `Message`, `Notification`, `DeviceToken`, `PushTicket`, `NotificationPreference`, `NotificationDispatch` | Booking chat, inbox records, Expo push registrations and receipts, category switches, push dispatch log |
 | Trust/feedback       | `Dispute`, `Review`                                                     | Evidence-driven dispute handling and two-way reviews                              |
 | Security/privacy     | `VerificationCode`, `RevokedToken`, `ConsentRecord`, `PolicyAcceptance` | OTP verifiers, consumed/revoked refresh IDs, consent, version acceptance          |
 | Audit                | `AuditLog`, `AuditChainHead`                                            | Append-only hash-chained history and serialized chain head                        |

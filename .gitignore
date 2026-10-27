@@ -23,3 +23,6 @@ packages/database/generated/
 # misc
 .DS_Store
 *.log
+
+# Firebase Android config for Expo push (EAS supplies it as GOOGLE_SERVICES_JSON)
+apps/mobile/google-services.json

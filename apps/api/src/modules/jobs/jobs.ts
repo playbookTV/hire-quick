@@ -211,13 +211,14 @@ export async function jobCheckouts(deps: Deps): Promise<void> {
 
 /**
  * NDPR retention purge (TRD §14). Removes transient PII past its window —
- * consumed/expired OTP codes and stale device tokens. Never touches financial
+ * consumed/expired OTP codes, stale device tokens and old push dispatch rows. Never touches financial
  * or ledger rows (those keep the 7-year obligation).
  */
 export async function jobRetentionPurge(storage?: StoragePort): Promise<void> {
   const now = Date.now();
   const otpCutoff = new Date(now - env.RETENTION_OTP_DAYS * DAY_MS);
   const deviceCutoff = new Date(now - env.RETENTION_DEVICE_TOKEN_DAYS * DAY_MS);
+  const dispatchCutoff = new Date(now - env.RETENTION_PUSH_DISPATCH_DAYS * DAY_MS);
 
   const otp = await prisma.verificationCode.deleteMany({
     where: {
@@ -227,6 +228,9 @@ export async function jobRetentionPurge(storage?: StoragePort): Promise<void> {
   });
   const devices = await prisma.deviceToken.deleteMany({
     where: { lastSeenAt: { lt: deviceCutoff } },
+  });
+  const dispatches = await prisma.notificationDispatch.deleteMany({
+    where: { sentAt: { lt: dispatchCutoff } },
   });
   // Refresh-token denylist: a revoked jti only needs to outlive the token it
   // blocks; once expired the JWT is rejected on its own, so the row is dead weight.
@@ -348,9 +352,10 @@ export async function jobRetentionPurge(storage?: StoragePort): Promise<void> {
   }
   const cleanup = await cleanupStorage(storage);
 
-  if (otp.count || devices.count || kycRows.length || chatDeleted) {
+  if (otp.count || devices.count || dispatches.count || kycRows.length || chatDeleted) {
     log(
       `retention purge: ${String(otp.count)} otp, ${String(devices.count)} device token(s), ` +
+        `${String(dispatches.count)} push dispatch(es), ` +
         `${String(kycRows.length)} kyc doc set(s), ${String(chatDeleted)} message(s)`,
     );
   }
@@ -361,6 +366,7 @@ export async function jobRetentionPurge(storage?: StoragePort): Promise<void> {
     metadata: {
       verificationCodes: otp.count,
       deviceTokens: devices.count,
+      pushDispatches: dispatches.count,
       revokedTokens: revokedTokens.count,
       kycDocuments: kycRows.length,
       objectsDeleted: cleanup.deleted,
