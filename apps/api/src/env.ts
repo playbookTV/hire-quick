@@ -36,6 +36,12 @@ const EnvSchema = z.object({
   OTP_VERIFIER_SECRET: z.string().default(''),
   // Explicit, server-only access for the four seeded staging QA identities.
   STAGING_QA_OTP_CODE: z.union([z.literal(''), z.string().regex(/^[0-9]{6}$/)]).default(''),
+  // App-store review sign-in (auth/app-review.ts): one existing account's phone,
+  // a fixed 6-digit code and an ISO end time at most 31 days ahead. Checked when
+  // used, not at boot: incomplete, weak or expired values just keep it off.
+  APP_REVIEW_PHONE: z.string().trim().default(''),
+  APP_REVIEW_OTP_CODE: z.string().trim().default(''),
+  APP_REVIEW_LOGIN_UNTIL: z.string().trim().default(''),
   OTP_VERIFIER_KEY_ID: z.string().regex(/^[a-zA-Z0-9_-]{1,32}$/).default('v1'),
   OTP_VERIFIER_PREVIOUS_SECRET: z.string().default(''),
   OTP_VERIFIER_PREVIOUS_KEY_ID: z.string().regex(/^[a-zA-Z0-9_-]{0,32}$/).default(''),

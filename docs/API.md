@@ -47,7 +47,7 @@ Source: [auth routes](../apps/api/src/modules/auth/routes.ts), [OTP service](../
 | Method | Path                | Access                       | Input / response                                                                         |
 | ------ | ------------------- | ---------------------------- | ---------------------------------------------------------------------------------------- |
 | GET    | `/health`           | Public                       | `{"status":"ok"}`; liveness only                                                         |
-| POST   | `/auth/otp/request` | Public                       | `{phone}` → `{sent}`; `devCode` only in isolated `NODE_ENV=test`                         |
+| POST   | `/auth/otp/request` | Public                       | `{phone}` → `{sent}`; `devCode` only in isolated `NODE_ENV=test`. The [app-store review phone](CONFIGURATION.md#app-store-review-login) gets `{sent:true}` with nothing sent |
 | POST   | `/auth/otp/verify`  | Public                       | `{phone,code,role?}` → `{accessToken,refreshToken,user}`                                 |
 | POST   | `/auth/refresh`     | Refresh credential           | `{refreshToken}` → successor token pair                                                  |
 | POST   | `/auth/logout`      | Presented refresh credential | `{refreshToken, pushToken?}` → 204; best-effort revocation, malformed/expired tokens also return 204. A valid Expo `pushToken` is removed from the refresh token's own account only; the app sends it when the authenticated unregister call failed |
