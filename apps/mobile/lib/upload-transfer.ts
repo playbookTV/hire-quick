@@ -14,18 +14,21 @@ export async function transferUpload(
   const timeout = setTimeout(() => controller.abort(), 120_000);
   try {
     const file = await transport(asset.uri, { signal: controller.signal });
-    const blob = await file.blob();
-    if (!blob.size || blob.size > maxBytes) throw new Error('Choose a file smaller than 10 MB.');
+    const bytes = await file.arrayBuffer();
+    if (!bytes.byteLength || bytes.byteLength > maxBytes)
+      throw new Error('Choose a file smaller than 10 MB.');
     const options = { signal: controller.signal };
     const { url, key } = await post<{ url: string; key: string }>(
       path,
-      { ...body, byteSize: blob.size },
+      { ...body, byteSize: bytes.byteLength },
       options,
     );
     const put = await transport(url, {
       method: 'PUT',
       headers: { 'content-type': contentType },
-      body: blob,
+      // Expo passes this buffer through without the native Blob/base64 round trip
+      // and preserves the explicit signed Content-Type (Blob bodies override it).
+      body: bytes,
       signal: controller.signal,
     });
     if (!put.ok) throw new Error('Upload failed. Please try again.');

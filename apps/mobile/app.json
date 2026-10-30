@@ -14,7 +14,11 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.ovalay.hirequick",
       "infoPlist": {
-        "NSCameraUsageDescription": "HireQuick uses the camera for Smile ID identity and liveness verification."
+        "NSCameraUsageDescription": "HireQuick uses the camera for Smile ID identity and liveness verification.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "entitlements": {
+        "com.apple.developer.usernotifications.time-sensitive": true
       }
     },
     "android": {
@@ -47,6 +51,14 @@
       ],
       "expo-router",
       "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "color": "#36a511",
+          "defaultChannel": "bookings",
+          "mode": "production"
+        }
+      ],
       "expo-font",
       "expo-web-browser",
       [

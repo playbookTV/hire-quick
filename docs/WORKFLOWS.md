@@ -21,6 +21,14 @@ Profile day rate helps discovery; it does not set the charged booking amount. Ev
 
 Acceptance: another user's photo/document key is rejected; a rejected or pending profile is not exposed through ordinary verified discovery; private verification documents remain behind authenticated and authorized access.
 
+## Client onboarding and trust
+
+After OTP and profile completion, every client chooses Individual or Business/organisation. Both require the existing Smile NIN/BVN and live-selfie identity check. An individual can hire only after identity is verified. A business also needs a Nigerian registry match and an admin review of evidence that the verified representative is authorised to act for it. Unregistered businesses use Individual. An individual may upgrade without losing booking history, but cannot hire again until business verification is complete; a business cannot self-service downgrade to bypass a check.
+
+Pending, rejected, unavailable, or client-reported success never unlocks marketplace access. The API enforces the gate, including for older apps. Existing clients must complete it too, but can still manage their owned, already-paid bookings (chat, attendance, cancellation, disputes and reviews), contact support, access privacy tools, and sign out. Unpaid checkouts/new hiring remain blocked.
+
+The public labels are **Identity verified** and **Business verified**. These describe completed checks, not reliability, service quality, payment guarantees, or preferential ranking. See [Smile ID](SMILE-ID.md) for operator review and activation requirements.
+
 ## Client creates and staffs an event
 
 The client enters event date, start/end times, headcount, per-head kobo budget, and relevant requirements. An event ending at/after 22:00 requires an accommodation disclosure. End time must follow start time.
@@ -72,3 +80,13 @@ Acceptance: a maker cannot approve their own action, uncertain requests retain r
 Booking chat and media access require current party/state authorization. The backend supports realtime, but mobile currently polls relevant data; verify actual device update behavior. Notification inbox persistence and provider push delivery are separate outcomes.
 
 Users can inspect consent, export their data, and request erasure. Erasure removes/pseudonymizes current identifying data while retaining financial/audit records. It also changes account access; an old token is not a perpetual data-access capability. Storage cleanup is best effort and requires operational follow-up on failures.
+
+## Extended hiring and marketplace profiles
+
+Clients can select up to 50 workers in Discover, review/remove the selection, and invite them to an existing event. “Create an event for this team” carries worker IDs through event creation and returns to invitation review with the new event first. Invitations are sent explicitly after event creation, so a failed invitation never requires recreating the event. Existing invitation replies must be removed from a retrying batch.
+
+Workers can withdraw an application from job details before a live booking starts. Invitation declines and acceptance withdrawals collect a reason and optional note, visible in the client's sent invitations. Booking cancellation remains a separate process.
+
+Optional physical details appear in worker profiles. Event preferences require a job-related explanation and are displayed on job/invitation details. They do not change eligibility, pricing or ranking. Clients edit their introduction, position, location and photo in Account settings; job details link to the public client/company profile. Contact email remains private.
+
+Workers search Available/Applied/Saved jobs. Native sharing sends the public title, state, pay and installed-app job link; it never includes a precise venue. Reports are accessible from job and worker profiles before booking and enter the admin Marketplace reports queue.

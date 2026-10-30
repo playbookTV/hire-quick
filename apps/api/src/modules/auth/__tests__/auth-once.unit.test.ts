@@ -5,9 +5,10 @@ import type * as Database from '@hq/database';
 import type { PaystackPort } from '../../payments/port/paystack-port.js';
 
 const findUnique = vi.hoisted(() => vi.fn());
+const findClient = vi.hoisted(() => vi.fn());
 vi.mock('@hq/database', async (importOriginal) => ({
   ...(await importOriginal<typeof Database>()),
-  prisma: { user: { findUnique } },
+  prisma: { user: { findUnique }, client: { findUnique: findClient } },
 }));
 
 import { createApp } from '../../../app.js';
@@ -19,7 +20,7 @@ const orderId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const app = createApp({ paystack: {} as PaystackPort });
 
 // Invalid email fails inside the handler, after every auth layer but before any
-// other database access, so each user lookup is an authentication check.
+// charge database access; the separate client lookup enforces verification.
 async function charge(token: string) {
   return request(app)
     .post(`/api/payments/orders/${orderId}/charge`)
@@ -31,6 +32,8 @@ async function charge(token: string) {
 beforeEach(() => {
   findUnique.mockReset();
   findUnique.mockResolvedValue({ status: 'ACTIVE', role: 'CLIENT' });
+  findClient.mockReset();
+  findClient.mockResolvedValue({ accountType: 'INDIVIDUAL', verificationStatus: 'VERIFIED' });
 });
 
 describe('authentication across stacked /api routers', () => {
@@ -39,6 +42,7 @@ describe('authentication across stacked /api routers', () => {
     expect(response.status).toBe(400);
     expect(response.body.error.code).toBe('VALIDATION');
     expect(findUnique).toHaveBeenCalledTimes(1);
+    expect(findClient).toHaveBeenCalledTimes(1);
     expect(findUnique).toHaveBeenCalledWith({
       where: { id: userId },
       select: { status: true, role: true },

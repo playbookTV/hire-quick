@@ -67,9 +67,12 @@ beforeEach(() => {
 });
 describe('owned withdrawal history', () => {
   it('masks account numbers and scopes list queries to the authenticated wallet', async () => {
-    mocks.list.mockResolvedValue([row]);
+    mocks.list.mockResolvedValue([row, { ...row, id: 'run-line', payoutRunId: 'run' }]);
     expect(await read('/withdrawals')).toMatchObject({
-      items: [{ id, status: 'PROCESSING', bank: { last4: '6789' } }],
+      items: [
+        { id, status: 'PROCESSING', source: 'USHER_REQUEST', bank: { last4: '6789' } },
+        { id: 'run-line', source: 'PAYOUT_RUN' },
+      ],
       nextCursor: null,
     });
     expect(mocks.list).toHaveBeenCalledWith(

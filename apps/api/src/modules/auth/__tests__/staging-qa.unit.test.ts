@@ -82,12 +82,12 @@ describe('QA uses the normal OTP lifecycle', () => {
     const binding = { id: 'otp-fixture', purpose: 'AUTH' as const, subjectRef: qaSubject(phone) };
     return { ...binding, codeHash: hashOtp('012345', binding), attempts: 0 };
   };
-  it('issues a bound hash without delivery and counts both OTP namespaces', async () => {
+  it('issues a bound hash without delivery and counts every OTP namespace', async () => {
     expect(await requestOtp(phone)).toEqual({ sent: true, devCode: '012345' });
     const data = mocks.create.mock.calls[0]?.[0].data as Prisma.VerificationCodeUncheckedCreateInput;
     expect(data.subjectRef).toBe(qaSubject(phone));
     expect(verifyOtpHash(data.codeHash, '012345', { purpose: 'AUTH', subjectRef: data.subjectRef, id: data.id! })).toBe(true);
-    expect(mocks.count).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ subjectRef: { in: [phone, qaSubject(phone)] } }) }));
+    expect(mocks.count).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ subjectRef: { in: [phone, qaSubject(phone), `review-auth:${phone}`] } }) }));
     expect(mocks.sms).not.toHaveBeenCalled();
     expect(mocks.whatsapp).not.toHaveBeenCalled();
   });

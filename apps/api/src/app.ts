@@ -1,3 +1,5 @@
+import { clientsRouter } from './modules/profile/client-profile.js';
+import { reportsRouter } from './modules/reports/routes.js';
 import express, { type Express, type Request, type Response, type NextFunction } from 'express';
 import helmet from 'helmet';
 import cors, { type CorsOptions } from 'cors';
@@ -27,6 +29,9 @@ import { ushersRouter } from './modules/ushers/routes.js';
 import { kycRouter, smileWebhookRouter } from './modules/verification/routes.js';
 import { NoopKyc } from './modules/verification/port/noop-kyc.js';
 import type { KycPort } from './modules/verification/port/kyc-port.js';
+import { businessVerificationRouter } from './modules/verification/business-routes.js';
+import { requireClientVerification } from './modules/verification/client-access.js';
+import { requireAuth } from './modules/auth/middleware.js';
 import { noopGateway, type RealtimeGateway } from './realtime/gateway.js';
 
 /** A leak-free error envelope: clients get a code + safe message, never internals. */
@@ -74,10 +79,14 @@ export function createApp(config: AppConfig = {}): Express {
   // pass-through rate limiters) must never silently ship. Refuse to boot.
   if (process.env.NODE_ENV === 'production') {
     if (!config.corsOrigins || config.corsOrigins.length === 0) {
-      throw new Error('corsOrigins must be configured in production (refusing to reflect all origins)');
+      throw new Error(
+        'corsOrigins must be configured in production (refusing to reflect all origins)',
+      );
     }
     if (!config.rateLimitRedis) {
-      throw new Error('rateLimitRedis must be provided in production (refusing to run without rate limiting)');
+      throw new Error(
+        'rateLimitRedis must be provided in production (refusing to run without rate limiting)',
+      );
     }
   }
 
@@ -96,13 +105,17 @@ export function createApp(config: AppConfig = {}): Express {
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok' });
   });
-  app.get('/ready', readinessHandler({
-    database: () => prisma.$queryRaw`SELECT 1`,
-    redis: async () => {
-      if (!config.rateLimitRedis || config.rateLimitRedis.status !== 'ready') throw new Error('Redis unavailable');
-      await config.rateLimitRedis.ping();
-    },
-  }));
+  app.get(
+    '/ready',
+    readinessHandler({
+      database: () => prisma.$queryRaw`SELECT 1`,
+      redis: async () => {
+        if (!config.rateLimitRedis || config.rateLimitRedis.status !== 'ready')
+          throw new Error('Redis unavailable');
+        await config.rateLimitRedis.ping();
+      },
+    }),
+  );
   app.use(limiters.global);
 
   // Webhook needs the RAW body for signature verification — mount BEFORE json.
@@ -110,12 +123,21 @@ export function createApp(config: AppConfig = {}): Express {
     app.use(
       '/webhooks/paystack',
       express.raw({ type: '*/*' }),
-      paystackWebhookRouter({ prisma, secret: config.paystackSecret, realtime, paystack: config.paystack }),
+      paystackWebhookRouter({
+        prisma,
+        secret: config.paystackSecret,
+        realtime,
+        paystack: config.paystack,
+      }),
     );
   }
 
   // Smile ID callback — signed headers and per-attempt callback capability.
-  app.use('/webhooks/smile-id', express.raw({ type: '*/*' }), smileWebhookRouter({ kyc, realtime, redis: config.rateLimitRedis }));
+  app.use(
+    '/webhooks/smile-id',
+    express.raw({ type: '*/*' }),
+    smileWebhookRouter({ kyc, realtime, redis: config.rateLimitRedis }),
+  );
 
   // Parse delivery reports with their own smaller limit before general JSON.
   app.use('/webhooks/kudisms', kudiSmsWebhookRouter());
@@ -124,21 +146,38 @@ export function createApp(config: AppConfig = {}): Express {
 
   app.use('/auth', limiters.auth, authRouter());
   app.use('/api/me/verification', kycRouter({ kyc }));
+  app.use('/api/me/verification', businessVerificationRouter(kyc, config.storage));
   app.use('/api/me', profileRouter(config.storage));
   app.use('/api/me', privacyRouter(config.storage));
   app.use('/api/me', notificationsRouter());
   app.use('/api/legal', legalRouter());
-  app.use('/api/admin', adminRouter({ kyc, realtime, storage: config.storage, paystack: config.paystack, redis: config.rateLimitRedis }));
+  app.use(
+    '/api/admin',
+    adminRouter({
+      kyc,
+      realtime,
+      storage: config.storage,
+      paystack: config.paystack,
+      redis: config.rateLimitRedis,
+    }),
+  );
+  app.use('/api', requireAuth, requireClientVerification);
   app.use('/api', bookingsRouter({ realtime, paystack: config.paystack }));
   app.use('/api', chatMediaRouter(config.storage));
   app.use('/api', ushersRouter(config.storage));
+  app.use('/api', reportsRouter());
+  app.use('/api', clientsRouter(config.storage));
 
   // Events (incl. read-only applications/saved-jobs) are independent of payments;
   // confirm-batch guards on the port itself (503 when absent), so this mounts
   // unconditionally and the whole feature stays available without a payment port.
   app.use('/api', eventsRouter({ prisma, paystack: config.paystack, realtime }, config.storage));
   if (config.paystack) {
-    app.use('/api/payments', limiters.money, paymentsRouter({ prisma, paystack: config.paystack, realtime }));
+    app.use(
+      '/api/payments',
+      limiters.money,
+      paymentsRouter({ prisma, paystack: config.paystack, realtime }),
+    );
   }
 
   app.use((_req, res) => {
@@ -154,18 +193,25 @@ export function createApp(config: AppConfig = {}): Express {
         return;
       }
       if (err.type === 'entity.too.large') {
-        res.status(413).json({ error: { code: 'PAYLOAD_TOO_LARGE', message: 'Request body is too large' } });
+        res
+          .status(413)
+          .json({ error: { code: 'PAYLOAD_TOO_LARGE', message: 'Request body is too large' } });
         return;
       }
     }
     if (err instanceof ZodError) {
-      res.status(400).json({ error: { code: 'VALIDATION', message: 'Invalid request', issues: err.issues } });
+      res
+        .status(400)
+        .json({ error: { code: 'VALIDATION', message: 'Invalid request', issues: err.issues } });
       return;
     }
     if (err instanceof ApiError) {
       // Server-side faults (5xx) modelled as ApiError are still worth logging.
       if (err.statusCode >= 500) {
-        logger.error({ err, reqId: (req as Request & { id?: string }).id, code: err.code }, 'api error');
+        logger.error(
+          { err, reqId: (req as Request & { id?: string }).id, code: err.code },
+          'api error',
+        );
         reportError(err, { reqId: String((req as Request & { id?: string }).id), code: err.code });
       }
       res.status(err.statusCode).json({ error: { code: err.code, message: err.message } });

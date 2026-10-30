@@ -1,0 +1,12 @@
+{
+  "checkedAt": "2026-10-01T19:54:47.700Z",
+  "pending": [
+    "20261001190000_client_identity_and_business_verification"
+  ],
+  "checksumsMatch": true,
+  "sameApiWorkerDatabase": true,
+  "kycMode": "smile",
+  "smileEnvironment": "production",
+  "personalIdentityRecords": 15,
+  "clients": 15
+}

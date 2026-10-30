@@ -1,0 +1,43 @@
+{
+  "checkedAt": "2026-09-29T01:10:30.042Z",
+  "targetMatchesSentryHost": true,
+  "verification": {
+    "ok": false,
+    "checked": 3,
+    "legacy": 19,
+    "brokenAt": {
+      "seq": "30",
+      "reason": "entryHash mismatch (row tampered)"
+    }
+  },
+  "totalRows": 570,
+  "hashMismatchCount": 80,
+  "firstMismatch": {
+    "seq": "30",
+    "createdAt": "2026-06-21T15:47:57.951Z",
+    "actorNull": true,
+    "actorFromTargetRestoresHash": true
+  },
+  "missingPredecessors": 14,
+  "linkDiscontinuities": 14,
+  "headMatchesTail": true,
+  "baselineRows": 476,
+  "baselineMissing": 0,
+  "baselineChanged": 0,
+  "newRows": 94,
+  "newHashMismatches": 0,
+  "newLinkDiscontinuities": 0,
+  "triggers": [
+    {
+      "relname": "audit_logs",
+      "tgname": "audit_logs_preserve_history",
+      "tgenabled": "A"
+    },
+    {
+      "relname": "audit_chain_head",
+      "tgname": "audit_head_preserve_history",
+      "tgenabled": "A"
+    }
+  ],
+  "foreignKeys": []
+}

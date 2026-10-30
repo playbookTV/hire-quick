@@ -87,6 +87,10 @@ async function setupConfirmedBooking(opts: {
 }> {
   const client = await login('CLIENT');
   const usher = await login('USHER');
+  await prisma.client.update({
+    where: { userId: client.userId },
+    data: { accountType: 'INDIVIDUAL', verificationStatus: 'VERIFIED' },
+  });
   // verify the usher (admin path is covered elsewhere)
   const usherRow = await prisma.usher.findFirstOrThrow({
     where: { userId: usher.userId },

@@ -1,0 +1,62 @@
+{
+  "snapshotPath": "/private/tmp/hq-upload-performance-release-at35fwea",
+  "baseRevision": "384a5b8c8a38b9f29a7d55be7f38b21b43a22a9f",
+  "releaseRevision": "b73b15677a47b3895769f3aef50a3c404885aa24",
+  "files": {
+    "apps/api/src/modules/storage/storage.ts": "11ca6d3ede6a4a968e5d65754b414104bc15b43cb8e5f9b8b878be2c574f0c24",
+    "apps/api/src/modules/storage/uploads.ts": "800a5d45ade5a5741d8778d215312a2a1254445ac014d49d1f91ea3b9896e48c",
+    "apps/api/src/modules/storage/__tests__/storage-deadline.test.ts": "0ef6dad733012371dd55df03af086ea73720a5285363558fef385244c35e6de2",
+    "apps/api/src/modules/storage/__tests__/uploads.test.ts": "b18371a91e63cf3255632aef04abc041342696ad4f5ace764c68423ec7f429a2",
+    "apps/mobile/lib/upload-transfer.ts": "fa8a2e9807a627732afbb56f79e2f4c974e1948689bb72d85b355c5f243ac973",
+    "apps/mobile/lib/__tests__/upload-transfer.test.ts": "35ea52c71f13f56c5bdcbceb03ccb23415c1105beff79e20aafbafdc6f420b7a",
+    "docs/API.md": "791976552b9fe22f69e16bc9aec12a45623ff4c39ed972d39a8be359bde4c8f5",
+    "documentation/media-upload-performance-2026-09-29.md": "229a92815b5db5e3aeec7e859d894014b48c0854815a8c003ff292dd3b782471"
+  },
+  "profile": "preview",
+  "distribution": "internal",
+  "services": [
+    "prolific-love",
+    "hirequick-worker"
+  ],
+  "platforms": [
+    "android",
+    "ios"
+  ],
+  "schemaChanged": false,
+  "backendSnapshotPath": "/private/tmp/hq-upload-performance-backend-myad0jec",
+  "backendArchiveExclusions": [
+    ".git",
+    "node_modules",
+    "documentation",
+    "audits",
+    ".agents",
+    ".claude",
+    ".github",
+    "apps/website/public",
+    "*.rdb"
+  ],
+  "backendUploadBytes": 1065504,
+  "backendRuntimeSourceMatches": true,
+  "railwayDeployments": {
+    "api": "4b9a1f43-7cf4-4dd1-a336-dcb5458e3632",
+    "worker": "e07780fd-ef40-4ef4-acb2-d387b8da141a"
+  },
+  "previousRailwayDeployments": {
+    "api": "3c42ac19-0c87-46d9-86b2-96ad6ed44570",
+    "worker": "92759f75-6e80-4696-907e-48e82e3b3d45"
+  },
+  "mobileBuilds": {
+    "android": {
+      "id": "55747024-ceda-4619-b448-fd9f065fd9e9",
+      "version": "22",
+      "status": "FINISHED"
+    },
+    "ios": {
+      "id": "268f4467-5c89-4169-b20c-ece5c84ac80d",
+      "version": "12",
+      "status": "FINISHED"
+    }
+  },
+  "status": "completed",
+  "completedAt": "2026-09-29T15:33:37.589468+00:00"
+}

@@ -4,7 +4,7 @@
  * review → Approved progress list, and a ghost CTA to browse jobs meanwhile.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, Box, Text } from '../../theme/restyle.js';
 import { Banner } from '../../components/Banner.js';
@@ -18,6 +18,7 @@ import { StepIndicator } from '../../components/StepIndicator.js';
 import { useAuth } from '../../lib/auth-context.js';
 import { openSupport } from '../../lib/support.js';
 import { useMyVerifications } from '../../lib/hooks.js';
+import { kycNeedsReview } from '../../lib/kyc-status.js';
 
 type StepState = 'done' | 'active' | 'todo';
 
@@ -97,6 +98,15 @@ function StatusStep({
 }
 
 export default function AwaitingApproval(): React.JSX.Element {
+  const { user } = useAuth();
+  return user?.role === 'CLIENT' ? (
+    <Redirect href="/(verification)/client-verification" />
+  ) : (
+    <UsherAwaitingApproval />
+  );
+}
+
+function UsherAwaitingApproval(): React.JSX.Element {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const verifications = useMyVerifications();
@@ -109,7 +119,7 @@ export default function AwaitingApproval(): React.JSX.Element {
   }, [latest?.status, router]);
 
   const approved = latest?.status === 'APPROVED';
-  const needsReview = ['attention', 'error'].includes(latest?.govLookup?.providerStatus ?? '');
+  const needsReview = kycNeedsReview(latest?.govLookup);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const syncingRef = useRef(false);

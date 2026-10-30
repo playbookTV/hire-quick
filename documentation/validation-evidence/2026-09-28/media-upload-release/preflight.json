@@ -1,0 +1,12 @@
+{
+  "archiveBytesUncompressed": 3322889,
+  "gitExcluded": true,
+  "environmentFilesExcluded": true,
+  "uploadFixMatchesTestedSource": true,
+  "apiHealth": {
+    "status": 200,
+    "body": {
+      "status": "ok"
+    }
+  }
+}

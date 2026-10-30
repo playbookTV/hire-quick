@@ -4,14 +4,16 @@
  * kobo end-to-end, matching the ledger.
  */
 import { z } from 'zod';
-import type {
-  Bank,
-  PaystackPort,
-  TransferParams,
-  TransferResult,
-  RefundParams,
-  RefundResult,
-  CheckoutVerification,
+import {
+  TransferOtpNotRequired,
+  TransferOtpRejected,
+  type Bank,
+  type PaystackPort,
+  type TransferParams,
+  type TransferResult,
+  type RefundParams,
+  type RefundResult,
+  type CheckoutVerification,
 } from './paystack-port.js';
 
 const BASE = 'https://api.paystack.co';
@@ -248,6 +250,60 @@ export class HttpPaystack implements PaystackPort {
       if (err instanceof PaystackHttpError && err.status === 404) return { status: 'unknown' };
       throw err;
     }
+  }
+
+  /** Read an issued transfer's code and raw status; the code is needed to finalize or resend. */
+  private async pendingTransfer(reference: string) {
+    const data = parse(
+      moneyResponse.extend({ transfer_code: textValue }),
+      await this.call(`/transfer/verify/${encodeURIComponent(reference)}`),
+    );
+    if (data.reference !== reference) throw new Error('Paystack transfer reference mismatch');
+    return data;
+  }
+
+  private settledStatus(status: string): 'success' | 'failed' | 'pending' {
+    if (status === 'success') return 'success';
+    if (failedTransferStatuses.has(status)) return 'failed';
+    if (['pending', 'otp', 'processing', 'received'].includes(status)) return 'pending';
+    throw new Error('Unrecognized Paystack transfer status');
+  }
+
+  async finalizeTransfer(params: {
+    reference: string;
+    otp: string;
+  }): Promise<{ status: 'success' | 'failed' | 'pending' }> {
+    const transfer = await this.pendingTransfer(params.reference);
+    if (transfer.status !== 'otp')
+      throw new TransferOtpNotRequired(this.settledStatus(transfer.status));
+    let data: { status: string; reference?: string | undefined };
+    try {
+      data = parse(
+        z.object({ status: textValue, reference: textValue.optional() }),
+        await this.call('/transfer/finalize_transfer', {
+          method: 'POST',
+          body: JSON.stringify({ transfer_code: transfer.transfer_code, otp: params.otp }),
+        }),
+      );
+    } catch (err) {
+      // Paystack answers a wrong or expired code with a 4xx. Never echo the code.
+      if (err instanceof PaystackHttpError && err.status >= 400 && err.status < 500)
+        throw new TransferOtpRejected();
+      throw err;
+    }
+    if (data.reference !== undefined && data.reference !== params.reference)
+      throw new Error('Paystack transfer reference mismatch');
+    return { status: this.settledStatus(data.status) };
+  }
+
+  async resendTransferOtp(reference: string): Promise<void> {
+    const transfer = await this.pendingTransfer(reference);
+    if (transfer.status !== 'otp')
+      throw new TransferOtpNotRequired(this.settledStatus(transfer.status));
+    await this.call('/transfer/resend_otp', {
+      method: 'POST',
+      body: JSON.stringify({ transfer_code: transfer.transfer_code, reason: 'resend_otp' }),
+    });
   }
 
   async verifyRefund(params: RefundParams): Promise<RefundResult> {

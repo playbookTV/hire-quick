@@ -7,8 +7,9 @@ import { Card } from '../../components/Card.js';
 import { QueryState } from '../../components/QueryState.js';
 import { StatusPill } from '../../components/StatusPill.js';
 import { KeyValueRow } from '../../components/KeyValueRow.js';
-import { useWithdrawalRecord } from '../../lib/hooks.js';
+import { useWallet, useWithdrawalRecord } from '../../lib/hooks.js';
 import { money } from '../../lib/format.js';
+import { isPayoutTransfer, isWeeklyPayouts } from '../../lib/payouts.js';
 import { openSupport } from '../../lib/support.js';
 const COPY = {
   REQUESTED: 'Your request is recorded and awaiting processing.',
@@ -17,19 +18,29 @@ const COPY = {
   FAILED:
     'This transfer failed or was reversed. Check your wallet balance before requesting another withdrawal.',
 };
+/** Weekly runs retry a failed payout themselves (the amount is back in the wallet). */
+const WEEKLY_FAILED =
+  'This payout failed or was reversed. The amount is back in your wallet and goes out with the next weekly payout. Check your payout account details.';
+/** Also the target of PAYOUT_SENT / PAYOUT_FAILED notifications: a weekly payout is a withdrawal. */
 export default function WithdrawalDetails(): React.JSX.Element {
   const { id = '' } = useLocalSearchParams<{ id?: string }>();
   const query = useWithdrawalRecord(id);
+  const wallet = useWallet().data;
+  // Any failed transfer's money goes out with the next run while runs are on.
+  const weekly = isWeeklyPayouts(wallet);
+  const noun = isPayoutTransfer(query.data, wallet) ? 'payout' : 'withdrawal';
   return (
     <Box flex={1} backgroundColor="bgCanvas">
-      <AppBar title="Withdrawal details" showBack inset />
+      <AppBar title={noun === 'payout' ? 'Payout details' : 'Withdrawal details'} showBack inset />
       <Screen scroll>
         <QueryState query={query}>
           {(w) => (
             <Box style={{ gap: 20 }}>
               <Text variant="h1">{money(w.amount)}</Text>
               <StatusPill status={w.status} />
-              <Text variant="body">{COPY[w.status]}</Text>
+              <Text variant="body">
+                {weekly && w.status === 'FAILED' ? WEEKLY_FAILED : COPY[w.status]}
+              </Text>
               <Card>
                 <KeyValueRow label="Account name" value={w.bank.accountName} />
                 <KeyValueRow label="Account" value={`•••• ${w.bank.last4}`} />
@@ -48,11 +59,11 @@ export default function WithdrawalDetails(): React.JSX.Element {
                 }}
               />
               <Button
-                label="Get help with this withdrawal"
+                label={`Get help with this ${noun}`}
                 variant="ghost"
                 onPress={() => {
                   void openSupport(
-                    `Hi HireQuick support, I need help with withdrawal ${w.id}. Status: ${w.status}.`,
+                    `Hi HireQuick support, I need help with ${noun} ${w.id}. Status: ${w.status}.`,
                   );
                 }}
               />

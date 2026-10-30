@@ -11,6 +11,9 @@ interface Stats {
   users: number;
   escrowHeldKobo: number;
   approvalThresholdKobo: number;
+  owedToUshersKobo: number;
+  platformRevenueKobo: number;
+  payoutRunsAwaitingApproval: number;
 }
 
 export function Dashboard() {
@@ -21,7 +24,10 @@ export function Dashboard() {
         ['Open disputes', String(data.openDisputes), '/disputes'],
         ['Pending approvals', String(data.pendingApprovals), '/approvals'],
         ['Users', String(data.users), '/users'],
+        ['Payout runs awaiting approval', String(data.payoutRunsAwaitingApproval), '/payouts'],
         ['Escrow held', formatNaira(kobo(data.escrowHeldKobo)), '/ledger'],
+        ['Owed to ushers (wallets)', formatNaira(kobo(data.owedToUshersKobo)), '/payouts'],
+        ['HireQuick revenue not yet swept', formatNaira(kobo(data.platformRevenueKobo)), '/ledger'],
         ['Approval threshold', formatNaira(kobo(data.approvalThresholdKobo)), null],
       ]
     : [];

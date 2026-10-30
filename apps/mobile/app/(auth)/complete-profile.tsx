@@ -29,7 +29,6 @@ export default function CompleteProfile(): React.JSX.Element {
   const update = useUpdateProfile();
 
   const [name, setName] = useState('');
-  const [business, setBusiness] = useState('');
   const [bio, setBio] = useState('');
   const [years, setYears] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -60,7 +59,6 @@ export default function CompleteProfile(): React.JSX.Element {
           ? { bio: bio.trim(), yearsExperience: years }
           : {
               displayName: name.trim(),
-              ...(business.trim() ? { businessName: business.trim() } : {}),
             },
       );
       await refreshMe();
@@ -118,14 +116,6 @@ export default function CompleteProfile(): React.JSX.Element {
                   value={name}
                   onChangeText={setName}
                   autoCapitalize="words"
-                  maxLength={120}
-                />
-              </Field>
-              <Field label="Business name (optional)">
-                <Input
-                  placeholder="e.g. Lagos Events Co."
-                  value={business}
-                  onChangeText={setBusiness}
                   maxLength={120}
                 />
               </Field>

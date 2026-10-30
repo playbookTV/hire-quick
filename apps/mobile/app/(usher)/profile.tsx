@@ -1,3 +1,4 @@
+import { PhysicalAttributesSummary } from '../../components/PhysicalAttributes.js';
 import { ScrollView, RefreshControl, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -67,6 +68,7 @@ export default function UsherProfile(): React.JSX.Element {
             ) : null}
           </Box>
         </Box>
+        <PhysicalAttributesSummary value={usher?.physicalAttributes} />
         <Card>
           <Box flexDirection="row" flexWrap="wrap" justifyContent="space-around" gap="200">
             {[

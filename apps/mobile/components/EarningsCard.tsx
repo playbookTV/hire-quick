@@ -6,12 +6,15 @@ import { money } from '../lib/format.js';
 import { Sparkline } from './Sparkline.js';
 interface EarningsCardProps {
   amount: number;
+  /** Weekly payout runs pay the balance out, so there is nothing to withdraw. */
+  label?: string;
   size?: 'md' | 'lg';
   weekly?: { values: number[]; total: number };
   footer?: ReactNode;
 }
 export function EarningsCard({
   amount,
+  label = 'Available to withdraw',
   size = 'lg',
   weekly,
   footer,
@@ -20,7 +23,7 @@ export function EarningsCard({
   return (
     <Box borderRadius="xl" backgroundColor="bgElevated" padding="600" gap="150">
       <Text variant="label" color="inkOnElevatedMuted">
-        Available to withdraw
+        {label}
       </Text>
       {/* Keep currency digits grouped at large text sizes without shrinking the user's font. */}
       <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }}>

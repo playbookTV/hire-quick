@@ -13,6 +13,7 @@ import { sessionStore } from './tokens.js';
 import { createAuthSession, type AuthState } from './auth-session.js';
 import { openSupport, setSupportUser } from './support.js';
 import { queryClient, queryKeys } from './query.js';
+import { detachThisDevice, takeUnconfirmedPushToken } from './push.js';
 import type { Me, AuthResult } from './types.js';
 import { Screen } from '../components/Screen.js';
 import { Loading } from '../components/Loading.js';
@@ -33,7 +34,8 @@ export function AuthProvider({ children }: { children: ReactNode }): React.JSX.E
     createAuthSession<Me>({
       sessions: sessionStore,
       fetchMe: (signal) => api.get<Me>('/api/me', { signal }),
-      revoke: revokeRefreshToken,
+      // A device the unregister call could not remove rides along as a second chance.
+      revoke: (refreshToken) => revokeRefreshToken(refreshToken, takeUnconfirmedPushToken()),
       publish: (user) => {
         setSupportUser(user);
         if (user) queryClient.setQueryData(queryKeys.me, user);
@@ -55,7 +57,12 @@ export function AuthProvider({ children }: { children: ReactNode }): React.JSX.E
       status: state.status,
       user: state.user,
       login: session.login,
-      logout: session.logout,
+      // Detach this phone while the session can still authenticate the request.
+      logout: async () => {
+        // Bounded inside; never let push cleanup stand between the user and signing out.
+        await detachThisDevice({ session: true }).catch(() => undefined);
+        await session.logout();
+      },
       refreshMe: session.refreshMe,
     }),
     [state.status, state.user, session],

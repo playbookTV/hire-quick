@@ -3,21 +3,28 @@ import { writeAudit } from '../audit.js';
 
 // The user row exists before either the consent or device row. Locking it also
 // serializes the first registration against a first explicit opt-out.
-export async function registerDevice(userId: string, fcmToken: string, platform: 'IOS' | 'ANDROID') {
+export async function registerDevice(userId: string, token: string, platform: 'IOS' | 'ANDROID') {
   return prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId}::uuid FOR UPDATE`;
     const consent = await tx.consentRecord.findUnique({
       where: { userId_purpose: { userId, purpose: 'PUSH_NOTIFICATIONS' } },
     });
     if (consent?.granted === false) return { registered: false };
+    // A token moves to whoever signs in on the device; the last account wins.
     await tx.deviceToken.upsert({
-      where: { fcmToken },
+      where: { token },
       update: { userId, platform, lastSeenAt: new Date() },
-      create: { userId, fcmToken, platform },
+      create: { userId, token, platform },
     });
     // A token identifies a destination; it is not permission to send to it.
     return { registered: true };
   }, { timeout: 30_000, maxWait: 30_000 });
+}
+
+/** Sign-out removes this device so the previous account's pushes stop reaching it. */
+export async function unregisterDevice(userId: string, token: string): Promise<{ removed: boolean }> {
+  const { count } = await prisma.deviceToken.deleteMany({ where: { userId, token } });
+  return { removed: count > 0 };
 }
 
 export async function setConsent(userId: string, purpose: ConsentPurpose, granted: boolean) {
