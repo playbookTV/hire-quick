@@ -37,6 +37,8 @@ Specifications define intended behavior. [Current status](../docs/STATUS.md) dis
 
 ## Recent deployment
 
+- [30 October mobile UI release](mobile-ui-release-2026-10-30.md) — combined UI and payout branch, push-registration repairs, Android preview and iOS TestFlight builds.
+
 - [27 October production release](deployment-2026-10-27.md) — weekly payout runs, Expo push phase 0, identity name check, Edit profile fixes; review login kept.
 
 - [23 October production mode switch](deployment-production-mode-2026-10-23.md) — live-key outage, backend switched to `NODE_ENV=production`, staging environment started.
