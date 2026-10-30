@@ -3,17 +3,24 @@ import { useEffect, useRef, useState } from 'react';
 import { api, shortDate } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
 import { Page, State, Table, Btn, EmptyRow, ReviewPanel } from '../components/ui';
+import { BusinessVerifications } from './BusinessVerifications';
 interface Verif {
   id: string;
   status: string;
   method: string;
   provider: string | null;
   providerReferenceId?: string | null;
-  govLookup: { providerJobId?: string; providerStatus?: string; environment?: string } | null;
+  govLookup: {
+    providerJobId?: string;
+    providerStatus?: string;
+    environment?: string;
+    nameCheck?: 'matched' | 'partial' | 'mismatch' | 'unavailable';
+  } | null;
   createdAt: string;
   idDocumentUrl: string | null;
   selfieUrl: string | null;
-  usher: { user: { phone: string; email: string | null } };
+  usher: { user: { phone: string; email: string | null } } | null;
+  client: { user: { phone: string; email: string | null } } | null;
 }
 interface ReviewEvidence {
   fullName: string | null;
@@ -66,6 +73,12 @@ function Evidence({
     </div>
   );
 }
+const NAME_CHECK: Record<string, string> = {
+  matched: 'Names match the identity record',
+  partial: 'Names only partly match the identity record',
+  mismatch: 'Names do not match the identity record',
+  unavailable: 'Names could not be compared with the identity record',
+};
 function IdentityReview({
   record,
   close,
@@ -112,7 +125,8 @@ function IdentityReview({
           setEvidenceError('Evidence has not arrived yet. Try refreshing again shortly.');
         }
       } catch (e) {
-        if (active) reportSmile('SMILE_ADMIN_EVIDENCE_FAILED', record.providerReferenceId ?? undefined);
+        if (active)
+          reportSmile('SMILE_ADMIN_EVIDENCE_FAILED', record.providerReferenceId ?? undefined);
         if (active) setEvidenceError(e instanceof Error ? e.message : 'Could not load evidence.');
       }
       if (active) {
@@ -153,7 +167,8 @@ function IdentityReview({
       await api(`/api/admin/verifications/${record.id}/evidence/refresh`, { method: 'POST' });
       setRefreshRound((n) => n + 1);
     } catch (e) {
-      if (smile) reportSmile('SMILE_ADMIN_EVIDENCE_FAILED', record.providerReferenceId ?? undefined);
+      if (smile)
+        reportSmile('SMILE_ADMIN_EVIDENCE_FAILED', record.providerReferenceId ?? undefined);
       setRefreshing(false);
       setEvidenceError(e instanceof Error ? e.message : 'Could not refresh evidence.');
     } finally {
@@ -192,14 +207,14 @@ function IdentityReview({
   return (
     <ReviewPanel aria-label="Identity review">
       <div className="page-heading">
-        <h2>{record.usher.user.phone}</h2>
+        <h2>{(record.usher ?? record.client)?.user.phone}</h2>
         <Btn variant="ghost" disabled={busy} onClick={close}>
           Close review
         </Btn>
       </div>
       <p className="muted">
         {smile ? 'Check started' : 'Submitted'} {shortDate(record.createdAt)} ·{' '}
-        {record.usher.user.email ?? 'No email supplied'}
+        {(record.usher ?? record.client)?.user.email ?? 'No email supplied'}
       </p>
       {smile && (
         <div className="notice">
@@ -210,9 +225,12 @@ function IdentityReview({
                 : 'No identity evidence received'}
             </strong>
           </p>
+          {record.govLookup?.nameCheck && <p>{NAME_CHECK[record.govLookup.nameCheck]}</p>}
           <p>
             {jobId
-              ? 'Review the identity details and photos below.'
+              ? record.govLookup?.nameCheck && record.govLookup.nameCheck !== 'matched'
+                ? 'Compare the name on the identity record with the name the applicant supplied. Approve only if they belong to the same person.'
+                : 'Review the identity details and photos below.'
               : 'A capture session was started, but HireQuick has received no completed capture, identity photos, or verification result. There is nothing to review yet. The usher needs to complete identity verification in the app.'}
           </p>
           <p>
@@ -326,16 +344,23 @@ function IdentityReview({
   );
 }
 export function Verifications() {
+  const [kind, setKind] = useState<'identity' | 'business'>('identity');
   const [status, setStatus] = useState('PENDING');
   const q = useAsync<Verif[]>(() => api(`/api/admin/verifications?status=${status}`), status);
   const [selected, setSelected] = useState<Verif | null>(null);
+  if (kind === 'business') return <BusinessVerifications onIdentity={() => setKind('identity')} />;
   return (
     <Page
       title="Identity verifications"
       actions={
-        <Btn variant="ghost" disabled={q.loading || !!selected} onClick={q.reload}>
-          Reload records
-        </Btn>
+        <>
+          <Btn variant="ghost" disabled={!!selected} onClick={() => setKind('business')}>
+            Business verifications
+          </Btn>
+          <Btn variant="ghost" disabled={q.loading || !!selected} onClick={q.reload}>
+            Reload records
+          </Btn>
+        </>
       }
     >
       <p className="muted mb-5">
@@ -361,14 +386,22 @@ export function Verifications() {
           onDecision={q.reloadFresh}
         />
       )}
-      <Table head={['Usher', 'Evidence', 'Started / submitted', 'Action']}>
+      <Table head={['Account', 'Evidence', 'Started / submitted', 'Action']}>
         {q.data?.map((v) => (
           <tr key={v.id}>
-            <td>{v.usher.user.phone}</td>
+            <td>
+              {(v.usher ?? v.client)?.user.phone}
+              <br />
+              <span className="muted">{v.client ? 'Client' : 'Usher'}</span>
+            </td>
             <td>
               {v.provider === 'SMILE_ID'
                 ? v.govLookup?.providerJobId
-                  ? `Result received · ${v.govLookup?.providerStatus ?? 'Processing'}`
+                  ? `Result received · ${v.govLookup?.providerStatus ?? 'Processing'}${
+                      v.govLookup?.nameCheck && v.govLookup.nameCheck !== 'matched'
+                        ? ' · check names'
+                        : ''
+                    }`
                   : 'Capture started · no evidence received'
                 : v.idDocumentUrl && v.selfieUrl
                   ? 'ID and selfie available'

@@ -12,10 +12,12 @@ import { Icon } from '../../components/Icon.js';
 import { Card } from '../../components/Card.js';
 import { EmptyState } from '../../components/EmptyState.js';
 import { EarningsCard } from '../../components/EarningsCard.js';
+import { NextPayoutCard } from '../../components/NextPayoutCard.js';
 import { useAuth } from '../../lib/auth-context.js';
 import { useWallet, useWalletActivity, useBookings } from '../../lib/hooks.js';
 import { heldFundsCopy } from '../../lib/payment-copy.js';
 import { money, signedMoney } from '../../lib/format.js';
+import { isWeeklyPayouts } from '../../lib/payouts.js';
 
 export default function Wallet(): React.JSX.Element {
   const router = useRouter();
@@ -26,6 +28,8 @@ export default function Wallet(): React.JSX.Element {
   const bookings = useBookings();
   const pendingCount = bookings.data?.filter((b) => b.status === 'PENDING_PAYMENT').length;
   const openBookings = () => router.push('/(modals)/my-bookings');
+  // Weekly payout runs replace Withdraw; `on_demand` keeps the withdraw flow.
+  const weekly = isWeeklyPayouts(wallet.data);
   return (
     <Box flex={1} backgroundColor="bgCanvas" style={{ paddingTop: insets.top }}>
       <ScrollView
@@ -47,23 +51,38 @@ export default function Wallet(): React.JSX.Element {
           />
         }
       >
-        <ScreenHeading title="Wallet" subtitle={user?.usher?.displayName ?? undefined} />
+        <ScreenHeading
+          title="Wallet"
+          subtitle={user?.usher?.displayName ?? undefined}
+          size="large"
+        />
         <QueryState query={wallet} errorTitle="Couldn’t load your balance">
           {(balance) => (
             <>
               <EarningsCard
+                amountTone="accent"
                 amount={balance.availableBalance}
+                label={weekly ? 'Available balance' : undefined}
                 footer={
                   <Text variant="bodySm" color="inkOnElevatedMuted">
-                    Money released to your wallet.
+                    {weekly
+                      ? 'Money released to your wallet. Paid to your bank every Thursday.'
+                      : 'Money released to your wallet.'}
                   </Text>
                 }
               />
-              <Button
-                label="Withdraw to bank"
-                disabled={balance.availableBalance <= 0}
-                onPress={() => router.push('/(modals)/withdraw')}
-              />
+              {weekly ? (
+                <NextPayoutCard
+                  wallet={balance}
+                  onChooseAccount={() => router.push('/(modals)/payout-account')}
+                />
+              ) : (
+                <Button
+                  label="Withdraw to bank"
+                  disabled={balance.availableBalance <= 0}
+                  onPress={() => router.push('/(modals)/withdraw')}
+                />
+              )}
               <Text variant="headingS" color="inkMuted">
                 Not available
               </Text>
@@ -130,7 +149,7 @@ export default function Wallet(): React.JSX.Element {
           <SectionHeader
             title="Recent activity"
             appearance="heading"
-            actionLabel="Withdrawals"
+            actionLabel={weekly ? 'Payouts' : 'Withdrawals'}
             onAction={() => router.push('/(modals)/withdrawal-history')}
           />
           <QueryState query={activity} errorTitle="Couldn’t load your recent activity">

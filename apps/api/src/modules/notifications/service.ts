@@ -2,40 +2,83 @@
  * Notification fan-out (TRD §13 catalogue). Best-effort: every notify* helper
  * swallows its own errors so a failed send never breaks the lifecycle action
  * that triggered it. Lifecycle events are persisted to the in-app inbox (a
- * `Notification` row) AND fanned out via email + push (FCM stubbed). Chat
+ * `Notification` row) AND fanned out via email + push (Expo). Chat
  * (`notifyNewMessage`) and rewards stay delivery-only — chat has its own unread
  * system, and per-message inbox rows would be spam.
  */
+import { randomUUID } from 'node:crypto';
 import { prisma, type NotificationType } from '@hq/database';
-import { formatNaira, type Kobo } from '@hq/shared';
-import { sendEmail, recordPush } from './brevo.js';
+import { CHANNEL_PREFERENCE, formatNaira, type Kobo } from '@hq/shared';
+import { sendEmail } from './brevo.js';
+import { sendPush, type PushMessage } from './push.js';
 
 interface Target {
-  targetType?: string;
-  targetId?: string;
+  targetType: string;
+  targetId: string;
 }
 
-async function deliver(userId: string, title: string, body: string): Promise<void> {
+/** Push presentation for a notification; the inbox row keeps the full text. */
+type PushOptions = Partial<Pick<PushMessage, 'channel' | 'categoryId' | 'collapseId' | 'timeSensitive'>> & {
+  /** Lock-screen text when the inbox body names client-written text or other private detail. */
+  body?: string;
+  /** Sends sharing a key happen at most once (retried jobs, scheduled reminders). */
+  dedupeKey?: string;
+};
+
+async function deliver(
+  userId: string,
+  type: string,
+  title: string,
+  body: string,
+  target?: Target,
+  push: PushOptions = {},
+): Promise<void> {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
   if (user?.email) await sendEmail(user.email, title, `<p>${body}</p>`);
-  await deliverPush(userId, `${title}: ${body}`);
+  const { body: pushBody, dedupeKey, ...presentation } = push;
+  await deliverPush(
+    userId,
+    { type, title, body: pushBody ?? body, channel: 'bookings', ...presentation, ...(target ? { target } : {}) },
+    dedupeKey,
+  );
 }
 
-/** Both chat and lifecycle pushes honor the same explicit permission. */
-export async function deliverPush(userId: string, summary: string): Promise<void> {
+/**
+ * Every push honors the same explicit permission, then the channel's category
+ * switch. One dispatch row per user per push makes keyed sends idempotent and
+ * lets the app report which notification was opened.
+ */
+export async function deliverPush(userId: string, message: PushMessage, dedupeKey?: string): Promise<void> {
   // Device registration does not grant permission. Only an explicit grant
   // permits push, including for legacy tokens without a consent record.
   await prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId}::uuid FOR SHARE`;
+    const [user] = await tx.$queryRaw<{ status: string }[]>`
+      SELECT status::text AS status FROM users WHERE id = ${userId}::uuid FOR SHARE`;
+    // Suspended, pending and erased accounts cannot sign in, so nothing is sent to them.
+    if (user?.status !== 'ACTIVE') return;
     const consent = await tx.consentRecord.findUnique({
       where: { userId_purpose: { userId, purpose: 'PUSH_NOTIFICATIONS' } },
       select: { granted: true },
     });
     if (consent?.granted !== true) return;
-    const tokens = await tx.deviceToken.findMany({ where: { userId }, select: { fcmToken: true } });
+    const preference = CHANNEL_PREFERENCE[message.channel];
+    if (preference) {
+      const preferences = await tx.notificationPreference.findUnique({ where: { userId } });
+      if (preferences && !preferences[preference]) return;
+    }
+    const devices = await tx.deviceToken.findMany({ where: { userId }, select: { id: true, token: true } });
+    if (devices.length === 0) return;
+    const dispatchId = randomUUID();
+    const inserted = await tx.$queryRaw<{ id: string }[]>`
+      INSERT INTO notification_dispatches ("id", "userId", "kind", "dedupeKey", "targetType", "targetId")
+      VALUES (${dispatchId}::uuid, ${userId}::uuid, ${message.type}, ${dedupeKey ?? null},
+              ${message.target?.targetType ?? null}, ${message.target?.targetId ?? null})
+      ON CONFLICT ("dedupeKey") DO NOTHING
+      RETURNING id`;
+    if (inserted.length === 0) return;
     // Only scheduling the transport happens under the lock; no provider request
     // is awaited. A withdrawal prevents subsequent dispatch, not in-flight sends.
-    for (const token of tokens) recordPush(token.fcmToken, summary);
+    sendPush(devices, message, dispatchId);
   }, { timeout: 30_000, maxWait: 30_000 });
 }
 
@@ -50,6 +93,7 @@ async function notify(
   title: string,
   body: string,
   target?: Target,
+  push?: PushOptions,
 ): Promise<void> {
   await prisma.notification.create({
     data: {
@@ -61,7 +105,7 @@ async function notify(
       targetId: target?.targetId ?? null,
     },
   });
-  await deliver(userId, title, body);
+  await deliver(userId, type, title, body, target, push);
 }
 
 function safe(p: Promise<void>): void {
@@ -76,6 +120,8 @@ export function notifyInvitationReceived(usherUserId: string, eventTitle: string
       'New invitation',
       `You've been invited to "${eventTitle}". Tap to view and respond.`,
       { targetType: 'invitation', targetId: invitationId },
+      // Event titles are client-written and can name the venue; keep them off the lock screen.
+      { categoryId: 'invitation', body: "You've been invited to a job. Tap to view and respond." },
     ),
   );
 }
@@ -109,6 +155,27 @@ export function notifyPayoutReleased(usherUserId: string, amount: Kobo): void {
   safe(notify(usherUserId, 'PAYOUT_RELEASED', 'Payout released', `${formatNaira(amount)} has been added to your wallet.`));
 }
 
+export function notifyPayoutSent(usherUserId: string, amount: Kobo, withdrawalId: string): void {
+  safe(
+    notify(usherUserId, 'PAYOUT_SENT', 'Payout sent', `${formatNaira(amount)} has been sent to your bank account.`, {
+      targetType: 'withdrawal',
+      targetId: withdrawalId,
+    }),
+  );
+}
+
+export function notifyPayoutFailed(usherUserId: string, amount: Kobo, withdrawalId: string): void {
+  safe(
+    notify(
+      usherUserId,
+      'PAYOUT_FAILED',
+      'Payout could not be sent',
+      `${formatNaira(amount)} is back in your wallet and will be included in the next weekly payout. Check your payout account details.`,
+      { targetType: 'withdrawal', targetId: withdrawalId },
+    ),
+  );
+}
+
 export function notifyDisputeOpened(userId: string, bookingId?: string): void {
   safe(
     notify(
@@ -122,10 +189,26 @@ export function notifyDisputeOpened(userId: string, bookingId?: string): void {
 }
 
 export function notifyMilestoneUnlocked(usherUserId: string, rewardName: string): void {
-  safe(deliver(usherUserId, 'Reward unlocked! 🎉', `You've earned the "${rewardName}" reward for the jobs you've completed.`));
+  safe(
+    deliver(
+      usherUserId,
+      'MILESTONE_UNLOCKED',
+      'Reward unlocked! 🎉',
+      `You've earned the "${rewardName}" reward for the jobs you've completed.`,
+    ),
+  );
 }
 
-export function notifyNewMessage(recipientUserId: string): void {
-  // Push-only (per-message email would be spam).
-  safe(deliverPush(recipientUserId, 'New message on a booking'));
+export function notifyNewMessage(recipientUserId: string, bookingId: string): void {
+  // Push-only (per-message email would be spam); one notification per conversation.
+  safe(
+    deliverPush(recipientUserId, {
+      type: 'NEW_MESSAGE',
+      title: 'New message',
+      body: 'You have a new message on a booking.',
+      channel: 'messages',
+      target: { targetType: 'conversation', targetId: bookingId },
+      collapseId: `chat:${bookingId}`,
+    }),
+  );
 }

@@ -43,7 +43,7 @@ afterAll(async () => {
 async function seedOpenEvent(): Promise<{ eventId: string; venue: string }> {
   const u = await prisma.user.create({ data: { role: 'CLIENT', phone: newPhone() } });
   userIds.push(u.id);
-  const client = await prisma.client.create({ data: { userId: u.id, displayName: 'Test Client' } });
+  const client = await prisma.client.create({ data: { userId: u.id, displayName: 'Test Client', accountType: 'INDIVIDUAL', verificationStatus: 'VERIFIED' } });
   const venue = `12 Secret Rd, Lekki ${randomUUID().slice(0, 6)}`;
   const event = await prisma.event.create({
     data: {
@@ -102,7 +102,7 @@ describe('B4 — consent capture + push suppression', () => {
     const reg = await request(app)
       .post('/api/me/devices')
       .set('Authorization', `Bearer ${token}`)
-      .send({ fcmToken: `tok-${randomUUID()}`, platform: 'ANDROID' });
+      .send({ token: `ExponentPushToken[${randomUUID()}]`, platform: 'ANDROID' });
     expect(reg.status).toBe(201);
 
     const granted = await prisma.consentRecord.findUnique({

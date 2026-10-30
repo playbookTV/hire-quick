@@ -35,11 +35,12 @@ export function createHttpClient(baseUrl: string, sessions: SessionStore, transp
       ...(opts.signal ? { signal: opts.signal } : {}),
     });
   };
-  const revoke = async (refreshToken: string): Promise<void> => {
+  const revoke = async (refreshToken: string, pushToken?: string | null): Promise<void> => {
     const abort = new AbortController();
     const timer = setTimeout(() => abort.abort(), 5000);
+    const body = pushToken ? { refreshToken, pushToken } : { refreshToken };
     try {
-      await send('/auth/logout', { method: 'POST', auth: false, body: { refreshToken }, signal: abort.signal }, null);
+      await send('/auth/logout', { method: 'POST', auth: false, body, signal: abort.signal }, null);
     } catch {
       // Local fencing does not depend on a reachable logout endpoint.
     } finally { clearTimeout(timer); }

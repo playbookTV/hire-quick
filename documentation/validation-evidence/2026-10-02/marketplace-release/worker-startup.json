@@ -1,0 +1,1 @@
+{"service":"hirequick-worker","env":"staging","timestamp":"2026-10-02T12:23:59.483419083Z","level":"info","message":"[worker] scheduled jobs ready","time":1790943839323,"release":"hq-sentry-20260928"}

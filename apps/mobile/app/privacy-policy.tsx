@@ -34,11 +34,20 @@ export default function PrivacyPolicy(): React.JSX.Element {
               <Text variant="bodySm" color="inkMuted">
                 Version {policy.version} · Effective {policy.effectiveDate}
               </Text>
-              {policy.body.split('\n\n').map((p, i) => (
-                <Text key={i} variant={p.startsWith('#') ? 'h2' : 'body'}>
-                  {p.replace(/^#+\s*/, '')}
-                </Text>
-              ))}
+              <Box>
+                {policy.body.split('\n\n').map((p, i, paragraphs) => (
+                  <Text
+                    key={i}
+                    variant={p.startsWith('#') ? 'h2' : 'body'}
+                    accessibilityRole={p.startsWith('#') ? 'header' : undefined}
+                    marginTop={
+                      i === 0 ? 'none' : paragraphs[i - 1]?.startsWith('#') ? '150' : '400'
+                    }
+                  >
+                    {p.replace(/^#+\s*/, '')}
+                  </Text>
+                ))}
+              </Box>
               {user ? (
                 <Button
                   label={accept.isSuccess ? 'Acknowledged' : 'Acknowledge policy'}

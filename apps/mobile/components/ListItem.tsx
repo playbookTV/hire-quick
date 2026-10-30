@@ -2,6 +2,7 @@
  * ListItem — matches Figma `ListItem` (122:87): leading icon + Title/Subtitle +
  * trailing text action. Bordered surface, radius md, 16px padding.
  */
+import { fonts } from '../theme/fonts.js';
 import { Pressable } from 'react-native';
 import { Box, Text } from '../theme/restyle.js';
 import { Icon, type IconName } from './Icon.js';
@@ -16,7 +17,14 @@ interface ListItemProps {
   onPress?: () => void;
 }
 
-export function ListItem({ icon, title, subtitle, actionLabel, onAction, onPress }: ListItemProps): React.JSX.Element {
+export function ListItem({
+  icon,
+  title,
+  subtitle,
+  actionLabel,
+  onAction,
+  onPress,
+}: ListItemProps): React.JSX.Element {
   const row = (
     <Box
       flexDirection="row"
@@ -30,7 +38,12 @@ export function ListItem({ icon, title, subtitle, actionLabel, onAction, onPress
     >
       {icon ? <Icon name={icon} size={20} color="inkStrong" /> : null}
       <Box flex={1}>
-        <Text variant="label" style={{ fontSize: 15, lineHeight: 20 }} color="inkStrong" numberOfLines={1}>
+        <Text
+          variant="label"
+          style={{ fontSize: 15, lineHeight: 20 }}
+          color="inkStrong"
+          numberOfLines={1}
+        >
           {title}
         </Text>
         {subtitle ? (
@@ -42,8 +55,13 @@ export function ListItem({ icon, title, subtitle, actionLabel, onAction, onPress
       {actionLabel ? (
         <Pressable onPress={onAction} hitSlop={8}>
           <Text
-            style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 13, lineHeight: 16, letterSpacing: 0.2 }}
-            color="brandEmerald"
+            style={{
+              fontFamily: fonts.sansSemibold,
+              fontSize: 13,
+              lineHeight: 16,
+              letterSpacing: 0.2,
+            }}
+            color="brandAccentText"
           >
             {actionLabel}
           </Text>

@@ -1,3 +1,7 @@
+import { invitationReplySchema, inviteBatchSchema, type PresentationPreferences } from '@hq/shared';
+import { withdrawApplication, inviteManyToEvent } from './recruitment.js';
+import { assertPresentationAllowed } from './presentation.js';
+import { writeAudit } from '../audit.js';
 /**
  * Events, applications, invitations, and confirm-batch (TRD §7/§24, PRD §7).
  * Both hiring models converge: accepting an invitation yields an ACCEPTED
@@ -9,6 +13,7 @@ import { prisma, type Prisma } from '@hq/database';
 import { createEventSchema, staffingCounts, type BookingStatus } from '@hq/shared';
 import { ApiError } from '../../app.js';
 import { requireAuth, type AuthedRequest } from '../auth/middleware.js';
+import { publicClientSelect } from '../verification/client-access.js';
 import { requireIdempotencyKey } from '../payments/http/middleware.js';
 import { confirmBatch } from '../bookings/service.js';
 import { editEvent } from './edit.js';
@@ -63,10 +68,12 @@ async function usherFor(userId: string): Promise<string> {
 function eventPreferences(b: {
   requirements?: string | undefined;
   hairstyle?: string | undefined;
-}): Record<string, string> | undefined {
-  const p: Record<string, string> = {};
+  presentation?: PresentationPreferences | null | undefined;
+}): Prisma.InputJsonObject | undefined {
+  const p: Record<string, Prisma.InputJsonValue> = {};
   if (b.requirements) p.requirements = b.requirements;
   if (b.hairstyle) p.hairstyle = b.hairstyle;
+  if (b.presentation) p.presentation = b.presentation;
   return Object.keys(p).length > 0 ? p : undefined;
 }
 
@@ -94,23 +101,37 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
       const clientId = await clientFor(req.auth.userId);
       const b = createEventSchema.parse(req.body);
       const prefs = eventPreferences(b);
-      const event = await prisma.event.create({
-        data: {
-          clientId,
-          title: b.title,
-          venue: b.venue,
-          state: b.state ?? null,
-          category: b.category,
-          eventDate: b.eventDate,
-          startTime: b.startTime,
-          endTime: b.endTime,
-          headcount: b.headcount,
-          budgetPerHead: b.budgetPerHeadKobo,
-          dressCode: b.dressCode ?? null,
-          accommodation: b.accommodation ?? null,
-          ...(prefs ? { preferences: prefs } : {}),
-          status: 'OPEN',
-        },
+      const event = await prisma.$transaction(async (tx) => {
+        await assertPresentationAllowed(tx, b.category, b.presentation);
+        const created = await tx.event.create({
+          data: {
+            clientId,
+            title: b.title,
+            venue: b.venue,
+            state: b.state ?? null,
+            category: b.category,
+            eventDate: b.eventDate,
+            startTime: b.startTime,
+            endTime: b.endTime,
+            headcount: b.headcount,
+            budgetPerHead: b.budgetPerHeadKobo,
+            dressCode: b.dressCode ?? null,
+            accommodation: b.accommodation ?? null,
+            ...(prefs ? { preferences: prefs } : {}),
+            status: 'OPEN',
+          },
+        });
+        if (b.presentation)
+          await writeAudit(
+            {
+              actorId: req.auth.userId,
+              action: 'event.presentation.set',
+              target: created.id,
+              metadata: { fields: Object.keys(b.presentation.attributes) },
+            },
+            tx,
+          );
+        return created;
       });
       res.status(201).json(event);
     }),
@@ -120,6 +141,18 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
   r.get(
     '/events',
     wrap(async (req, res) => {
+      const { query } = z.object({ query: z.string().trim().max(120).optional() }).parse(req.query);
+      const search: Prisma.EventWhereInput = query
+        ? {
+            OR: [
+              { title: { contains: query, mode: 'insensitive' } },
+              { category: { contains: query, mode: 'insensitive' } },
+              { state: { contains: query, mode: 'insensitive' } },
+              { client: { businessName: { contains: query, mode: 'insensitive' } } },
+              { client: { displayName: { contains: query, mode: 'insensitive' } } },
+            ],
+          }
+        : {};
       if (req.auth.role === 'USHER') {
         const usherId = await usherFor(req.auth.userId);
         const me = await prisma.usher.findUnique({
@@ -130,10 +163,16 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
         // Untagged events (state: null) stay visible to everyone; ushers with no
         // state set yet see all until they choose one.
         const where: Prisma.EventWhereInput = { status: { in: ['OPEN', 'PARTIALLY_STAFFED'] } };
-        if (me?.state) where.OR = [{ state: me.state }, { state: null }];
+        where.AND = [
+          search,
+          ...(me?.state ? [{ OR: [{ state: me.state }, { state: null }] }] : []),
+        ];
         const events = await prisma.event.findMany({
           where,
-          include: { bookings: { select: { status: true } } },
+          include: {
+            bookings: { select: { status: true } },
+            client: { select: publicClientSelect },
+          },
           orderBy: { eventDate: 'asc' },
         });
         // Mask the precise venue per event unless this usher already has escrow
@@ -154,7 +193,7 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
       }
       const clientId = await clientFor(req.auth.userId);
       const events = await prisma.event.findMany({
-        where: { clientId },
+        where: { clientId, AND: [search] },
         orderBy: { createdAt: 'desc' },
         include: { bookings: { select: { status: true } } },
       });
@@ -169,6 +208,7 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
         where: { id: String(req.params.id) },
         include: {
           _count: { select: { applications: true, bookings: true } },
+          client: { select: publicClientSelect },
           bookings: { select: { status: true } },
         },
       });
@@ -264,7 +304,7 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
       const apps = await prisma.application.findMany({
         where: { usherId },
         orderBy: { createdAt: 'desc' },
-        include: { event: true },
+        include: { event: { include: { client: { select: publicClientSelect } } } },
       });
       const bookings = await prisma.booking.findMany({
         where: { usherId },
@@ -324,7 +364,7 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
       const rows = await prisma.savedJob.findMany({
         where: { usherId },
         orderBy: { createdAt: 'desc' },
-        include: { event: true },
+        include: { event: { include: { client: { select: publicClientSelect } } } },
       });
       const unlocked = await venueUnlockedEventIds(
         usherId,
@@ -338,6 +378,37 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
           }),
         ),
       );
+    }),
+  );
+
+  r.post(
+    '/applications/:id/withdraw',
+    wrap(async (req, res) => {
+      const id = z.string().uuid().parse(req.params.id);
+      res.json(await withdrawApplication(deps.prisma, id, req.auth.userId));
+    }),
+  );
+
+  r.post(
+    '/events/:id/invite-batch',
+    wrap(async (req, res) => {
+      const clientId = await clientFor(req.auth.userId);
+      const eventId = z.string().uuid().parse(req.params.id);
+      const { usherIds } = inviteBatchSchema.parse(req.body);
+      const result = await inviteManyToEvent(deps.prisma, eventId, clientId, usherIds);
+      for (const { invitation, notify } of result.invitations) {
+        if (!notify) continue;
+        const usher = await prisma.usher.findUniqueOrThrow({
+          where: { id: invitation.usherId },
+          select: { userId: true },
+        });
+        notifyInvitationReceived(usher.userId, result.event.title, invitation.id);
+        deps.realtime?.emitToUser(usher.userId, RT.INVITATION_RECEIVED, {
+          invitationId: invitation.id,
+          eventId,
+        });
+      }
+      res.status(201).json(result.invitations.map((row) => row.invitation));
     }),
   );
 
@@ -409,6 +480,8 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
           id: true,
           status: true,
           createdAt: true,
+          declineReason: true,
+          declineNote: true,
           usher: { select: { id: true, displayName: true } },
         },
       });
@@ -453,7 +526,7 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
         where: { usherId },
         orderBy: { createdAt: 'desc' },
         include: {
-          event: { include: { client: { select: { displayName: true, businessName: true } } } },
+          event: { include: { client: { select: publicClientSelect } } },
         },
       });
       const unlocked = await venueUnlockedEventIds(
@@ -480,7 +553,7 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
       const inv = await prisma.invitation.findUniqueOrThrow({
         where: { id: String(req.params.id) },
         include: {
-          event: { include: { client: { select: { displayName: true, businessName: true } } } },
+          event: { include: { client: { select: publicClientSelect } } },
         },
       });
       if (inv.usherId !== usherId) throw new ApiError(404, 'NOT_FOUND', 'invitation not found');
@@ -500,9 +573,15 @@ export function eventsRouter(deps: EventsDeps, storage?: StoragePort): Router {
     '/invitations/:id',
     wrap(async (req, res) => {
       const usherId = await verifiedUsherFor(req.auth.userId);
-      const { status } = z.object({ status: z.enum(['ACCEPTED', 'DECLINED']) }).parse(req.body);
-      await replyToInvitation(deps.prisma, String(req.params.id), usherId, status);
-      res.json({ status });
+      const reply = invitationReplySchema.parse(req.body);
+      await replyToInvitation(
+        deps.prisma,
+        String(req.params.id),
+        usherId,
+        reply.status,
+        reply.status === 'DECLINED' ? reply : undefined,
+      );
+      res.json({ status: reply.status });
     }),
   );
 

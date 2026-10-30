@@ -1,0 +1,14 @@
+{
+  "id": "268f4467-5c89-4169-b20c-ece5c84ac80d",
+  "platform": "IOS",
+  "status": "FINISHED",
+  "appBuildVersion": "12",
+  "gitCommitHash": "b73b15677a47b3895769f3aef50a3c404885aa24",
+  "buildProfile": "preview",
+  "createdAt": "2026-09-29T15:00:09.315Z",
+  "completedAt": "2026-09-29T15:09:49.173Z",
+  "artifacts": {
+    "buildUrl": "https://expo.dev/artifacts/eas/Bk_AFJvze4fuWhv9TzYMLfr-34SQd8QdlvTkErsxN6g.ipa",
+    "applicationArchiveUrl": "https://expo.dev/artifacts/eas/Bk_AFJvze4fuWhv9TzYMLfr-34SQd8QdlvTkErsxN6g.ipa"
+  }
+}

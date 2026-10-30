@@ -1,0 +1,14 @@
+{
+  "id": "55747024-ceda-4619-b448-fd9f065fd9e9",
+  "platform": "ANDROID",
+  "status": "FINISHED",
+  "appBuildVersion": "22",
+  "gitCommitHash": "b73b15677a47b3895769f3aef50a3c404885aa24",
+  "buildProfile": "preview",
+  "createdAt": "2026-09-29T14:59:19.639Z",
+  "completedAt": "2026-09-29T15:32:34.041Z",
+  "artifacts": {
+    "buildUrl": "https://expo.dev/artifacts/eas/938heJNTOS7_zDK4F_6ns3Kw1UkasbElnXRcE-cxBP0.apk",
+    "applicationArchiveUrl": "https://expo.dev/artifacts/eas/938heJNTOS7_zDK4F_6ns3Kw1UkasbElnXRcE-cxBP0.apk"
+  }
+}

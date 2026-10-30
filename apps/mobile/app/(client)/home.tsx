@@ -8,6 +8,7 @@ import { StaffCard } from '../../components/StaffCard.js';
 import { EmptyState } from '../../components/EmptyState.js';
 import { Box, useTheme } from '../../theme/restyle.js';
 import { HomeHeading } from '../../components/ScreenHeading.js';
+import { PushPrompt } from '../../components/PushPrompt.js';
 import { screenTokens } from '../../theme/token-manager.js';
 import { money } from '../../lib/format.js';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -44,10 +45,13 @@ export default function ClientHome(): React.JSX.Element {
       >
         <Box style={{ paddingHorizontal: screenTokens.gutter, gap: screenTokens.sectionGap }}>
           <HomeHeading
+            size="large"
+            badgeTone="brand"
             name={firstName}
             unread={unread}
             onNotifications={() => router.push('/(modals)/notifications')}
           />
+          <PushPrompt role="CLIENT" />
 
           {/* quick actions */}
           <Box flexDirection="row" style={{ gap: 8 }}>

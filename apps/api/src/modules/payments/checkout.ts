@@ -25,7 +25,7 @@ async function activeCheckoutOwner(tx: Tx, orderId: string): Promise<boolean> {
 export async function notifyCheckoutHeld(prisma: PrismaClient, orderId: string, realtime: RealtimeGateway = noopGateway): Promise<void> {
   const bookings = await prisma.booking.findMany({ where: { orderId }, include: { usher: true, event: { include: { client: true } } } });
   for (const booking of bookings) {
-    notifyBookingConfirmed(booking.usher.userId);
+    notifyBookingConfirmed(booking.usher.userId, booking.id);
     const payload = bookingEvent(booking.id, 'CONFIRMED');
     realtime.emitToUser(booking.usher.userId, RT.BOOKING_CONFIRMED, payload);
     realtime.emitToUser(booking.event.client.userId, RT.BOOKING_CONFIRMED, payload);

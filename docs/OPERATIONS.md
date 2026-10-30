@@ -20,6 +20,8 @@ Source: [queues.ts](../apps/api/src/modules/jobs/queues.ts), [runtime.ts](../app
 | `resumeOps`      | `*/15 * * * *`    | Resume durable payment operations and reconcile stuck withdrawals                            |
 | `reconcile`      | `17 3 * * *`      | Compare ledger expectation with provider balance; flag stale held funds                      |
 | `commission`     | `23 4 * * *`      | Sweep platform fees if operating recipient configured                                        |
+| `payoutRun`      | `0 8 * * 4`       | Thursday 09:00 Lagos: build the week's payout run as a DRAFT for admins; never sends money    |
+| `pushReceipts`   | `8-59/15 * * * *` | Read Expo delivery receipts for tickets older than 15 minutes; delete devices Expo reports as unregistered; drop tickets past 24 hours |
 | `retentionPurge` | `41 2 * * *`      | Purge eligible transient PII and expire denylist records                                     |
 | `auditVerify`    | `47 2 * * *`      | Verify the hash chain and log any break                                                      |
 
@@ -44,6 +46,19 @@ The 30-minute expiry is not permission to assume failure. Provider timeout, miss
 5. Only a new, intentional withdrawal after a confirmed failed outcome should use a fresh logical request key.
 
 Never set `availableBalance` manually or insert a ledger row outside the ledger service. A screenshot of a client receipt is not sufficient provider evidence.
+
+## Weekly payout run (Thursday)
+
+Policy: [23 October decisions](../documentation/payments/weekly-payouts-decisions-2026-10-23.md). Mechanics: [Payments](PAYMENTS.md#weekly-payout-runs).
+
+1. At 09:00 Lagos the worker builds the run as a DRAFT. If it reports `RUN_IN_PROGRESS`, an earlier run is still awaiting approval or execution: finish or reject it, then build again with `POST /api/admin/payout-runs/build`.
+2. **Reviewer (admin A).** Open the run. Check the total against the expected week, look at every `NEW_PAYOUT_ACCOUNT` and `FIRST_PAYOUT` flag, and confirm each exclusion reason. If balances changed since 09:00, rebuild (refresh) before submitting. Submit.
+3. **Approver (admin B, not A).** Re-read the same list and approve. Approval creates one withdrawal per line (wallets are debited now) and starts the transfers.
+4. **Transfer codes (while Paystack transfer OTP is on).** Paystack sends the account owner one code per transfer. Enter each code on its line. A refused code returns `OTP_REJECTED`; request a new one with "resend". `OTP_NOT_REQUIRED` with "has not reached Paystack yet" means dispatch has not run for that line: use "send again" (`/dispatch`), then enter the code.
+5. Lines settle by webhook: PAID, or FAILED with the money back in the wallet for next week. Skipped lines (suspended, account changed, balance lower than approved) keep their balance.
+6. A run approved but stuck before EXECUTED is resumed by `resumeOps`. Never create a manual withdrawal or ledger row to "help" a run along.
+
+Do not switch `PAYOUT_MODE` to `weekly` until the first run has been approved, and only after pre-launch TEST balances and recipient codes have been cleared ([production switch record](../documentation/deployment-production-mode-2026-10-23.md)).
 
 ## Refund remains pending
 
@@ -85,6 +100,8 @@ Redis failure affects limiting, scheduled work, and convenience signals. Current
 
 Use verification, dispute, approval, ledger, user, and reward screens with an existing admin account. Actions above ₦50,000 require a separate checker. An APPROVED record may await provider execution; EXECUTED is the completed action state. Do not bypass maker-checker by directly editing the database.
 
+The pending verification counter includes personal and business checks. In Verifications, switch to Business verifications for registry and representative-authority review. A verified registry match is not approval to act for the business: inspect the representative's verified identity and authority document before confirming. Unavailable results remain gated; refresh the original job, or reject with an actionable reason after resolving provider setup. Never grant trust by changing an account label. See [Smile ID](SMILE-ID.md#mandatory-clients-and-business-verification) for release/activation and evidence-retention limits.
+
 Late client cancellation can be unsupported even though the policy computes an intended split. Post-payout disputes are blocked pending clawback support. Capture the case for product/payment operations and follow an approved resolution process; the existing API does not implement arbitrary split settlement.
 
 ## Retention, backup, and restore
@@ -96,3 +113,11 @@ Maintain provider/database backups and conduct restore drills in an isolated env
 ## Close an incident
 
 Record root cause, impacted interval/entities, reconciled provider and ledger outcomes, recovery commands, reviewer/owner, and regression tests or follow-up work. Remove sensitive values from shareable evidence. Update the relevant guide if the response exposed a missing procedure.
+
+## Marketplace reports and presentation preferences
+
+Use **Marketplace reports** to filter the private queue, read a concern, and record an investigation or resolution. A stale review is rejected; reload the record before submitting another decision. Report review does not freeze escrow, cancel bookings or suspend users. Use the existing dispute/account workflows when those actions are warranted. Avoid putting unnecessary identity or payment details into review notes.
+
+The same page allows physical preferences to be disabled per event category. Enter the category's exact spelling (case is normalized). This blocks new/edited preferences; it does not retroactively rewrite existing jobs. Review existing listings individually. One report is retained per reporter/target, so repeated submissions return the original receipt.
+
+Roll out the marketplace migration before the API/admin/mobile changes. Updated mobile code is required for the new screens and `hirequick://jobs/` route. Local export/test evidence does not constitute a deployed native release.

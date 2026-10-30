@@ -1,3 +1,9 @@
+import { useState } from 'react';
+import { DECLINE_REASONS } from '@hq/shared';
+import { Select } from '../../components/Select.js';
+import { Field } from '../../components/Field.js';
+import { TextArea } from '../../components/TextArea.js';
+import { PhysicalAttributesSummary } from '../../components/PhysicalAttributes.js';
 /**
  * Invitation — matches Figma `Usher / 04 Invitation` (49:150): an emerald hero,
  * the event summary card, a warning that accepting only reserves the slot (the
@@ -8,8 +14,11 @@
  * creates an ACCEPTED application the client can then confirm into a booking.
  */
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { clientTrustLabel } from '@hq/shared';
+import { Badge } from '../../components/Badge.js';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, Box, Text } from '../../theme/restyle.js';
+import { Card } from '../../components/Card.js';
 import { Screen } from '../../components/Screen.js';
 import { AppBar } from '../../components/AppBar.js';
 import { Button } from '../../components/Button.js';
@@ -19,13 +28,15 @@ import { Icon } from '../../components/Icon.js';
 import { Loading } from '../../components/Loading.js';
 import { EmptyState } from '../../components/EmptyState.js';
 import { StatusPill } from '../../components/StatusPill.js';
-import { shadowMd } from '../../theme/shadows.js';
 import { useInvitation, useRespondInvitation, useBookings } from '../../lib/hooks.js';
 import { useToast } from '../../lib/toast.js';
 import { money, dateTime } from '../../lib/format.js';
 import { userMessage } from '../../lib/api-error.js';
 
 export default function Invitation(): React.JSX.Element {
+  const [declining, setDeclining] = useState(false);
+  const [reason, setReason] = useState<(typeof DECLINE_REASONS)[number] | null>(null);
+  const [note, setNote] = useState('');
   const router = useRouter();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -67,26 +78,81 @@ export default function Invitation(): React.JSX.Element {
   const busy = respond.isPending;
 
   const onAccept = (): void => {
-    respond.mutate('ACCEPTED', {
-      onSuccess: () => {
-        toast.success(
-          'You’ve accepted. You’ll be booked once the client pays.',
-          'Invitation accepted',
-        );
-        router.replace('/(modals)/invitations');
+    respond.mutate(
+      { status: 'ACCEPTED' },
+      {
+        onSuccess: () => {
+          toast.success(
+            'You’ve accepted. You’ll be booked once the client pays.',
+            'Invitation accepted',
+          );
+          router.replace('/(modals)/invitations');
+        },
+        onError: (e: unknown) => toast.error(userMessage(e), 'Couldn’t accept'),
       },
-      onError: (e: unknown) => toast.error(userMessage(e), 'Couldn’t accept'),
-    });
+    );
   };
   const onDecline = (): void => {
-    respond.mutate('DECLINED', {
-      onSuccess: () => {
-        toast.info('Invitation declined.');
-        router.back();
+    if (!declining) {
+      setDeclining(true);
+      return;
+    }
+    if (!reason) return;
+    respond.mutate(
+      { status: 'DECLINED', reason, note: note.trim() },
+      {
+        onSuccess: () => {
+          toast.info('Invitation declined.');
+          router.back();
+        },
+        onError: (e: unknown) => toast.error(userMessage(e), 'Couldn’t decline'),
       },
-      onError: (e: unknown) => toast.error(userMessage(e), 'Couldn’t decline'),
-    });
+    );
   };
+
+  if (declining)
+    return (
+      <Box flex={1} backgroundColor="bgCanvas">
+        <AppBar
+          title="Decline invitation"
+          showBack
+          onBack={() => {
+            if (!busy) setDeclining(false);
+          }}
+          inset
+        />
+        <Screen scroll>
+          <Box gap="300">
+            <Text variant="headingS">Tell the client why</Text>
+            <Field label="Decline reason" required>
+              <Select
+                value={reason}
+                options={DECLINE_REASONS.map((v) => ({ value: v, label: v }))}
+                onSelect={setReason}
+              />
+            </Field>
+            <Field
+              label="Note (optional)"
+              helper="Your reason and note will be shared with the client."
+            >
+              <TextArea value={note} onChangeText={setNote} maxLength={500} />
+            </Field>
+            <Button
+              label="Confirm decline"
+              onPress={onDecline}
+              disabled={!reason || busy}
+              loading={busy}
+            />
+            <Button
+              label="Keep invitation"
+              variant="ghost"
+              disabled={busy}
+              onPress={() => setDeclining(false)}
+            />
+          </Box>
+        </Screen>
+      </Box>
+    );
 
   return (
     <Box flex={1} backgroundColor="bgCanvas">
@@ -94,30 +160,29 @@ export default function Invitation(): React.JSX.Element {
       <Screen scroll>
         <Box style={{ gap: 16 }}>
           {/* hero */}
-          <Box
-            alignItems="center"
-            borderRadius="lg"
-            style={[{ backgroundColor: theme.colors.brandSurface, padding: 20, gap: 12 }, shadowMd]}
-          >
-            <Box
-              style={{
-                width: 56,
-                height: 56,
-                borderRadius: 28,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: theme.colors.brandEmeraldStrong,
-              }}
-            >
-              <Icon name="mail" size={26} color="inverseInk" />
+          <Card variant="elevated" radius="xl" padding="500">
+            <Box alignItems="center" gap="300">
+              <Box
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 28,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: theme.colors.brandEmeraldStrong,
+                }}
+              >
+                <Icon name="mail" size={26} color="inverseInk" />
+              </Box>
+              <Text variant="h2" color="inverseInk">
+                You’re invited!
+              </Text>
+              <Text variant="body" color="brandEmeraldTint" style={{ textAlign: 'center' }}>
+                {clientName} invited you to usher at {ev.title}.
+              </Text>
+              {clientTrustLabel(ev.client) ? <Badge label={clientTrustLabel(ev.client)!} /> : null}
             </Box>
-            <Text variant="h2" color="inverseInk">
-              You’re invited!
-            </Text>
-            <Text variant="body" color="brandEmeraldTint" style={{ textAlign: 'center' }}>
-              {clientName} invited you to usher at {ev.title}.
-            </Text>
-          </Box>
+          </Card>
 
           {/* event */}
           <Box
@@ -148,6 +213,33 @@ export default function Invitation(): React.JSX.Element {
             />
           </Box>
 
+          <Button
+            label="View client profile"
+            variant="ghost"
+            onPress={() =>
+              router.push({ pathname: '/(modals)/client-profile', params: { id: ev.clientId } })
+            }
+          />
+          <Button
+            label="View full job details"
+            variant="ghost"
+            onPress={() =>
+              router.push({ pathname: '/(modals)/event-details', params: { id: ev.id } })
+            }
+          />
+          <PhysicalAttributesSummary
+            value={ev.preferences?.presentation?.attributes}
+            title="Physical preferences"
+          />
+          {ev.preferences?.presentation?.rationale ? (
+            <Text variant="body">{ev.preferences.presentation.rationale}</Text>
+          ) : null}
+          {data.declineReason ? (
+            <Text variant="bodySm">
+              {data.declineReason}
+              {data.declineNote ? ` · ${data.declineNote}` : ''}
+            </Text>
+          ) : null}
           {pending ? (
             <Banner
               tone="warning"
@@ -179,10 +271,15 @@ export default function Invitation(): React.JSX.Element {
           }}
         >
           <Box flex={1}>
-            <Button label="Decline" variant="secondary" onPress={onDecline} disabled={busy} />
+            <Button
+              label="Decline"
+              variant="secondary"
+              onPress={onDecline}
+              disabled={busy || declining}
+            />
           </Box>
           <Box flex={1}>
-            <Button label={busy ? '…' : 'Accept'} onPress={onAccept} disabled={busy} />
+            <Button label={busy ? '…' : 'Accept'} onPress={onAccept} disabled={busy || declining} />
           </Box>
         </Box>
       ) : (

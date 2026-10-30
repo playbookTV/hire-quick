@@ -1,18 +1,24 @@
 /** Figma filter chip with a persistent selection mark and native touch target. */
 import { useState } from 'react';
-import { useTheme, Text } from '../theme/restyle.js';
+import { StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme, Box, Text } from '../theme/restyle.js';
 import { AnimatedPressable } from './Pressable.js';
+import { Icon } from './Icon.js';
+import { canvasTokens } from '../theme/token-manager.js';
 interface ChipProps {
   label: string;
   selected?: boolean;
   onPress?: () => void;
   disabled?: boolean;
+  variant?: 'filter' | 'tab';
 }
 export function Chip({
   label,
   selected = false,
   onPress,
   disabled = false,
+  variant = 'filter',
 }: ChipProps): React.JSX.Element {
   const theme = useTheme();
   const [pressed, setPressed] = useState(false);
@@ -22,7 +28,9 @@ export function Chip({
     : selected
       ? pressed
         ? 'inkOnAccent'
-        : 'inkInverse'
+        : variant === 'filter'
+          ? 'inkOnElevated'
+          : 'inkInverse'
       : 'inkDefault';
   return (
     <AnimatedPressable
@@ -44,11 +52,11 @@ export function Chip({
         gap: theme.spacing['150'],
         minHeight: 44,
         minWidth: 44,
-        paddingHorizontal: theme.spacing['300'],
+        paddingHorizontal: theme.spacing[variant === 'tab' ? '500' : '300'],
         paddingVertical: theme.spacing['200'],
         borderRadius: theme.borderRadii.pill,
-        borderWidth: 1.5,
-        borderColor: selected ? theme.colors.bgInverse : theme.colors.borderControl,
+        borderWidth: selected ? 0 : variant === 'tab' ? 1 : 1.5,
+        borderColor: variant === 'tab' ? theme.colors.borderDefault : theme.colors.borderControl,
         backgroundColor: disabled
           ? theme.colors.actionDisabled
           : selected
@@ -63,10 +71,28 @@ export function Chip({
         outlineOffset: 2,
       }}
     >
-      {selected ? (
-        <Text variant="label" color={fg} accessible={false}>
-          ✓
-        </Text>
+      {selected && variant === 'filter' && !disabled && !pressed ? (
+        <LinearGradient
+          colors={canvasTokens.elevatedGradient}
+          pointerEvents="none"
+          style={[StyleSheet.absoluteFill, { borderRadius: theme.borderRadii.pill }]}
+        />
+      ) : null}
+      {selected && variant === 'filter' ? (
+        <Box
+          width={22}
+          height={22}
+          borderRadius="pill"
+          alignItems="center"
+          justifyContent="center"
+          style={{
+            backgroundColor: canvasTokens.selectionWell,
+            borderBottomWidth: 1,
+            borderBottomColor: canvasTokens.selectionEdge,
+          }}
+        >
+          <Icon name="check" size={13} color="inkOnElevated" />
+        </Box>
       ) : null}
       <Text variant="label" color={fg} style={{ flexShrink: 1 }}>
         {label}

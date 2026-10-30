@@ -37,6 +37,8 @@ export const queryKeys = {
   bankAccounts: ['bank-accounts'] as const,
   availability: (range?: string) => ['availability', range ?? 'all'] as const,
   notifications: ['me', 'notifications'] as const,
+  notificationPreferences: ['me', 'notification-preferences'] as const,
+  consents: ['consents'] as const,
   invitations: ['me', 'invitations'] as const,
   invitation: (id: string) => ['me', 'invitations', id] as const,
 };

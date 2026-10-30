@@ -36,6 +36,12 @@ const EnvSchema = z.object({
   OTP_VERIFIER_SECRET: z.string().default(''),
   // Explicit, server-only access for the four seeded staging QA identities.
   STAGING_QA_OTP_CODE: z.union([z.literal(''), z.string().regex(/^[0-9]{6}$/)]).default(''),
+  // App-store review sign-in (auth/app-review.ts): one existing account's phone,
+  // a fixed 6-digit code and an ISO end time at most 31 days ahead. Checked when
+  // used, not at boot: incomplete, weak or expired values just keep it off.
+  APP_REVIEW_PHONE: z.string().trim().default(''),
+  APP_REVIEW_OTP_CODE: z.string().trim().default(''),
+  APP_REVIEW_LOGIN_UNTIL: z.string().trim().default(''),
   OTP_VERIFIER_KEY_ID: z.string().regex(/^[a-zA-Z0-9_-]{1,32}$/).default('v1'),
   OTP_VERIFIER_PREVIOUS_SECRET: z.string().default(''),
   OTP_VERIFIER_PREVIOUS_KEY_ID: z.string().regex(/^[a-zA-Z0-9_-]{0,32}$/).default(''),
@@ -45,11 +51,16 @@ const EnvSchema = z.object({
   PAYSTACK_WEBHOOK_SECRET: z.string().default(''),
   // Paystack transfer recipient for HireQuick's own operating bank (commission sweep, D3).
   PAYSTACK_OPERATING_RECIPIENT: z.string().default(''),
+  // `weekly`: ushers are paid only by admin-approved weekly payout runs and
+  // their own withdrawal requests are refused. Switch when the first run goes out.
+  PAYOUT_MODE: z.enum(['on_demand', 'weekly']).default('on_demand'),
   REDIS_URL: z.string().default('redis://127.0.0.1:6379'),
   // NDPR retention windows (TRD §14) for the daily purge job. Financial/ledger
   // rows are never purged by this — only transient PII.
   RETENTION_OTP_DAYS: z.coerce.number().int().positive().default(30),
   RETENTION_DEVICE_TOKEN_DAYS: z.coerce.number().int().positive().default(180),
+  // Push dispatch log (idempotency keys, tap tracking) kept this many days.
+  RETENTION_PUSH_DISPATCH_DAYS: z.coerce.number().int().positive().default(90),
   // KYC: raw ID document + selfie deleted this many days after verification
   // VERIFIED / REJECTED (only the pass/fail flag + reviewer/audit record persist).
   RETENTION_KYC_VERIFIED_DAYS: z.coerce.number().int().positive().default(90),
@@ -97,11 +108,10 @@ const EnvSchema = z.object({
   SMILE_ENVIRONMENT: z.enum(['sandbox', 'production']).default('sandbox'),
   SMILE_CALLBACK_URL: z.string().default(''),
   SMILE_PRIVACY_POLICY_URL: z.string().default(''),
-  // Firebase Cloud Messaging (push). All three from the service-account JSON.
-  // When all are set, recordPush sends real pushes; otherwise it stubs to a log.
-  FCM_PROJECT_ID: z.string().default(''),
-  FCM_CLIENT_EMAIL: z.string().default(''),
-  FCM_PRIVATE_KEY: z.string().default(''),
+  // Expo push service access token. Needed once "Enhanced security for push
+  // notifications" is on for the Expo project (recommended), which stops anyone
+  // holding a device's push token from sending to it. Pushes send without it otherwise.
+  EXPO_ACCESS_TOKEN: z.string().default(''),
   // §23 Q3: when 'true', a payout additionally requires a BVN-verified bank
   // account. Off until the live Paystack BVN match is wired; the account-name
   // verification gate applies regardless.

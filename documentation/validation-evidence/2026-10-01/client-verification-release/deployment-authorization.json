@@ -1,0 +1,7 @@
+{
+  "migration": "20261001190000_client_identity_and_business_verification",
+  "backupWaived": true,
+  "authorization": "Owner explicitly instructed deployment to proceed without the database backup step after the backup risk and destination were explained.",
+  "localProductionExportAuthorized": false,
+  "managedRecoveryVerified": false
+}
