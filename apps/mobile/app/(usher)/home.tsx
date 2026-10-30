@@ -52,6 +52,7 @@ export default function UsherHome(): React.JSX.Element {
         }
       >
         <HomeHeading
+          badgeTone="brand"
           name={user?.usher?.displayName ?? 'there'}
           unread={notifications.data?.unreadCount ?? 0}
           onNotifications={() => router.push('/(modals)/notifications')}

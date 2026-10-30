@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTheme, Box, Text } from '../../theme/restyle.js';
+import { Card } from '../../components/Card.js';
 import { Screen } from '../../components/Screen.js';
 import { AppBar } from '../../components/AppBar.js';
 import { StatusPill } from '../../components/StatusPill.js';
@@ -15,7 +16,7 @@ import { Avatar } from '../../components/Avatar.js';
 import { Button } from '../../components/Button.js';
 import { EmptyState } from '../../components/EmptyState.js';
 import { Loading } from '../../components/Loading.js';
-import { shadowMd, shadowSm } from '../../theme/shadows.js';
+import { shadowSm } from '../../theme/shadows.js';
 import { primitives } from '../../theme/primitives.js';
 import { fonts } from '../../theme/fonts.js';
 import { useEvent, useBookings, useGenerateCheckin, useCompleteBooking } from '../../lib/hooks.js';
@@ -208,57 +209,55 @@ export default function EventDay(): React.JSX.Element {
           </Box>
 
           {/* check-in code card */}
-          <Box
-            alignItems="center"
-            borderRadius="lg"
-            style={[{ backgroundColor: theme.colors.brandSurface, padding: 24, gap: 8 }, shadowMd]}
-          >
-            <Box
-              style={{
-                backgroundColor: theme.colors.brandEmeraldStrong,
-                paddingHorizontal: 8,
-                paddingVertical: 4,
-                borderRadius: theme.borderRadii.xs,
-              }}
-            >
+          <Card variant="elevated" radius="xl" padding="600">
+            <Box alignItems="center" gap="200">
+              <Box
+                style={{
+                  backgroundColor: theme.colors.brandEmeraldStrong,
+                  paddingHorizontal: 8,
+                  paddingVertical: 4,
+                  borderRadius: theme.borderRadii.xs,
+                }}
+              >
+                <Text
+                  style={{
+                    fontFamily: fonts.sansBold,
+                    fontSize: 11,
+                    lineHeight: 14,
+                    letterSpacing: 1.2,
+                    color: theme.colors.onBrandAccent,
+                  }}
+                >
+                  CHECK-IN CODE
+                </Text>
+              </Box>
               <Text
                 style={{
                   fontFamily: fonts.sansBold,
-                  fontSize: 11,
-                  lineHeight: 14,
-                  letterSpacing: 1.2,
-                  color: theme.colors.onBrandAccent,
+                  fontSize: 44,
+                  letterSpacing: 4,
+                  color: primitives.neutral[50],
                 }}
               >
-                CHECK-IN CODE
+                {codeActive ? lastCode.code : '— — —'}
+              </Text>
+              <Text
+                style={{
+                  fontFamily: fonts.sansRegular,
+                  fontSize: 13,
+                  lineHeight: 18,
+                  color: primitives.emerald[100],
+                  textAlign: 'center',
+                }}
+              >
+                {codeActive
+                  ? `${lastCode.name} · expires in ${Math.ceil((Date.parse(lastCode.expiresAt) - now) / 60000)} min. Share only with this usher on arrival.`
+                  : lastCode
+                    ? 'This code is no longer active. Generate a new code if needed.'
+                    : 'Tap “Code” beside an usher to generate their code'}
               </Text>
             </Box>
-            <Text
-              style={{
-                fontFamily: fonts.sansBold,
-                fontSize: 44,
-                letterSpacing: 4,
-                color: primitives.neutral[50],
-              }}
-            >
-              {codeActive ? lastCode.code : '— — —'}
-            </Text>
-            <Text
-              style={{
-                fontFamily: fonts.sansRegular,
-                fontSize: 13,
-                lineHeight: 18,
-                color: primitives.emerald[100],
-                textAlign: 'center',
-              }}
-            >
-              {codeActive
-                ? `${lastCode.name} · expires in ${Math.ceil((Date.parse(lastCode.expiresAt) - now) / 60000)} min. Share only with this usher on arrival.`
-                : lastCode
-                  ? 'This code is no longer active. Generate a new code if needed.'
-                  : 'Tap “Code” beside an usher to generate their code'}
-            </Text>
-          </Box>
+          </Card>
 
           {/* count */}
           <Box flexDirection="row" alignItems="center" justifyContent="space-between">

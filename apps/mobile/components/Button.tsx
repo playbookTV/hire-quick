@@ -7,7 +7,7 @@ import { AnimatedPressable } from './Pressable.js';
 import type { Theme } from '../theme/theme.js';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
-export type ButtonSize = 'lg' | 'md';
+export type ButtonSize = 'lg' | 'md' | 'xl';
 interface ButtonProps {
   label: string;
   onPress?: () => void;
@@ -40,10 +40,12 @@ export function Button({
   const fg: keyof Theme['colors'] = disabled
     ? 'inkMuted'
     : variant === 'primary'
-      ? 'inkOnAccent'
+      ? 'inkOnPrimary'
       : variant === 'danger'
         ? 'inkOnDanger'
-        : 'inkStrong';
+        : variant === 'ghost'
+          ? 'brandAccentText'
+          : 'inkStrong';
   const bg = disabled
     ? theme.colors.actionDisabled
     : variant === 'primary'
@@ -81,13 +83,14 @@ export function Button({
       }}
       style={{
         alignSelf: fullWidth ? 'stretch' : 'flex-start',
-        minHeight: size === 'lg' ? 52 : 44,
+        minHeight:
+          size === 'xl' ? theme.spacing['1400'] : size === 'lg' ? 52 : theme.spacing['1100'],
         minWidth: 44,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: theme.spacing['200'],
-        paddingHorizontal: theme.spacing[size === 'lg' ? '600' : '500'],
+        paddingHorizontal: theme.spacing[size === 'md' ? '500' : '600'],
         paddingVertical: theme.spacing['300'],
         borderRadius: theme.borderRadii.md,
         backgroundColor: bg,
@@ -105,7 +108,7 @@ export function Button({
         <Icon name={leftIcon} size={18} color={fg} />
       ) : null}
       <Text
-        variant={size === 'lg' ? 'labelLg' : 'label'}
+        variant={size === 'md' ? 'label' : 'labelLg'}
         color={fg}
         style={{ flexShrink: 1, textAlign: 'center' }}
       >

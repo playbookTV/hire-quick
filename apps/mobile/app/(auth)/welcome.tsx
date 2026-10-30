@@ -12,8 +12,7 @@ import { Loading } from '../../components/Loading.js';
 import { useAuth } from '../../lib/auth-context.js';
 import { primitiveTokens, screenTokens } from '../../theme/token-manager.js';
 import photo from '../../assets/welcome/event.jpg';
-import brandBackground from '../../assets/welcome/brand-background.svg';
-import brandMark from '../../assets/welcome/brand-mark.svg';
+import { BrandMark } from '../../components/BrandMark.js';
 
 export default function Welcome(): React.JSX.Element {
   const router = useRouter();
@@ -46,13 +45,7 @@ export default function Welcome(): React.JSX.Element {
           paddingHorizontal: screenTokens.gutter,
         }}
       >
-        <Box width={79} height={79} accessibilityLabel="HireQuick" accessible>
-          <Image source={brandBackground} style={{ position: 'absolute', width: 79, height: 79 }} />
-          <Image
-            source={brandMark}
-            style={{ position: 'absolute', left: 15.28, top: 19.92, width: 48.44, height: 40.61 }}
-          />
-        </Box>
+        <BrandMark />
         <Box flex={1} minHeight={180} />
         <Box gap="300" marginBottom="800">
           <Text variant="displayXL" color="inkOnElevated" accessibilityRole="header">

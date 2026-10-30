@@ -45,6 +45,8 @@ export default function ClientHome(): React.JSX.Element {
       >
         <Box style={{ paddingHorizontal: screenTokens.gutter, gap: screenTokens.sectionGap }}>
           <HomeHeading
+            size="large"
+            badgeTone="brand"
             name={firstName}
             unread={unread}
             onNotifications={() => router.push('/(modals)/notifications')}

@@ -62,7 +62,7 @@ export default function PrivacyData(): React.JSX.Element {
     <Box flex={1} backgroundColor="bgCanvas">
       <AppBar title="Privacy & data" showBack inset />
       <Screen scroll>
-        <Box style={{ gap: 24 }}>
+        <Box gap="1000">
           <QueryState query={query}>
             {(rows) => (
               <Card>
@@ -88,39 +88,41 @@ export default function PrivacyData(): React.JSX.Element {
               </Card>
             )}
           </QueryState>
-          <Box style={{ gap: 12 }}>
-            <Text variant="h2">Your data</Text>
-            <Text variant="body">
-              Export a copy of your account data. The export may contain personal information;
-              choose a private destination in the share menu.
-            </Text>
-            <Button
-              label={exportData.isPending ? 'Preparing export…' : 'Export my data'}
-              variant="secondary"
-              disabled={exportData.isPending}
-              onPress={() => exportData.mutate()}
-            />
-          </Box>
-          <Box style={{ gap: 12 }}>
-            <Text variant="h2">Erase my account</Text>
-            <Text variant="body">
-              This removes personal details and ends access to this account. Financial records are
-              retained. Active bookings, unresolved payments or wallet funds may need to be settled
-              first.
-            </Text>
-            <Text variant="bodySm">Type ERASE to confirm.</Text>
-            <Input
-              value={confirmation}
-              onChangeText={setConfirmation}
-              autoCapitalize="characters"
-              accessibilityLabel="Type ERASE to confirm account erasure"
-            />
-            <Button
-              label={erase.isPending ? 'Erasing…' : 'Erase account permanently'}
-              variant="danger"
-              disabled={confirmation !== 'ERASE' || erase.isPending}
-              onPress={() => erase.mutate()}
-            />
+          <Box gap="400">
+            <Box gap="300">
+              <Text variant="h2">Your data</Text>
+              <Text variant="body">
+                Export a copy of your account data. The export may contain personal information;
+                choose a private destination in the share menu.
+              </Text>
+              <Button
+                label={exportData.isPending ? 'Preparing export…' : 'Export my data'}
+                variant="secondary"
+                disabled={exportData.isPending}
+                onPress={() => exportData.mutate()}
+              />
+            </Box>
+            <Box gap="300">
+              <Text variant="h2">Erase my account</Text>
+              <Text variant="body">
+                This removes personal details and ends access to this account. Financial records are
+                retained. Active bookings, unresolved payments or wallet funds may need to be
+                settled first.
+              </Text>
+              <Text variant="bodySm">Type ERASE to confirm.</Text>
+              <Input
+                value={confirmation}
+                onChangeText={setConfirmation}
+                autoCapitalize="characters"
+                accessibilityLabel="Type ERASE to confirm account erasure"
+              />
+              <Button
+                label={erase.isPending ? 'Erasing…' : 'Erase account permanently'}
+                variant="danger"
+                disabled={confirmation !== 'ERASE' || erase.isPending}
+                onPress={() => erase.mutate()}
+              />
+            </Box>
           </Box>
           <Button
             label="Help with a privacy request"

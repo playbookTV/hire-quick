@@ -18,7 +18,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme, Box, Text } from '../../theme/restyle.js';
+import { Box, Text } from '../../theme/restyle.js';
+import { Card } from '../../components/Card.js';
 import { Screen } from '../../components/Screen.js';
 import { AppBar } from '../../components/AppBar.js';
 import { Field } from '../../components/Field.js';
@@ -30,7 +31,6 @@ import { OptionCard } from '../../components/OptionCard.js';
 import { EmptyState } from '../../components/EmptyState.js';
 import { Loading } from '../../components/Loading.js';
 import { AddBankAccountForm } from '../../components/AddBankAccountForm.js';
-import { shadowMd } from '../../theme/shadows.js';
 import { fonts } from '../../theme/fonts.js';
 import { useWallet, useBanks, useBankAccounts, useWithdraw } from '../../lib/hooks.js';
 import { hapticSuccess } from '../../lib/haptics.js';
@@ -54,7 +54,6 @@ interface Sent extends WithdrawalResponse {
 
 export default function Withdraw(): React.JSX.Element {
   const router = useRouter();
-  const theme = useTheme();
   const insets = useSafeAreaInsets();
   const wallet = useWallet();
   const accounts = useBankAccounts();
@@ -301,29 +300,25 @@ export default function Withdraw(): React.JSX.Element {
         />
         <Screen scroll>
           <Box style={{ gap: 20 }}>
-            {/* the amount, owned by the emerald hero so it reads as "real money" */}
-            <Box
-              borderRadius="lg"
-              style={[
-                { backgroundColor: theme.colors.brandSurface, padding: 20, gap: 6 },
-                shadowMd,
-              ]}
-            >
-              <Text variant="overline" color="onBrandAccent">
-                YOU’RE WITHDRAWING
-              </Text>
-              <Text
-                style={{
-                  fontFamily: fonts.displayBlack,
-                  fontSize: 40,
-                  lineHeight: 44,
-                  letterSpacing: -1.5,
-                }}
-                color="inverseInk"
-              >
-                {money(amountKobo)}
-              </Text>
-            </Box>
+            {/* Withdrawal amount */}
+            <Card variant="elevated" radius="xl" padding="500">
+              <Box gap="150">
+                <Text variant="overline" color="onBrandAccent">
+                  YOU’RE WITHDRAWING
+                </Text>
+                <Text
+                  style={{
+                    fontFamily: fonts.displayBlack,
+                    fontSize: 40,
+                    lineHeight: 44,
+                    letterSpacing: -1.5,
+                  }}
+                  color="inverseInk"
+                >
+                  {money(amountKobo)}
+                </Text>
+              </Box>
+            </Card>
 
             <Box
               backgroundColor="bgSurface"

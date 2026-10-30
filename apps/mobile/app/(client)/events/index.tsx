@@ -49,6 +49,7 @@ export default function EventsList(): React.JSX.Element {
         ListHeaderComponent={
           <Box gap="300">
             <ScreenHeading
+              size="large"
               title="Events"
               right={
                 <Pressable

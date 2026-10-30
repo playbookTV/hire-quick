@@ -18,6 +18,7 @@ import { clientTrustLabel } from '@hq/shared';
 import { Badge } from '../../components/Badge.js';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, Box, Text } from '../../theme/restyle.js';
+import { Card } from '../../components/Card.js';
 import { Screen } from '../../components/Screen.js';
 import { AppBar } from '../../components/AppBar.js';
 import { Button } from '../../components/Button.js';
@@ -27,7 +28,6 @@ import { Icon } from '../../components/Icon.js';
 import { Loading } from '../../components/Loading.js';
 import { EmptyState } from '../../components/EmptyState.js';
 import { StatusPill } from '../../components/StatusPill.js';
-import { shadowMd } from '../../theme/shadows.js';
 import { useInvitation, useRespondInvitation, useBookings } from '../../lib/hooks.js';
 import { useToast } from '../../lib/toast.js';
 import { money, dateTime } from '../../lib/format.js';
@@ -160,31 +160,29 @@ export default function Invitation(): React.JSX.Element {
       <Screen scroll>
         <Box style={{ gap: 16 }}>
           {/* hero */}
-          <Box
-            alignItems="center"
-            borderRadius="lg"
-            style={[{ backgroundColor: theme.colors.brandSurface, padding: 20, gap: 12 }, shadowMd]}
-          >
-            <Box
-              style={{
-                width: 56,
-                height: 56,
-                borderRadius: 28,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: theme.colors.brandEmeraldStrong,
-              }}
-            >
-              <Icon name="mail" size={26} color="inverseInk" />
+          <Card variant="elevated" radius="xl" padding="500">
+            <Box alignItems="center" gap="300">
+              <Box
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 28,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: theme.colors.brandEmeraldStrong,
+                }}
+              >
+                <Icon name="mail" size={26} color="inverseInk" />
+              </Box>
+              <Text variant="h2" color="inverseInk">
+                You’re invited!
+              </Text>
+              <Text variant="body" color="brandEmeraldTint" style={{ textAlign: 'center' }}>
+                {clientName} invited you to usher at {ev.title}.
+              </Text>
+              {clientTrustLabel(ev.client) ? <Badge label={clientTrustLabel(ev.client)!} /> : null}
             </Box>
-            <Text variant="h2" color="inverseInk">
-              You’re invited!
-            </Text>
-            <Text variant="body" color="brandEmeraldTint" style={{ textAlign: 'center' }}>
-              {clientName} invited you to usher at {ev.title}.
-            </Text>
-            {clientTrustLabel(ev.client) ? <Badge label={clientTrustLabel(ev.client)!} /> : null}
-          </Box>
+          </Card>
 
           {/* event */}
           <Box

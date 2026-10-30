@@ -16,7 +16,7 @@ import { queryClient, queryKeys } from './query.js';
 import { detachThisDevice, takeUnconfirmedPushToken } from './push.js';
 import type { Me, AuthResult } from './types.js';
 import { Screen } from '../components/Screen.js';
-import { Loading } from '../components/Loading.js';
+import { LaunchScreen } from '../components/LaunchScreen.js';
 import { Button } from '../components/Button.js';
 import { Box, Text } from '../theme/restyle.js';
 
@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }): React.JSX.E
   );
 
   let content = children;
-  if (state.status === 'loading') content = <Loading />;
+  if (state.status === 'loading') content = <LaunchScreen />;
   // Existing accounts keep their role at sign-in, even when “Usher” was selected.
   // Gate restored sessions too, before any onboarding route can mount.
   if (state.status === 'authed' && state.user?.role === 'ADMIN') {

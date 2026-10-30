@@ -7,9 +7,7 @@
     "version": "0.0.1",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.ovalay.hirequick",
@@ -26,10 +24,7 @@
       "adaptiveIcon": {
         "backgroundColor": "#FBF7F0"
       },
-      "permissions": [
-        "android.permission.RECORD_AUDIO",
-        "android.permission.CAMERA"
-      ]
+      "permissions": ["android.permission.RECORD_AUDIO", "android.permission.CAMERA"]
     },
     "plugins": [
       [
@@ -60,6 +55,19 @@
         }
       ],
       "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#17181A",
+          "image": "./assets/splash/lockup.png",
+          "imageWidth": 136,
+          "resizeMode": "contain",
+          "dark": {
+            "backgroundColor": "#17181A",
+            "image": "./assets/splash/lockup.png"
+          }
+        }
+      ],
       "expo-web-browser",
       [
         "expo-image-picker",

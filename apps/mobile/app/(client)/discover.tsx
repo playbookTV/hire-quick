@@ -106,7 +106,7 @@ export default function Discover(): React.JSX.Element {
 
   const header = (
     <Box style={{ gap: 16, paddingBottom: 16 }}>
-      <ScreenHeading title="Find your team" />
+      <ScreenHeading title="Find your team" size="large" />
 
       {/* search */}
       <Box

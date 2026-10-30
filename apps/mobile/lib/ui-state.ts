@@ -20,3 +20,18 @@ export function calendarWeeks(year: number, month: number): Array<Array<number |
     }),
   );
 }
+
+export type AvailabilityDayState = 'default' | 'available' | 'busy' | 'job';
+
+/** Count each visible date once, using the same booked-day precedence as the cells. */
+export function summarizeAvailability(
+  daysInMonth: number,
+  stateOf: (day: number) => AvailabilityDayState,
+) {
+  const counts = { available: 0, busy: 0, job: 0 };
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const state = stateOf(day);
+    if (state !== 'default') counts[state] += 1;
+  }
+  return counts;
+}

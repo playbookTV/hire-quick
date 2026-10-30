@@ -11,6 +11,7 @@ import { AppBar } from '../../components/AppBar.js';
 import { Avatar } from '../../components/Avatar.js';
 import { StatusPill } from '../../components/StatusPill.js';
 import { Card } from '../../components/Card.js';
+import { ProfileStats } from '../../components/ProfileStats.js';
 import { screenTokens } from '../../theme/token-manager.js';
 import { Button } from '../../components/Button.js';
 import { Icon } from '../../components/Icon.js';
@@ -246,7 +247,7 @@ export default function StaffProfile(): React.JSX.Element {
           paddingHorizontal: screenTokens.gutter,
           paddingTop: screenTokens.top,
           paddingBottom: screenTokens.bottom,
-          gap: screenTokens.sectionGap,
+          gap: theme.spacing['600'],
         }}
         showsVerticalScrollIndicator={false}
       >
@@ -262,22 +263,13 @@ export default function StaffProfile(): React.JSX.Element {
             ) : null}
           </Box>
         </Box>
-        <Card>
-          <Box flexDirection="row" flexWrap="wrap" justifyContent="space-around" gap="200">
-            {[
-              [u.ratingAvg.toFixed(1), 'Rating'],
-              [String(u.completedJobsCount), 'Jobs'],
-              [`${u.yearsExperience} yrs`, 'Experience'],
-            ].map(([value, label]) => (
-              <Box key={label} alignItems="center" gap="100">
-                <Text variant="amount">{value}</Text>
-                <Text variant="bodySm" color="inkMuted">
-                  {label}
-                </Text>
-              </Box>
-            ))}
-          </Box>
-        </Card>
+        <ProfileStats
+          rating={u.ratingAvg}
+          jobs={u.completedJobsCount}
+          reliability={u.reliabilityScore}
+          compact
+          reliabilityFirst
+        />
 
         <PhysicalAttributesSummary value={u.physicalAttributes} />
         <Button

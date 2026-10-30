@@ -8,6 +8,8 @@ import { AppBar } from '../../components/AppBar.js';
 import { Button } from '../../components/Button.js';
 import { Field } from '../../components/Field.js';
 import { Input } from '../../components/Input.js';
+import { Card } from '../../components/Card.js';
+import { PreferenceRow } from '../../components/PreferenceRow.js';
 import { useAuth } from '../../lib/auth-context.js';
 import { useUpdateProfile } from '../../lib/hooks.js';
 import { useToast } from '../../lib/toast.js';
@@ -27,19 +29,46 @@ export default function AccountSettings(): React.JSX.Element {
     <Box flex={1} backgroundColor="bgCanvas">
       <AppBar title="Account settings" showBack inset />
       <Screen scroll>
-        <Box style={{ gap: 20 }}>
-          <Text variant="bodySm" color="inkMuted">
-            Signed in as {user?.phone}
+        <Box gap="400">
+          <Text variant="accountHeading" accessibilityRole="header">
+            Account settings
+          </Text>
+          <Box
+            gap="100"
+            paddingBottom="500"
+            borderBottomWidth={1}
+            borderBottomColor="borderDefault"
+          >
+            <Text variant="caption">Signed in as</Text>
+            <Text variant="labelLg" fontSize={18} lineHeight={26}>
+              {user?.phone}
+            </Text>
+          </Box>
+          <Text variant="sectionTitle" accessibilityRole="header">
+            Profile details
           </Text>
           {user?.role === 'CLIENT' ? (
             <>
               <AvatarPicker />
               <Field label="Full name">
-                <Input value={name} onChangeText={setName} maxLength={120} />
+                <Input
+                  size="roomy"
+                  accessibilityLabel="Full name"
+                  value={name}
+                  onChangeText={setName}
+                  maxLength={120}
+                  autoComplete="name"
+                />
               </Field>
               {user.client?.accountType !== 'BUSINESS' ? (
                 <Field label="Business name (optional)">
-                  <Input value={business} onChangeText={setBusiness} maxLength={120} />
+                  <Input
+                    size="roomy"
+                    accessibilityLabel="Business name (optional)"
+                    value={business}
+                    onChangeText={setBusiness}
+                    maxLength={120}
+                  />
                 </Field>
               ) : (
                 <Text variant="body">
@@ -68,6 +97,7 @@ export default function AccountSettings(): React.JSX.Element {
                 />
               </Field>
               <Button
+                size="xl"
                 label={update.isPending ? 'Saving…' : 'Save profile'}
                 disabled={update.isPending || name.trim().length < 2}
                 onPress={() =>
@@ -95,21 +125,32 @@ export default function AccountSettings(): React.JSX.Element {
           ) : (
             <Button label="Edit profile" onPress={() => router.push('/(modals)/edit-profile')} />
           )}
-          <Button
-            label="Notifications"
-            variant="secondary"
-            onPress={() => router.push('/(modals)/notification-settings')}
-          />
-          <Button
-            label="Privacy & data"
-            variant="secondary"
-            onPress={() => router.push('/(modals)/privacy-data')}
-          />
-          <Button
-            label="Privacy policy"
-            variant="secondary"
-            onPress={() => router.push('/privacy-policy')}
-          />
+          <Box gap="300" paddingTop="200">
+            <Text variant="sectionTitle" accessibilityRole="header">
+              Notifications & privacy
+            </Text>
+            <Card variant="borderless" padded={false}>
+              <Box paddingHorizontal="400">
+                <PreferenceRow
+                  variant="navigation"
+                  label="Notifications"
+                  onPress={() => router.push('/(modals)/notification-settings')}
+                />
+                <Box height={1} backgroundColor="borderDefault" />
+                <PreferenceRow
+                  variant="navigation"
+                  label="Privacy & data"
+                  onPress={() => router.push('/(modals)/privacy-data')}
+                />
+                <Box height={1} backgroundColor="borderDefault" />
+                <PreferenceRow
+                  variant="navigation"
+                  label="Privacy policy"
+                  onPress={() => router.push('/privacy-policy')}
+                />
+              </Box>
+            </Card>
+          </Box>
         </Box>
       </Screen>
     </Box>

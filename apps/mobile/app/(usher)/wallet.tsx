@@ -51,11 +51,16 @@ export default function Wallet(): React.JSX.Element {
           />
         }
       >
-        <ScreenHeading title="Wallet" subtitle={user?.usher?.displayName ?? undefined} />
+        <ScreenHeading
+          title="Wallet"
+          subtitle={user?.usher?.displayName ?? undefined}
+          size="large"
+        />
         <QueryState query={wallet} errorTitle="Couldn’t load your balance">
           {(balance) => (
             <>
               <EarningsCard
+                amountTone="accent"
                 amount={balance.availableBalance}
                 label={weekly ? 'Available balance' : undefined}
                 footer={
