@@ -86,7 +86,7 @@ beforeEach(() => {
   vi.setSystemTime(new Date('2026-09-20T09:00:00Z'));
   mocks.booking.mockResolvedValue(booking);
   mocks.refund.mockResolvedValue(null);
-  mocks.client.mockResolvedValue({ id: 'client' });
+  mocks.client.mockResolvedValue({ id: 'client', accountType: 'INDIVIDUAL', verificationStatus: 'VERIFIED' });
   mocks.usher.mockResolvedValue({ id: 'usher' });
 });
 afterEach(() => vi.useRealTimers());

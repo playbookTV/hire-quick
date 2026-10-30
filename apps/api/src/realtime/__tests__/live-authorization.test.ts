@@ -46,7 +46,7 @@ async function pair(userId: string, role: 'CLIENT' | 'USHER' | 'ADMIN') {
 }
 async function fixture() {
   if (!validated) throw new Error('disposable database guard required');
-  const owner = await prisma.user.create({ data: { role: 'CLIENT', status: 'ACTIVE', phone: `socket-owner-${randomUUID()}`, client: { create: { displayName: 'Socket owner' } } }, include: { client: true } });
+  const owner = await prisma.user.create({ data: { role: 'CLIENT', status: 'ACTIVE', phone: `socket-owner-${randomUUID()}`, client: { create: { displayName: 'Socket owner', accountType: 'INDIVIDUAL', verificationStatus: 'VERIFIED' } } }, include: { client: true } });
   const usher = await prisma.user.create({ data: { role: 'USHER', status: 'ACTIVE', phone: `socket-usher-${randomUUID()}`, usher: { create: {} } }, include: { usher: true } });
   users.push(owner.id, usher.id);
   const event = await prisma.event.create({ data: { clientId: owner.client!.id, title: 'Socket fixture', venue: 'Private', category: 'Gala', headcount: 1, budgetPerHead: 10000, eventDate: new Date('2027-12-01'), startTime: '10:00', endTime: '16:00', status: 'OPEN' } });
