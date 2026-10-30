@@ -464,6 +464,80 @@ describe('keeping the device registered', () => {
   });
 });
 
+describe('registration repairs', () => {
+  const registrations = (): number =>
+    state.post.mock.calls.filter(([path]) => path === '/api/me/devices').length;
+
+  it('registers again on returning to the foreground once the last success is an hour old', async () => {
+    vi.useFakeTimers();
+    state.tokenEvents = 5; // Stops the mock's listener echo, so each attempt counts once.
+    const push = await import('../push.js');
+    push.setPushSession(true);
+    push.keepPushRegistered();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(registrations()).toBe(1);
+    state.appStateListener?.('active');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(registrations()).toBe(1);
+    // Push turned off on another phone may have removed this registration since.
+    await vi.advanceTimersByTimeAsync(60 * 60_000);
+    state.appStateListener?.('active');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(registrations()).toBe(2);
+  });
+
+  it('registers again when a timed-out token deletion lands after a registration', async () => {
+    vi.useFakeTimers();
+    state.store.set(PENDING, '1');
+    state.tokenEvents = 5;
+    let deleted: () => void = () => undefined;
+    state.notifications.unregisterForNotificationsAsync.mockImplementationOnce(
+      () => new Promise<void>((resolve) => (deleted = resolve)),
+    );
+    const push = await import('../push.js');
+    push.setPushSession(true);
+    const registering = push.syncPushRegistration();
+    // The deletion outlives its time limit, so the registration goes ahead.
+    await vi.advanceTimersByTimeAsync(8_000);
+    await registering;
+    expect(registrations()).toBe(1);
+    expect(state.store.has(PENDING)).toBe(false);
+
+    // Firebase finishes deleting the token that registration just linked.
+    deleted();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(registrations()).toBe(2);
+    expect(state.notifications.getExpoPushTokenAsync).toHaveBeenLastCalledWith(undefined);
+  });
+
+  it('registers again when a timed-out token deletion lands during a registration', async () => {
+    vi.useFakeTimers();
+    state.store.set(PENDING, '1');
+    state.tokenEvents = 5;
+    let deleted: () => void = () => undefined;
+    state.notifications.unregisterForNotificationsAsync.mockImplementationOnce(
+      () => new Promise<void>((resolve) => (deleted = resolve)),
+    );
+    let fetched: () => void = () => undefined;
+    state.notifications.getExpoPushTokenAsync.mockImplementationOnce(
+      () => new Promise((resolve) => (fetched = () => resolve({ data: 'ExponentPushToken[next-account]' }))),
+    );
+    const push = await import('../push.js');
+    push.setPushSession(true);
+    const registering = push.syncPushRegistration();
+    // The deletion outlives its time limit; the registration fetches a token.
+    await vi.advanceTimersByTimeAsync(8_000);
+    // Firebase deletes the token while the registration is still linking it.
+    deleted();
+    await vi.advanceTimersByTimeAsync(0);
+    fetched();
+    await registering;
+    await vi.advanceTimersByTimeAsync(0);
+    expect(registrations()).toBe(2);
+    expect(state.notifications.getExpoPushTokenAsync).toHaveBeenLastCalledWith(undefined);
+  });
+});
+
 describe('turning push off', () => {
   it('keeps the saved token, so a later sign-out still clears the tray', async () => {
     state.store.set(TOKEN, previous);

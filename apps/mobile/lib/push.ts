@@ -73,9 +73,18 @@ let retryEpoch = 0;
 // retry links the newest token, never the one it began with. It goes stale
 // while the listener is detached, so every other registration fetches its own.
 let handedToken: Notifications.DevicePushToken | undefined;
-// Whether this session's latest registration attempt succeeded. Until it has,
-// returning to the foreground tries again (`keepPushRegistered`).
-let registered = false;
+// When this session's latest registration attempt succeeded, or null if it
+// failed or none has run. Returning to the foreground registers again while it
+// is null or older than REFRESH_MS (`keepPushRegistered`).
+let registeredAt: number | null = null;
+// Count successful registrations and landed token deletions, so a late
+// deletion can tell it undid a finished registration (`finishCleanup`), and a
+// registration that a deletion landed during (`registerThisDevice`).
+let registrations = 0;
+let deletions = 0;
+// Push turned off on another of the account's phones removes this one's
+// registration too, so a success is only trusted this long.
+const REFRESH_MS = 60 * 60_000;
 
 function exclusive<T>(work: () => Promise<T>): Promise<T> {
   const run = queue.then(work, work);
@@ -179,12 +188,21 @@ function stopAutoRegistration(): Promise<void> {
   return within(Notifications.setAutoServerRegistrationEnabledAsync(false), LIMIT_MS.tray);
 }
 
+/** Register again with a fresh token, after a deletion invalidated the linked one. */
+function relink(): void {
+  if (!sessionActive) return;
+  registeredAt = null;
+  void syncPushRegistration().catch(() => undefined);
+}
+
 function registerThisDevice(useHandedToken = false): Promise<boolean> {
   const requestedAt = signOuts;
   const run = exclusive(async () => {
     // An unfinished sign-out must not later unregister this account's registration.
     await finishCleanup();
     if (!sessionActive) return false;
+    const deletionsBefore = deletions;
+    const epochBefore = retryEpoch;
     const token = await expoToken(useHandedToken ? handedToken : undefined);
     if (!token || !sessionActive) return false;
     // Saved before the request, so sign-out can always find what may be registered.
@@ -198,6 +216,11 @@ function registerThisDevice(useHandedToken = false): Promise<boolean> {
     // The install's current token now belongs to this account, so any earlier
     // account's registration is reassigned or no longer valid.
     await SecureStore.deleteItemAsync(CLEANUP_KEY).catch(() => undefined);
+    registeredAt = Date.now();
+    registrations += 1;
+    // A deletion landing meanwhile may have invalidated the token just linked
+    // (unless push stopped being allowed meanwhile).
+    if (deletions !== deletionsBefore && retryEpoch === epochBefore) relink();
     return true;
   });
   registration = run;
@@ -245,7 +268,7 @@ export function stopPushRetries(): void {
   cancelRetry();
   retryAttempt = 0;
   retryEpoch += 1;
-  registered = false;
+  registeredAt = null;
 }
 
 /**
@@ -259,15 +282,15 @@ export async function syncPushRegistration(useHandedToken = false): Promise<void
   cancelRetry();
   const epoch = retryEpoch;
   if ((await pushPermission()) !== 'granted') {
-    registered = false;
+    registeredAt = null;
     return;
   }
   await configurePush();
-  registered = await registerThisDevice(useHandedToken).catch(() => false);
-  if (registered) {
+  if (await registerThisDevice(useHandedToken).catch(() => false)) {
     retryAttempt = 0;
     return;
   }
+  registeredAt = null;
   // Not after sign-out or once push stopped being allowed (both stop retries).
   if (!sessionActive || epoch !== retryEpoch || retryTimer) return;
   const delay = Math.min(RETRY_MS.first * 2 ** retryAttempt, RETRY_MS.max);
@@ -292,15 +315,17 @@ export function watchPushToken(): { remove: () => void } {
 
 /**
  * While an account is signed in with push allowed: register now, on every
- * token change, and on returning to the foreground until a registration has
- * succeeded. That covers push just allowed in the phone's settings, and a
- * failure whose retry was paused in the background. `remove` stops all of it.
+ * token change, and on returning to the foreground unless a registration
+ * succeeded within the last hour. That covers push just allowed in the phone's
+ * settings, a failure whose retry was paused in the background, and this
+ * phone's registration removed from another phone. `remove` stops all of it.
  */
 export function keepPushRegistered(): { remove: () => void } {
   void syncPushRegistration().catch(() => undefined);
   const tokens = watchPushToken();
   const foreground = AppState.addEventListener('change', (state) => {
-    if (state === 'active' && !registered) void syncPushRegistration().catch(() => undefined);
+    const fresh = registeredAt !== null && Date.now() - registeredAt < REFRESH_MS;
+    if (state === 'active' && !fresh) void syncPushRegistration().catch(() => undefined);
   });
   return {
     remove: () => {
@@ -387,7 +412,15 @@ async function finishCleanup(): Promise<void> {
       within(Notifications.setBadgeCountAsync(0), LIMIT_MS.tray),
       within(Notifications.clearLastNotificationResponseAsync(), LIMIT_MS.tray),
     ]);
-    await within(Notifications.unregisterForNotificationsAsync(), LIMIT_MS.unregister);
+    const before = registrations;
+    const unregistering = Notifications.unregisterForNotificationsAsync();
+    // A time-out stops waiting, not Firebase's deletion. Landing after a
+    // registration linked the token, it invalidates it, so register again.
+    void unregistering.then(() => {
+      deletions += 1;
+      if (registrations !== before && registeredAt !== null) relink();
+    }, () => undefined);
+    await within(unregistering, LIMIT_MS.unregister);
     // Again, cancelling a link Expo's launch check started while that ran.
     await stopAutoRegistration();
     await SecureStore.deleteItemAsync(CLEANUP_KEY);
