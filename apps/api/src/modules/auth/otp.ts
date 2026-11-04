@@ -1,6 +1,7 @@
 /**
  * Phone-OTP login (TRD §4/§7). Codes are delivered through the configured
- * transport, except explicitly enabled seeded staging QA identities and tests. Rate-limited via the
+ * transport, except explicitly enabled seeded staging QA identities, the
+ * app-store review account (`app-review.ts`) and tests. Rate-limited via the
  * verification_codes table so no Redis dependency for the core flow.
  */
 import { randomUUID } from 'node:crypto';
@@ -13,7 +14,7 @@ import { sendSms } from '../notifications/brevo.js';
 import { sendWhatsAppOtp, whatsappConfigured } from '../notifications/twilio.js';
 import { kudiSmsConfigured, sendKudiSmsOtp } from '../notifications/kudisms.js';
 import { writeAudit } from '../audit.js';
-import { qaSubject, stagingQaCode } from './staging-qa.js';
+import { authSubjects, fixedLogin } from './app-review.js';
 
 const MAX_REQUESTS_PER_HOUR = 5;
 const TX = { timeout: 30_000, maxWait: 30_000 };
@@ -25,11 +26,11 @@ async function lockPhone(tx: Prisma.TransactionClient, phone: string): Promise<v
 }
 
 export async function requestOtp(phone: string): Promise<{ sent: boolean; devCode?: string }> {
-  const { code, qaLogin } = await prisma.$transaction(async (tx) => {
+  const { code, fixed } = await prisma.$transaction(async (tx) => {
     await lockPhone(tx, phone);
-    const qaCode = await stagingQaCode(tx, phone);
-    const code = qaCode ?? generateOtp();
-    const subjects = { in: [phone, qaSubject(phone)] };
+    const fixed = await fixedLogin(tx, phone);
+    const code = fixed?.code ?? generateOtp();
+    const subjects = { in: authSubjects(phone) };
     const now = new Date();
     const recent = await tx.verificationCode.count({
       where: {
@@ -45,7 +46,7 @@ export async function requestOtp(phone: string): Promise<{ sent: boolean; devCod
       where: { purpose: 'AUTH', subjectRef: subjects, consumedAt: null },
       data: { expiresAt: now },
     });
-    const binding = { purpose: 'AUTH' as const, subjectRef: qaCode ? qaSubject(phone) : phone, id: randomUUID() };
+    const binding = { purpose: 'AUTH' as const, subjectRef: fixed?.subjectRef ?? phone, id: randomUUID() };
     await tx.verificationCode.create({
       data: {
         ...binding,
@@ -54,10 +55,12 @@ export async function requestOtp(phone: string): Promise<{ sent: boolean; devCod
         expiresAt: new Date(now.getTime() + OTP_TTL_MS),
       },
     });
-    return { code, qaLogin: qaCode !== null };
+    return { code, fixed };
   }, TX);
 
-  if (qaLogin) return { sent: true, devCode: code };
+  if (fixed?.kind === 'staging-qa') return { sent: true, devCode: code };
+  // The reviewer already has the code; never deliver or echo it.
+  if (fixed?.kind === 'app-review') return { sent: true };
 
   // KudiSMS takes priority when configured. Do not retry another provider after
   // rejection or timeout: this could duplicate delivery and incur higher fees.
@@ -83,8 +86,8 @@ export interface AuthResult {
 export async function verifyOtp(phone: string, code: string, role?: UserRole): Promise<AuthResult> {
   const outcome = await prisma.$transaction(async (tx) => {
     await lockPhone(tx, phone);
-    const qaCode = await stagingQaCode(tx, phone);
-    const subjectRef = qaCode ? qaSubject(phone) : phone;
+    const fixed = await fixedLogin(tx, phone);
+    const subjectRef = fixed?.subjectRef ?? phone;
     const now = new Date();
     const rec = await tx.verificationCode.findFirst({
       where: {
@@ -100,7 +103,7 @@ export async function verifyOtp(phone: string, code: string, role?: UserRole): P
       return { error: new ApiError(400, 'OTP_INVALID', 'no valid code; request a new one') };
     if (rec.attempts >= OTP_MAX_ATTEMPTS)
       return { error: new ApiError(429, 'OTP_LOCKED', 'too many attempts') };
-    if ((qaCode !== null && code !== qaCode) ||
+    if ((fixed !== null && code !== fixed.code) ||
         !verifyOtpHash(rec.codeHash, code, { purpose: 'AUTH', subjectRef, id: rec.id })) {
       const updated = await tx.verificationCode.update({
         where: { id: rec.id },
@@ -140,7 +143,11 @@ export async function verifyOtp(phone: string, code: string, role?: UserRole): P
         actorId: user.id,
         action: 'auth.login',
         target: user.id,
-        metadata: { newUser: isNewUser, role: user.role },
+        metadata: {
+          newUser: isNewUser,
+          role: user.role,
+          ...(fixed?.kind === 'app-review' ? { appReview: true } : {}),
+        },
       },
       tx,
     );

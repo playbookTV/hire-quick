@@ -1,7 +1,8 @@
+import { PhysicalAttributesSummary } from '../../components/PhysicalAttributes.js';
 import { ScrollView, RefreshControl, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Box, Text } from '../../theme/restyle.js';
+import { Box, Text, useTheme } from '../../theme/restyle.js';
 import { screenTokens } from '../../theme/token-manager.js';
 import { AvatarPicker } from '../../components/AvatarPicker.js';
 import { PortfolioEditor } from '../../components/PortfolioEditor.js';
@@ -10,6 +11,7 @@ import { PreferenceRow } from '../../components/PreferenceRow.js';
 import { ReviewCard } from '../../components/ReviewCard.js';
 import { StatusPill } from '../../components/StatusPill.js';
 import { Card } from '../../components/Card.js';
+import { ProfileStats } from '../../components/ProfileStats.js';
 import { useAuth } from '../../lib/auth-context.js';
 import { useUsherReviews, useBookings } from '../../lib/hooks.js';
 import { upcomingBookings } from '../../lib/bookings.js';
@@ -17,6 +19,7 @@ import { shortDate } from '../../lib/format.js';
 import { openSupport } from '../../lib/support.js';
 
 export default function UsherProfile(): React.JSX.Element {
+  const theme = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user, logout } = useAuth();
@@ -33,7 +36,7 @@ export default function UsherProfile(): React.JSX.Element {
           paddingHorizontal: screenTokens.gutter,
           paddingTop: screenTokens.top,
           paddingBottom: screenTokens.bottom,
-          gap: screenTokens.sectionGap,
+          gap: theme.spacing['600'],
         }}
         refreshControl={
           <RefreshControl
@@ -45,45 +48,39 @@ export default function UsherProfile(): React.JSX.Element {
           />
         }
       >
-        <Box flexDirection="row" alignItems="center" gap="300">
-          <AvatarPicker size={96} />
-          <Box flex={1} gap="100">
-            <Text variant="headingM" accessibilityRole="header">
-              {usher?.displayName ?? 'Your profile'}
-            </Text>
-            <StatusPill
-              status={
-                usher?.verificationStatus === 'VERIFIED'
-                  ? 'VERIFIED'
-                  : usher?.verificationStatus === 'REJECTED'
-                    ? 'VERIFICATION_REJECTED'
-                    : 'VERIFICATION_PENDING'
-              }
-            />
-            {usher?.city || usher?.state ? (
-              <Text variant="bodySm" color="inkMuted">
-                {[usher.city, usher.state].filter(Boolean).join(', ')}
+        <Box gap="1000">
+          <Box flexDirection="row" alignItems="center" gap="300">
+            <AvatarPicker size={96} />
+            <Box flex={1} gap="100">
+              <Text variant="headingM" accessibilityRole="header">
+                {usher?.displayName ?? 'Your profile'}
               </Text>
-            ) : null}
-          </Box>
-        </Box>
-        <Card>
-          <Box flexDirection="row" flexWrap="wrap" justifyContent="space-around" gap="200">
-            {[
-              [(usher?.ratingAvg ?? 0).toFixed(1), 'Rating'],
-              [String(usher?.completedJobsCount ?? 0), 'Jobs done'],
-              [`${reliability}%`, 'Reliability'],
-            ].map(([value, label]) => (
-              <Box key={label} alignItems="center" gap="100">
-                <Text variant="amount">{value}</Text>
+              <StatusPill
+                status={
+                  usher?.verificationStatus === 'VERIFIED'
+                    ? 'VERIFIED'
+                    : usher?.verificationStatus === 'REJECTED'
+                      ? 'VERIFICATION_REJECTED'
+                      : 'VERIFICATION_PENDING'
+                }
+              />
+              {usher?.city || usher?.state ? (
                 <Text variant="bodySm" color="inkMuted">
-                  {label}
+                  {[usher.city, usher.state].filter(Boolean).join(', ')}
                 </Text>
-              </Box>
-            ))}
+              ) : null}
+            </Box>
           </Box>
-        </Card>
-        <Box gap="300" marginTop="200">
+          <PhysicalAttributesSummary value={usher?.physicalAttributes} />
+          <ProfileStats
+            rating={usher?.ratingAvg ?? 0}
+            jobs={usher?.completedJobsCount ?? 0}
+            reliability={reliability}
+            compact
+            reliabilityFirst
+          />
+        </Box>
+        <Box gap="300">
           <Text variant="headingS" color="inkMuted">
             About
           </Text>
@@ -186,7 +183,7 @@ export default function UsherProfile(): React.JSX.Element {
         <Text variant="bodySm" color="inkMuted">
           Reliability reflects on-time arrivals, cancellations and no-shows across your jobs.
         </Text>
-        <Box gap="300">
+        <Box gap="50">
           <SectionHeader title="Recent reviews" appearance="heading" />
           {reviews.isLoading ? (
             <Text variant="bodySm" color="inkMuted">

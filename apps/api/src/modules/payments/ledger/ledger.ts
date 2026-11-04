@@ -626,12 +626,17 @@ export async function freezeBooking(tx: Tx, bookingId: string, now?: Date): Prom
   await refreshEventStaffing(tx, booking.eventId);
 }
 
-/** Usher requests a withdrawal: debit the wallet now; the bank transfer fires next (Phase 2). */
+/**
+ * Debit the wallet now; the bank transfer fires next. A weekly payout run passes
+ * `payoutRunId`, so the line is linked to its run in the same transaction (one
+ * withdrawal per wallet per run is enforced by a unique index).
+ */
 export async function requestWithdrawal(
   tx: Tx,
   walletId: string,
   bankAccountId: string,
   amountKobo: number,
+  link: { payoutRunId?: string } = {},
 ): Promise<string> {
   await lockWallet(tx, walletId);
   const wallet = await tx.wallet.findUniqueOrThrow({ where: { id: walletId } });
@@ -641,7 +646,13 @@ export async function requestWithdrawal(
     throw new LedgerError('INSUFFICIENT_FUNDS', 'insufficient wallet balance');
   }
   const withdrawal = await tx.withdrawal.create({
-    data: { walletId, bankAccountId, amount: amountKobo, status: 'PROCESSING' },
+    data: {
+      walletId,
+      bankAccountId,
+      amount: amountKobo,
+      status: 'PROCESSING',
+      payoutRunId: link.payoutRunId ?? null,
+    },
   });
   await appendWallet(tx, walletId, 'DEBIT', -amountKobo, { withdrawalId: withdrawal.id });
   return withdrawal.id;

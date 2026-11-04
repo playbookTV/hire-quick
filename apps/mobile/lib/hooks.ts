@@ -5,11 +5,14 @@ import { useRef } from 'react';
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
+  PhysicalAttributes,
+  InvitationReply,
   CreateEventInput,
   UpdateEventInput,
   UserRole,
   CancelBookingInput,
   CancelWindow,
+  NotificationPreferences,
 } from '@hq/shared';
 import { checkoutStore } from './checkout-store.js';
 import { loadOrderSummary, readOrderOutcome } from './order-checkout.js';
@@ -19,6 +22,7 @@ import { useAuth } from './auth-context.js';
 import { api, request, newIdempotencyKey } from './client.js';
 import { queryKeys } from './query.js';
 import type {
+  ClientProfile,
   EventResource,
   AuthResult,
   Booking,
@@ -32,7 +36,10 @@ import type {
   Bank,
   Availability,
   NotificationFeed,
+  ConsentRecord,
+  PushConsentState,
   Invitation,
+  TransferSource,
 } from './types.js';
 
 export function useRequestOtp() {
@@ -55,8 +62,13 @@ export function useVerifyOtp() {
 
 export function useUpdateProfile() {
   const qc = useQueryClient();
+  const { user } = useAuth();
   return useMutation({
     mutationFn: (body: {
+      physicalAttributes?: PhysicalAttributes | null;
+      description?: string;
+      position?: string;
+      contactEmail?: string;
       displayName?: string;
       bio?: string;
       yearsExperience?: number;
@@ -66,7 +78,14 @@ export function useUpdateProfile() {
       languages?: string[];
       dayRateKobo?: number;
     }) => api.patch<{ updated: boolean }>('/api/me', body),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.me }),
+    onSuccess: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: queryKeys.me }),
+        ...(user?.client ? [qc.invalidateQueries({ queryKey: ['clients', user.client.id] })] : []),
+        ...(user?.usher
+          ? [qc.invalidateQueries({ queryKey: queryKeys.usher(user.usher.id) })]
+          : []),
+      ]),
   });
 }
 
@@ -83,9 +102,17 @@ function invalidatePhotos(qc: ReturnType<typeof useQueryClient>): Promise<void> 
 
 export function useSetAvatar() {
   const qc = useQueryClient();
+  const { user } = useAuth();
   return useMutation({
     mutationFn: (key: string) => api.put<{ avatarUrl: string }>('/api/me/photos/avatar', { key }),
-    onSuccess: () => invalidatePhotos(qc),
+    onSuccess: () =>
+      Promise.all([
+        invalidatePhotos(qc),
+        ...(user?.client ? [qc.invalidateQueries({ queryKey: ['clients', user.client.id] })] : []),
+        ...(user?.usher
+          ? [qc.invalidateQueries({ queryKey: queryKeys.usher(user.usher.id) })]
+          : []),
+      ]),
   });
 }
 
@@ -106,10 +133,13 @@ export function useDeletePortfolioPhoto() {
   });
 }
 
-export function useEvents() {
+export function useEvents(search = '') {
   return useQuery({
-    queryKey: queryKeys.events,
-    queryFn: () => api.get<EventResource[]>('/api/events'),
+    queryKey: search.trim() ? [...queryKeys.events, 'search', search.trim()] : queryKeys.events,
+    queryFn: () =>
+      api.get<EventResource[]>(
+        `/api/events${search.trim() ? `?query=${encodeURIComponent(search.trim())}` : ''}`,
+      ),
   });
 }
 
@@ -443,7 +473,31 @@ export function useAddBankAccount() {
     // accountName is resolved server-side, so the client only sends bank + number.
     mutationFn: (vars: { bankCode: string; accountNumber: string }) =>
       api.post<BankAccount>('/api/payments/bank-accounts', vars),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.bankAccounts }),
+    // An usher's first account becomes their payout account, which the wallet reports.
+    onSuccess: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: queryKeys.bankAccounts }),
+        qc.invalidateQueries({ queryKey: queryKeys.wallet }),
+      ]),
+  });
+}
+
+/**
+ * Choose the account weekly payout runs pay into. The API refuses an
+ * unverified account with `409 UNVERIFIED_ACCOUNT`.
+ */
+export function useSetPayoutAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (bankAccountId: string) =>
+      api.put<{ bankAccountId: string; isPayoutAccount: true }>('/api/payments/payout-account', {
+        bankAccountId,
+      }),
+    onSuccess: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: queryKeys.bankAccounts }),
+        qc.invalidateQueries({ queryKey: queryKeys.wallet }),
+      ]),
   });
 }
 
@@ -518,7 +572,7 @@ export function useMyVerifications() {
           idDocumentUrl: string | null;
           selfieUrl: string | null;
           method: string;
-          govLookup: { providerStatus?: string } | null;
+          govLookup: { providerStatus?: string; nameCheck?: string } | null;
         }[]
       >('/api/me/verification'),
   });
@@ -571,6 +625,37 @@ export function useMarkAllNotificationsRead() {
   });
 }
 
+/** The account's consent records (NDPR); push needs an explicit PUSH_NOTIFICATIONS grant. */
+export function useConsents(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.consents,
+    queryFn: () => api.get<ConsentRecord[]>('/api/me/consents'),
+    enabled,
+  });
+}
+
+export function pushConsentState(rows: readonly ConsentRecord[] | undefined): PushConsentState {
+  const row = rows?.find((r) => r.purpose === 'PUSH_NOTIFICATIONS');
+  return row ? (row.granted ? 'granted' : 'withdrawn') : 'none';
+}
+
+export function useNotificationPreferences(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.notificationPreferences,
+    queryFn: () => api.get<NotificationPreferences>('/api/me/notification-preferences'),
+    enabled,
+  });
+}
+
+export function useUpdateNotificationPreferences() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (changes: Partial<NotificationPreferences>) =>
+      api.put<NotificationPreferences>('/api/me/notification-preferences', changes),
+    onSuccess: (prefs) => qc.setQueryData(queryKeys.notificationPreferences, prefs),
+  });
+}
+
 export function useMyInvitations() {
   return useQuery({
     queryKey: queryKeys.invitations,
@@ -590,8 +675,8 @@ export function useInvitation(id: string) {
 export function useRespondInvitation(id: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (status: 'ACCEPTED' | 'DECLINED') =>
-      request<{ status: string }>(`/api/invitations/${id}`, { method: 'PATCH', body: { status } }),
+    mutationFn: (body: InvitationReply) =>
+      request<{ status: string }>(`/api/invitations/${id}`, { method: 'PATCH', body }),
     onSuccess: () => {
       // The invite changes state and (on accept) creates an application + job row.
       void qc.invalidateQueries({ queryKey: queryKeys.invitations });
@@ -611,6 +696,8 @@ export function useAssertArrival(bookingId: string) {
 }
 
 export interface SentInvitation {
+  declineReason?: string | null;
+  declineNote?: string | null;
   id: string;
   status: string;
   createdAt: string;
@@ -637,6 +724,8 @@ export interface WithdrawalRecord {
   id: string;
   amount: number;
   status: 'REQUESTED' | 'PROCESSING' | 'PAID' | 'FAILED';
+  /** A weekly payout run's line or an usher's own request; absent from older APIs. */
+  source?: TransferSource;
   reference: string | null;
   createdAt: string;
   updatedAt: string;
@@ -684,5 +773,33 @@ export function useCancellationQuote(id: string) {
     enabled: !!id,
     staleTime: 0,
     refetchInterval: 30_000,
+  });
+}
+
+export function useClientProfile(id: string) {
+  return useQuery({
+    queryKey: ['clients', id],
+    queryFn: () => api.get<Omit<ClientProfile, 'userId' | 'contactEmail'>>(`/api/clients/${id}`),
+    enabled: !!id,
+  });
+}
+export function useWithdrawApplication() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.post(`/api/applications/${id}/withdraw`),
+    onSuccess: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: queryKeys.myApplications }),
+        qc.invalidateQueries({ queryKey: queryKeys.invitations }),
+        qc.invalidateQueries({ queryKey: queryKeys.events }),
+      ]),
+  });
+}
+export function useInviteStaffBatch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ eventId, usherIds }: { eventId: string; usherIds: string[] }) =>
+      api.post(`/api/events/${eventId}/invite-batch`, { usherIds }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sentInvitations'] }),
   });
 }

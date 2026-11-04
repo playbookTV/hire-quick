@@ -12,6 +12,7 @@ import {
   MONEY_APPROVAL_THRESHOLD_KOBO,
   disputeWindowOpen,
   policyForCancellation,
+  clientCanHire,
 } from '@hq/shared';
 import { ApiError } from '../../app.js';
 import { requireAuth, type AuthedRequest } from '../auth/middleware.js';
@@ -26,12 +27,19 @@ import {
   cancelBookingByClient,
   cancelBookingByUsher,
 } from './service.js';
-import { listMessages, listMessagePage, sendMessage, unreadCount, markSeen } from '../../realtime/messages.js';
+import {
+  listMessages,
+  listMessagePage,
+  sendMessage,
+  unreadCount,
+  markSeen,
+} from '../../realtime/messages.js';
 import type { RealtimeGateway } from '../../realtime/gateway.js';
 import type { PaystackPort } from '../payments/port/paystack-port.js';
 import { RT } from '../../realtime/events.js';
 import { serializeEventVenue, venueUnlockedEventIds } from '../events/venue.js';
 import { chatMessageBody, seenMessageBody } from '../../realtime/validation.js';
+import { publicClientSelect } from '../verification/client-access.js';
 
 type Handler = (req: AuthedRequest, res: Response) => Promise<void>;
 const wrap =
@@ -72,7 +80,7 @@ export function bookingsRouter(deps: {
             startTime: true,
             endTime: true,
             venue: true,
-            client: { select: { displayName: true } },
+            client: { select: publicClientSelect },
           },
         },
         usher: { select: { displayName: true, user: { select: { phone: true } } } },
@@ -103,7 +111,10 @@ export function bookingsRouter(deps: {
       }
       const client = await prisma.client.findFirstOrThrow({ where: { userId: req.auth.userId } });
       const bookings = await prisma.booking.findMany({
-        where: { event: { clientId: client.id } },
+        where: {
+          event: { clientId: client.id },
+          ...(!clientCanHire(client) ? { payment: { isNot: null } } : {}),
+        },
         orderBy: { createdAt: 'desc' },
         include,
       });
@@ -331,9 +342,12 @@ export function bookingsRouter(deps: {
   );
 
   // booking chat (REST; realtime is Socket.IO) — party-only, unlocks once CONFIRMED
-  r.get('/bookings/:id/messages/page', wrap(async (req, res) => {
-    res.json(await listMessagePage(String(req.params.id), req.auth.userId, req.query));
-  }));
+  r.get(
+    '/bookings/:id/messages/page',
+    wrap(async (req, res) => {
+      res.json(await listMessagePage(String(req.params.id), req.auth.userId, req.query));
+    }),
+  );
   r.get(
     '/bookings/:id/messages',
     wrap(async (req, res) => {

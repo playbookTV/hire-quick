@@ -39,7 +39,7 @@ class CheckoutFake extends InMemoryPaystack {
   }
 }
 async function fixture() {
-  const client = await prisma.user.create({ data: { phone: `checkout-client-${randomUUID()}`, role: 'CLIENT', status: 'ACTIVE', client: { create: { displayName: 'Checkout client' } } }, include: { client: true } });
+  const client = await prisma.user.create({ data: { phone: `checkout-client-${randomUUID()}`, role: 'CLIENT', status: 'ACTIVE', client: { create: { displayName: 'Checkout client', accountType: 'INDIVIDUAL', verificationStatus: 'VERIFIED' } } }, include: { client: true } });
   const usher = await prisma.user.create({ data: { phone: `checkout-usher-${randomUUID()}`, role: 'USHER', status: 'ACTIVE', usher: { create: { verificationStatus: 'VERIFIED' } } }, include: { usher: true } });
   users.push(client.id, usher.id);
   const event = await prisma.event.create({ data: { clientId: client.client!.id, title: 'Checkout recovery', venue: 'Lagos venue', category: 'Wedding', eventDate: new Date('2030-06-01'), startTime: '10:00', endTime: '18:00', headcount: 1, budgetPerHead: 10000, status: 'OPEN' } });

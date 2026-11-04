@@ -111,7 +111,7 @@ describe('applicant ranking favours badged ushers', () => {
   it('orders applications by completedJobsCount desc', async () => {
     const t = tag();
     const clientUser = await prisma.user.create({
-      data: { role: 'CLIENT', phone: `+23460${t}`, status: 'ACTIVE', client: { create: { displayName: `C ${t}` } } },
+      data: { role: 'CLIENT', phone: `+23460${t}`, status: 'ACTIVE', client: { create: { displayName: `C ${t}`, accountType: 'INDIVIDUAL', verificationStatus: 'VERIFIED' } } },
       include: { client: true },
     });
     userIds.push(clientUser.id);

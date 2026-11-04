@@ -20,7 +20,8 @@ import { Button } from '../../components/Button.js';
 import { useAuth } from '../../lib/auth-context.js';
 import { useUpdateProfile } from '../../lib/hooks.js';
 import { useToast } from '../../lib/toast.js';
-import { NIGERIAN_STATES } from '@hq/shared';
+import { PhysicalAttributesForm } from '../../components/PhysicalAttributes.js';
+import { physicalAttributesSchema, type PhysicalAttributes, NIGERIAN_STATES } from '@hq/shared';
 
 // Common languages on Lagos event jobs — kept short so the chips stay one or two rows.
 const LANGUAGE_OPTIONS = ['English', 'Pidgin', 'Yoruba', 'Igbo', 'Hausa', 'French'];
@@ -35,16 +36,23 @@ export default function EditProfile(): React.JSX.Element {
   const usher = user?.usher;
 
   const [displayName, setDisplayName] = useState(usher?.displayName ?? '');
+  const [physicalAttributes, setPhysicalAttributes] = useState<PhysicalAttributes>(
+    usher?.physicalAttributes ?? {},
+  );
   const [bio, setBio] = useState(usher?.bio ?? '');
   const [years, setYears] = useState(String(usher?.yearsExperience ?? 0));
   const [state, setState] = useState(usher?.state ?? '');
   const [city, setCity] = useState(usher?.city ?? '');
   const [languages, setLanguages] = useState<string[]>(usher?.languages ?? []);
   // Day rate is held in naira for the input; converted to kobo on save.
-  const [rate, setRate] = useState(usher?.dayRateKobo ? String(Math.round(usher.dayRateKobo / 100)) : '');
+  const [rate, setRate] = useState(
+    usher?.dayRateKobo ? String(Math.round(usher.dayRateKobo / 100)) : '',
+  );
 
   const toggleLanguage = (lang: string): void => {
-    setLanguages((prev) => (prev.includes(lang) ? prev.filter((l) => l !== lang) : [...prev, lang]));
+    setLanguages((prev) =>
+      prev.includes(lang) ? prev.filter((l) => l !== lang) : [...prev, lang],
+    );
   };
 
   const onSave = (): void => {
@@ -53,10 +61,19 @@ export default function EditProfile(): React.JSX.Element {
       toast.error('Enter the name clients will see (at least 2 characters).', 'Name too short');
       return;
     }
+    const attributes = physicalAttributesSchema.safeParse(physicalAttributes);
+    if (!attributes.success) {
+      toast.error(
+        attributes.error.issues[0]?.message ?? 'Check your physical attributes.',
+        'Check your details',
+      );
+      return;
+    }
     const yearsExperience = Math.max(0, Math.min(60, Math.round(Number(years) || 0)));
     const rateNaira = parseInt(rate.replace(/\D/g, ''), 10);
     update.mutate(
       {
+        physicalAttributes: attributes.data,
         displayName: name,
         bio: bio.trim(),
         yearsExperience,
@@ -71,7 +88,8 @@ export default function EditProfile(): React.JSX.Element {
           toast.success('Your profile was updated.', 'Saved');
           router.back();
         },
-        onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Try again.', 'Couldn’t save'),
+        onError: (e: unknown) =>
+          toast.error(e instanceof Error ? e.message : 'Try again.', 'Couldn’t save'),
       },
     );
   };
@@ -82,9 +100,17 @@ export default function EditProfile(): React.JSX.Element {
       <Screen scroll>
         <Box style={{ gap: 16 }}>
           <Field label="Display name" helper="Shown to clients when you apply.">
-            <Input value={displayName} onChangeText={setDisplayName} placeholder="e.g. Ada Martins" maxLength={120} />
+            <Input
+              value={displayName}
+              onChangeText={setDisplayName}
+              placeholder="e.g. Ada Martins"
+              maxLength={120}
+            />
           </Field>
-          <Field label="About you" helper="A short intro — experience, strengths, the events you work.">
+          <Field
+            label="About you"
+            helper="A short intro — experience, strengths, the events you work."
+          >
             <TextArea
               value={bio}
               onChangeText={setBio}
@@ -93,7 +119,13 @@ export default function EditProfile(): React.JSX.Element {
             />
           </Field>
           <Field label="State" helper="You'll only see jobs in this state.">
-            <Select title="State" value={state || null} placeholder="Choose your state" options={STATE_OPTIONS} onSelect={setState} />
+            <Select
+              title="State"
+              value={state || null}
+              placeholder="Choose your state"
+              options={STATE_OPTIONS}
+              onSelect={setState}
+            />
           </Field>
           <Field label="Base area" helper="Where you’re based — clients filter by this.">
             <Input value={city} onChangeText={setCity} placeholder="e.g. Lekki" maxLength={80} />
@@ -126,9 +158,24 @@ export default function EditProfile(): React.JSX.Element {
             ) : null}
           </Field>
           <Field label="Years of experience">
-            <Input value={years} onChangeText={setYears} keyboardType="number-pad" placeholder="0" />
+            <Input
+              value={years}
+              onChangeText={setYears}
+              keyboardType="number-pad"
+              placeholder="0"
+            />
           </Field>
-          <Button label={update.isPending ? 'Saving…' : 'Save profile'} onPress={onSave} disabled={update.isPending} />
+          <Text variant="headingS">Physical attributes</Text>
+          <Text variant="bodySm" color="inkMuted">
+            All fields are optional and visible to clients. Share only what you are comfortable
+            displaying. Choose “Prefer not to say” or clear a number to remove it.
+          </Text>
+          <PhysicalAttributesForm value={physicalAttributes} onChange={setPhysicalAttributes} />
+          <Button
+            label={update.isPending ? 'Saving…' : 'Save profile'}
+            onPress={onSave}
+            disabled={update.isPending}
+          />
         </Box>
       </Screen>
       <Box style={{ paddingBottom: insets.bottom }} />

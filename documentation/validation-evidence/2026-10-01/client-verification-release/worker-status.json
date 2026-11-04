@@ -1,0 +1,16 @@
+[
+  {
+    "id": "978448b5-2fa6-42fb-8a1b-c15f28606834",
+    "status": "SUCCESS",
+    "createdAt": "2026-10-01T20:19:55.295Z",
+    "message": "Mandatory client verification f3c979eac7c4",
+    "imageDigest": "sha256:a864bbe19cc2440d0f7f0ca59992bb9606e9094db988b8732136bf4bd50ae08c"
+  },
+  {
+    "id": "e07780fd-ef40-4ef4-acb2-d387b8da141a",
+    "status": "REMOVED",
+    "createdAt": "2026-09-29T15:08:54.494Z",
+    "message": "Upload performance b73b15677a47 compact source archive",
+    "imageDigest": "sha256:e87ef4d2dcc456c4e89f30aff124081cb94a449a4d95765e2e1e130c76157edf"
+  }
+]

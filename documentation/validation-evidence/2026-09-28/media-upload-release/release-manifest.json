@@ -1,0 +1,25 @@
+{
+  "snapshotPath": "/private/tmp/hq-media-upload-release-_t_9ysqf",
+  "baseRevision": "384a5b8c8a38b9f29a7d55be7f38b21b43a22a9f",
+  "releaseRevision": "be124c03260066bf16943e39110f4c9c3290da1f",
+  "files": {
+    "apps/mobile/lib/upload-transfer.ts": "863907458a52a33659d2057935a1b4b5d6a146bd6b0668ee2e4ed726ec46f556",
+    "apps/mobile/lib/__tests__/upload-transfer.test.ts": "146570835a480e206be9ac3c4c3a9805460aa95cd7a60ad0b185dbed6dc7655d",
+    "docs/API.md": "5ee1a1a01d1f31077bb36272c0421b95e7fe22c157fcf3a32682757a5fc7c48c",
+    "documentation/media-upload-fix-2026-09-28.md": "7ab882f7489eacbc60c576f5afd405d6804fb86c203116890c32376a17411303"
+  },
+  "profile": "preview",
+  "distribution": "internal",
+  "platforms": [
+    "android",
+    "ios"
+  ],
+  "initialUpload": "Two archive uploads failed with EPIPE before queueing; Android versions 17 and 18 reserved.",
+  "archiveOnlyExclusions": [
+    ".git",
+    "audits/",
+    "apps/website/public/",
+    "eas-builds.json"
+  ],
+  "archiveIgnoreSha256": "c51acb56dd32bd4dc44f2d15950d89cca2b3465aec0734f36a2122198338a0fa"
+}

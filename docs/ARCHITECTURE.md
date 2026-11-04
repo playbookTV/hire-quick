@@ -14,7 +14,7 @@ flowchart LR
   Worker["BullMQ worker"] --> DB
   API <--> Redis["Redis"]
   Worker <--> Redis
-  API --> Providers["Paystack / KudiSMS / Brevo / Twilio / Smile ID / FCM / S3"]
+  API --> Providers["Paystack / KudiSMS / Brevo / Twilio / Smile ID / Expo push / S3"]
   Worker --> Providers
   Providers -->|"Verified webhooks"| API
   API --> Socket["Authorized Socket.IO delivery"]
@@ -120,7 +120,7 @@ External adapters are implementation boundaries, not evidence of configured infr
 - Brevo: email notifications and legacy SMS delivery when KudiSMS is not configured. Development login requires real delivery.
 - Smile ID: biometric KYC; no-op adapter when absent in development/tests.
 - Storage: S3-compatible presigned uploads/downloads. Upload-url routes fail when storage is absent; some legacy profile paths permit passthrough values.
-- FCM: enabled by a complete service-account configuration; notification records and push delivery are separate concerns.
+- Expo push service: relays pushes to FCM and APNs. Sends need an explicit push consent and a registered device; the inbox record and push delivery are separate concerns. See [push notifications](PUSH-NOTIFICATIONS.md).
 
 ## Design tradeoffs
 

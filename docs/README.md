@@ -12,6 +12,7 @@ For API/worker errors, request timing, uptime, and job alerts, start with [Obser
 | Make a change           | [Architecture](ARCHITECTURE.md) → [Development](DEVELOPMENT.md) → [Testing](TESTING.md) → [Contributing](../CONTRIBUTING.md) |
 | Work on a feature       | [Workflows](WORKFLOWS.md) → [API](API.md) → [Data model](DATA_MODEL.md)                                                      |
 | Work on money           | [Payments](PAYMENTS.md) → [Current status](STATUS.md) → [Operations](OPERATIONS.md)                                          |
+| Work on notifications   | [Push notifications](PUSH-NOTIFICATIONS.md) → [API](API.md) → [Data model](DATA_MODEL.md)                                    |
 | Release and support     | [Deployment](DEPLOYMENT.md) → [Operations](OPERATIONS.md) → [Security](SECURITY.md)                                          |
 | Understand requirements | [Specification index](../documentation/README.md) → relevant PRD/TRD/UXRD sections                                           |
 

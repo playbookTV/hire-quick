@@ -168,6 +168,33 @@ acknowledgment and new submission are coordinated per user so closing a receipt
 cannot erase a newer request. Response-contract failures after dispatch return
 500 and preserve the original retry key.
 
+<a id="weekly-payout-runs"></a>
+
+### Weekly payout runs
+
+Since the [23 October decisions](../documentation/payments/weekly-payouts-decisions-2026-10-23.md), HireQuick pays ushers once a week instead of waiting for them to withdraw. Source: [payout-runs.ts](../apps/api/src/modules/payments/payout-runs.ts), [admin routes](../apps/api/src/modules/admin/payout-runs.ts).
+
+```
+build (worker, Thursday 08:00 UTC, or an admin)  → DRAFT: snapshot of every wallet balance
+   │  lines: balance ≥ ₦1,000, verified payout account with a recipient, user not suspended/closed
+   │  excluded: every other non-zero wallet, with a reason (balance rolls over)
+submit (admin A, with linesHash)                  → AWAITING_APPROVAL   (reject → DRAFT)
+approve (admin B ≠ A, same linesHash)             → APPROVED
+execute: per line, requestWithdrawal(+payoutRunId) + WITHDRAWAL_TRANSFER op → EXECUTED
+dispatch: driveTransfer per line (background; resumeOps retries)
+OTP on: each transfer waits; an admin enters the owner's code (finalize_transfer)
+transfer.success / failed webhook → Withdrawal PAID / FAILED + REVERSAL; usher notified
+```
+
+- **No new ledger entries.** A line is an ordinary withdrawal: wallet DEBIT at execution, REVERSAL on failure. The reconciliation formula is unchanged.
+- **One payout per wallet per run.** `withdrawals(payoutRunId, walletId)` is unique, and execution checks it under the wallet lock, so re-running execution after a crash cannot pay twice. Each line commits separately; `resumeOps` re-executes APPROVED runs.
+- **The approver approves the exact lines.** `linesHash` is a SHA-256 over a fixed tuple per line (JSONB reorders keys). Refreshing a DRAFT changes it, so a stale submit or approve returns `409 RUN_CHANGED`.
+- **Lines can still be skipped at execution** when the usher was suspended or closed, the approved account no longer matches, or the balance is lower than approved. The run records them as `skipped`; the balance stays in the wallet.
+- **Flags for the approver:** `NEW_PAYOUT_ACCOUNT` (payout account chosen in the last 7 days) and `FIRST_PAYOUT`.
+- **Transfer OTP (phase 1).** With Paystack's transfer OTP on, a transfer returns `otp`, which the adapter treats as pending. Recovery only re-verifies it and never reissues it. An admin submits the code per line through `finalizeTransfer`. A transfer waiting days for its code may be quarantined by recovery backoff; the webhook still settles it.
+- **Usher withdrawals** are refused with `409 PAYOUTS_SCHEDULED` when `PAYOUT_MODE=weekly`.
+- **Totals are computed**, never stored, because a week's total can exceed the `Int` kobo column limit.
+
 ---
 
 ## 5. The Paystack boundary (hexagonal port)
@@ -185,6 +212,8 @@ interface PaystackPort {
   createTransferRecipient(...) // register an usher bank account
   transfer(...)                // pay out / commission sweep
   verifyTransfer(reference)    // read authoritative transfer status
+  finalizeTransfer?(...)       // submit the owner's transfer OTP (weekly runs, OTP on)
+  resendTransferOtp?(reference) // ask Paystack to send a new transfer OTP
   refund(...)                  // refund a charge
   verifyRefund(...)            // read-only reconciliation of a refund intent
   getBalanceKobo()             // current Balance — reconciled daily

@@ -1,0 +1,14 @@
+{
+  "platform": "android",
+  "buildId": "55747024-ceda-4619-b448-fd9f065fd9e9",
+  "curlExitCode": 0,
+  "headers": [
+    "HTTP/2 307 ",
+    "HTTP/2 307 ",
+    "content-type: text/html; charset=utf-8",
+    "content-length: 570",
+    "HTTP/2 200 ",
+    "content-type: application/octet-stream",
+    "content-length: 173376080"
+  ]
+}

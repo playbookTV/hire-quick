@@ -6,6 +6,9 @@
  * the emerald EarningsCard where theme tokens don't read.
  */
 import Animated, { FadeInUp } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
+import { StyleSheet } from 'react-native';
+import { canvasTokens } from '../theme/token-manager.js';
 import { Box } from '../theme/restyle.js';
 
 interface SparklineProps {
@@ -15,9 +18,16 @@ interface SparklineProps {
   barColor: string;
   /** Track colour behind each bar. */
   trackColor: string;
+  gradientTrack?: boolean;
 }
 
-export function Sparkline({ values, height = 36, barColor, trackColor }: SparklineProps): React.JSX.Element {
+export function Sparkline({
+  values,
+  height = 36,
+  barColor,
+  trackColor,
+  gradientTrack = false,
+}: SparklineProps): React.JSX.Element {
   const max = Math.max(1, ...values);
   return (
     <Box flexDirection="row" alignItems="flex-end" style={{ gap: 6, height }}>
@@ -28,10 +38,25 @@ export function Sparkline({ values, height = 36, barColor, trackColor }: Sparkli
             key={i}
             flex={1}
             justifyContent="flex-end"
-            style={{ height, borderRadius: 4, backgroundColor: trackColor, overflow: 'hidden' }}
+            style={{
+              height,
+              borderRadius: 4,
+              backgroundColor: gradientTrack ? 'transparent' : trackColor,
+              overflow: 'hidden',
+            }}
           >
+            {gradientTrack ? (
+              <LinearGradient
+                colors={canvasTokens.sparklineTrack}
+                start={{ x: 0.5, y: 0.00446 }}
+                end={{ x: 0.5, y: 1.96733 }}
+                style={StyleSheet.absoluteFill}
+              />
+            ) : null}
             <Animated.View
-              entering={FadeInUp.delay(i * 45).springify().damping(16)}
+              entering={FadeInUp.delay(i * 45)
+                .springify()
+                .damping(16)}
               style={{ height: fill, borderRadius: 4, backgroundColor: barColor }}
             />
           </Box>

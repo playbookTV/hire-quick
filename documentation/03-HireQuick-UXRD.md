@@ -67,8 +67,11 @@ Five destinations each, fixed, with the most frequent action (Discover for clien
 
 ### 6.1 Onboarding
 
-Launch → Welcome → Enter phone → OTP → Choose role (Client) → Complete profile → Home.
-Target: under 2 minutes. Role choice is explicit and changeable only via support, to keep the two experiences clean.
+Launch → Welcome → Enter phone → OTP → Choose role (Client) → Complete profile → Individual or Business/organisation → Smile ID identity verification.
+
+**Amendment approved 1 October 2026:** Individual clients enter Home only after identity approval. Business clients then submit registration details and representative authority evidence; Home unlocks only after registry verification and admin approval. Show separate personal/business status, actionable rejection reasons, pending/retry states, support, privacy access and sign-out. Existing paid bookings remain manageable while verification is incomplete. No fixed completion-time promise applies to provider/manual review.
+
+Unregistered businesses use Individual. An individual can upgrade without losing history, with a warning that new hiring pauses until business verification finishes. Show **Identity verified** or **Business verified** where clients are presented to ushers; these are verification labels, not reliability guarantees. Role changes and business downgrades require support.
 
 ### 6.2 Home
 

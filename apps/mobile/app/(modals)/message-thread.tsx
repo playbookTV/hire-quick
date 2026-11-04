@@ -383,7 +383,7 @@ function BookingChat({
               opacity: !canSend || busy || !text.trim() ? 0.4 : 1,
             }}
           >
-            <Icon name="send" size={22} color="inkOnAccent" />
+            <Icon name="send" size={22} color="inkOnPrimary" />
           </AnimatedPressable>
         )}
       />

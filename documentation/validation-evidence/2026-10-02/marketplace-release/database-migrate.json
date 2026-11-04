@@ -1,0 +1,62 @@
+{
+  "checkedAt": "2026-10-02T12:19:38.816Z",
+  "mode": "migrate",
+  "pending": [
+    "20261002103905_marketplace_profile_and_hiring"
+  ],
+  "checksumsMatch": true,
+  "sameApiWorkerDatabase": true,
+  "applied": "20261002103905_marketplace_profile_and_hiring",
+  "completedAt": "2026-10-02T12:19:58.086Z",
+  "constraints": [
+    {
+      "conname": "marketplace_report_target_check",
+      "convalidated": true,
+      "confdeltype": " "
+    },
+    {
+      "conname": "marketplace_reports_eventId_fkey",
+      "convalidated": true,
+      "confdeltype": "r"
+    },
+    {
+      "conname": "marketplace_reports_usherId_fkey",
+      "convalidated": true,
+      "confdeltype": "r"
+    }
+  ],
+  "columns": [
+    {
+      "table_name": "clients",
+      "column_name": "avatarKey"
+    },
+    {
+      "table_name": "clients",
+      "column_name": "city"
+    },
+    {
+      "table_name": "clients",
+      "column_name": "contactEmail"
+    },
+    {
+      "table_name": "clients",
+      "column_name": "description"
+    },
+    {
+      "table_name": "clients",
+      "column_name": "position"
+    },
+    {
+      "table_name": "invitations",
+      "column_name": "declineNote"
+    },
+    {
+      "table_name": "invitations",
+      "column_name": "declineReason"
+    },
+    {
+      "table_name": "ushers",
+      "column_name": "physicalAttributes"
+    }
+  ]
+}

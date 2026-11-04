@@ -358,7 +358,46 @@ export async function createBankAccountForUsher(
       verified: true,
     },
   });
+  // An usher's first account becomes their payout account; later ones must be chosen.
+  await deps.prisma.usher.updateMany({
+    where: { id: params.usherId, payoutBankAccountId: null },
+    data: { payoutBankAccountId: ba.id, payoutAccountSetAt: new Date() },
+  });
   return { id: ba.id, accountName, recipientCode };
+}
+
+/**
+ * Choose the account weekly payout runs pay into. Only a verified account of
+ * the same usher with a transfer recipient qualifies. A change is flagged on
+ * the next run for the approving admin (PAYOUT_ACCOUNT_REVIEW_DAYS).
+ */
+export async function setPayoutAccount(
+  prisma: PrismaClient,
+  usherId: string,
+  bankAccountId: string,
+): Promise<{ changed: boolean }> {
+  return prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM ushers WHERE id = ${usherId}::uuid FOR UPDATE`;
+    const bank = await tx.bankAccount.findUnique({ where: { id: bankAccountId } });
+    if (!bank || bank.usherId !== usherId)
+      throw new ApiError(404, 'NOT_FOUND', 'Bank account not found.');
+    if (!bank.verified || !bank.paystackRecipientCode)
+      throw new ApiError(
+        409,
+        'UNVERIFIED_ACCOUNT',
+        'This account is not verified for payouts. Add it again to verify it.',
+      );
+    const usher = await tx.usher.findUniqueOrThrow({
+      where: { id: usherId },
+      select: { payoutBankAccountId: true },
+    });
+    if (usher.payoutBankAccountId === bankAccountId) return { changed: false };
+    await tx.usher.update({
+      where: { id: usherId },
+      data: { payoutBankAccountId: bankAccountId, payoutAccountSetAt: new Date() },
+    });
+    return { changed: true };
+  }, TX);
 }
 
 /**

@@ -1,0 +1,22 @@
+{
+  "api": {
+    "deploymentId": "4b9a1f43-7cf4-4dd1-a336-dcb5458e3632",
+    "status": "SUCCESS",
+    "instanceId": "bfb31649-5c99-4e2b-8341-12c382a85f66",
+    "instanceStatus": "RUNNING",
+    "listeningAt": "2026-09-29T15:19:51.003009902Z",
+    "statusUpdatedAt": "2026-09-29T15:23:54.731Z",
+    "applicationEnvironment": "staging",
+    "sentryRelease": "hq-sentry-20260928"
+  },
+  "worker": {
+    "deploymentId": "e07780fd-ef40-4ef4-acb2-d387b8da141a",
+    "status": "SUCCESS",
+    "instanceId": "5a6019ed-3616-4641-86e8-5708736d7cb4",
+    "instanceStatus": "RUNNING",
+    "scheduledJobsReadyAt": "2026-09-29T15:21:44.510569438Z",
+    "statusUpdatedAt": "2026-09-29T15:24:19.634Z",
+    "applicationEnvironment": "staging",
+    "sentryRelease": "hq-sentry-20260928"
+  }
+}

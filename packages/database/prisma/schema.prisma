@@ -13,19 +13,19 @@ datasource db {
 // Upload keys are single-use references. Clients can PUT only the staging key;
 // finalization copies verified bytes to the immutable key before attachment.
 model UploadIntent {
-  key             String   @id
-  stagingKey      String   @unique
-  ownerId         String   @db.Uuid
-  scopeId         String   @db.Uuid
+  key             String    @id
+  stagingKey      String    @unique
+  ownerId         String    @db.Uuid
+  scopeId         String    @db.Uuid
   purpose         String
   contentType     String
   byteSize        Int
-  expiresAt       DateTime @db.Timestamptz(6)
-  attachExpiresAt DateTime @db.Timestamptz(6)
+  expiresAt       DateTime  @db.Timestamptz(6)
+  attachExpiresAt DateTime  @db.Timestamptz(6)
   finalizedAt     DateTime? @db.Timestamptz(6)
   consumedBy      String?
   consumedAt      DateTime? @db.Timestamptz(6)
-  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(6)
 
   @@index([ownerId])
   @@index([consumedAt, attachExpiresAt])
@@ -34,12 +34,12 @@ model UploadIntent {
 
 // Retain successful tombstones too: a deleted key can never be reattached.
 model StorageDeletion {
-  key           String   @id
-  attempts      Int      @default(0)
-  nextAttemptAt DateTime @default(now()) @db.Timestamptz(6)
+  key           String    @id
+  attempts      Int       @default(0)
+  nextAttemptAt DateTime  @default(now()) @db.Timestamptz(6)
   completedAt   DateTime? @db.Timestamptz(6)
   lastError     String?
-  createdAt     DateTime @default(now()) @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @db.Timestamptz(6)
 
   @@index([completedAt, nextAttemptAt])
   @@map("storage_deletions")
@@ -71,13 +71,17 @@ enum VerificationStatus {
   REJECTED
 }
 
-/** How an usher proved identity. BIOMETRIC = Smile ID (NIN/BVN + liveness + face-match). */
+/**
+ * How an usher proved identity. BIOMETRIC = Smile ID (NIN/BVN + liveness + face-match).
+ */
 enum VerificationMethod {
   DOCUMENT
   BIOMETRIC
 }
 
-/** Standardised rejection codes so reviewers don't free-type and analytics can group. */
+/**
+ * Standardised rejection codes so reviewers don't free-type and analytics can group.
+ */
 enum VerificationRejectReason {
   UNCLEAR_ID
   SELFIE_MISMATCH
@@ -264,6 +268,8 @@ enum NotificationType {
   PAYOUT_RELEASED
   NEW_MESSAGE
   DISPUTE_OPENED
+  PAYOUT_SENT
+  PAYOUT_FAILED
 }
 
 // ---------- identity ----------
@@ -279,38 +285,94 @@ model User {
   updatedAt    DateTime   @updatedAt @db.Timestamptz(6)
   anonymizedAt DateTime?  @db.Timestamptz(6) // set when an NDPR erasure scrubs this user's PII
 
-  client            Client?
-  usher             Usher?
-  deviceTokens      DeviceToken[]
-  reviewsAuthored   Review[]            @relation("ReviewAuthor")
-  reviewsReceived   Review[]            @relation("ReviewSubject")
-  disputesRaised    Dispute[]           @relation("DisputeRaisedBy")
-  disputesResolved  Dispute[]           @relation("DisputeResolvedBy")
-  verificationsDone UsherVerification[] @relation("VerificationReviewer")
-  messagesSent      Message[]
-  approvalsMade     Approval[]          @relation("ApprovalMaker")
-  approvalsChecked  Approval[]          @relation("ApprovalChecker")
-  notifications     Notification[]
-  consents          ConsentRecord[]
-  revokedTokens     RevokedToken[]
-  policyAcceptances PolicyAcceptance[]
+  client              Client?
+  usher               Usher?
+  deviceTokens        DeviceToken[]
+  reviewsAuthored     Review[]                @relation("ReviewAuthor")
+  reviewsReceived     Review[]                @relation("ReviewSubject")
+  disputesRaised      Dispute[]               @relation("DisputeRaisedBy")
+  disputesResolved    Dispute[]               @relation("DisputeResolvedBy")
+  verificationsDone   UsherVerification[]     @relation("VerificationReviewer")
+  businessReviews     BusinessVerification[]  @relation("BusinessReviewer")
+  messagesSent        Message[]
+  approvalsMade       Approval[]              @relation("ApprovalMaker")
+  approvalsChecked    Approval[]              @relation("ApprovalChecker")
+  payoutRunsSubmitted PayoutRun[]             @relation("PayoutRunSubmitter")
+  payoutRunsApproved  PayoutRun[]             @relation("PayoutRunApprover")
+  notifications       Notification[]
+  notificationPrefs   NotificationPreference?
+  pushDispatches      NotificationDispatch[]
+  consents            ConsentRecord[]
+  revokedTokens       RevokedToken[]
+  policyAcceptances   PolicyAcceptance[]
+  reportsFiled        MarketplaceReport[]     @relation("ReportAuthor")
+  reportsReviewed     MarketplaceReport[]     @relation("ReportReviewer")
 
   @@map("users")
 }
 
 model Client {
-  id           String  @id @default(uuid()) @db.Uuid
-  userId       String  @unique @db.Uuid
-  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  displayName  String
-  businessName String? // optional company/brand name shown on the client profile
-  ratingAvg    Float   @default(0)
-  ratingCount  Int     @default(0)
+  id                         String                 @id @default(uuid()) @db.Uuid
+  userId                     String                 @unique @db.Uuid
+  user                       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName                String
+  businessName               String? // optional company/brand name shown on the client profile
+  description                String?
+  position                   String?
+  city                       String?
+  contactEmail               String? // private account contact, never part of public client responses
+  avatarKey                  String?
+  ratingAvg                  Float                  @default(0)
+  ratingCount                Int                    @default(0)
+  accountType                ClientAccountType?
+  verificationStatus         UsherVerifyState       @default(PENDING)
+  verifiedAt                 DateTime?              @db.Timestamptz(6)
+  kycAttempts                Int                    @default(0)
+  businessVerificationStatus BusinessVerifyState    @default(NOT_STARTED)
+  businessVerifiedAt         DateTime?              @db.Timestamptz(6)
+  verifications              UsherVerification[]
+  businessVerifications      BusinessVerification[]
 
   events Event[]
   orders Order[]
 
   @@map("clients")
+}
+
+enum ClientAccountType {
+  INDIVIDUAL
+  BUSINESS
+}
+
+enum BusinessVerifyState {
+  NOT_STARTED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+model BusinessVerification {
+  id                 String             @id @default(uuid()) @db.Uuid
+  clientId           String             @db.Uuid
+  client             Client             @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  registeredName     String
+  registrationNumber String
+  businessType       String
+  representativeRole String
+  authorizationKey   String?
+  status             VerificationStatus @default(PENDING)
+  registryStatus     String             @default("NOT_STARTED")
+  registryName       String?
+  providerJobId      String?
+  environment        String
+  reviewedById       String?            @db.Uuid
+  reviewedBy         User?              @relation("BusinessReviewer", fields: [reviewedById], references: [id])
+  reviewNote         String?
+  createdAt          DateTime           @default(now()) @db.Timestamptz(6)
+  reviewedAt         DateTime?          @db.Timestamptz(6)
+
+  @@index([clientId, createdAt])
+  @@map("business_verifications")
 }
 
 model Usher {
@@ -319,6 +381,7 @@ model Usher {
   user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   displayName        String?
   bio                String?
+  physicalAttributes Json?
   yearsExperience    Int              @default(0)
   verificationStatus UsherVerifyState @default(PENDING)
   verifiedAt         DateTime?        @db.Timestamptz(6) // when KYC last passed
@@ -333,51 +396,60 @@ model Usher {
   languages          String[]         @default([]) // spoken languages; powers the language discovery filter
   dayRateKobo        Int? // indicative day rate — display + discovery filter only; escrow math uses Event.budgetPerHead
 
-  verifications UsherVerification[]
-  photos        Photo[]
-  availability  Availability[]
-  applications  Application[]
-  invitations   Invitation[]
-  bookings      Booking[]
-  wallet        Wallet?
-  bankAccounts  BankAccount[]
-  milestones    UsherMilestone[]
-  savedJobs     SavedJob[]
+  verifications       UsherVerification[]
+  photos              Photo[]
+  availability        Availability[]
+  applications        Application[]
+  invitations         Invitation[]
+  bookings            Booking[]
+  wallet              Wallet?
+  bankAccounts        BankAccount[]       @relation("UsherBankAccounts")
+  // The account weekly payout runs pay into; must be one of this usher's accounts.
+  payoutBankAccountId String?             @unique @db.Uuid
+  payoutBankAccount   BankAccount?        @relation("UsherPayoutAccount", fields: [payoutBankAccountId], references: [id], onDelete: SetNull)
+  payoutAccountSetAt  DateTime?           @db.Timestamptz(6)
+  milestones          UsherMilestone[]
+  savedJobs           SavedJob[]
+  reports             MarketplaceReport[]
 
   @@map("ushers")
 }
 
 model UsherVerification {
-  id            String              @id @default(uuid()) @db.Uuid
-  usherId       String              @db.Uuid
-  usher         Usher               @relation(fields: [usherId], references: [id], onDelete: Cascade)
-  method        VerificationMethod  @default(DOCUMENT)
+  id                  String                    @id @default(uuid()) @db.Uuid
+  // Historical table name retained. Exactly one subject is enforced in migration SQL.
+  usherId             String?                   @db.Uuid
+  usher               Usher?                    @relation(fields: [usherId], references: [id], onDelete: Cascade)
+  clientId            String?                   @db.Uuid
+  client              Client?                   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  method              VerificationMethod        @default(DOCUMENT)
   // Manual-upload flow only (null for biometric, which captures via the provider).
-  idDocumentUrl String?
-  selfieUrl     String?
-  status        VerificationStatus  @default(PENDING)
-  reviewedById  String?             @db.Uuid
-  reviewedBy    User?               @relation("VerificationReviewer", fields: [reviewedById], references: [id])
-  reason        String?
-  reasonCode    VerificationRejectReason?
+  idDocumentUrl       String?
+  selfieUrl           String?
+  status              VerificationStatus        @default(PENDING)
+  reviewedById        String?                   @db.Uuid
+  reviewedBy          User?                     @relation("VerificationReviewer", fields: [reviewedById], references: [id])
+  reason              String?
+  reasonCode          VerificationRejectReason?
   // Smile ID biometric KYC. Legacy Dojah history is retained. No raw IDs/photos
   // are stored by the provider adapter; govLookup contains curated status only.
-  provider         String?
-  providerReferenceId String? @map("dojahReferenceId")
-  nin              String?
-  bvn              String?
-  livenessPassed   Boolean?
-  faceMatchScore   Float?
-  watchListed      Boolean?
-  govPhotoKey      String?
-  govLookup        Json?
-  createdAt        DateTime           @default(now()) @db.Timestamptz(6)
+  provider            String?
+  providerReferenceId String?                   @map("dojahReferenceId")
+  nin                 String?
+  bvn                 String?
+  livenessPassed      Boolean?
+  faceMatchScore      Float?
+  watchListed         Boolean?
+  govPhotoKey         String?
+  govLookup           Json?
+  createdAt           DateTime                  @default(now()) @db.Timestamptz(6)
   // Set when status leaves PENDING (VERIFIED/REJECTED). Drives NDPR retention
   // (TRD §14): raw ID doc + selfie deleted 90 days after VERIFIED / 30 after
   // REJECTED, leaving only the pass/fail status + reviewer/audit trail.
-  reviewedAt       DateTime?          @db.Timestamptz(6)
+  reviewedAt          DateTime?                 @db.Timestamptz(6)
 
   @@index([usherId])
+  @@index([clientId])
   @@index([providerReferenceId], map: "usher_verifications_dojahReferenceId_idx")
   @@map("usher_verifications")
 }
@@ -432,6 +504,7 @@ model Event {
   bookings     Booking[]
   orders       Order[]
   savedBy      SavedJob[]
+  reports      MarketplaceReport[]
 
   @@index([clientId])
   @@index([status])
@@ -454,13 +527,15 @@ model Application {
 }
 
 model Invitation {
-  id        String           @id @default(uuid()) @db.Uuid
-  eventId   String           @db.Uuid
-  event     Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  usherId   String           @db.Uuid
-  usher     Usher            @relation(fields: [usherId], references: [id], onDelete: Cascade)
-  status    InvitationStatus @default(SENT)
-  createdAt DateTime         @default(now()) @db.Timestamptz(6)
+  id            String           @id @default(uuid()) @db.Uuid
+  eventId       String           @db.Uuid
+  event         Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  usherId       String           @db.Uuid
+  usher         Usher            @relation(fields: [usherId], references: [id], onDelete: Cascade)
+  status        InvitationStatus @default(SENT)
+  declineReason String?
+  declineNote   String?
+  createdAt     DateTime         @default(now()) @db.Timestamptz(6)
 
   @@unique([eventId, usherId])
   @@index([usherId])
@@ -478,6 +553,43 @@ model SavedJob {
   @@unique([usherId, eventId])
   @@index([usherId])
   @@map("saved_jobs")
+}
+
+enum MarketplaceReportStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
+model MarketplaceReport {
+  id           String                  @id @default(uuid()) @db.Uuid
+  reporterId   String                  @db.Uuid
+  reporter     User                    @relation("ReportAuthor", fields: [reporterId], references: [id])
+  eventId      String?                 @db.Uuid
+  event        Event?                  @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  usherId      String?                 @db.Uuid
+  usher        Usher?                  @relation(fields: [usherId], references: [id], onDelete: Restrict)
+  reason       String
+  details      String
+  status       MarketplaceReportStatus @default(OPEN)
+  reviewNote   String?
+  reviewedById String?                 @db.Uuid
+  reviewedBy   User?                   @relation("ReportReviewer", fields: [reviewedById], references: [id])
+  createdAt    DateTime                @default(now()) @db.Timestamptz(6)
+  reviewedAt   DateTime?               @db.Timestamptz(6)
+
+  @@unique([reporterId, eventId])
+  @@unique([reporterId, usherId])
+  @@index([status, createdAt, id])
+  @@map("marketplace_reports")
+}
+
+model PresentationPolicy {
+  category String  @id
+  enabled  Boolean @default(true)
+
+  @@map("presentation_policies")
 }
 
 // ---------- orders / bookings / payments ----------
@@ -499,11 +611,11 @@ model Checkout {
   email            String
   authorizationUrl String?
   state            CheckoutState @default(CREATED)
-  attemptedAt      DateTime?      @db.Timestamptz(6)
-  expiresAt        DateTime       @db.Timestamptz(6)
-  lastCheckedAt    DateTime?      @db.Timestamptz(6)
-  createdAt        DateTime       @default(now()) @db.Timestamptz(6)
-  updatedAt        DateTime       @updatedAt @db.Timestamptz(6)
+  attemptedAt      DateTime?     @db.Timestamptz(6)
+  expiresAt        DateTime      @db.Timestamptz(6)
+  lastCheckedAt    DateTime?     @db.Timestamptz(6)
+  createdAt        DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime      @updatedAt @db.Timestamptz(6)
 
   @@index([state, expiresAt])
   @@map("checkouts")
@@ -629,7 +741,7 @@ model WalletLedger {
 model BankAccount {
   id                    String    @id @default(uuid()) @db.Uuid
   usherId               String    @db.Uuid
-  usher                 Usher     @relation(fields: [usherId], references: [id], onDelete: Cascade)
+  usher                 Usher     @relation("UsherBankAccounts", fields: [usherId], references: [id], onDelete: Cascade)
   bankCode              String
   accountNumber         String
   accountName           String
@@ -640,6 +752,7 @@ model BankAccount {
   createdAt             DateTime  @default(now()) @db.Timestamptz(6)
 
   withdrawals Withdrawal[]
+  payoutFor   Usher?       @relation("UsherPayoutAccount")
 
   @@index([usherId])
   @@map("bank_accounts")
@@ -655,11 +768,51 @@ model Withdrawal {
   status              WithdrawalStatus @default(REQUESTED)
   paystackTransferRef String?
   failureReason       String?
+  // Set when the withdrawal is a line of a weekly payout run; null for usher requests.
+  payoutRunId         String?          @db.Uuid
+  payoutRun           PayoutRun?       @relation(fields: [payoutRunId], references: [id], onDelete: Restrict)
   createdAt           DateTime         @default(now()) @db.Timestamptz(6)
   updatedAt           DateTime         @updatedAt @db.Timestamptz(6)
 
+  // One payout per wallet per run (NULLs are distinct, so usher requests are unaffected).
+  @@unique([payoutRunId, walletId])
   @@index([walletId])
   @@map("withdrawals")
+}
+
+enum PayoutRunStatus {
+  DRAFT
+  AWAITING_APPROVAL
+  APPROVED
+  EXECUTED
+  CANCELLED
+}
+
+/// A weekly payout run (decisions record 2026-10-23). `lines` is the snapshot an
+/// admin submits and a different admin approves; it is immutable after DRAFT.
+model PayoutRun {
+  id            String          @id @default(uuid()) @db.Uuid
+  periodKey     String          @unique // Lagos calendar date the run pays out on (YYYY-MM-DD)
+  status        PayoutRunStatus @default(DRAFT)
+  builtAt       DateTime        @db.Timestamptz(6) // cutoff: wallet balances read at this instant
+  lines         Json // PayoutLine[]
+  excluded      Json // PayoutExclusion[]
+  skipped       Json? // approved lines not sent at execution, with the reason
+  linesHash     String // sha256 of the lines the approver saw
+  submittedById String?         @db.Uuid
+  submittedBy   User?           @relation("PayoutRunSubmitter", fields: [submittedById], references: [id])
+  submittedAt   DateTime?       @db.Timestamptz(6)
+  approvedById  String?         @db.Uuid
+  approvedBy    User?           @relation("PayoutRunApprover", fields: [approvedById], references: [id])
+  approvedAt    DateTime?       @db.Timestamptz(6)
+  executedAt    DateTime?       @db.Timestamptz(6)
+  createdAt     DateTime        @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime        @updatedAt @db.Timestamptz(6)
+
+  withdrawals Withdrawal[]
+
+  @@index([status])
+  @@map("payout_runs")
 }
 
 // ---------- disputes / messaging / reviews ----------
@@ -733,12 +886,57 @@ model DeviceToken {
   id         String         @id @default(uuid()) @db.Uuid
   userId     String         @db.Uuid
   user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  fcmToken   String         @unique
+  token      String         @unique // Expo push token; a destination, never permission to send
   platform   DevicePlatform
   lastSeenAt DateTime       @default(now()) @db.Timestamptz(6)
 
+  pushTickets PushTicket[]
+
   @@index([userId])
   @@map("device_tokens")
+}
+
+// Expo push tickets awaiting a delivery receipt (available ~15 min after send,
+// kept by Expo for 24 h). The receipts job prunes tokens Expo reports as gone.
+model PushTicket {
+  id            String      @id // Expo ticket/receipt id
+  deviceTokenId String      @db.Uuid
+  deviceToken   DeviceToken @relation(fields: [deviceTokenId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now()) @db.Timestamptz(6)
+
+  @@index([createdAt])
+  @@map("push_tickets")
+}
+
+// Category switches inside the single PUSH_NOTIFICATIONS consent. No row = all on.
+model NotificationPreference {
+  userId    String   @id @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobAlerts Boolean  @default(true)
+  reminders Boolean  @default(true)
+  messages  Boolean  @default(true)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  @@map("notification_preferences")
+}
+
+// One row per push sent to a user (not per device): idempotency for retried or
+// scheduled sends, daily caps, and tap tracking. Purged after RETENTION_PUSH_DISPATCH_DAYS.
+model NotificationDispatch {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @db.Uuid
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind       String // push type, e.g. "BOOKING_CONFIRMED" or "NEW_MESSAGE"
+  dedupeKey  String?   @unique // set for sends that must happen at most once
+  targetType String?
+  targetId   String?
+  sentAt     DateTime  @default(now()) @db.Timestamptz(6)
+  openedAt   DateTime? @db.Timestamptz(6)
+  action     String? // "open" | "view" | "apply" — what the user tapped
+
+  @@index([userId, sentAt])
+  @@index([sentAt])
+  @@map("notification_dispatches")
 }
 
 model Notification {
@@ -889,19 +1087,19 @@ model Approval {
 // job. This is orchestration metadata only: it is NOT a ledger row and does not
 // affect the §17 reconciliation formula.
 model PaymentOperation {
-  id          String          @id @default(uuid()) @db.Uuid
-  kind        PaymentOpKind
-  dedupeKey   String          @unique
-  providerRef String?         @unique // deterministic Paystack reference (transfers/sweeps)
-  status      PaymentOpStatus @default(PENDING)
-  payload     Json // params needed to resume the operation
-  attempts    Int             @default(0)
-  recoveryAttempts Int        @default(0)
-  nextAttemptAt DateTime?      @db.Timestamptz(6)
-  quarantinedAt DateTime?      @db.Timestamptz(6)
-  lastError   String?
-  createdAt   DateTime        @default(now()) @db.Timestamptz(6)
-  updatedAt   DateTime        @updatedAt @db.Timestamptz(6)
+  id               String          @id @default(uuid()) @db.Uuid
+  kind             PaymentOpKind
+  dedupeKey        String          @unique
+  providerRef      String?         @unique // deterministic Paystack reference (transfers/sweeps)
+  status           PaymentOpStatus @default(PENDING)
+  payload          Json // params needed to resume the operation
+  attempts         Int             @default(0)
+  recoveryAttempts Int             @default(0)
+  nextAttemptAt    DateTime?       @db.Timestamptz(6)
+  quarantinedAt    DateTime?       @db.Timestamptz(6)
+  lastError        String?
+  createdAt        DateTime        @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime        @updatedAt @db.Timestamptz(6)
 
   @@index([status])
   @@index([status, quarantinedAt, nextAttemptAt])

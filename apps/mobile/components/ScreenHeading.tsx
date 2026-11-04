@@ -7,15 +7,17 @@ export function ScreenHeading({
   title,
   subtitle,
   right,
+  size = 'default',
 }: Readonly<{
   title: string;
   subtitle?: string;
   right?: ReactNode;
+  size?: 'default' | 'large';
 }>): React.JSX.Element {
   return (
     <Box flexDirection="row" alignItems="center" gap="300">
       <Box flex={1} gap="100">
-        <Text variant="display" accessibilityRole="header">
+        <Text variant={size === 'large' ? 'display' : 'screenHeading'} accessibilityRole="header">
           {title}
         </Text>
         {subtitle ? (
@@ -33,10 +35,14 @@ export function HomeHeading({
   name,
   unread,
   onNotifications,
+  size = 'default',
+  badgeTone = 'alert',
 }: Readonly<{
   name: string;
   unread: number;
   onNotifications: () => void;
+  size?: 'default' | 'large';
+  badgeTone?: 'alert' | 'brand';
 }>): React.JSX.Element {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
@@ -46,7 +52,7 @@ export function HomeHeading({
         <Text variant="body" color="inkMuted">
           {greeting}
         </Text>
-        <Text variant="display" accessibilityRole="header">
+        <Text variant={size === 'large' ? 'display' : 'screenHeading'} accessibilityRole="header">
           {name.trim().split(' ')[0]}
         </Text>
       </Box>
@@ -72,7 +78,7 @@ export function HomeHeading({
               position="absolute"
               top={-5}
               right={-5}
-              backgroundColor="brandAccent"
+              backgroundColor={badgeTone === 'brand' ? 'brandAccent' : 'notificationBadge'}
               borderRadius="pill"
               minWidth={20}
               minHeight={20}
@@ -80,7 +86,10 @@ export function HomeHeading({
               justifyContent="center"
               paddingHorizontal="100"
             >
-              <Text variant="labelSm" color="inkOnAccent">
+              <Text
+                variant="labelSm"
+                color={badgeTone === 'brand' ? 'inkOnAccent' : 'inkOnPrimary'}
+              >
                 {unread > 9 ? '9+' : unread}
               </Text>
             </Box>

@@ -1,5 +1,7 @@
 /** Smile ID v3 API / v12 mobile SDK. See docs/SMILE-ID.md for the trust boundary. */
 import { parseReviewEvidence } from '../evidence.js';
+import { lookupSmileBusiness } from './smile-business.js';
+import type { BusinessLookup } from './kyc-port.js';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import { ApiError } from '../../../app.js';
@@ -24,6 +26,12 @@ function equal(a: string, b: string): boolean {
   return left.length === right.length && timingSafeEqual(left, right);
 }
 export class SmileKyc implements KycPort {
+  verifyBusiness(input: BusinessLookup) {
+    return lookupSmileBusiness(this.cfg, input, this.fetchImpl);
+  }
+  businessResult(input: BusinessLookup) {
+    return lookupSmileBusiness(this.cfg, input, this.fetchImpl, true);
+  }
   private readonly base: string;
   constructor(
     private readonly cfg: SmileConfig,
@@ -85,11 +93,15 @@ export class SmileKyc implements KycPort {
       };
     } catch {
       // Do not leak provider responses, tokens, or identity fields through errors/logs.
-      throw tagSmileError(new ApiError(
-        503,
-        'KYC_UNAVAILABLE',
-        'Identity verification is temporarily unavailable. Please try again.',
-      ), 'SMILE_SESSION_FAILED', referenceId);
+      throw tagSmileError(
+        new ApiError(
+          503,
+          'KYC_UNAVAILABLE',
+          'Identity verification is temporarily unavailable. Please try again.',
+        ),
+        'SMILE_SESSION_FAILED',
+        referenceId,
+      );
     }
   }
   verifyWebhook(
@@ -149,11 +161,15 @@ export class SmileKyc implements KycPort {
       });
       if (!response.ok) throw new Error('replay unavailable');
     } catch {
-      throw tagSmileError(new ApiError(
-        503,
-        'KYC_UNAVAILABLE',
-        'Identity evidence could not be refreshed. Please try again.',
-      ), 'SMILE_EVIDENCE_REFRESH_FAILED', referenceId);
+      throw tagSmileError(
+        new ApiError(
+          503,
+          'KYC_UNAVAILABLE',
+          'Identity evidence could not be refreshed. Please try again.',
+        ),
+        'SMILE_EVIDENCE_REFRESH_FAILED',
+        referenceId,
+      );
     }
   }
   async getResult(jobId: string, userId: string): Promise<KycResult> {

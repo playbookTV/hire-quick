@@ -20,6 +20,18 @@ import { noopGateway, type RealtimeGateway } from '../../../realtime/gateway.js'
 import type { PaystackPort } from '../port/paystack-port.js';
 import { RT, withdrawalEvent } from '../../../realtime/events.js';
 import { driveWithdrawalReversal, recordWithdrawalReversal } from '../withdrawal-reversal.js';
+import { kobo } from '@hq/shared';
+import { notifyPayoutFailed, notifyPayoutSent } from '../../notifications/service.js';
+
+/** Weekly payout lines also notify the usher, once the outcome is recorded. Best-effort. */
+function notifyPayoutLine(
+  w: { id: string; amount: number; payoutRunId: string | null; wallet: { usher: { userId: string } } },
+  success: boolean,
+): void {
+  if (!w.payoutRunId) return;
+  if (success) notifyPayoutSent(w.wallet.usher.userId, kobo(w.amount), w.id);
+  else notifyPayoutFailed(w.wallet.usher.userId, kobo(w.amount), w.id);
+}
 
 /**
  * Audit is secondary to money safety: a failed audit write must never reject
@@ -136,6 +148,7 @@ async function handleTransferTerminal(
     if (result.result) {
       await safeAudit({ actorId: null, action: 'withdrawal.failed', target: w.id, metadata: { ref, event: evt.event } });
       realtime.emitToUser(w.wallet.usher.userId, RT.WITHDRAWAL_FAILED, withdrawalEvent(w.id, 'FAILED', w.amount));
+      notifyPayoutLine(w, false);
     }
     return;
   }
@@ -202,6 +215,7 @@ async function handleTransferTerminal(
     if (result.result && w) {
       await safeAudit({ actorId: null, action: 'withdrawal.failed', target: w.id, metadata: { ref, event: evt.event } });
       realtime.emitToUser(w.wallet.usher.userId, RT.WITHDRAWAL_FAILED, withdrawalEvent(w.id, 'FAILED', w.amount));
+      notifyPayoutLine(w, false);
     }
     return;
   }
@@ -212,11 +226,14 @@ async function handleTransferTerminal(
     target: w?.id ?? op!.id,
     metadata: { ref, event: evt.event },
   });
-  if (w) realtime.emitToUser(
-    w.wallet.usher.userId,
-    success ? RT.WITHDRAWAL_COMPLETED : RT.WITHDRAWAL_FAILED,
-    withdrawalEvent(w.id, success ? 'PAID' : 'FAILED', w.amount),
-  );
+  if (w) {
+    realtime.emitToUser(
+      w.wallet.usher.userId,
+      success ? RT.WITHDRAWAL_COMPLETED : RT.WITHDRAWAL_FAILED,
+      withdrawalEvent(w.id, success ? 'PAID' : 'FAILED', w.amount),
+    );
+    notifyPayoutLine(w, success);
+  }
 }
 
 /** A callback only wakes read-only reconciliation; it never authorizes a POST. */

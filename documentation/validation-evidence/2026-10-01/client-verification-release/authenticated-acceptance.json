@@ -1,0 +1,45 @@
+{
+  "checkedAt": "2026-10-01T20:26:04.664Z",
+  "checks": [
+    {
+      "role": "ADMIN",
+      "path": "/api/admin/business-verifications",
+      "httpStatus": 200,
+      "expectedStatus": 200
+    },
+    {
+      "role": "ADMIN",
+      "path": "/api/admin/verifications",
+      "httpStatus": 200,
+      "expectedStatus": 200
+    },
+    {
+      "role": "CLIENT",
+      "path": "/api/me",
+      "httpStatus": 200,
+      "expectedStatus": 200,
+      "hasClientVerificationState": true
+    },
+    {
+      "role": "CLIENT",
+      "path": "/api/me/verification/business",
+      "httpStatus": 200,
+      "expectedStatus": 200
+    },
+    {
+      "role": "CLIENT",
+      "path": "/api/ushers",
+      "httpStatus": 403,
+      "expectedStatus": 403,
+      "verificationGate": true
+    },
+    {
+      "role": "CLIENT",
+      "path": "/api/bookings",
+      "httpStatus": 200,
+      "expectedStatus": 200
+    }
+  ],
+  "credentialHandling": "60-second tokens held only in process memory; no tokens or response records retained",
+  "writes": "Normal administrative queue-read audit entries only"
+}

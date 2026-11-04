@@ -23,7 +23,7 @@ afterEach(async () => {
   users.length = 0; events.length = 0; keys.length = 0;
 });
 async function fixture() {
-  const client = await prisma.user.create({ data: { phone: `event-client-${randomUUID()}`, role: 'CLIENT', status: 'ACTIVE', client: { create: { displayName: 'Fixture client' } } }, include: { client: true } });
+  const client = await prisma.user.create({ data: { phone: `event-client-${randomUUID()}`, role: 'CLIENT', status: 'ACTIVE', client: { create: { displayName: 'Fixture client', accountType: 'INDIVIDUAL', verificationStatus: 'VERIFIED' } } }, include: { client: true } });
   const usher = await prisma.user.create({ data: { phone: `event-usher-${randomUUID()}`, role: 'USHER', status: 'ACTIVE', usher: { create: { verificationStatus: 'VERIFIED' } } }, include: { usher: true } });
   users.push(client.id, usher.id);
   const event = await prisma.event.create({ data: { clientId: client.client!.id, title: 'Validation event', venue: 'Lagos venue', category: 'Wedding', eventDate: new Date('2027-06-01'), startTime: '10:00', endTime: '18:00', headcount: 2, budgetPerHead: 10000, status: 'OPEN', preferences: { hairstyle: 'braids', requirements: 'experience', extra: { keep: true } } } });

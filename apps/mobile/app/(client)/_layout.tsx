@@ -8,6 +8,7 @@ import { Feather } from '@expo/vector-icons';
 import { BottomNav } from '../../components/BottomNav.js';
 import { useAuth } from '../../lib/auth-context.js';
 import { Loading } from '../../components/Loading.js';
+import { clientOnboardingRoute } from '../../lib/client-onboarding.js';
 
 type FeatherName = keyof typeof Feather.glyphMap;
 const icon =
@@ -22,6 +23,8 @@ export default function ClientLayout(): React.JSX.Element {
   if (status === 'loading') return <Loading />;
   if (status === 'guest' || !user) return <Redirect href="/(auth)/welcome" />;
   if (user.role === 'USHER') return <Redirect href="/(usher)/home" />;
+  const onboarding = clientOnboardingRoute(user);
+  if (onboarding) return <Redirect href={onboarding} />;
   if (!user.client?.displayName || user.client.displayName === user.phone)
     return <Redirect href="/(auth)/complete-profile" />;
 

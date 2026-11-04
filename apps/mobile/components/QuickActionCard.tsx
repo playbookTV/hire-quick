@@ -32,12 +32,23 @@ export function QuickActionCard({
         backgroundColor={primary ? 'brandAccent' : 'bgSurface'}
         gap="200"
       >
-        <Icon name={icon} size={22} color={primary ? 'inkOnAccent' : 'inkStrong'} />
-        <Text variant="labelLg" color={primary ? 'inkOnAccent' : 'inkStrong'}>
+        {primary ? (
+          <Icon name={icon} size={22} color="inkOnPrimary" />
+        ) : (
+          <Box
+            alignSelf="flex-start"
+            padding="200"
+            backgroundColor="brandAccentSubtle"
+            borderRadius="xl"
+          >
+            <Icon name={icon} size={22} color="brandAccent" />
+          </Box>
+        )}
+        <Text variant="labelLg" color={primary ? 'inkOnPrimary' : 'inkStrong'}>
           {title}
         </Text>
         {subtitle ? (
-          <Text variant="bodySm" color={primary ? 'inkOnAccent' : 'inkMuted'}>
+          <Text variant="bodySm" color={primary ? 'inkOnPrimary' : 'inkMuted'}>
             {subtitle}
           </Text>
         ) : null}

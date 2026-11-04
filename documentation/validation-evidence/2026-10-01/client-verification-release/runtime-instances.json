@@ -1,0 +1,38 @@
+{
+  "checkedAt": "2026-10-01T20:26:16.230Z",
+  "services": [
+    {
+      "service": "hirequick-worker",
+      "deployment": "978448b5-2fa6-42fb-8a1b-c15f28606834",
+      "status": "SUCCESS",
+      "instances": [
+        {
+          "id": "fb6ec0a5-0617-478f-8bb6-fbc5727e8c29",
+          "status": "RUNNING"
+        }
+      ]
+    },
+    {
+      "service": "prolific-love",
+      "deployment": "b9c3ec5a-839a-4f0a-a09b-2f47fb899a79",
+      "status": "SUCCESS",
+      "instances": [
+        {
+          "id": "ee035136-6664-43dd-8215-051eae09a14d",
+          "status": "RUNNING"
+        }
+      ]
+    },
+    {
+      "service": "hirequick-admin",
+      "deployment": "29192e71-feb7-4eff-bd26-79fa9398d63b",
+      "status": "SUCCESS",
+      "instances": [
+        {
+          "id": "dac78433-06f3-4985-a686-337f70afc849",
+          "status": "RUNNING"
+        }
+      ]
+    }
+  ]
+}

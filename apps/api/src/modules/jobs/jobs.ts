@@ -19,6 +19,9 @@ import { reconcileCheckouts } from '../payments/checkout.js';
 import { claimRecoveryBatch } from '../payments/recovery-schedule.js';
 import { reportAlarm } from '../../observability/reporting.js';
 import { logger } from '../../logger.js';
+import { ApiError } from '../../app.js';
+import { payoutRunTotal } from '@hq/shared';
+import { buildPayoutRun, payoutRunLines, resumePayoutRuns } from '../payments/payout-runs.js';
 
 const DAY_MS = 86_400_000;
 
@@ -82,6 +85,37 @@ export async function jobCommissionSweep(deps: Deps, period: string): Promise<vo
 }
 
 /**
+ * Build this week's payout run as a DRAFT for admins to review and approve. A
+ * run already past DRAFT is left alone, so a retried or duplicate job is a no-op.
+ */
+export async function jobBuildPayoutRun(
+  deps: Deps,
+  realtime: RealtimeGateway = noopGateway,
+): Promise<void> {
+  try {
+    const run = await buildPayoutRun(deps.prisma);
+    const lines = payoutRunLines(run);
+    log(`payout run ${run.periodKey} ${run.status}: ${String(lines.length)} line(s)`);
+    realtime.emitToAdmins('payout:run_built', {
+      runId: run.id,
+      periodKey: run.periodKey,
+      status: run.status,
+      lines: lines.length,
+      totalKobo: payoutRunTotal(lines),
+      at: new Date().toISOString(),
+    });
+  } catch (error) {
+    // An earlier run still awaiting approval blocks a new one; tell admins, don't retry.
+    if (error instanceof ApiError && error.code === 'RUN_IN_PROGRESS') {
+      log('payout run not built: an earlier run is still awaiting approval or execution');
+      realtime.emitToAdmins('payout:run_blocked', { at: new Date().toISOString() });
+      return;
+    }
+    throw error;
+  }
+}
+
+/**
  * Resume durable payment operations after a crash and finalise withdrawals whose
  * transfer webhook was lost (TRD §10/§17). Replaces the previous log-only retry:
  * it re-drives PENDING/PROVIDER_OK operations and reconciles stuck withdrawals
@@ -120,6 +154,11 @@ export async function jobResumePaymentOps(
     prerequisiteFailed = true;
     log('payment recovery approval backfill failed; continuing existing operations');
   }
+  // Approved payout runs whose lines were not all turned into withdrawals.
+  await resumePayoutRuns(deps).catch(() => {
+    prerequisiteFailed = true;
+    log('payout run recovery failed; continuing existing operations');
+  });
   const wd = await reconcileStuckWithdrawals(deps, 30 * 60_000, true).catch(() => {
     prerequisiteFailed = true;
     log('payment recovery legacy withdrawal check failed; continuing existing operations');
@@ -172,13 +211,14 @@ export async function jobCheckouts(deps: Deps): Promise<void> {
 
 /**
  * NDPR retention purge (TRD §14). Removes transient PII past its window —
- * consumed/expired OTP codes and stale device tokens. Never touches financial
+ * consumed/expired OTP codes, stale device tokens and old push dispatch rows. Never touches financial
  * or ledger rows (those keep the 7-year obligation).
  */
 export async function jobRetentionPurge(storage?: StoragePort): Promise<void> {
   const now = Date.now();
   const otpCutoff = new Date(now - env.RETENTION_OTP_DAYS * DAY_MS);
   const deviceCutoff = new Date(now - env.RETENTION_DEVICE_TOKEN_DAYS * DAY_MS);
+  const dispatchCutoff = new Date(now - env.RETENTION_PUSH_DISPATCH_DAYS * DAY_MS);
 
   const otp = await prisma.verificationCode.deleteMany({
     where: {
@@ -188,6 +228,9 @@ export async function jobRetentionPurge(storage?: StoragePort): Promise<void> {
   });
   const devices = await prisma.deviceToken.deleteMany({
     where: { lastSeenAt: { lt: deviceCutoff } },
+  });
+  const dispatches = await prisma.notificationDispatch.deleteMany({
+    where: { sentAt: { lt: dispatchCutoff } },
   });
   // Refresh-token denylist: a revoked jti only needs to outlive the token it
   // blocks; once expired the JWT is rejected on its own, so the row is dead weight.
@@ -216,10 +259,32 @@ export async function jobRetentionPurge(storage?: StoragePort): Promise<void> {
       const v = await tx.usherVerification.findUnique({ where: { id: candidate.id } });
       if (!v) return;
       for (const key of [v.idDocumentUrl, v.selfieUrl])
-        if (key?.startsWith(`verifications/${v.usherId}/`)) await scheduleDeletion(tx, key);
+        if (key?.startsWith(`verifications/${v.usherId ?? v.clientId}/`))
+          await scheduleDeletion(tx, key);
       await tx.usherVerification.update({
         where: { id: v.id },
         data: { idDocumentUrl: '', selfieUrl: '' },
+      });
+    }, STORAGE_TX);
+
+  const businessRows = await prisma.businessVerification.findMany({
+    where: {
+      authorizationKey: { not: null },
+      OR: [
+        { status: 'APPROVED', reviewedAt: { lt: kycVerifiedCutoff } },
+        { status: 'REJECTED', reviewedAt: { lt: kycRejectedCutoff } },
+      ],
+    },
+    select: { id: true },
+  });
+  for (const candidate of businessRows)
+    await prisma.$transaction(async (tx) => {
+      const record = await tx.businessVerification.findUnique({ where: { id: candidate.id } });
+      if (!record?.authorizationKey) return;
+      await scheduleDeletion(tx, record.authorizationKey);
+      await tx.businessVerification.update({
+        where: { id: record.id },
+        data: { authorizationKey: null },
       });
     }, STORAGE_TX);
 
@@ -287,9 +352,10 @@ export async function jobRetentionPurge(storage?: StoragePort): Promise<void> {
   }
   const cleanup = await cleanupStorage(storage);
 
-  if (otp.count || devices.count || kycRows.length || chatDeleted) {
+  if (otp.count || devices.count || dispatches.count || kycRows.length || chatDeleted) {
     log(
       `retention purge: ${String(otp.count)} otp, ${String(devices.count)} device token(s), ` +
+        `${String(dispatches.count)} push dispatch(es), ` +
         `${String(kycRows.length)} kyc doc set(s), ${String(chatDeleted)} message(s)`,
     );
   }
@@ -300,6 +366,7 @@ export async function jobRetentionPurge(storage?: StoragePort): Promise<void> {
     metadata: {
       verificationCodes: otp.count,
       deviceTokens: devices.count,
+      pushDispatches: dispatches.count,
       revokedTokens: revokedTokens.count,
       kycDocuments: kycRows.length,
       objectsDeleted: cleanup.deleted,

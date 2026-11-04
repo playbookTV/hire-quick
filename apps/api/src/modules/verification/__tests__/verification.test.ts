@@ -10,6 +10,7 @@ import { prisma } from '@hq/database';
 import { createApp, type ApiError } from '../../../app.js';
 import { signAccessToken } from '../../auth/tokens.js';
 import { SmileKyc } from '../port/smile-kyc.js';
+import { NAME_MISMATCH_REASON } from '../name-match.js';
 import {
   fixtureConfig,
   identity,
@@ -68,12 +69,18 @@ const passed = {
   faceMatchScore: 90,
 };
 const rejected = { decision: 'rejected' as const, reasonCode: 'SELFIE_MISMATCH' };
-function payload() {
+function payload(
+  names: { given_names: string; last_name: string } | null = {
+    given_names: identity.givenNames,
+    last_name: identity.lastName,
+  },
+) {
   return JSON.stringify({
     product: 'biometric_kyc',
     status: 'clear',
     partner_params: { job_id: jobId, user_id: 'user_fixture' },
-    id_fields: { id_number: '12345678901' },
+    id_fields: { full_name: 'TEST PERSON', id_number: '12345678901' },
+    ...(names ? { user_provided_info: names } : {}),
   });
 }
 
@@ -340,10 +347,52 @@ describe('Authenticated active KYC sessions', () => {
       watchListed: null,
       providerJobId: jobId,
       providerStatus: 'clear',
+      nameCheck: 'matched',
     });
     expect(
       (await prisma.usher.findUniqueOrThrow({ where: { id: user.usherId } })).verificationStatus,
     ).toBe('VERIFIED');
+  });
+
+  it('rejects invented names and holds unconfirmed names even when Smile clears the selfie', async () => {
+    const deliver = async (names: Parameters<typeof payload>[0]) => {
+      const user = await person();
+      const session = await startBiometricVerification(prisma, user.userId, kyc, identity);
+      const res = await request(app)
+        .post(callbackPath(session.referenceId))
+        .type('json')
+        .set(signatureHeaders)
+        .send(payload(names));
+      expect(res.status).toBe(200);
+      return {
+        record: await current(user.usherId),
+        usher: await prisma.usher.findUniqueOrThrow({ where: { id: user.usherId } }),
+      };
+    };
+    const invented = await deliver({ given_names: 'Grace', last_name: 'Smith' });
+    expect(invented.record).toMatchObject({
+      status: 'REJECTED',
+      reasonCode: 'NAME_MISMATCH',
+      reason: NAME_MISMATCH_REASON,
+      govLookup: expect.objectContaining({ providerStatus: 'clear', nameCheck: 'mismatch' }),
+    });
+    expect(invented.usher).toMatchObject({ verificationStatus: 'REJECTED', verifiedAt: null });
+    for (const [names, nameCheck] of [
+      [{ given_names: 'Grace', last_name: 'Person' }, 'partial'],
+      [null, 'unavailable'],
+    ] as const) {
+      const held = await deliver(names);
+      expect(held.record).toMatchObject({
+        status: 'PENDING',
+        reviewedAt: null,
+        govLookup: expect.objectContaining({
+          providerJobId: jobId,
+          providerStatus: 'clear',
+          nameCheck,
+        }),
+      });
+      expect(held.usher).toMatchObject({ verificationStatus: 'PENDING', verifiedAt: null });
+    }
   });
 
   it('duplicates and pending/contradictory events cannot overwrite a terminal result', async () => {

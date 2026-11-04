@@ -25,6 +25,12 @@ function Received(): React.JSX.Element {
             <Card key={row.id}>
               <Box style={{ gap: 10 }}>
                 <StatusPill status={row.status} />
+                {row.declineReason ? (
+                  <Text variant="bodySm">
+                    Reason: {row.declineReason}
+                    {row.declineNote ? ` · ${row.declineNote}` : ''}
+                  </Text>
+                ) : null}
                 <Text variant="titleM">{row.event.title}</Text>
                 <Text variant="bodySm">{dateTime(row.event.eventDate, row.event.startTime)}</Text>
                 <Button
@@ -69,6 +75,12 @@ function Sent({ eventId }: { eventId: string }): React.JSX.Element {
                 <Box style={{ gap: 10 }}>
                   <Text variant="titleM">{row.usher.displayName ?? 'Usher'}</Text>
                   <StatusPill status={row.status} />
+                  {row.declineReason ? (
+                    <Text variant="bodySm">
+                      Reason: {row.declineReason}
+                      {row.declineNote ? ` · ${row.declineNote}` : ''}
+                    </Text>
+                  ) : null}
                   <Button
                     label="View profile"
                     variant="secondary"

@@ -1,15 +1,24 @@
 import { prisma as database, type PrismaClient } from '@hq/database';
 import { reportSmile } from '../../observability/smile.js';
 
-/** Counts only each usher's latest attempt. No identity data or provider payload leaves SQL. */
+/** Counts only each client's or usher's latest attempt. No identity data or provider payload leaves SQL. */
 export async function readSmileHealth(prisma: PrismaClient = database) {
-  return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SET LOCAL statement_timeout = '2000ms'`;
-    const [row] = await tx.$queryRaw<Array<{ pending: number; stalled: number; withoutCallback: number; rejected: number; providerErrors: number }>>`
+  return prisma.$transaction(
+    async (tx) => {
+      await tx.$executeRaw`SET LOCAL statement_timeout = '2000ms'`;
+      const [row] = await tx.$queryRaw<
+        Array<{
+          pending: number;
+          stalled: number;
+          withoutCallback: number;
+          rejected: number;
+          providerErrors: number;
+        }>
+      >`
       WITH latest AS (
-        SELECT DISTINCT ON (v."usherId") v.status, v.provider, v."createdAt", v."govLookup"
+        SELECT DISTINCT ON (v."usherId", v."clientId") v.status, v.provider, v."createdAt", v."govLookup"
         FROM usher_verifications v
-        ORDER BY v."usherId", v."createdAt" DESC, v.id DESC
+        ORDER BY v."usherId", v."clientId", v."createdAt" DESC, v.id DESC
       )
       SELECT
         COUNT(*) FILTER (WHERE status = 'PENDING')::int AS pending,
@@ -20,8 +29,16 @@ export async function readSmileHealth(prisma: PrismaClient = database) {
         COUNT(*) FILTER (WHERE status = 'PENDING' AND "govLookup"->>'providerStatus' IN ('error', 'attention'))::int AS "providerErrors"
       FROM latest WHERE provider = 'SMILE_ID' AND "createdAt" >= NOW() - INTERVAL '7 days'
     `;
-    return { status: 'available' as const, ...row!, checkedAt: new Date().toISOString(), windowDays: 7 as const, stalledAfterMinutes: 60 as const };
-  }, { timeout: 4000, maxWait: 2000 });
+      return {
+        status: 'available' as const,
+        ...row!,
+        checkedAt: new Date().toISOString(),
+        windowDays: 7 as const,
+        stalledAfterMinutes: 60 as const,
+      };
+    },
+    { timeout: 4000, maxWait: 2000 },
+  );
 }
 
 export async function monitorSmileAttempts(): Promise<void> {

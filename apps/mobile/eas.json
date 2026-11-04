@@ -33,5 +33,12 @@
       "distribution": "store",
       "environment": "preview"
     }
+  },
+  "submit": {
+    "ios-archive": {
+      "ios": {
+        "ascAppId": "6826389013"
+      }
+    }
   }
 }

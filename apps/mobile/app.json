@@ -7,14 +7,16 @@
     "version": "0.0.1",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.ovalay.hirequick",
       "infoPlist": {
-        "NSCameraUsageDescription": "HireQuick uses the camera for Smile ID identity and liveness verification."
+        "NSCameraUsageDescription": "HireQuick uses the camera for Smile ID identity and liveness verification.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "entitlements": {
+        "com.apple.developer.usernotifications.time-sensitive": true
       }
     },
     "android": {
@@ -22,10 +24,7 @@
       "adaptiveIcon": {
         "backgroundColor": "#FBF7F0"
       },
-      "permissions": [
-        "android.permission.RECORD_AUDIO",
-        "android.permission.CAMERA"
-      ]
+      "permissions": ["android.permission.RECORD_AUDIO", "android.permission.CAMERA"]
     },
     "plugins": [
       [
@@ -47,7 +46,28 @@
       ],
       "expo-router",
       "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "color": "#36a511",
+          "defaultChannel": "bookings",
+          "mode": "production"
+        }
+      ],
       "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#17181A",
+          "image": "./assets/splash/lockup.png",
+          "imageWidth": 136,
+          "resizeMode": "contain",
+          "dark": {
+            "backgroundColor": "#17181A",
+            "image": "./assets/splash/lockup.png"
+          }
+        }
+      ],
       "expo-web-browser",
       [
         "expo-image-picker",

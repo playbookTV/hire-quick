@@ -11,6 +11,8 @@ export const SMILE_DIAGNOSTICS = {
   SMILE_PROVIDER_ERROR: ['provider_result', 'error'],
   SMILE_PROVIDER_ATTENTION: ['provider_result', 'warning'],
   SMILE_PROVIDER_REJECTED: ['provider_result', 'info'],
+  SMILE_NAME_REVIEW: ['name_check', 'warning'],
+  SMILE_NAME_MISMATCH: ['name_check', 'info'],
   SMILE_STALLED_ATTEMPTS: ['pending_attempts', 'warning'],
   SMILE_ADMIN_EVIDENCE_FAILED: ['admin_evidence', 'error'],
   SMILE_ADMIN_REVIEW_FAILED: ['admin_review', 'error'],

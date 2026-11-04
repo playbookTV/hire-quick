@@ -12,6 +12,7 @@ import { logger } from '../../logger.js';
 import type { RealtimeGateway } from '../../realtime/gateway.js';
 import type { KycPort } from './port/kyc-port.js';
 import { applyKycResult, startBiometricVerification } from './service.js';
+import { checkSubmittedNames } from './name-match.js';
 
 const identitySchema = z.object({
   idType: z.enum(['NIN', 'BVN']),
@@ -74,15 +75,23 @@ export function smileWebhookRouter(deps: {
         .json({ error: { code: 'INVALID_WEBHOOK', message: 'unverified or unparseable' } });
       return;
     }
-    const result = await deps.kyc.getResult(parsed.jobId, parsed.userId).catch((error: unknown) => {
+    const verdict = await deps.kyc.getResult(parsed.jobId, parsed.userId).catch((error: unknown) => {
       throw tagSmileError(error instanceof Error ? error : new Error('Smile result unavailable'),
         'SMILE_RESULT_FETCH_FAILED', parsed.referenceId);
     });
+    // Every provider result reaches applyKycResult through this name check.
+    const result = checkSubmittedNames(verdict, parsed.evidence);
     await cacheReviewEvidence(deps.redis, parsed, result);
     const applied = await applyKycResult(prisma, parsed.referenceId, result);
     if (result.providerStatus === 'error') reportSmile('SMILE_PROVIDER_ERROR', parsed.referenceId);
     else if (result.providerStatus === 'attention') reportSmile('SMILE_PROVIDER_ATTENTION', parsed.referenceId);
-    if (applied?.decision === 'rejected') reportSmile('SMILE_PROVIDER_REJECTED', parsed.referenceId);
+    else if (verdict.decision === 'verified' && result.decision === 'pending')
+      reportSmile('SMILE_NAME_REVIEW', parsed.referenceId);
+    if (applied?.decision === 'rejected')
+      reportSmile(
+        result.reasonCode === 'NAME_MISMATCH' ? 'SMILE_NAME_MISMATCH' : 'SMILE_PROVIDER_REJECTED',
+        parsed.referenceId,
+      );
     if (applied) {
       deps.realtime.emitToUser(applied.userId, RT.VERIFICATION_UPDATED, {
         status: applied.decision,
@@ -91,7 +100,11 @@ export function smileWebhookRouter(deps: {
         actorId: applied.userId,
         action: 'verification.kyc_result',
         target: applied.id,
-        metadata: { decision: applied.decision, provider: 'SMILE_ID' },
+        metadata: {
+          decision: applied.decision,
+          provider: 'SMILE_ID',
+          ...(result.nameCheck ? { nameCheck: result.nameCheck } : {}),
+        },
       });
       logger.info(
         { referenceId: parsed.referenceId, decision: applied.decision },

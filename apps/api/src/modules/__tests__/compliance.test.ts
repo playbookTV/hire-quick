@@ -36,9 +36,13 @@ describe('compliance (NDPR §14)', () => {
     });
     created.userIds.push(user.id);
     const token = await prisma.deviceToken.create({
-      data: { userId: user.id, fcmToken: `tok-${tag}`, platform: 'ANDROID' },
+      data: { userId: user.id, token: `tok-${tag}`, platform: 'ANDROID' },
     });
     created.tokenIds.push(token.id);
+    await prisma.notificationPreference.create({ data: { userId: user.id, messages: false } });
+    await prisma.notificationDispatch.create({
+      data: { userId: user.id, kind: 'BOOKING_CONFIRMED', targetType: 'booking', targetId: tag },
+    });
 
     await prisma.$transaction((tx) => eraseUser(tx, user.id));
 
@@ -48,6 +52,8 @@ describe('compliance (NDPR §14)', () => {
     expect(after?.phone).toMatch(/^deleted:/);
     expect(after?.anonymizedAt).toBeTruthy();
     expect(await prisma.deviceToken.count({ where: { userId: user.id } })).toBe(0);
+    expect(await prisma.notificationPreference.count({ where: { userId: user.id } })).toBe(0);
+    expect(await prisma.notificationDispatch.count({ where: { userId: user.id } })).toBe(0);
   });
 
   it('retention purge removes aged transient PII but keeps fresh rows', async () => {
@@ -73,15 +79,21 @@ describe('compliance (NDPR §14)', () => {
     const agedTok = await prisma.deviceToken.create({
       data: {
         userId: user.id,
-        fcmToken: `aged-tok-${tag}`,
+        token: `aged-tok-${tag}`,
         platform: 'IOS',
         lastSeenAt: new Date(Date.now() - 200 * 86_400_000),
       },
     });
     const freshTok = await prisma.deviceToken.create({
-      data: { userId: user.id, fcmToken: `fresh-tok-${tag}`, platform: 'IOS' },
+      data: { userId: user.id, token: `fresh-tok-${tag}`, platform: 'IOS' },
     });
     created.tokenIds.push(freshTok.id);
+    const agedDispatch = await prisma.notificationDispatch.create({
+      data: { userId: user.id, kind: 'NEW_MESSAGE', sentAt: new Date(Date.now() - 91 * 86_400_000) },
+    });
+    const freshDispatch = await prisma.notificationDispatch.create({
+      data: { userId: user.id, kind: 'NEW_MESSAGE' },
+    });
 
     await jobRetentionPurge();
 
@@ -89,5 +101,7 @@ describe('compliance (NDPR §14)', () => {
     expect(await prisma.verificationCode.findUnique({ where: { id: freshCode.id } })).toBeTruthy();
     expect(await prisma.deviceToken.findUnique({ where: { id: agedTok.id } })).toBeNull();
     expect(await prisma.deviceToken.findUnique({ where: { id: freshTok.id } })).toBeTruthy();
+    expect(await prisma.notificationDispatch.findUnique({ where: { id: agedDispatch.id } })).toBeNull();
+    expect(await prisma.notificationDispatch.findUnique({ where: { id: freshDispatch.id } })).toBeTruthy();
   });
 });

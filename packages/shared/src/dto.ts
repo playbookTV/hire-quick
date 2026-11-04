@@ -6,6 +6,7 @@
 import { z } from 'zod';
 import { ACCOMMODATION_STATUSES, REWARD_TYPES } from './enums.js';
 import { MAX_INT32_KOBO, priceBooking, kobo } from './money.js';
+import { presentationPreferencesSchema } from './marketplace.js';
 
 export const uuid = z.string().uuid();
 
@@ -80,6 +81,7 @@ export const eventFields = z.object({
   hairstyle: z.string().max(60).optional(),
   accommodation: z.enum(ACCOMMODATION_STATUSES).optional(),
   requirements: z.string().max(2000).optional(),
+  presentation: presentationPreferencesSchema.nullable().optional(),
 });
 
 /** POST /events — create a multi-staff event (PRD §7). */

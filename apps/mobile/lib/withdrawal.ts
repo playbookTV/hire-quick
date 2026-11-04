@@ -18,11 +18,18 @@ export function withdrawalAttempt(
   return previous;
 }
 
-/** Only explicit pre-acceptance rejections make it safe to edit and start anew. */
+/** The API's answer while weekly payout runs replace withdrawals (409). */
+export const PAYOUTS_SCHEDULED = 'PAYOUTS_SCHEDULED';
+
+/**
+ * Only explicit pre-acceptance rejections make it safe to edit and start anew.
+ * `PAYOUTS_SCHEDULED` (weekly payout runs are on) is one only for a first send:
+ * the API answers it before the idempotency lookup, so a replay gets it too.
+ */
 export function withdrawalWasRejected(error: unknown): boolean {
   return error instanceof ApiError && error.status < 500 && [
     'VALIDATION', 'FORBIDDEN', 'NOT_AN_USHER', 'UNVERIFIED_ACCOUNT',
-    'INSUFFICIENT_FUNDS', 'BAD_AMOUNT',
+    'INSUFFICIENT_FUNDS', 'BAD_AMOUNT', PAYOUTS_SCHEDULED,
   ].includes(error.code);
 }
 
@@ -43,7 +50,12 @@ export interface WithdrawalStorage {
 
 /** The uncertainty flag is derived from persisted state, not HTTP status alone. */
 export class WithdrawalAttemptError extends Error {
-  constructor(message: string, public readonly retryRequired: boolean) {
+  constructor(
+    message: string,
+    public readonly retryRequired: boolean,
+    /** The API error code, when the API answered. */
+    public readonly code?: string,
+  ) {
     super(message);
   }
 }
@@ -76,11 +88,13 @@ export function createWithdrawalController(
       await storage.write(userId, JSON.stringify({ ...attempt, outcome }));
       return outcome;
     } catch (error) {
+      const code = error instanceof ApiError ? error.code : undefined;
       if (!previous && withdrawalWasRejected(error)) {
         await storage.remove(userId);
-        throw new WithdrawalAttemptError(error instanceof Error ? error.message : 'Check your withdrawal details.', false);
+        throw new WithdrawalAttemptError(error instanceof Error ? error.message : 'Check your withdrawal details.', false, code);
       }
-      throw new WithdrawalAttemptError('We couldn’t confirm the outcome. Check the saved withdrawal before starting another.', true);
+      // A saved attempt stays saved: it resolves if withdrawals are switched back on.
+      throw new WithdrawalAttemptError('We couldn’t confirm the outcome. Check the saved withdrawal before starting another.', true, code);
     }
   };
   return {

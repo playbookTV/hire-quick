@@ -16,11 +16,14 @@ Specifications define intended behavior. [Current status](../docs/STATUS.md) dis
 
 ## Focused engineering notes
 
+- [Media upload performance and validation](media-upload-performance-2026-09-29.md)
 - [OTP verifier storage and key rotation](otp-verifiers.md)
 - [Ledger amount limits](ledger-limits.md)
 - [Checkout recovery and reservation expiry](checkout-recovery-2026-09-14.md)
 - [Payment validation](payment-validation-2026-09-12.md)
 - [Approved settlement implementation and validation](payments/settlement-implementation-2026-09-21.md)
+- [Weekly usher payouts and configurable platform fee (proposal)](payments/weekly-payouts-proposal-2026-10-23.md) and its [23 October decisions](payments/weekly-payouts-decisions-2026-10-23.md)
+- [Push notification scenarios (plan)](push-notifications-plan-2026-10-27.md)
 - [Booking and privacy validation](booking-privacy-validation-2026-09-14.md)
 - [Checkout, ledger, and realtime validation](checkout-ledger-realtime-validation-2026-09-14.md)
 
@@ -28,7 +31,23 @@ Specifications define intended behavior. [Current status](../docs/STATUS.md) dis
 
 - [29 September Smile ID submission closure](smile-submission-closure-2026-09-29.md) — provider account approval completed; owner confirms verification works. Investigation closed.
 
+## Current acceptance
+
+- [19 October launch acceptance](launch-acceptance-2026-10-19.md) — device checklist, fresh connectivity checks and outstanding owner evidence.
+
 ## Recent deployment
+
+- [30 October mobile UI release](mobile-ui-release-2026-10-30.md) — combined UI and payout branch, push-registration repairs, Android preview and iOS TestFlight builds.
+
+- [27 October production release](deployment-2026-10-27.md) — weekly payout runs, Expo push phase 0, identity name check, Edit profile fixes; review login kept.
+
+- [23 October production mode switch](deployment-production-mode-2026-10-23.md) — live-key outage, backend switched to `NODE_ENV=production`, staging environment started.
+
+- [2 October marketplace release](deployment-marketplace-2026-10-02.md) — profiles, reporting, search, sharing, decline reasons and hiring improvements.
+
+- [1 October client verification release](deployment-client-verification-2026-10-01.md) - migration, API/worker/admin rollout, internal Android/iOS builds and acceptance evidence.
+
+- [29 September upload performance release](deployment-upload-performance-2026-09-29.md) — API/worker rollout and internal Android/iOS builds.
 
 - [22 September approved settlement deployment](deployment-2026-09-22.md) — API, worker and admin on TEST/staging; final blocked regressions passed. Updated native binaries remain separate.
 

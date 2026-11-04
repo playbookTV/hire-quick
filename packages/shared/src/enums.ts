@@ -91,14 +91,20 @@ export type RewardType = (typeof REWARD_TYPES)[number];
 export const MILESTONE_STATUSES = ['UNLOCKED', 'FULFILLED'] as const;
 export type MilestoneStatus = (typeof MILESTONE_STATUSES)[number];
 
-/** Persisted notification kinds; each maps to a deep-link target on the mobile client. */
+/**
+ * Persisted notification kinds; each maps to a deep-link target on the mobile client.
+ * Mirrors the Prisma `NotificationType` enum (a parity test in the API guards it).
+ */
 export const NOTIFICATION_TYPES = [
+  'CHECKOUT_UPDATED',
   'INVITATION_RECEIVED',
   'APPLICATION_RECEIVED',
   'BOOKING_CONFIRMED',
   'PAYOUT_RELEASED',
   'NEW_MESSAGE',
   'DISPUTE_OPENED',
+  'PAYOUT_SENT',
+  'PAYOUT_FAILED',
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 

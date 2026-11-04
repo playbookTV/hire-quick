@@ -38,6 +38,10 @@ Run from the repository root with the appropriate environment exported.
 
 Routes live in `apps/mobile/app` under `(auth)`, `(client)`, `(usher)`, `(verification)`, and `(modals)`. Shared UI and styling should follow existing components rather than duplicating screen-specific patterns.
 
+The approved Wonder screens and component library are implemented through the existing Restyle theme. `theme/token-manager.ts` keeps the imported Figma snapshot intact and records newer canvas values in `canvasTokens`. Shared buttons, fields, chips, avatars, cards, headings, and earnings cards own their variants. `ProfileStats` is reused by both profile views; `AvailabilityCalendar` presents live day states and totals while the route retains query, save, and booking-navigation behavior. `ConversationList` serves both roles with name/event search and an unread filter based on server counts.
+
+The native splash is configured through `expo-splash-screen` in `apps/mobile/app.json`; its [artwork notes](../apps/mobile/assets/splash/README.md) describe the shared logo geometry. Fonts load under the native splash, then `LaunchScreen` covers session restoration. Updating the native splash requires a new binary, not only an OTA update. Validate mobile changes with its typecheck, lint, tests, and iOS/Android export; export does not replace a device check of layout, keyboard, and cold launch.
+
 Key implementation boundaries:
 
 - [HTTP client](../apps/mobile/lib/client.ts) delegates to session-bound request handling and creates logical idempotency keys.

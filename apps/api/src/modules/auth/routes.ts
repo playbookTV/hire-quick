@@ -6,6 +6,8 @@ import { ApiError } from '../../app.js';
 import { revokeRefreshToken } from './tokens.js';
 import { rotateRefreshToken } from './rotation.js';
 import { writeAudit } from '../audit.js';
+import { expoPushTokenSchema } from '@hq/shared';
+import { unregisterDevice } from '../privacy/consent.js';
 
 type Handler = (req: Request, res: Response) => Promise<void>;
 const wrap =
@@ -92,12 +94,17 @@ export function authRouter(): Router {
       const parsed = refreshSchema.safeParse(req.body);
       if (parsed.success) {
         const revoked = await revokeRefreshToken(parsed.data.refreshToken);
-        if (revoked)
+        if (revoked) {
+          // The app sends its push token here when the authenticated unregister
+          // call failed; only that user's row for it can be removed.
+          const pushToken = expoPushTokenSchema.safeParse((req.body as { pushToken?: unknown }).pushToken);
+          if (pushToken.success) await unregisterDevice(revoked.userId, pushToken.data);
           await writeAudit({
             actorId: revoked.userId,
             action: 'auth.logout',
             target: revoked.userId,
           });
+        }
       }
       res.status(204).end();
     }),

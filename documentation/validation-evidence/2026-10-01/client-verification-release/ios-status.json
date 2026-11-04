@@ -1,0 +1,15 @@
+{
+  "id": "e45b80f1-971d-4147-906c-e2770aa0019f",
+  "platform": "IOS",
+  "status": "FINISHED",
+  "appBuildVersion": "13",
+  "gitCommitHash": "f3c979eac7c4f110e4dc35f3037452d8e17d5934",
+  "buildProfile": "preview",
+  "distribution": "INTERNAL",
+  "createdAt": "2026-10-01T19:52:48.516Z",
+  "completedAt": "2026-10-01T20:01:44.266Z",
+  "artifactCheck": {
+    "status": 200,
+    "bytes": 28815675
+  }
+}

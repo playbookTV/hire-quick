@@ -1,0 +1,37 @@
+{
+  "checkedAt": "2026-10-02T12:24:27.140Z",
+  "checks": [
+    {
+      "path": "/health",
+      "status": 200,
+      "expected": 200
+    },
+    {
+      "path": "/ready",
+      "status": 200,
+      "expected": 200
+    },
+    {
+      "path": "/api/clients/00000000-0000-4000-8000-000000000000",
+      "status": 401,
+      "expected": 401
+    },
+    {
+      "path": "/api/admin/reports",
+      "status": 401,
+      "expected": 401
+    },
+    {
+      "path": "/api/admin/presentation-policies",
+      "status": 401,
+      "expected": 401
+    }
+  ],
+  "admin": {
+    "status": 200,
+    "assetPath": "/assets/index-ByKGOOXu.js",
+    "assetStatus": 200,
+    "marketplaceReviewPresent": true,
+    "correctApiOrigin": true
+  }
+}

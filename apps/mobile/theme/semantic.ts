@@ -50,6 +50,10 @@ function semantic(c: typeof colorTokens.Light) {
     actionDangerPressed: c['action/danger-pressed'],
     actionDisabled: c['action/disabled'],
     inkOnDanger: primitiveTokens['neutral/0'],
+    inkOnPrimary: primitiveTokens['neutral/0'],
+    accentBorder: primitiveTokens['accent/200'],
+    notificationBadge: primitiveTokens['red/500'],
+    inputFocus: c['brand/accent'],
     // Older screen names map to semantic roles, never to the retired emerald palette.
     inverseInk: c['ink/on-elevated'],
     brandSurface: c['bg/elevated'],

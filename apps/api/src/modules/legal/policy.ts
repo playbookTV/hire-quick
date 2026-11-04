@@ -8,8 +8,8 @@
  */
 export const PRIVACY_POLICY = {
   documentKey: 'privacy-policy',
-  version: '2026-06-28',
-  effectiveDate: '2026-06-28',
+  version: '2026-10-01',
+  effectiveDate: '2026-10-01',
   body: `# HireQuick Privacy Policy
 
 HireQuick connects clients with event staff in Lagos and holds payment in escrow
@@ -19,8 +19,12 @@ rights under the Nigeria Data Protection Regulation (NDPR).
 ## What we collect
 - Account identity: phone number, optional email, role.
 - Profile data: display name, bio, photos, languages, base area.
-- Verification data (ushers): ID document and selfie, used solely to confirm
-  identity, then deleted on the retention schedule below.
+- Verification data (clients and ushers): identity details and a live selfie
+  processed by Smile ID to confirm identity. HireQuick retains the verification
+  result and limited review metadata, not raw ID numbers or biometric captures
+  from the Smile flow. Authorised reviewers can access temporary provider evidence.
+- Business verification: registration number, registered name, representative
+  role, registry results, and documents showing authority to represent a business.
 - Payment data: bank account details and payout references, retained for
   financial and tax compliance.
 - Operational data: bookings, attendance, messages, reviews, disputes, and
@@ -31,7 +35,9 @@ To match staff to jobs, hold and release escrow, verify attendance, prevent
 fraud, support disputes, and meet legal/financial obligations.
 
 ## Retention
-- Verification documents: deleted 90 days after approval / 30 days after rejection.
+- Stored verification documents, including business authority evidence: deleted
+  90 days after approval / 30 days after rejection. Pending evidence is retained
+  while the review remains open. Verification decisions remain with the account.
 - Chat: deleted ~180 days after the event (after the dispute window).
 - Inactive device tokens: deleted after a period of inactivity.
 - Financial and ledger records: retained for the statutory period and never
@@ -43,7 +49,8 @@ personal data while retaining financial records as the law requires. You may
 grant or withdraw consent for push notifications and marketing at any time.
 
 ## Processors
-We share data only as needed with our payment processor (Paystack), messaging
+We share data only as needed with our identity and business verification processor
+(Smile ID), payment processor (Paystack), messaging
 provider (Brevo), database host (Neon), and object storage, some of which may
 process data outside Nigeria under appropriate safeguards.
 

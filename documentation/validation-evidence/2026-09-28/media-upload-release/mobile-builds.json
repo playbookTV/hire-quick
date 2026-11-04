@@ -1,0 +1,32 @@
+[
+  {
+    "id": "abb99546-c7f9-4a84-a941-5a0b620512ef",
+    "platform": "ANDROID",
+    "status": "FINISHED",
+    "appBuildVersion": "19",
+    "gitCommitHash": "be124c03260066bf16943e39110f4c9c3290da1f",
+    "buildProfile": "preview",
+    "distribution": "INTERNAL",
+    "createdAt": "2026-09-28T22:25:06.562Z",
+    "completedAt": "2026-09-28T22:56:07.056Z",
+    "artifacts": {
+      "buildUrl": "https://expo.dev/artifacts/eas/zzL2Y916WSjHcSWAmTfDArWVXKOOG7jjVRWxoMbE9Hk.apk",
+      "applicationArchiveUrl": "https://expo.dev/artifacts/eas/zzL2Y916WSjHcSWAmTfDArWVXKOOG7jjVRWxoMbE9Hk.apk"
+    }
+  },
+  {
+    "id": "9c1ff4cf-6197-49c2-8b6c-9c20b8b43432",
+    "platform": "IOS",
+    "status": "FINISHED",
+    "appBuildVersion": "11",
+    "gitCommitHash": "be124c03260066bf16943e39110f4c9c3290da1f",
+    "buildProfile": "preview",
+    "distribution": "INTERNAL",
+    "createdAt": "2026-09-28T22:25:31.906Z",
+    "completedAt": "2026-09-28T22:33:47.659Z",
+    "artifacts": {
+      "buildUrl": "https://expo.dev/artifacts/eas/pAOshTg7QZY9oCUKdpIFCqpX6qCFWiFrhRGDxyOOflc.ipa",
+      "applicationArchiveUrl": "https://expo.dev/artifacts/eas/pAOshTg7QZY9oCUKdpIFCqpX6qCFWiFrhRGDxyOOflc.ipa"
+    }
+  }
+]

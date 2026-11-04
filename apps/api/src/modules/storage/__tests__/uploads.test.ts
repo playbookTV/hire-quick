@@ -99,6 +99,27 @@ async function ready(f: Awaited<ReturnType<typeof fixture>>, purpose: UploadPurp
   await finalizeUpload(storage, f.userId, key);
   return key;
 }
+
+it.each(['SUSPENDED', 'ANONYMIZED'] as const)(
+  'rejects uploads after the owner becomes %s',
+  async (status) => {
+    const f = await fixture();
+    const key = await issue(f);
+    put(key);
+    await prisma.user.update({ where: { id: f.userId }, data: { status } });
+    await expect(issue(f)).rejects.toMatchObject({ code: 'UPLOAD_UNAVAILABLE' });
+    await expect(finalizeUpload(storage, f.userId, key)).rejects.toMatchObject({
+      code: 'UPLOAD_UNAVAILABLE',
+    });
+    expect(storage.inspectObject).not.toHaveBeenCalled();
+  },
+);
+
+it('rejects an owner that no longer exists', async () => {
+  await expect(
+    prisma.$transaction((tx) => lockUploadOwner(tx, randomUUID()), STORAGE_TX),
+  ).rejects.toMatchObject({ code: 'UPLOAD_UNAVAILABLE' });
+});
 function avatar(f: Awaited<ReturnType<typeof fixture>>, key: string) {
   return request(app)
     .put('/api/me/photos/avatar')

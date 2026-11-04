@@ -1,9 +1,10 @@
 import { pendingEarningsByBooking } from '../pending-earnings.js';
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { z } from 'zod';
-import { withdrawSchema, resolveAccountSchema } from '@hq/shared';
+import { withdrawSchema, resolveAccountSchema, nextPayoutAt, PAYOUT_MIN_KOBO } from '@hq/shared';
 import { prisma } from '@hq/database';
 import { ApiError } from '../../../app.js';
+import { env } from '../../../env.js';
 import { requireIdempotencyKey } from './middleware.js';
 import { requireAuth, type AuthedRequest } from '../../auth/middleware.js';
 import { writeAudit } from '../../audit.js';
@@ -13,6 +14,7 @@ import {
   initChargeForOrder,
   createBankAccountForUsher,
   initWithdrawal,
+  setPayoutAccount,
   type Deps,
 } from '../service.js';
 
@@ -119,10 +121,28 @@ export function paymentsRouter(deps: Deps): Router {
         where: { walletId, entryType: 'CREDIT' },
         _sum: { amount: true },
       });
+      const usher = await prisma.usher.findUniqueOrThrow({
+        where: { id: usherId },
+        select: {
+          payoutBankAccount: { select: { id: true, bankCode: true, accountNumber: true, accountName: true } },
+        },
+      });
+      const account = usher.payoutBankAccount;
       res.json({
         availableBalance,
         pendingEscrow: [...pending.values()].reduce((sum, amount) => sum + amount, 0),
         lifetimeEarned: lifetime._sum.amount ?? 0,
+        payoutMode: env.PAYOUT_MODE,
+        nextPayoutAt: nextPayoutAt(new Date()).toISOString(),
+        payoutMinimumKobo: PAYOUT_MIN_KOBO,
+        payoutAccount: account
+          ? {
+              id: account.id,
+              bankCode: account.bankCode,
+              accountName: account.accountName,
+              last4: account.accountNumber.slice(-4),
+            }
+          : null,
       });
     }),
   );
@@ -243,8 +263,8 @@ export function paymentsRouter(deps: Deps): Router {
     '/bank-accounts',
     wrap(async (req, res) => {
       const { usherId } = await usherWalletFor((req as AuthedRequest).auth.userId);
-      res.json(
-        await prisma.bankAccount.findMany({
+      const [accounts, usher] = await Promise.all([
+        prisma.bankAccount.findMany({
           where: { usherId },
           orderBy: { createdAt: 'desc' },
           select: {
@@ -255,7 +275,32 @@ export function paymentsRouter(deps: Deps): Router {
             verified: true,
           },
         }),
+        prisma.usher.findUniqueOrThrow({
+          where: { id: usherId },
+          select: { payoutBankAccountId: true },
+        }),
+      ]);
+      res.json(
+        accounts.map((a) => ({ ...a, isPayoutAccount: a.id === usher.payoutBankAccountId })),
       );
+    }),
+  );
+
+  // choose the account weekly payout runs pay into
+  r.put(
+    '/payout-account',
+    wrap(async (req, res) => {
+      const { usherId } = await usherWalletFor((req as AuthedRequest).auth.userId);
+      const { bankAccountId } = z.object({ bankAccountId: z.string().uuid() }).parse(req.body);
+      const out = await setPayoutAccount(prisma, usherId, bankAccountId);
+      if (out.changed)
+        await writeAudit({
+          actorId: (req as AuthedRequest).auth.userId,
+          action: 'payout.account.set',
+          target: usherId,
+          metadata: { bankAccountId },
+        });
+      res.json({ bankAccountId, isPayoutAccount: true });
     }),
   );
 
@@ -264,6 +309,7 @@ export function paymentsRouter(deps: Deps): Router {
     amount: true,
     status: true,
     paystackTransferRef: true,
+    payoutRunId: true,
     createdAt: true,
     updatedAt: true,
     bankAccount: { select: { bankCode: true, accountNumber: true, accountName: true } },
@@ -273,6 +319,7 @@ export function paymentsRouter(deps: Deps): Router {
     amount: number;
     status: string;
     paystackTransferRef: string | null;
+    payoutRunId?: string | null;
     createdAt: Date;
     updatedAt: Date;
     bankAccount: { bankCode: string; accountNumber: string; accountName: string };
@@ -280,6 +327,8 @@ export function paymentsRouter(deps: Deps): Router {
     id: row.id,
     amount: row.amount,
     status: row.status,
+    // Weekly payout lines vs. the usher's own requests (labels "payout"/"withdrawal").
+    source: row.payoutRunId ? ('PAYOUT_RUN' as const) : ('USHER_REQUEST' as const),
     reference: row.paystackTransferRef,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -334,6 +383,12 @@ export function paymentsRouter(deps: Deps): Router {
     '/withdrawals',
     requireIdempotencyKey,
     wrap(async (req, res) => {
+      if (env.PAYOUT_MODE === 'weekly')
+        throw new ApiError(
+          409,
+          'PAYOUTS_SCHEDULED',
+          'Payouts are sent every Thursday to your payout account. You do not need to withdraw.',
+        );
       const { usherId, walletId } = await usherWalletFor((req as AuthedRequest).auth.userId);
       const body = withdrawSchema.parse(req.body);
       const out = await initWithdrawal(deps, {

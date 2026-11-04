@@ -1,0 +1,15 @@
+[
+  {
+    "id": "29192e71-feb7-4eff-bd26-79fa9398d63b",
+    "status": "SUCCESS",
+    "createdAt": "2026-10-01T20:19:52.645Z",
+    "message": "Mandatory client verification f3c979eac7c4",
+    "imageDigest": "sha256:9989aaf9e3c81d23a7a8f76b62e28cfdf72361b89eb3577a260b1460e85aed1b"
+  },
+  {
+    "id": "24f0d4ff-04d8-4cec-bdd0-16c69ef1c120",
+    "status": "REMOVED",
+    "createdAt": "2026-09-28T08:28:45.031Z",
+    "imageDigest": "sha256:d63f4450e295a6e945ea959b02d9657c5d9958a6d315f220017fabc649621eb5"
+  }
+]

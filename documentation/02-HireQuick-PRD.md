@@ -103,6 +103,14 @@ This lets a client hire 6 ushers, have 5 show up, and pay out exactly those 5 wh
 
 ## 8. User Stories & Acceptance Criteria
 
+### Mandatory client verification (approved 1 October 2026)
+
+Every new and existing client must complete personal Smile ID verification before marketplace access. After profile completion, the client chooses Individual or Business/organisation. Individual clients receive **Identity verified** after the authoritative identity result. Business clients additionally submit Nigerian business registration details and evidence of the verified representative's authority; a registry match and explicit admin approval are required for **Business verified** and hiring access. Selecting Business or submitting evidence alone grants no trust.
+
+Pending, rejected and unavailable checks remain gated, with retry/support paths. Existing paid booking obligations and privacy/account tools remain accessible. Unregistered businesses use Individual; individuals may upgrade while retaining their history, but cannot hire again until business approval. Business accounts cannot downgrade themselves to evade verification. The stronger business label means additional checks, not guaranteed reliability, a rating increase, or priority ranking. This is a single-representative account, not the multi-user agency/corporate billing capability excluded in §4.
+
+Acceptance includes server enforcement against direct/older-client calls, owned/latest attempt matching, stale/duplicate callback protection, separate identity/business states, production-only provider evidence for approval, private authority evidence, and erasure/retention support. See [implementation flow](../docs/SMILE-ID.md#mandatory-clients-and-business-verification).
+
 ### Authentication
 
 **Sign up with phone**

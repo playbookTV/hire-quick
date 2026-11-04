@@ -1,0 +1,32 @@
+{
+  "checkedAt": "2026-10-01T20:22:48.227Z",
+  "checks": [
+    {
+      "path": "/health",
+      "status": 200,
+      "expected": 200
+    },
+    {
+      "path": "/ready",
+      "status": 200,
+      "expected": 200
+    },
+    {
+      "path": "/api/me/verification/business",
+      "status": 401,
+      "expected": 401
+    },
+    {
+      "path": "/api/admin/business-verifications",
+      "status": 401,
+      "expected": 401
+    }
+  ],
+  "admin": {
+    "status": 200,
+    "assetPath": "/assets/index-DXckpBm3.js",
+    "assetStatus": 200,
+    "businessReviewPresent": true,
+    "correctApiOrigin": true
+  }
+}

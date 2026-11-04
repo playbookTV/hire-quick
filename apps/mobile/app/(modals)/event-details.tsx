@@ -1,4 +1,9 @@
+import { Alert, Share } from 'react-native';
+import { PhysicalAttributesSummary } from '../../components/PhysicalAttributes.js';
+import { userMessage } from '../../lib/api-error.js';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { clientTrustLabel } from '@hq/shared';
+import { Badge } from '../../components/Badge.js';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Box, Text } from '../../theme/restyle.js';
 import { StatusPill } from '../../components/StatusPill.js';
@@ -12,7 +17,13 @@ import { EmptyState } from '../../components/EmptyState.js';
 import { Button } from '../../components/Button.js';
 import { Icon, type IconName } from '../../components/Icon.js';
 import { Loading } from '../../components/Loading.js';
-import { useEvent, useMyApplications, useApplyToEvent, useSavedJobs } from '../../lib/hooks.js';
+import {
+  useEvent,
+  useWithdrawApplication,
+  useMyApplications,
+  useApplyToEvent,
+  useSavedJobs,
+} from '../../lib/hooks.js';
 import { useJobBookmark } from '../../lib/use-job-bookmark.js';
 import { hapticSelection } from '../../lib/haptics.js';
 import { useToast } from '../../lib/toast.js';
@@ -55,6 +66,7 @@ export default function EventDetails(): React.JSX.Element {
   const { id } = useLocalSearchParams<{ id: string }>();
   const event = useEvent(id ?? '');
   const apply = useApplyToEvent();
+  const withdraw = useWithdrawApplication();
   const applications = useMyApplications();
   const { user } = useAuth();
   const saved = useSavedJobs();
@@ -108,9 +120,10 @@ export default function EventDetails(): React.JSX.Element {
   }
 
   const e = event.data;
-  const alreadyApplied = (applications.data ?? []).some(
-    (a) => a.event.id === id && a.status !== 'WITHDRAWN',
-  );
+  const application = (applications.data ?? []).find((a) => a.event.id === id);
+  const alreadyApplied =
+    !!application && ['APPLIED', 'SHORTLISTED', 'ACCEPTED'].includes(application.status);
+  const canWithdraw = alreadyApplied && !application?.booking;
   const closed = !['OPEN', 'PARTIALLY_STAFFED'].includes(e.status);
   const verified = user?.usher?.verificationStatus === 'VERIFIED';
   const requirements = (e.preferences?.requirements ?? '')
@@ -124,6 +137,25 @@ export default function EventDetails(): React.JSX.Element {
       <Screen scroll>
         <Box style={{ gap: 20 }}>
           <Text variant="h1">{e.title}</Text>
+          <Button
+            label="Share job"
+            variant="ghost"
+            onPress={() => {
+              void Share.share({
+                message: `${e.title} · ${e.state ?? 'Nigeria'} · ${money(e.budgetPerHead)} per person\nOpen in HireQuick: hirequick://jobs/${e.id}`,
+              }).catch((err) => toast.error(userMessage(err)));
+            }}
+          />
+          <Button
+            label="Report job"
+            variant="ghost"
+            onPress={() =>
+              router.push({
+                pathname: '/(modals)/report',
+                params: { targetType: 'JOB', targetId: e.id },
+              })
+            }
+          />
           <StatusPill status={e.status} label={e.status === 'OPEN' ? 'Recruiting' : undefined} />
 
           <Box
@@ -160,15 +192,37 @@ export default function EventDetails(): React.JSX.Element {
             />
           </Box>
 
+          {e.client ? (
+            <Box style={{ gap: 8 }}>
+              <Button
+                label="View client profile"
+                variant="ghost"
+                onPress={() =>
+                  router.push({ pathname: '/(modals)/client-profile', params: { id: e.clientId } })
+                }
+              />
+              <Text variant="titleM">{e.client.businessName || e.client.displayName}</Text>
+              {clientTrustLabel(e.client) ? <Badge label={clientTrustLabel(e.client)!} /> : null}
+            </Box>
+          ) : null}
           <Card>
             <KeyValueRow label="Your pay" value={money(e.budgetPerHead)} emphasize />
-            <Text variant="bodySm" color="inkMuted">The client pays the platform fee separately.</Text>
+            <Text variant="bodySm" color="inkMuted">
+              The client pays the platform fee separately.
+            </Text>
             <Text variant="bodySm" color="inkMuted" marginTop="200">
               Eligible for wallet release from 72 hours after event end, once completed and with no
               open dispute.
             </Text>
           </Card>
 
+          <PhysicalAttributesSummary
+            value={e.preferences?.presentation?.attributes}
+            title="Physical preferences"
+          />
+          {e.preferences?.presentation?.rationale ? (
+            <Text variant="body">{e.preferences.presentation.rationale}</Text>
+          ) : null}
           {requirements.length > 0 ? (
             <Box style={{ gap: 8 }}>
               <Text variant="headingS">Requirements</Text>
@@ -196,6 +250,31 @@ export default function EventDetails(): React.JSX.Element {
           paddingBottom: insets.bottom + 12,
         }}
       >
+        {canWithdraw && application ? (
+          <Button
+            label="Withdraw application"
+            variant="secondary"
+            loading={withdraw.isPending}
+            onPress={() =>
+              Alert.alert(
+                'Withdraw application?',
+                'The client will no longer be able to select this application. If a booking has already started, manage it from My bookings.',
+                [
+                  { text: 'Keep application', style: 'cancel' },
+                  {
+                    text: 'Withdraw',
+                    style: 'destructive',
+                    onPress: () =>
+                      withdraw.mutate(application.id, {
+                        onSuccess: () => toast.success('Application withdrawn.'),
+                        onError: (err) => toast.error(userMessage(err)),
+                      }),
+                  },
+                ],
+              )
+            }
+          />
+        ) : null}
         <Button
           label={
             alreadyApplied
@@ -218,7 +297,13 @@ export default function EventDetails(): React.JSX.Element {
               );
           }}
           loading={apply.isPending}
-          disabled={alreadyApplied || closed || applications.isLoading}
+          disabled={
+            alreadyApplied ||
+            closed ||
+            applications.isLoading ||
+            applications.isError ||
+            withdraw.isPending
+          }
         />
         <Button
           label={

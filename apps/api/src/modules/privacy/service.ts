@@ -24,6 +24,10 @@ export async function buildExport(userId: string): Promise<Record<string, unknow
     consents,
     policyAcceptances,
     uploads,
+    reports,
+    invitationReplies,
+    notificationPreference,
+    notificationDispatches,
   ] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
@@ -38,6 +42,24 @@ export async function buildExport(userId: string): Promise<Record<string, unknow
     prisma.consentRecord.findMany({ where: { userId } }),
     prisma.policyAcceptance.findMany({ where: { userId } }),
     prisma.uploadIntent.findMany({ where: { ownerId: userId } }),
+    prisma.marketplaceReport.findMany({
+      where: { reporterId: userId },
+      select: {
+        id: true,
+        eventId: true,
+        usherId: true,
+        reason: true,
+        details: true,
+        status: true,
+        createdAt: true,
+      },
+    }),
+    prisma.invitation.findMany({
+      where: { usher: { userId } },
+      select: { id: true, eventId: true, status: true, declineReason: true, declineNote: true },
+    }),
+    prisma.notificationPreference.findUnique({ where: { userId } }),
+    prisma.notificationDispatch.findMany({ where: { userId }, orderBy: { sentAt: 'desc' } }),
   ]);
 
   const usherData = usher
@@ -61,6 +83,25 @@ export async function buildExport(userId: string): Promise<Record<string, unknow
   const clientData = client
     ? {
         client,
+        verifications: await prisma.usherVerification.findMany({
+          where: { clientId: client.id },
+          select: { id: true, status: true, reason: true, createdAt: true },
+        }),
+        businessVerifications: await prisma.businessVerification.findMany({
+          where: { clientId: client.id },
+          select: {
+            id: true,
+            registeredName: true,
+            registrationNumber: true,
+            businessType: true,
+            representativeRole: true,
+            status: true,
+            registryStatus: true,
+            reviewNote: true,
+            createdAt: true,
+            reviewedAt: true,
+          },
+        }),
         orders: await prisma.order.findMany({
           where: { clientId: client.id },
           include: {
@@ -96,6 +137,10 @@ export async function buildExport(userId: string): Promise<Record<string, unknow
     consents,
     policyAcceptances,
     uploads,
+    reports,
+    invitationReplies,
+    notificationPreference,
+    notificationDispatches,
   };
 }
 
@@ -161,13 +206,56 @@ export async function eraseUser(
     where: { raisedById: userId },
     data: { reason: REDACTED, note: null },
   });
+  await tx.marketplaceReport.updateMany({
+    where: { reporterId: userId },
+    data: { reason: REDACTED, details: REDACTED },
+  });
   await tx.deviceToken.deleteMany({ where: { userId } });
   await tx.notification.deleteMany({ where: { userId } });
+  await tx.notificationDispatch.deleteMany({ where: { userId } });
+  await tx.notificationPreference.deleteMany({ where: { userId } });
 
   if (client) {
+    if (client.avatarKey?.startsWith(`photos/${client.id}/`)) {
+      storageKeys.push(client.avatarKey);
+      await scheduleDeletion(tx, client.avatarKey);
+    }
+    await tx.usherVerification.updateMany({
+      where: { clientId: client.id },
+      data: {
+        nin: null,
+        bvn: null,
+        govLookup: PrismaValues.DbNull,
+        reason: null,
+        providerReferenceId: null,
+      },
+    });
+    await tx.businessVerification.updateMany({
+      where: { clientId: client.id },
+      data: {
+        registeredName: REDACTED,
+        registrationNumber: REDACTED,
+        representativeRole: REDACTED,
+        authorizationKey: null,
+        registryName: null,
+        reviewNote: null,
+      },
+    });
     await tx.client.update({
       where: { id: client.id },
-      data: { displayName: 'Deleted user', businessName: null },
+      data: {
+        displayName: 'Deleted user',
+        businessName: null,
+        description: null,
+        position: null,
+        city: null,
+        contactEmail: null,
+        avatarKey: null,
+        verificationStatus: 'PENDING',
+        verifiedAt: null,
+        businessVerificationStatus: 'NOT_STARTED',
+        businessVerifiedAt: null,
+      },
     });
     // Keep order/reference/state intact for delayed charges and refund recovery.
     // Checkout writers fence anonymization before storing contact details/URLs.
@@ -206,6 +294,7 @@ export async function eraseUser(
       data: {
         displayName: 'Deleted user',
         bio: null,
+        physicalAttributes: PrismaValues.DbNull,
         avatarKey: null,
         state: null,
         city: null,
@@ -213,6 +302,10 @@ export async function eraseUser(
         yearsExperience: 0,
         dayRateKobo: null,
       },
+    });
+    await tx.invitation.updateMany({
+      where: { usherId: usher.id },
+      data: { declineReason: null, declineNote: null },
     });
     await tx.photo.deleteMany({ where: { usherId: usher.id } });
     // Drop the document references; the actual objects are deleted from storage

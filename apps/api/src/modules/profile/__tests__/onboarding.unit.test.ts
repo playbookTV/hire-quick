@@ -4,12 +4,15 @@ import request from 'supertest';
 
 const mocks = vi.hoisted(() => ({
   user: vi.fn(),
+  transaction: vi.fn(),
+  queryRaw: vi.fn(),
   clientUpdate: vi.fn(),
   usherUpdate: vi.fn(),
   photos: vi.fn(),
 }));
 vi.mock('@hq/database', () => ({
   prisma: {
+    $transaction: mocks.transaction,
     user: { findUniqueOrThrow: mocks.user },
     client: { update: mocks.clientUpdate },
     usher: { update: mocks.usherUpdate },
@@ -47,6 +50,14 @@ const base = { id: 'user', phone: '+2348000000000', status: 'ACTIVE', client: nu
 beforeEach(() => {
   vi.resetAllMocks();
   mocks.photos.mockResolvedValue([]);
+  mocks.queryRaw.mockResolvedValue([{ status: 'ACTIVE' }]);
+  mocks.transaction.mockImplementation(async (run: (tx: unknown) => Promise<unknown>) =>
+    run({
+      $queryRaw: mocks.queryRaw,
+      client: { update: mocks.clientUpdate },
+      usher: { update: mocks.usherUpdate },
+    }),
+  );
 });
 
 describe('profile onboarding', () => {
@@ -92,6 +103,7 @@ describe('profile onboarding', () => {
       languages: ['English'],
     };
     expect((await request(app).patch('/api/me').send(details)).body).toEqual({ updated: true });
+    expect(mocks.queryRaw).toHaveBeenCalledOnce();
     const refreshed = await request(app).get('/api/me');
     expect(refreshed.status).toBe(200);
     expect(refreshed.body.usher).toMatchObject(details);

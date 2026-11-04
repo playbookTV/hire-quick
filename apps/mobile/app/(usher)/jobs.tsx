@@ -1,3 +1,5 @@
+import { Input } from '../../components/Input.js';
+import { useDebouncedValue } from '../../lib/use-debounced-value.js';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { ScrollView, RefreshControl } from 'react-native';
@@ -39,7 +41,9 @@ export default function Jobs(): React.JSX.Element {
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<Tab>('available');
 
-  const events = useEvents();
+  const [search, setSearch] = useState('');
+  const debouncedSearch = useDebouncedValue(search.trim(), 300);
+  const events = useEvents(debouncedSearch);
   const applied = useMyApplications();
   const saved = useSavedJobs();
   const bookmark = useJobBookmark();
@@ -48,11 +52,22 @@ export default function Jobs(): React.JSX.Element {
     router.push({ pathname: '/(modals)/event-details', params: { id } });
 
   const appliedIds = useMemo(
-    () => new Set((applied.data ?? []).map((a) => a.event.id)),
+    () =>
+      new Set(
+        (applied.data ?? [])
+          .filter((a) => ['APPLIED', 'SHORTLISTED', 'ACCEPTED'].includes(a.status))
+          .map((a) => a.event.id),
+      ),
     [applied.data],
   );
   const savedIds = useMemo(() => new Set((saved.data ?? []).map((e) => e.id)), [saved.data]);
 
+  const matches = (event: EventResource): boolean =>
+    `${event.title} ${event.category} ${event.state ?? ''} ${event.client?.businessName ?? ''} ${event.client?.displayName ?? ''}`
+      .toLowerCase()
+      .includes(debouncedSearch.toLowerCase());
+  const appliedRows = (applied.data ?? []).filter((a) => matches(a.event));
+  const savedRows = (saved.data ?? []).filter(matches);
   const active = tab === 'available' ? events : tab === 'applied' ? applied : saved;
   const onRefresh = (): void => {
     void Promise.all([events.refetch(), applied.refetch(), saved.refetch()]);
@@ -120,6 +135,14 @@ export default function Jobs(): React.JSX.Element {
         refreshControl={<RefreshControl refreshing={active.isFetching} onRefresh={onRefresh} />}
       >
         <ScreenHeading title="Jobs" />
+        <Input
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Search jobs, clients or categories"
+          accessibilityLabel="Search jobs"
+          leftIcon="search"
+          maxLength={120}
+        />
         {saved.isError && tab !== 'saved' ? (
           <Box style={{ gap: 8 }}>
             <Banner
@@ -142,7 +165,7 @@ export default function Jobs(): React.JSX.Element {
               ? 'Finding jobs…'
               : active.isError
                 ? 'Results unavailable'
-                : `${active.data?.length ?? 0} ${tab === 'applied' ? 'application' : 'job'}${active.data?.length === 1 ? '' : 's'}`}
+                : `${tab === 'available' ? (events.data?.length ?? 0) : tab === 'applied' ? appliedRows.length : savedRows.length} ${tab === 'applied' ? 'application' : 'job'}${active.data?.length === 1 ? '' : 's'}`}
           </Text>
           <Button
             label="My bookings"
@@ -174,7 +197,7 @@ export default function Jobs(): React.JSX.Element {
             <Box style={{ paddingTop: 40 }}>
               <EmptyState
                 icon="search"
-                title="No open jobs right now"
+                title={search.trim() ? 'No matching jobs' : 'No open jobs right now'}
                 subtitle="New opportunities will appear here when they’re posted. Check back soon."
                 actionLabel="Refresh"
                 onAction={() => {
@@ -193,11 +216,11 @@ export default function Jobs(): React.JSX.Element {
             </Box>
           )
         ) : tab === 'applied' ? (
-          (applied.data ?? []).length === 0 ? (
+          appliedRows.length === 0 ? (
             <Box style={{ paddingTop: 40 }}>
               <EmptyState
                 icon="send"
-                title="No applications yet"
+                title={search.trim() ? 'No matching applications' : 'No applications yet'}
                 subtitle="Apply to jobs in the Available tab and track their status here."
                 actionLabel="Browse jobs"
                 onAction={() => setTab('available')}
@@ -205,7 +228,7 @@ export default function Jobs(): React.JSX.Element {
             </Box>
           ) : (
             <Box style={{ gap: 12 }}>
-              {(applied.data ?? []).map((a) => {
+              {appliedRows.map((a) => {
                 const b = STATUS_BADGE[a.status] ?? {
                   label: 'Status unavailable',
                   tone: 'muted' as const,
@@ -226,18 +249,18 @@ export default function Jobs(): React.JSX.Element {
               })}
             </Box>
           )
-        ) : (saved.data ?? []).length === 0 ? (
+        ) : savedRows.length === 0 ? (
           <Box style={{ paddingTop: 40 }}>
             <EmptyState
               icon="bookmark"
-              title="No saved jobs"
+              title={search.trim() ? 'No matching saved jobs' : 'No saved jobs'}
               subtitle="Tap the bookmark on any job to save it for later."
               actionLabel="Browse jobs"
               onAction={() => setTab('available')}
             />
           </Box>
         ) : (
-          <Box style={{ gap: 12 }}>{(saved.data ?? []).map((e) => renderEventCard(e))}</Box>
+          <Box style={{ gap: 12 }}>{savedRows.map((e) => renderEventCard(e))}</Box>
         )}
       </ScrollView>
     </Box>

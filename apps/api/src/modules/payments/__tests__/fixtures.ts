@@ -35,7 +35,13 @@ export async function createScenario(
       phone: `+234999${tag}`,
       passwordHash: 'x',
       status: 'ACTIVE',
-      client: { create: { displayName: `Client ${tag}` } },
+      client: {
+        create: {
+          displayName: `Client ${tag}`,
+          accountType: 'INDIVIDUAL',
+          verificationStatus: 'VERIFIED',
+        },
+      },
     },
     include: { client: true },
   });

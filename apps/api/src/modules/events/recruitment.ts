@@ -1,6 +1,13 @@
 import type { ApplicationStatus, InvitationStatus, Prisma, PrismaClient } from '@hq/database';
 import { ApiError } from '../../app.js';
-import { assertNoLiveBooking, assertRecruiting, assertStaffEligible, lockUsherSchedules } from './eligibility.js';
+import {
+  assertNoLiveBooking,
+  assertRecruiting,
+  assertStaffEligible,
+  lockUsherSchedules,
+} from './eligibility.js';
+import { invitationReplySchema } from '@hq/shared';
+import { writeAudit } from '../audit.js';
 
 const TX = { timeout: 30_000, maxWait: 30_000 };
 type Tx = Prisma.TransactionClient;
@@ -9,7 +16,9 @@ async function lockEvent(tx: Tx, eventId: string) {
   return tx.event.findUniqueOrThrow({ where: { id: eventId }, include: { client: true } });
 }
 async function assertInvitationAllowsSelection(tx: Tx, eventId: string, usherId: string) {
-  const invitation = await tx.invitation.findUnique({ where: { eventId_usherId: { eventId, usherId } } });
+  const invitation = await tx.invitation.findUnique({
+    where: { eventId_usherId: { eventId, usherId } },
+  });
   if (invitation && ['DECLINED', 'EXPIRED'].includes(invitation.status))
     throw new ApiError(409, 'INVITATION_CLOSED', 'this invitation cycle has ended');
 }
@@ -26,20 +35,32 @@ export async function applyToEvent(prisma: PrismaClient, eventId: string, usherI
     await assertStaffEligible(tx, event, [usherId]);
     await assertNoLiveBooking(tx, eventId, usherId);
     await assertInvitationAllowsSelection(tx, eventId, usherId);
-    const prior = await tx.application.findUnique({ where: { eventId_usherId: { eventId, usherId } } });
+    const prior = await tx.application.findUnique({
+      where: { eventId_usherId: { eventId, usherId } },
+    });
     // Duplicate apply must not undo the client's shortlist or acceptance.
-    if (prior && ['APPLIED', 'SHORTLISTED', 'ACCEPTED'].includes(prior.status)) return { application: prior, notify: false };
+    if (prior && ['APPLIED', 'SHORTLISTED', 'ACCEPTED'].includes(prior.status))
+      return { application: prior, notify: false };
     const application = await tx.application.upsert({
       where: { eventId_usherId: { eventId, usherId } },
-      update: { status: 'APPLIED' }, create: { eventId, usherId, status: 'APPLIED' },
+      update: { status: 'APPLIED' },
+      create: { eventId, usherId, status: 'APPLIED' },
     });
     return { application, notify: true };
   }, TX);
 }
 
-export async function selectApplication(prisma: PrismaClient, applicationId: string, clientId: string, status: Extract<ApplicationStatus, 'SHORTLISTED' | 'ACCEPTED' | 'REJECTED'>) {
+export async function selectApplication(
+  prisma: PrismaClient,
+  applicationId: string,
+  clientId: string,
+  status: Extract<ApplicationStatus, 'SHORTLISTED' | 'ACCEPTED' | 'REJECTED'>,
+) {
   return prisma.$transaction(async (tx) => {
-    const identity = await tx.application.findUniqueOrThrow({ where: { id: applicationId }, select: { eventId: true } });
+    const identity = await tx.application.findUniqueOrThrow({
+      where: { id: applicationId },
+      select: { eventId: true },
+    });
     const event = await lockEvent(tx, identity.eventId);
     if (event.clientId !== clientId) throw new ApiError(403, 'FORBIDDEN', 'not your event');
     assertRecruiting(event);
@@ -50,7 +71,8 @@ export async function selectApplication(prisma: PrismaClient, applicationId: str
     if (status !== 'REJECTED') {
       await assertStaffEligible(tx, event, [application.usherId]);
       await assertInvitationAllowsSelection(tx, event.id, application.usherId);
-      if (application.status === 'WITHDRAWN') throw new ApiError(409, 'SELECTION_CHANGED', 'this application was withdrawn');
+      if (application.status === 'WITHDRAWN')
+        throw new ApiError(409, 'SELECTION_CHANGED', 'this application was withdrawn');
     } else {
       // A client can still reject a candidate who has become ineligible.
       await assertStaffEligible(tx, event, []);
@@ -59,7 +81,12 @@ export async function selectApplication(prisma: PrismaClient, applicationId: str
   }, TX);
 }
 
-export async function inviteToEvent(prisma: PrismaClient, eventId: string, clientId: string, usherId: string) {
+export async function inviteToEvent(
+  prisma: PrismaClient,
+  eventId: string,
+  clientId: string,
+  usherId: string,
+) {
   return prisma.$transaction(async (tx) => {
     const event = await lockEvent(tx, eventId);
     if (event.clientId !== clientId) throw new ApiError(403, 'FORBIDDEN', 'not your event');
@@ -67,9 +94,16 @@ export async function inviteToEvent(prisma: PrismaClient, eventId: string, clien
     await lockUsherSchedules(tx, [usherId]);
     await assertStaffEligible(tx, event, [usherId]);
     await assertNoLiveBooking(tx, eventId, usherId);
-    const prior = await tx.invitation.findUnique({ where: { eventId_usherId: { eventId, usherId } } });
+    const prior = await tx.invitation.findUnique({
+      where: { eventId_usherId: { eventId, usherId } },
+    });
     if (prior) {
-      if (prior.status !== 'SENT') throw new ApiError(409, 'INVITATION_CLOSED', 'this invitation has already received a response');
+      if (prior.status !== 'SENT')
+        throw new ApiError(
+          409,
+          'INVITATION_CLOSED',
+          'this invitation has already received a response',
+        );
       return { invitation: prior, event, notify: false };
     }
     const invitation = await tx.invitation.create({ data: { eventId, usherId, status: 'SENT' } });
@@ -77,16 +111,26 @@ export async function inviteToEvent(prisma: PrismaClient, eventId: string, clien
   }, TX);
 }
 
-export async function replyToInvitation(prisma: PrismaClient, invitationId: string, usherId: string, status: 'ACCEPTED' | 'DECLINED') {
+export async function replyToInvitation(
+  prisma: PrismaClient,
+  invitationId: string,
+  usherId: string,
+  status: 'ACCEPTED' | 'DECLINED',
+  detail?: { reason?: string | undefined; note?: string | undefined },
+) {
+  const reply = invitationReplySchema.parse({ status, ...detail });
   return prisma.$transaction(async (tx) => {
-    const identity = await tx.invitation.findUniqueOrThrow({ where: { id: invitationId }, select: { eventId: true } });
+    const identity = await tx.invitation.findUniqueOrThrow({
+      where: { id: invitationId },
+      select: { eventId: true },
+    });
     const event = await lockEvent(tx, identity.eventId);
     const invitation = await tx.invitation.findUniqueOrThrow({ where: { id: invitationId } });
     if (invitation.usherId !== usherId) throw new ApiError(403, 'FORBIDDEN', 'not your invitation');
     if (!invitationCanReply(invitation.status, status))
       throw new ApiError(409, 'INVITATION_CLOSED', 'this invitation cycle has ended');
     // Replay does not resurrect an application later rejected by the client.
-    if (invitation.status === status && status === 'ACCEPTED') return { status };
+    if (invitation.status === 'ACCEPTED' && status === 'ACCEPTED') return { status };
     await lockUsherSchedules(tx, [usherId]);
     await assertNoLiveBooking(tx, event.id, usherId);
     if (status === 'ACCEPTED') {
@@ -94,13 +138,96 @@ export async function replyToInvitation(prisma: PrismaClient, invitationId: stri
       await assertStaffEligible(tx, event, [usherId]);
       await tx.application.upsert({
         where: { eventId_usherId: { eventId: event.id, usherId } },
-        update: { status: 'ACCEPTED' }, create: { eventId: event.id, usherId, status: 'ACCEPTED' },
+        update: { status: 'ACCEPTED' },
+        create: { eventId: event.id, usherId, status: 'ACCEPTED' },
       });
     } else {
       // Decline remains possible when recruitment closes, but never cancels a booking.
-      await tx.application.updateMany({ where: { eventId: event.id, usherId }, data: { status: 'WITHDRAWN' } });
+      await tx.application.updateMany({
+        where: { eventId: event.id, usherId },
+        data: { status: 'WITHDRAWN' },
+      });
     }
-    await tx.invitation.update({ where: { id: invitation.id }, data: { status } });
+    if (invitation.status !== status)
+      await tx.invitation.update({
+        where: { id: invitation.id },
+        data: {
+          status,
+          ...(reply.status === 'DECLINED'
+            ? { declineReason: reply.reason ?? null, declineNote: reply.note || null }
+            : {}),
+        },
+      });
     return { status };
+  }, TX);
+}
+
+/** Withdrawal shares the event → application → schedule lock order with selection/checkout. */
+export async function withdrawApplication(
+  prisma: PrismaClient,
+  applicationId: string,
+  userId: string,
+) {
+  return prisma.$transaction(async (tx) => {
+    const identity = await tx.application.findFirst({
+      where: { id: applicationId, usher: { userId } },
+      select: { eventId: true },
+    });
+    if (!identity) throw new ApiError(404, 'NOT_FOUND', 'Application not found.');
+    await lockEvent(tx, identity.eventId);
+    await tx.$queryRaw`SELECT id FROM applications WHERE id = ${applicationId}::uuid FOR UPDATE`;
+    const application = await tx.application.findUniqueOrThrow({ where: { id: applicationId } });
+    await lockUsherSchedules(tx, [application.usherId]);
+    await assertNoLiveBooking(tx, application.eventId, application.usherId);
+    if (application.status === 'WITHDRAWN') return application;
+    if (application.status === 'REJECTED')
+      throw new ApiError(409, 'APPLICATION_CLOSED', 'This application has already been rejected.');
+    await tx.invitation.updateMany({
+      where: { eventId: application.eventId, usherId: application.usherId, status: 'ACCEPTED' },
+      data: { status: 'DECLINED', declineReason: 'Application withdrawn' },
+    });
+    const result = await tx.application.update({
+      where: { id: applicationId },
+      data: { status: 'WITHDRAWN' },
+    });
+    await writeAudit(
+      { actorId: userId, action: 'application.withdraw', target: applicationId },
+      tx,
+    );
+    return result;
+  }, TX);
+}
+
+/** All-or-nothing invitations; repeat requests preserve existing SENT invitations. */
+export async function inviteManyToEvent(
+  prisma: PrismaClient,
+  eventId: string,
+  clientId: string,
+  usherIds: string[],
+) {
+  return prisma.$transaction(async (tx) => {
+    const event = await lockEvent(tx, eventId);
+    if (event.clientId !== clientId) throw new ApiError(404, 'NOT_FOUND', 'Event not found.');
+    assertRecruiting(event);
+    await lockUsherSchedules(tx, usherIds);
+    await assertStaffEligible(tx, event, usherIds);
+    const invitations = [];
+    for (const usherId of [...new Set(usherIds)].sort()) {
+      await assertNoLiveBooking(tx, eventId, usherId);
+      const prior = await tx.invitation.findUnique({
+        where: { eventId_usherId: { eventId, usherId } },
+      });
+      if (prior && prior.status !== 'SENT')
+        throw new ApiError(
+          409,
+          'INVITATION_CLOSED',
+          'A selected worker has already responded. Remove them and try again.',
+        );
+      invitations.push({
+        invitation: prior ?? (await tx.invitation.create({ data: { eventId, usherId } })),
+        notify: !prior,
+      });
+    }
+    return { event, invitations };
   }, TX);
 }

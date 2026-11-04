@@ -32,6 +32,17 @@ export const screenTokens = {
   touchTarget: scaleTokens['space/44'],
 } as const;
 
+/** Approved Wonder component refinements (Mobile Components, 30 October 2026).
+ * Keep the imported Figma snapshot intact; these are the newer canvas values.
+ */
+export const canvasTokens = {
+  elevatedGradient: ['#333333', '#0b0c0d'] as const,
+  selectionWell: '#2e2e2e',
+  selectionEdge: '#ffffff21',
+  sparklineTrack: ['rgba(117,117,117,0)', 'rgba(194,196,199,0.49)'] as const,
+  brandMark: { size: 79, left: 15.28, top: 19.92, width: 48.44, height: 40.61 },
+} as const;
+
 /** Figma uses percentage tracking; React Native expects logical pixels. */
 export function typography(name: string) {
   const token = typographyTokens.find((entry) => entry.name === name);

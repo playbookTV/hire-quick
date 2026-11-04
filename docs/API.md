@@ -8,6 +8,8 @@ Reviewed against the mounted routers on 2026-09-16. Local base URL: `http://loca
 
 Authenticated calls send `Authorization: Bearer <accessToken>`. HTTP checks token validity and current ACTIVE account status. Role and ownership checks are endpoint-specific; an ADMIN token does not automatically authorize party-only booking routes.
 
+Clients also need an account type and verified personal identity; business accounts need business approval. Until then, marketplace routes return `403 CLIENT_VERIFICATION_REQUIRED`, including staff discovery, new events, invitations and checkout. `/api/me` and verification/privacy routes remain available. `/api/bookings` shows only owned paid bookings, and their detail/obligation routes remain usable. Public client trust fields contain verification states, not private identity evidence. A verified business name comes from the registry and cannot be changed through profile PATCH.
+
 Bodies are JSON with `Content-Type: application/json`, except raw signed webhooks and direct object-store uploads. Money is integer kobo; UUIDs identify resources. Lists do not share a universal pagination envelope: some are capped arrays, others have dedicated response objects. Do not infer cursor support.
 
 The **Key** column marks routes enforcing `Idempotency-Key` (minimum 8 characters). Persist one key and the exact payload for a logical operation and reuse it on retry. Not every financial route uses this header: some operations deduplicate by durable entity/reference and state. Header presence alone does not imply payload-bound replay for every route. See [Payments](PAYMENTS.md#idempotency).
@@ -45,10 +47,10 @@ Source: [auth routes](../apps/api/src/modules/auth/routes.ts), [OTP service](../
 | Method | Path                | Access                       | Input / response                                                                         |
 | ------ | ------------------- | ---------------------------- | ---------------------------------------------------------------------------------------- |
 | GET    | `/health`           | Public                       | `{"status":"ok"}`; liveness only                                                         |
-| POST   | `/auth/otp/request` | Public                       | `{phone}` → `{sent}`; `devCode` only in isolated `NODE_ENV=test`                         |
+| POST   | `/auth/otp/request` | Public                       | `{phone}` → `{sent}`; `devCode` only in isolated `NODE_ENV=test`. The [app-store review phone](CONFIGURATION.md#app-store-review-login) gets `{sent:true}` with nothing sent |
 | POST   | `/auth/otp/verify`  | Public                       | `{phone,code,role?}` → `{accessToken,refreshToken,user}`                                 |
 | POST   | `/auth/refresh`     | Refresh credential           | `{refreshToken}` → successor token pair                                                  |
-| POST   | `/auth/logout`      | Presented refresh credential | `{refreshToken}` → 204; best-effort revocation, malformed/expired tokens also return 204 |
+| POST   | `/auth/logout`      | Presented refresh credential | `{refreshToken, pushToken?}` → 204; best-effort revocation, malformed/expired tokens also return 204. A valid Expo `pushToken` is removed from the refresh token's own account only; the app sends it when the authenticated unregister call failed |
 
 `phone` accepts an optional `+` and 7–15 digits. Use one consistent international representation. Codes are six digits. Optional signup role is `CLIENT` or `USHER`, defaulting to CLIENT; it does not change an existing user's role. Admin accounts must already exist. OTP request replaces earlier unconsumed codes for that phone. Development requires delivery; codes are not a console-login mechanism.
 
@@ -62,20 +64,30 @@ All routes below require authentication. Source: [profile router](../apps/api/sr
 | ------ | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | GET    | `/api/me`                         | Own identity/profile; usher includes wallet, milestones, avatar, portfolio                                                                  |
 | PATCH  | `/api/me`                         | Optional `displayName`, `businessName`, `bio`, `yearsExperience`, `state`, `city`, `languages`, `dayRateKobo`; fields apply by profile role |
-| POST   | `/api/me/verification/kyc/start`  | Usher; `{idType: "NIN" or "BVN",idNumber,givenNames,lastName,referenceId?}` → Smile session/token; optional reference refreshes the active session                                                                                            |
+| POST   | `/api/me/verification/kyc/start`  | Client or usher; `{idType: "NIN" or "BVN",idNumber,givenNames,lastName,referenceId?}` → Smile session/token; optional reference refreshes the active session |
 | POST   | `/api/me/verification/upload-url` | Usher; `{kind: "id" or "selfie", contentType, byteSize}` → `{url,key}`; storage required                                                              |
 | POST   | `/api/me/uploads/finalize` | Upload owner; `{key}` → `{key}` after existence, size, MIME/signature checks and conditional copy |
 | POST   | `/api/me/verification`            | Usher; `{idDocumentUrl,selfieUrl}` containing server-issued keys when storage configured                                                    |
-| GET    | `/api/me/verification`            | Usher's submissions, newest first; private download URLs                                                                                    |
+| GET    | `/api/me/verification`            | Client's or usher's own identity submissions, newest first; private download URLs |
+| PUT    | `/api/me/verification/account-type` | Client; `{accountType: "INDIVIDUAL" or "BUSINESS"}`; business downgrade is support-only |
+| GET    | `/api/me/verification/business` | Client; latest business status and review note, or null |
+| POST   | `/api/me/verification/business/upload-url` | Identity-verified business client; `{contentType,byteSize}` for representative authority evidence |
+| POST   | `/api/me/verification/business` | Identity-verified business client; `{registeredName,registrationNumber,businessType: "co" or "bn" or "it",representativeRole,authorizationKey,authorized:true}`; durable pending review |
 | POST   | `/api/me/photos/upload-url`       | Usher; `{kind: "avatar" or "portfolio",contentType,byteSize}` → `{url,key}`                                                                          |
 | PUT    | `/api/me/photos/avatar`           | Usher; `{key}` → `{avatarUrl}`                                                                                                              |
 | POST   | `/api/me/photos/portfolio`        | Usher; `{key}` → `{id,imageUrl}`; maximum five photos                                                                                       |
 | DELETE | `/api/me/photos/portfolio/:id`    | Usher owns photo; → `{deleted:true}`                                                                                                        |
-| POST   | `/api/me/devices`                 | `{fcmToken,platform: "IOS" or "ANDROID"}`; token minimum eight characters                                                                   |
+| POST   | `/api/me/devices`                 | `{token,platform: "IOS" or "ANDROID"}`; `token` must be an Expo push token (`ExponentPushToken[…]`). Registers a destination only: sends also need the `PUSH_NOTIFICATIONS` consent. Refused (`{registered:false}`) after an explicit withdrawal |
+| POST   | `/api/me/devices/unregister`      | `{token}`; removes that token if it belongs to the caller → `{removed}`. The app calls it before signing out                                |
+| GET    | `/api/me/notification-preferences` | `{jobAlerts,reminders,messages}`; all `true` until changed                                                                                 |
+| PUT    | `/api/me/notification-preferences` | Partial `{jobAlerts?,reminders?,messages?}` (at least one) → the full preferences. Bookings and payments cannot be switched off separately |
+| POST   | `/api/me/notification-dispatches/:id/opened` | `{action: "open" or "view" or "apply"}`; the caller's own push only; the first report wins → `{opened:true}`                 |
 | GET    | `/api/me/availability`            | Usher; optional `from`/`to` query dates (`YYYY-MM-DD`)                                                                                      |
 | PUT    | `/api/me/availability`            | Usher; `{date,status}` per shared schema; conflicts with existing bookings can return `409 SCHEDULE_CONFLICT`                               |
 
-Upload flow: request a URL with the exact file `byteSize`, PUT bytes directly to storage with the matching content type, call `/api/me/uploads/finalize`, then submit the verified **key** to the profile/verification/message route. Never save a signed URL as a key. URLs expire after five minutes; unconsumed verified files expire after 24 hours. Limits are 10 MiB for photos/documents and 20 MiB for voice. Photos permit JPEG/PNG/WebP/HEIC/HEIF variants; only ID documents additionally permit PDF. The API checks a bounded format signature, not malware or complete decoding. Final keys cannot be overwritten with the staging PUT URL. Reference reuse across purposes, owners, scopes or distinct records is rejected; an exact same-reference retry is idempotent. Existing saved files remain readable, but new submissions must follow finalization. See [upload implementation and rollout](../documentation/uploads-2026-09-22.md).
+Upload flow: request a URL with the exact file `byteSize`, PUT bytes directly to storage with the matching content type, call `/api/me/uploads/finalize`, then submit the verified **key** to the profile/verification/message route. Never save a signed URL as a key. URLs expire after five minutes; unconsumed verified files expire after 24 hours. Limits are 10 MiB for photos/documents and 20 MiB for voice. Photos permit JPEG/PNG/WebP/HEIC/HEIF variants; ID and business-authority documents additionally permit PDF. The API checks a bounded format signature, not malware or complete decoding. Final keys cannot be overwritten with the staging PUT URL. Reference reuse across purposes, owners, scopes or distinct records is rejected; an exact same-reference retry is idempotent. Existing saved files remain readable, but new submissions must follow finalization. See [upload implementation and rollout](../documentation/uploads-2026-09-22.md).
+
+The mobile uploader reads the file once into an ArrayBuffer and sends that buffer with the signed PUT content type. This avoids Expo's native Blob/base64 conversion and prevents a local file's empty or different MIME type from overriding the signed header. File bytes remain unchanged. Server finalization obtains the full size, MIME type, ETag and signature prefix from one bounded ranged GET; it rejects inconsistent range metadata and conditionally copies the exact inspected version. Account status is read in the same query that locks the owner row, preserving serialization with erasure.
 
 Replacement/removal commits the new reference and a deletion intent atomically. Cleanup retries with backoff and defers while any known reference remains. Erasure queues cleanup asynchronously and returns `objectsDeleted: 0` with `objectsPending` for queued final keys; temporary uploads are cleaned separately after their grace period.
 
@@ -153,13 +165,16 @@ Source: [payments router](../apps/api/src/modules/payments/http/routes.ts), [che
 | POST   | `/api/payments/orders/:orderId/charge`          | Order owner; `{email}` → checkout snapshot                              | Yes |
 | GET    | `/api/payments/orders/:orderId/checkout`        | Order owner; verifies/reconciles provider evidence and returns snapshot | —   |
 | POST   | `/api/payments/orders/:orderId/checkout/resume` | Order owner; resumes the durable original checkout                      | —   |
-| GET    | `/api/payments/wallet`                          | Usher; `{availableBalance,pendingEscrow,lifetimeEarned}` in kobo        | —   |
+| GET    | `/api/payments/wallet`                          | Usher; `{availableBalance,pendingEscrow,lifetimeEarned,payoutMode,nextPayoutAt,payoutMinimumKobo,payoutAccount}`; kobo amounts | —   |
 | GET    | `/api/payments/wallet/activity`                 | Usher; merged ledger/held activity, bounded list                        | —   |
 | GET    | `/api/payments/banks`                           | Authenticated; provider bank directory                                  | —   |
 | GET    | `/api/payments/resolve-account`                 | Authenticated; `bankCode`, ten-digit `accountNumber` query              | —   |
 | POST   | `/api/payments/bank-accounts`                   | Usher; `{bankCode,accountNumber}`; server resolves account name         | —   |
-| GET    | `/api/payments/bank-accounts`                   | Usher's bank accounts                                                   | —   |
-| POST   | `/api/payments/withdrawals`                     | Usher; `{bankAccountId,amountKobo}` → persisted receipt                 | Yes |
+| GET    | `/api/payments/bank-accounts`                   | Usher's bank accounts, each with `isPayoutAccount`                      | —   |
+| PUT    | `/api/payments/payout-account`                  | Usher; `{bankAccountId}`; a verified own account weekly runs pay into   | —   |
+| POST   | `/api/payments/withdrawals`                     | Usher; `{bankAccountId,amountKobo}` → persisted receipt. `409 PAYOUTS_SCHEDULED` when `PAYOUT_MODE=weekly` | Yes |
+| GET    | `/api/payments/withdrawals`                     | Usher's own transfers, newest first; 25 per page with `cursor` → `{items,nextCursor}` | —   |
+| GET    | `/api/payments/withdrawals/:id`                 | One of the usher's own transfers; `404` for any other                   | —   |
 
 Checkout snapshot fields: `orderId`, `eventId`, `bookingIds`, `reference`, `authorizationUrl`, `state`, `expiresAt`, `amountKobo`, `duplicate`. A new confirmation returns 201; replay returns 200. New references use `hq-<order-id>`. `authorizationUrl` is available only in `READY`; consumers must inspect `state` before opening it.
 
@@ -176,7 +191,11 @@ Checkout snapshot fields: `orderId`, `eventId`, `bookingIds`, `reference`, `auth
 
 The nominal reservation lifetime is 30 minutes, but elapsed time alone does not establish an unpaid outcome. Browser dismissal, return, or network failure must not trigger a fresh order automatically. The checkout GET is not a passive DB read: it can reconcile provider evidence and progress recovery.
 
-Withdrawal receipts include `withdrawalId`, `status`, `amountKobo`, `bankAccountId`, `availableBalance`, and `duplicate`. The same key with a changed bank or amount conflicts. Wallet debit occurs before provider transfer, and uncertainty keeps it reserved. A validated failure/reversal restores funds once. There is no separate withdrawal-list/status HTTP route in this router; replay the original request as implemented by the mobile recovery flow.
+An usher's first registered account becomes their payout account automatically; later accounts must be chosen with `PUT /api/payments/payout-account`. `nextPayoutAt` is the next Thursday 09:00 Lagos run time (ISO). `payoutAccount` is `{id,bankCode,accountName,last4}` or `null`.
+
+Withdrawal receipts include `withdrawalId`, `status`, `amountKobo`, `bankAccountId`, `availableBalance`, and `duplicate`. The same key with a changed bank or amount conflicts. Wallet debit occurs before provider transfer, and uncertainty keeps it reserved. A validated failure/reversal restores funds once. To recover an uncertain request, replay the original request with the same key, as the mobile recovery flow does.
+
+Withdrawal list and detail items are `{id,amount,status,source,reference,createdAt,updatedAt,bank:{code,accountName,last4}}`. `source` is `PAYOUT_RUN` for a weekly payout line and `USHER_REQUEST` for the usher's own withdrawal. Account numbers are never returned in full.
 
 ## Bookings, attendance, disputes, reviews
 
@@ -236,9 +255,22 @@ Source: [admin routes](../apps/api/src/modules/admin/routes.ts). Every route req
 
 | Method | Path                                   | Contract                                                                               |
 | ------ | -------------------------------------- | -------------------------------------------------------------------------------------- |
-| GET    | `/api/admin/stats`                     | Queue counts, users, held escrow, approval threshold                                   |
+| GET    | `/api/admin/stats`                     | Queue counts, users, held escrow, approval threshold, `owedToUshersKobo`, `platformRevenueKobo` (unswept fees), `payoutRunsAwaitingApproval` |
+| GET    | `/api/admin/payout-runs`               | Latest 20 weekly payout runs with line count and computed total                       |
+| GET    | `/api/admin/payout-runs/:id`           | Lines (usher, masked account, amount, flags, withdrawal status, skip reason), exclusions with reasons, `linesHash`, summary |
+| POST   | `/api/admin/payout-runs/build`         | Build today's run (Lagos date) or refresh it while DRAFT; `409 RUN_IN_PROGRESS` if an earlier run awaits approval |
+| POST   | `/api/admin/payout-runs/:id/submit`    | `{linesHash}` of the reviewed lines; DRAFT → AWAITING_APPROVAL; `409 RUN_CHANGED` if the lines changed |
+| POST   | `/api/admin/payout-runs/:id/reject`    | AWAITING_APPROVAL → DRAFT                                                              |
+| POST   | `/api/admin/payout-runs/:id/cancel`    | DRAFT → CANCELLED; balances roll over                                                  |
+| POST   | `/api/admin/payout-runs/:id/approve`   | `{linesHash}`; a different admin than the submitter; creates one withdrawal per line, starts transfers in the background |
+| POST   | `/api/admin/payout-runs/:id/dispatch`  | 202; restarts transfers that have not reached Paystack                                 |
+| POST   | `/api/admin/payout-runs/:id/lines/:withdrawalId/otp` | `{otp}` (4–8 digits); finalizes a transfer waiting for the account owner's OTP. `422 OTP_REJECTED`, `409 OTP_NOT_REQUIRED` |
+| POST   | `/api/admin/payout-runs/:id/lines/:withdrawalId/resend-otp` | Ask Paystack to send a new OTP for that transfer                     |
 | GET | `/api/admin/observability` | Safe service probes, selected Better Stack statuses and recent Sentry issue summaries; server cache 30 seconds, browser `no-store`. See [Observability](OBSERVABILITY.md#admin-observability-view). |
-| GET    | `/api/admin/verifications`             | `status`: PENDING (default), APPROVED, REJECTED; sensitive reads audited               |
+| GET    | `/api/admin/verifications`             | Client and usher identity submissions; `status`: PENDING (default), APPROVED, REJECTED; sensitive reads audited |
+| GET    | `/api/admin/business-verifications` | Same status filter; registry metadata, representative identity reference and private authority evidence; audited, no-store |
+| POST   | `/api/admin/business-verifications/:id/refresh` | Refresh existing registry job without starting another paid lookup |
+| POST   | `/api/admin/business-verifications/:id/review` | `{decision:"APPROVED" or "REJECTED",note,authorityConfirmed}`; approval requires identity, registry and authority evidence; note 10-1000 characters |
 | POST   | `/api/admin/verifications/:id/approve` | Approve submission                                                                     |
 | POST   | `/api/admin/verifications/:id/reject`  | `{reason,reasonCode?}`                                                                 |
 | GET    | `/api/admin/disputes`                  | Open/under-review by default; `status=ALL` includes closed                             |
@@ -259,6 +291,8 @@ Source: [admin routes](../apps/api/src/modules/admin/routes.ts). Every route req
 | GET    | `/api/admin/milestones`                | Physical reward queue; UNLOCKED default or `status=FULFILLED`                          |
 | POST   | `/api/admin/milestones/:id/fulfill`    | Mark an unlocked reward fulfilled                                                      |
 
+Every weekly payout run needs two admins, whatever its total: one submits the exact lines (`linesHash`) and a different admin approves them. See [weekly payout runs](PAYMENTS.md#weekly-payout-runs).
+
 Amounts **greater than** 5,000,000 kobo (₦50,000) require a different admin to approve. For client cancellations this threshold applies to the original gross allocation, including a zero-refund cancellation, and the first accepted quote survives delayed approval. An early usher-favour dispute resolution retains HELD funds until the shared deadline. An approval decision does not itself establish provider settlement: `APPROVED` remains until execution completes. Re-read state and consult [Operations](OPERATIONS.md).
 
 ## Webhooks and realtime
@@ -272,3 +306,17 @@ Amounts **greater than** 5,000,000 kobo (₦50,000) require a different admin to
 Provider payloads are not user-authenticated requests. Do not synthesize a successful payment callback to resolve uncertain money. Paystack callbacks deduplicate effects and can return 500 while authoritative evidence is unavailable, allowing retry. Smile ID unknown/duplicate/superseded references do not overwrite current identity state.
 
 Socket.IO runs on the API HTTP server. Session-bound tokens, authorization on private delivery, rate limits, payload limits, and rollout compatibility are documented in the [realtime note](../apps/api/src/realtime/README.md). The [event catalogue](../apps/api/src/realtime/events.ts) defines lifecycle events such as `booking.confirmed`, `order.paid`, `withdrawal.completed`, and chat events such as `message:new`. Receiving a signal should trigger reconciliation/refetch; absence of a signal proves nothing about committed state.
+
+## Marketplace profiles and hiring (2 October 2026)
+
+- `PATCH /api/me` accepts optional usher `physicalAttributes` (gender, age, heightCm, shoeSizeEu, shoeSizeUk, bodyType, dressSize, skinTone, hairstyle). Shoe sizes are EU 30–50 (`shoeSizeEu`); `shoeSizeUk` (1–20) is kept for profiles saved before 27 October 2026, and the app shows its field only while a UK size is saved. The app offers dropdowns (`SHOE_SIZES_EU`, `BODY_TYPES`, `CLOTHING_SIZES`, `SKIN_TONES`, `HAIRSTYLES` in `@hq/shared`); the API still accepts other short text so older app versions and earlier values keep working. Send an object to replace these fields or `null` to clear them. These details are voluntary and do not affect automatic eligibility. Client edits accept `description`, `position`, `city`, and private `contactEmail` alongside existing names. Client avatars use the existing `/api/me/photos/upload-url`, upload-finalization, and `/api/me/photos/avatar` flow; client portfolio uploads are rejected.
+- `GET /api/clients/:id` returns public profile details, verification labels, signed avatar URL, ratings, `jobsPosted`, and `activeJobs`. Contact email, phone, user ID and raw storage keys are excluded. Other users cannot read suspended/unverified client profiles. `GET /api/me` includes the owner's private contact email.
+- `GET /api/events?query=...` searches title, category, state and client names (case insensitive, at most 120 characters). Existing state/role/status boundaries and venue masking remain in force. Precise venue is deliberately not searchable.
+- Event create/edit accepts `presentation: { attributes, rationale }`; rationale is required (10–500 characters). `presentation: null` removes preferences. A disabled category rejects preferences, including edits that retain them; removing them remains possible.
+- `POST /api/applications/:id/withdraw` is owner-only and repeatable. It withdraws an ordinary application or accepted invitation before booking. Pending-payment and subsequent live bookings must use the booking lifecycle instead. Reapplying after an ordinary withdrawal is allowed; a declined invitation cycle remains closed.
+- `POST /api/events/:id/invite-batch` accepts 1–50 distinct `usherIds`. Ownership, eligibility and schedules are checked under the recruitment locks; the batch is atomic. Retrying preserves existing SENT invitations. A worker who has already responded must be removed from the batch.
+- `PATCH /api/invitations/:id` accepts `{ status: 'DECLINED', reason?, note? }` or `{ status: 'ACCEPTED' }`. New mobile clients collect a reason; status-only declines remain compatible with older clients. Notes are limited to 500 characters. The original reply survives retries. Owners see reasons/notes in the event's invitation list.
+- `POST /api/reports` accepts `{ targetType: 'JOB' | 'WORKER', targetId, reason, details }`. Workers report readable jobs; verified clients report active verified workers. A booking is not required. One report per reporter/target is retained, including after resolution; retries return its ID and status. The response excludes moderation notes.
+- Admins list reports at `GET /api/admin/reports?status=OPEN&cursor=...` (50 per page) and review at `PATCH /api/admin/reports/:id` with `{ expectedStatus, status, note }`. Stale/closed reviews return 409. Outcomes are UNDER_REVIEW, RESOLVED or DISMISSED and do not affect funds. `GET/PUT /api/admin/presentation-policies` lists or sets `{ category, enabled }`, with categories normalized to lowercase.
+
+Mobile sharing uses `hirequick://jobs/<event-id>`. A pending job survives sign-in/profile setup for up to 24 hours. This is an installed-app link, not a hosted web listing or universal link.

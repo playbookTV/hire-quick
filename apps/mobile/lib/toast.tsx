@@ -15,7 +15,8 @@ import {
   useRef,
   useState,
 } from 'react';
-import { AccessibilityInfo } from 'react-native';
+import { AccessibilityInfo, Platform } from 'react-native';
+import { FullWindowOverlay } from 'react-native-screens';
 import { ToastHost, type ToastItem, type ToastTone } from '../components/Toast.js';
 import { hapticSuccess, hapticError, hapticSelection } from './haptics.js';
 
@@ -80,10 +81,20 @@ export function ToastProvider({ children }: { children: React.ReactNode }): Reac
     [show],
   );
 
+  const host = <ToastHost toast={toast} onDismiss={dismiss} />;
   return (
     <ToastContext.Provider value={api}>
       {children}
-      <ToastHost toast={toast} onDismiss={dismiss} />
+      {Platform.OS === 'ios' ? (
+        // iOS presents (modals) screens as native sheets above the root view, which would
+        // hide the toast. This layer sits above them and passes touches outside the toast
+        // through. It is always mounted, so it must not trap VoiceOver focus.
+        <FullWindowOverlay unstable_accessibilityContainerViewIsModal={false}>
+          {host}
+        </FullWindowOverlay>
+      ) : (
+        host
+      )}
     </ToastContext.Provider>
   );
 }

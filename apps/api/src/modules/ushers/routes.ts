@@ -20,6 +20,7 @@ const usherCard = {
   id: true,
   displayName: true,
   bio: true,
+  physicalAttributes: true,
   yearsExperience: true,
   ratingAvg: true,
   ratingCount: true,
@@ -139,7 +140,12 @@ export function ushersRouter(storage?: StoragePort): Router {
         include: {
           // Never select reviewer.phone — it would leak as the public reviewer
           // name below. Only the chosen display names are safe to surface.
-          reviewer: { select: { client: { select: { displayName: true } }, usher: { select: { displayName: true } } } },
+          reviewer: {
+            select: {
+              client: { select: { displayName: true } },
+              usher: { select: { displayName: true } },
+            },
+          },
         },
       });
       res.json(
@@ -148,7 +154,8 @@ export function ushersRouter(storage?: StoragePort): Router {
           rating: rv.rating,
           comment: rv.comment,
           createdAt: rv.createdAt,
-          reviewerName: rv.reviewer.client?.displayName ?? rv.reviewer.usher?.displayName ?? 'HireQuick user',
+          reviewerName:
+            rv.reviewer.client?.displayName ?? rv.reviewer.usher?.displayName ?? 'HireQuick user',
         })),
       );
     }),

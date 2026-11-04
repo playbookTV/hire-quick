@@ -5,12 +5,15 @@
 import { Redirect } from 'expo-router';
 import { useAuth } from '../lib/auth-context.js';
 import { Loading } from '../components/Loading.js';
+import { clientOnboardingRoute } from '../lib/client-onboarding.js';
 
 export default function Index(): React.JSX.Element {
   const { status, user } = useAuth();
 
   if (status === 'loading') return <Loading />;
   if (status === 'guest' || !user) return <Redirect href="/(auth)/welcome" />;
+  const onboarding = clientOnboardingRoute(user);
+  if (onboarding) return <Redirect href={onboarding} />;
   if (
     user.role === 'CLIENT' &&
     (!user.client?.displayName || user.client.displayName === user.phone)

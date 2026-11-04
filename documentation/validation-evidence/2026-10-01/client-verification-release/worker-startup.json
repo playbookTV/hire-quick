@@ -1,0 +1,8 @@
+{
+  "deployment": "978448b5-2fa6-42fb-8a1b-c15f28606834",
+  "timestamp": "2026-10-01T20:21:43.265153498Z",
+  "message": "[worker] scheduled jobs ready",
+  "service": "hirequick-worker",
+  "release": "hq-sentry-20260928",
+  "environment": "staging"
+}

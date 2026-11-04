@@ -1,0 +1,73 @@
+{
+  "checkedAt": "2026-10-02T12:24:52.720Z",
+  "checks": [
+    {
+      "role": "ADMIN",
+      "path": "/api/admin/reports",
+      "httpStatus": 200,
+      "expectedStatus": 200,
+      "queueShapeValid": true
+    },
+    {
+      "role": "ADMIN",
+      "path": "/api/clients/:id",
+      "httpStatus": 200,
+      "expectedStatus": 200,
+      "privateFieldsExcluded": true,
+      "profileShapeValid": true
+    },
+    {
+      "role": "ADMIN",
+      "path": "/api/admin/presentation-policies",
+      "httpStatus": 200,
+      "expectedStatus": 200
+    },
+    {
+      "role": "ADMIN",
+      "path": "/api/admin/business-verifications",
+      "httpStatus": 200,
+      "expectedStatus": 200
+    },
+    {
+      "role": "CLIENT",
+      "path": "/api/me",
+      "httpStatus": 200,
+      "expectedStatus": 200,
+      "hasProfileFields": true
+    },
+    {
+      "role": "CLIENT",
+      "path": "/api/ushers",
+      "httpStatus": 403,
+      "expectedStatus": 403,
+      "verificationGate": true
+    },
+    {
+      "role": "CLIENT",
+      "path": "/api/bookings",
+      "httpStatus": 200,
+      "expectedStatus": 200
+    },
+    {
+      "role": "USHER",
+      "path": "/api/me",
+      "httpStatus": 200,
+      "expectedStatus": 200,
+      "hasPhysicalAttributes": true
+    },
+    {
+      "role": "USHER",
+      "path": "/api/events?query=marketplace-release-acceptance",
+      "httpStatus": 200,
+      "expectedStatus": 200
+    },
+    {
+      "role": "USHER",
+      "path": "/api/admin/reports",
+      "httpStatus": 403,
+      "expectedStatus": 403
+    }
+  ],
+  "credentialHandling": "60-second tokens held only in process memory; no tokens or response records retained",
+  "writes": "Normal administrative queue-read audit entries only"
+}

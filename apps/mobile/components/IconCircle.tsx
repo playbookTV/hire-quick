@@ -26,7 +26,12 @@ interface IconCircleProps {
   iconColor?: keyof Theme['colors'];
 }
 
-export function IconCircle({ icon, tone = 'brand', size = 48, iconColor = 'inkStrong' }: IconCircleProps): React.JSX.Element {
+export function IconCircle({
+  icon,
+  tone = 'brand',
+  size = 48,
+  iconColor,
+}: IconCircleProps): React.JSX.Element {
   const theme = useTheme();
   return (
     <Box
@@ -37,9 +42,15 @@ export function IconCircle({ icon, tone = 'brand', size = 48, iconColor = 'inkSt
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: theme.colors[BG[tone]],
+        borderTopWidth: tone === 'brand' ? 1 : 0,
+        borderTopColor: theme.colors.accentBorder,
       }}
     >
-      <Icon name={icon} size={Math.round(size * 0.5)} color={iconColor} />
+      <Icon
+        name={icon}
+        size={Math.round(size * 0.5)}
+        color={iconColor ?? (tone === 'brand' ? 'brandAccentText' : 'inkStrong')}
+      />
     </Box>
   );
 }

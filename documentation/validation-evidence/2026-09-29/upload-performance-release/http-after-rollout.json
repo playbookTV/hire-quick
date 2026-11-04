@@ -1,0 +1,29 @@
+{
+  "checkedAt": "2026-09-29T15:25:45.462067+00:00",
+  "checks": [
+    {
+      "path": "/health",
+      "httpStatus": 200,
+      "body": {
+        "status": "ok"
+      }
+    },
+    {
+      "path": "/ready",
+      "httpStatus": 200,
+      "body": {
+        "status": "ready"
+      }
+    },
+    {
+      "path": "/api/me/uploads/finalize",
+      "httpStatus": 401,
+      "body": {
+        "error": {
+          "code": "UNAUTHENTICATED",
+          "message": "missing bearer token"
+        }
+      }
+    }
+  ]
+}

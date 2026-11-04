@@ -11,21 +11,32 @@ export interface InputProps extends Omit<TextInputProps, 'style'> {
   prefix?: string;
   error?: boolean;
   variant?: 'body' | 'code';
+  size?: 'default' | 'roomy';
 }
 
 export const Input = forwardRef<TextInput, InputProps>(function Input(
-  { leftIcon, prefix, error = false, variant = 'body', onFocus, onBlur, ...props },
+  {
+    leftIcon,
+    prefix,
+    error = false,
+    variant = 'body',
+    size = 'default',
+    onFocus,
+    onBlur,
+    ...props
+  },
   ref,
 ) {
   const theme = useTheme();
   const [focused, setFocused] = useState(false);
-  const borderWidth = focused || error ? controlTokens.activeBorder : controlTokens.border;
-  const borderInset = borderWidth - controlTokens.border;
+  const restingBorder = size === 'roomy' ? 1 : controlTokens.border;
+  const borderWidth = focused || error ? controlTokens.activeBorder : restingBorder;
+  const borderInset = borderWidth - restingBorder;
 
   const borderColor = error
     ? theme.colors.statusDanger
     : focused
-      ? theme.colors.borderFocus
+      ? theme.colors.inputFocus
       : theme.colors.borderControl;
 
   return (
@@ -34,7 +45,12 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
         flexDirection: 'row',
         alignItems: 'center',
         gap: theme.spacing['300'],
-        minHeight: variant === 'code' ? 64 : 52,
+        minHeight:
+          variant === 'code'
+            ? theme.spacing['1600']
+            : size === 'roomy'
+              ? theme.spacing['1400']
+              : 52,
         opacity: props.editable === false ? 0.5 : 1,
         paddingHorizontal: theme.spacing['400'] - borderInset,
         paddingVertical: theme.spacing['300'] - borderInset,
@@ -42,6 +58,9 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
         borderWidth,
         borderColor,
         backgroundColor: theme.colors.bgSurface,
+        outlineWidth: focused && !error ? theme.spacing['100'] : 0,
+        outlineColor: theme.colors.accentBorder,
+        outlineStyle: 'solid',
       }}
     >
       {leftIcon ? <Icon name={leftIcon} size={20} color="inkFaint" /> : null}

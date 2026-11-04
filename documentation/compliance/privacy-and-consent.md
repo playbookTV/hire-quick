@@ -5,11 +5,11 @@ Drafting basis for the public privacy policy and the consent-capture mechanism (
 ## Privacy policy outline (to publish)
 
 1. **Who we are** — HireQuick, controller; contact / DPO details.
-2. **What we collect** — see `ndpr-data-register.md` (phone, email, KYC ID + selfie, bank payout details, profile, chat, reviews, device tokens, financial records).
+2. **What we collect** — see `ndpr-data-register.md` (phone, email, client/usher KYC ID + selfie processed by Smile ID, verification results, business registration and representative authority evidence, bank payout details, profile, chat, reviews, device tokens, financial records).
 3. **Why** — to operate the staffing marketplace: matching, booking, escrow payments, payouts, KYC, fraud/dispute handling, notifications.
 4. **Lawful bases** — contract, legal obligation (KYC, financial records), consent (push notifications, marketing), legitimate interest (reputation, security).
-5. **Who we share with** — Paystack (payments), Brevo (SMS/email/WhatsApp), Neon (database), the storage provider (KYC documents). Processors only, under DPAs.
-6. **Retention** — per the register: 7 years for financial/KYC, 30/180 days for transient data, life-of-account otherwise.
+5. **Who we share with** — Smile ID (personal and business verification), Paystack (payments), Brevo (SMS/email/WhatsApp), Neon (database), the storage provider (verification documents). Processors only, under DPAs.
+6. **Retention** — per the register: stored verification/authority documents 90 days after approval or 30 after rejection; pending evidence remains until review completes. Financial records follow their statutory retention, not the raw-document schedule. Configure retention for Smile-held data separately. The in-app privacy notice version is `2026-10-01`; prior acceptance versions remain attributable.
 7. **Your rights** — access, portability, erasure, correction. **How to exercise:** in-app `GET /api/me/export` and `POST /api/me/erase`, or by contacting the DPO.
 8. **Security** — TLS in transit, Argon2id passwords, RBAC, rate limiting, tamper-evident audit logging, least-privilege access to KYC documents.
 9. **International transfers** — note any processors outside Nigeria and the safeguards.

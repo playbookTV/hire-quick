@@ -1,9 +1,8 @@
 /**
  * Notifications inbox — the persisted in-app feed (`GET /api/me/notifications`).
- * Tapping a row marks it read and, when it carries a deep-link target (currently
- * invitations), opens that screen. "Mark all read" clears the badge. Polls via
- * `useNotifications`; an OS push layer (expo-notifications + FCM) can later open
- * the same routes on tap.
+ * Tapping a row marks it read and, when it carries a deep-link target
+ * (`lib/notifications.ts`), opens that screen. "Mark all read" clears the badge. Polls via
+ * `useNotifications`; tapped OS pushes open the same routes (`components/PushBridge.tsx`).
  */
 import { useRouter } from 'expo-router';
 import { ScrollView, RefreshControl, Pressable } from 'react-native';
@@ -13,7 +12,6 @@ import { Loading } from '../../components/Loading.js';
 import { EmptyState } from '../../components/EmptyState.js';
 import { Icon } from '../../components/Icon.js';
 import { AnimatedPressable } from '../../components/Pressable.js';
-import type { IconName } from '../../components/Icon.js';
 import { shadowSm } from '../../theme/shadows.js';
 import {
   useNotifications,
@@ -21,15 +19,13 @@ import {
   useMarkAllNotificationsRead,
 } from '../../lib/hooks.js';
 import { formatDayLabel } from '../../lib/format.js';
+import {
+  notificationIcon,
+  notificationIsProblem,
+  notificationRoute,
+} from '../../lib/notifications.js';
 import type { Notification } from '../../lib/types.js';
-
-const ICON: Record<string, IconName> = {
-  INVITATION_RECEIVED: 'mail',
-  BOOKING_CONFIRMED: 'check-circle',
-  PAYOUT_RELEASED: 'dollar-sign',
-  DISPUTE_OPENED: 'alert-circle',
-  NEW_MESSAGE: 'message-circle',
-};
+import { useAuth } from '../../lib/auth-context.js';
 
 function Row({ item, onPress }: Readonly<{ item: Notification; onPress: () => void }>) {
   const theme = useTheme();
@@ -64,9 +60,11 @@ function Row({ item, onPress }: Readonly<{ item: Notification; onPress: () => vo
         }}
       >
         <Icon
-          name={ICON[item.type] ?? 'bell'}
+          name={notificationIcon(item.type)}
           size={18}
-          color={unread ? 'brandEmerald' : 'inkMuted'}
+          color={
+            notificationIsProblem(item.type) ? 'statusDanger' : unread ? 'brandEmerald' : 'inkMuted'
+          }
         />
       </Box>
       <Box flex={1} style={{ gap: 2 }}>
@@ -108,6 +106,7 @@ function Row({ item, onPress }: Readonly<{ item: Notification; onPress: () => vo
 
 export default function Notifications(): React.JSX.Element {
   const router = useRouter();
+  const { user } = useAuth();
   const feed = useNotifications();
   const markRead = useMarkNotificationRead();
   const markAll = useMarkAllNotificationsRead();
@@ -117,18 +116,8 @@ export default function Notifications(): React.JSX.Element {
 
   const open = (n: Notification): void => {
     if (!n.readAt) markRead.mutate(n.id);
-    if (n.targetType === 'booking' && n.targetId) {
-      router.push({ pathname: '/(modals)/booking-details', params: { booking: n.targetId } });
-    } else if (n.targetType === 'withdrawal' && n.targetId) {
-      router.push({ pathname: '/(modals)/withdrawal-details', params: { id: n.targetId } });
-    } else if (n.targetType === 'checkout' && n.targetId) {
-      router.push({ pathname: '/(modals)/funds-held', params: { order: n.targetId } });
-    } else if (n.targetType === 'invitation' && n.targetId) {
-      router.push({ pathname: '/(modals)/invitation', params: { id: n.targetId } });
-    } else if (n.targetType === 'event' && n.targetId) {
-      // New-application notifications deep-link the client to the event (review applications).
-      router.push({ pathname: '/(client)/events/[id]', params: { id: n.targetId } });
-    }
+    const route = notificationRoute(n, user?.role);
+    if (route) router.push(route);
   };
 
   return (

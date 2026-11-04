@@ -60,7 +60,13 @@ async function fixture(old = false) {
       phone: `media-client-${randomUUID()}`,
       role: 'CLIENT',
       status: 'ACTIVE',
-      client: { create: { displayName: 'Chat media test' } },
+      client: {
+        create: {
+          displayName: 'Chat media test',
+          accountType: 'INDIVIDUAL',
+          verificationStatus: 'VERIFIED',
+        },
+      },
     },
     include: { client: true },
   });

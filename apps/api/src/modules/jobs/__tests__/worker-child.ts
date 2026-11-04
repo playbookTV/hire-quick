@@ -9,8 +9,10 @@ const handlers: JobHandlers = {
   checkouts: noop,
   resumeOps: noop,
   storageCleanup: noop,
+  pushReceipts: noop,
   retentionPurge: noop,
   auditVerify: noop,
+  payoutRun: noop,
   commission: async () => {
     console.log('TEST_ACTIVE');
     await new Promise((resolve) => setTimeout(resolve, 400));

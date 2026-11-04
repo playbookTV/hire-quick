@@ -15,7 +15,6 @@ export default function VerificationLayout(): React.JSX.Element {
 
   if (status === 'loading') return <Loading />;
   if (status === 'guest' || !user) return <Redirect href="/(auth)/welcome" />;
-  if (user.role === 'CLIENT') return <Redirect href="/(client)/home" />;
 
   return <Stack screenOptions={{ headerShown: false, gestureEnabled: false }} />;
 }
